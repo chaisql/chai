@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -104,25 +105,27 @@ func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
 	}
 	p.Unscan()
 
-	e, err := p.ParseExpr()
+	pe, err := p.ParseExpr()
 	if err != nil {
 		return nil, err
 	}
 
-	rf := &expr.NamedExpr{Expr: e, ExprName: e.String()}
+	ne := &expr.NamedExpr{Expr: pe}
 
 	// Check if the AS token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
-		rf.ExprName, err = p.parseIdent()
+		ne.ExprName, err = p.parseIdent()
 		if err != nil {
 			return nil, err
 		}
 
-		return rf, nil
+		return ne, nil
 	}
 	p.Unscan()
 
-	return rf, nil
+	ne.ExprName = pe.String()
+
+	return ne, nil
 }
 
 func (p *Parser) parseDistinct() (bool, error) {
@@ -142,7 +145,7 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	// Parse table name
 	ident, err := p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return ident, true, pErr
 	}

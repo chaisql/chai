@@ -3,11 +3,11 @@
 package document
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -83,7 +83,7 @@ func structScan(d types.Document, ref reflect.Value) error {
 			name = strings.ToLower(sf.Name)
 		}
 		v, err := d.GetByField(name)
-		if err == ErrFieldNotFound {
+		if errors.Is(err, ErrFieldNotFound) {
 			v = types.NewNullValue()
 		} else if err != nil {
 			return err

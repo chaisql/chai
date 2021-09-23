@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func TestTransactionRun(t *testing.T) {
@@ -28,7 +28,7 @@ func TestTransactionRun(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := genji.Open(":memory:")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer db.Close()
 			defer db.Exec("ROLLBACK")
 
@@ -39,10 +39,10 @@ func TestTransactionRun(t *testing.T) {
 				}
 			}
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	st "github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -78,7 +79,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.SplitANDConditionRule(test.in, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, res.String(), test.expected.String())
 		})
 	}
@@ -166,7 +167,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 			s := st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(test.e))
 			res, err := planner.PrecalculateExprRule(s, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, st.New(st.SeqScan("foo")).Pipe(st.Filter(test.expected)).String(), res.String())
 		})
 	}
@@ -205,7 +206,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := planner.RemoveUnnecessaryFilterNodesRule(test.root, nil)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			if test.expected != nil {
 				require.Equal(t, test.expected.String(), res.String())
 			} else {
@@ -278,7 +279,7 @@ func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
 			`)
 
 			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, db.Catalog)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -288,7 +289,7 @@ func exprList(list ...expr.Expr) expr.LiteralExprList {
 	return expr.LiteralExprList(list)
 }
 
-func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
+func TestSelectIndex_Simple(t *testing.T) {
 	tests := []struct {
 		name           string
 		root, expected *st.Stream
@@ -437,8 +438,8 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, db.Catalog)
-			require.NoError(t, err)
+			res, err := planner.SelectIndex(test.root, db.Catalog)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -496,17 +497,17 @@ func TestUseIndexBasedOnSelectionNodeRule_Simple(t *testing.T) {
 				`)
 
 				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, db.Catalog)
-				require.NoError(t, err)
+				res, err = planner.SelectIndex(res, db.Catalog)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
 		}
 	})
 }
 
-func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
+func TestSelectIndex_Composite(t *testing.T) {
 	tests := []struct {
 		name           string
 		root, expected *st.Stream
@@ -680,9 +681,9 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 3, 4]`), Exclusive: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 3, 4]`), Exclusive: true},
-			)),
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+			)).Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
 		},
 		{
 			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c < 4",
@@ -696,33 +697,33 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Max: testutil.ExprList(t, `[1, 3, 4]`), Exclusive: true},
-				st.IndexRange{Max: testutil.ExprList(t, `[2, 3, 4]`), Exclusive: true},
-			)),
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+			)).Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
 		},
-		// {
-		// 	"FROM foo WHERE a IN [1, 2] AND b IN [3, 4] AND c > 5",
-		// 	st.New(st.SeqScan("foo")).
-		// 		Pipe(st.Filter(
-		// 			expr.In(
-		// 				parser.MustParseExpr("a"),
-		// 				testutil.ArrayValue(document.NewValueBuffer(types.NewIntegerValue(1), types.NewIntegerValue(2))),
-		// 			),
-		// 		)).
-		// 		Pipe(st.Filter(
-		// 			expr.In(
-		// 				parser.MustParseExpr("b"),
-		// 				testutil.ArrayValue(document.NewValueBuffer(types.NewIntegerValue(3), types.NewIntegerValue(4))),
-		// 			),
-		// 		)).
-		// 		Pipe(st.Filter(parser.MustParseExpr("c < 5"))),
-		// 	st.New(st.IndexScan("idx_foo_a_b_c",
-		// 		st.IndexRange{Max: testutil.ExprList(t, `[1, 3, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.ExprList(t, `[2, 3, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.ExprList(t, `[1, 4, 5]`), Exclusive: true},
-		// 		st.IndexRange{Max: testutil.ExprList(t, `[2, 4, 5]`), Exclusive: true},
-		// 	)),
-		// },
+		{
+			"FROM foo WHERE a IN [1, 2] AND b IN [3, 4] AND c > 5",
+			st.New(st.SeqScan("foo")).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("a"),
+						testutil.ExprList(t, `[1, 2]`),
+					),
+				)).
+				Pipe(st.Filter(
+					expr.In(
+						parser.MustParseExpr("b"),
+						testutil.ExprList(t, `[3, 4]`),
+					),
+				)).
+				Pipe(st.Filter(parser.MustParseExpr("c > 5"))),
+			st.New(st.IndexScan("idx_foo_a_b_c",
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				st.IndexRange{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
+			)).Pipe(st.Filter(parser.MustParseExpr("c > 5"))),
+		},
 		{
 			"FROM foo WHERE 1 IN a AND d = 2",
 			st.New(st.SeqScan("foo")).
@@ -753,8 +754,8 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.UseIndexBasedOnFilterNodeRule(test.root, db.Catalog)
-			require.NoError(t, err)
+			res, err := planner.SelectIndex(test.root, db.Catalog)
+			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), res.String())
 		})
 	}
@@ -803,10 +804,10 @@ func TestUseIndexBasedOnSelectionNodeRule_Composite(t *testing.T) {
 	`)
 
 				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
-				res, err = planner.UseIndexBasedOnFilterNodeRule(res, db.Catalog)
-				require.NoError(t, err)
+				res, err = planner.SelectIndex(res, db.Catalog)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected.String(), res.String())
 			})
 		}
@@ -835,7 +836,7 @@ func TestOptimize(t *testing.T) {
 				st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 3"))),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 
@@ -865,7 +866,7 @@ func TestOptimize(t *testing.T) {
 				)),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 
@@ -895,12 +896,12 @@ func TestOptimize(t *testing.T) {
 					Pipe(st.Project(parser.MustParseExpr("a"))),
 			))
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 	})
 
-	t.Run("UseIndexBasedOnSelectionNodeRule", func(t *testing.T) {
+	t.Run("SelectIndex", func(t *testing.T) {
 		db, tx, cleanup := testutil.NewTestTx(t)
 		defer cleanup()
 		testutil.MustExec(t, db, tx, `
@@ -926,7 +927,7 @@ func TestOptimize(t *testing.T) {
 			st.New(st.IndexScan("idx_bar_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		))
 
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, want.String(), got.String())
 	})
 }

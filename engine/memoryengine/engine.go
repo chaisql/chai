@@ -2,9 +2,9 @@ package memoryengine
 
 import (
 	"context"
-	"errors"
 
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/google/btree"
 )
 
@@ -17,8 +17,9 @@ const btreeDegree = 12
 // Engine is a simple memory engine implementation that stores data in
 // an in-memory Btree. It is not thread safe.
 type Engine struct {
-	Closed bool
-	stores map[string]*btree.BTree
+	Closed    bool
+	stores    map[string]*btree.BTree
+	transient bool
 }
 
 // NewEngine creates an in-memory engine.
@@ -41,6 +42,20 @@ func (ng *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Tran
 	}
 
 	return &transaction{ctx: ctx, ng: ng, writable: opts.Writable}, nil
+}
+
+func (ng *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) {
+	e := NewEngine()
+	e.transient = true
+	return e, nil
+}
+
+func (ng *Engine) Drop(ctx context.Context) error {
+	if !ng.transient {
+		return errors.New("cannot drop persistent engine")
+	}
+
+	return nil
 }
 
 // Close the engine.
@@ -69,7 +84,7 @@ type transaction struct {
 // of the transaction.
 func (tx *transaction) Rollback() error {
 	if tx.terminated {
-		return engine.ErrTransactionDiscarded
+		return errors.Wrap(engine.ErrTransactionDiscarded)
 	}
 
 	tx.terminated = true
@@ -95,11 +110,11 @@ func (tx *transaction) Rollback() error {
 // of the transaction.
 func (tx *transaction) Commit() error {
 	if tx.terminated {
-		return engine.ErrTransactionDiscarded
+		return errors.Wrap(engine.ErrTransactionDiscarded)
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	select {
@@ -126,7 +141,7 @@ func (tx *transaction) GetStore(name []byte) (engine.Store, error) {
 
 	tr, ok := tx.ng.stores[string(name)]
 	if !ok {
-		return nil, engine.ErrStoreNotFound
+		return nil, errors.Wrap(engine.ErrStoreNotFound)
 	}
 
 	return &storeTx{tx: tx, tr: tr, name: string(name)}, nil
@@ -140,12 +155,12 @@ func (tx *transaction) CreateStore(name []byte) error {
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	_, err := tx.GetStore(name)
 	if err == nil {
-		return engine.ErrStoreAlreadyExists
+		return errors.Wrap(engine.ErrStoreAlreadyExists)
 	}
 
 	tx.ng.stores[string(name)] = btree.New(btreeDegree)
@@ -166,12 +181,12 @@ func (tx *transaction) DropStore(name []byte) error {
 	}
 
 	if !tx.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	rb, ok := tx.ng.stores[string(name)]
 	if !ok {
-		return engine.ErrStoreNotFound
+		return errors.Wrap(engine.ErrStoreNotFound)
 	}
 
 	delete(tx.ng.stores, string(name))

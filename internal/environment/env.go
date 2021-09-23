@@ -22,7 +22,8 @@ type Environment struct {
 	Params  []Param
 	Vars    *document.FieldBuffer
 	Doc     types.Document
-	Catalog database.Catalog
+	DB      *database.Database
+	Catalog *database.Catalog
 	Tx      *database.Transaction
 
 	Outer *Environment
@@ -131,7 +132,19 @@ func (e *Environment) GetTx() *database.Transaction {
 	return nil
 }
 
-func (e *Environment) GetCatalog() database.Catalog {
+func (e *Environment) GetDB() *database.Database {
+	if e.DB != nil {
+		return e.DB
+	}
+
+	if outer := e.GetOuter(); outer != nil {
+		return outer.GetDB()
+	}
+
+	return nil
+}
+
+func (e *Environment) GetCatalog() *database.Catalog {
 	if e.Catalog != nil {
 		return e.Catalog
 	}

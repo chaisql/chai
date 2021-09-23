@@ -35,6 +35,7 @@ func NewApp() *cli.App {
 		NewVersionCommand(),
 		NewDumpCommand(),
 		NewRestoreCommand(),
+		NewBenchCommand(),
 	}
 
 	// Root command

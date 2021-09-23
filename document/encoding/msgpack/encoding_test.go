@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/document/encoding/encodingtest"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -34,11 +35,11 @@ func TestCompactedIntDecoding(t *testing.T) {
 	var buf bytes.Buffer
 
 	err := codec.NewEncoder(&buf).EncodeDocument(d)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	doc := codec.NewDecoder(buf.Bytes())
 	data, err := document.MarshalJSON(doc)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
 }
 

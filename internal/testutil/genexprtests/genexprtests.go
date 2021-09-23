@@ -8,9 +8,11 @@ import (
 )
 
 type statement struct {
-	Expr string
-	Res  string
-	Fail bool
+	Expr     string
+	ExprLine int
+	Res      string
+	ResLine  int
+	Fail     bool
 }
 
 type test struct {
@@ -28,9 +30,10 @@ func Parse(r io.Reader) (*testSuite, error) {
 
 	var curTest *test
 	var curStmt *statement
+	lineNum := 0
 	for s.Scan() {
 		line := strings.TrimSpace(s.Text())
-
+		lineNum++
 		switch {
 		case line == "":
 			continue
@@ -45,14 +48,16 @@ func Parse(r io.Reader) (*testSuite, error) {
 		case line[0] == '>':
 			text := strings.TrimPrefix(line, "> ")
 			curStmt = &statement{
-				Expr: text,
+				Expr:     text,
+				ExprLine: lineNum,
 			}
 			curTest.Statements = append(curTest.Statements, curStmt)
 		case line[0] == '!':
 			text := strings.TrimPrefix(line, "! ")
 			curStmt = &statement{
-				Expr: text,
-				Fail: true,
+				Expr:     text,
+				ExprLine: lineNum,
+				Fail:     true,
 			}
 			curTest.Statements = append(curTest.Statements, curStmt)
 		default:
@@ -65,6 +70,7 @@ func Parse(r io.Reader) (*testSuite, error) {
 			} else {
 				curStmt.Res = line
 			}
+			curStmt.ResLine = lineNum
 		}
 	}
 

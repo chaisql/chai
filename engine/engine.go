@@ -3,7 +3,8 @@ package engine
 
 import (
 	"context"
-	"errors"
+
+	"github.com/genjidb/genji/internal/errors"
 )
 
 // Common errors returned by the engine implementations.
@@ -34,6 +35,20 @@ type Engine interface {
 	// or true, respectively.
 	// The behaviour of opening a transaction when another one is already opened depends on the implementation.
 	Begin(ctx context.Context, opts TxOptions) (Transaction, error)
+	// A transient engine is a database
+	// used to create temporary indices.
+	// It should ideally be optimized for writes,
+	// and not reside solely in memory as it will be
+	// used to index entire tables.
+	// This database is not expected to be crash safe
+	// or support any recovery mechanism, as the Commit
+	// method will never be used.
+	// However, it might be reused across multiple transactions.
+	NewTransientEngine(ctx context.Context) (Engine, error)
+	// Drop releases any resource (files, memory, etc.) used by a transient database.
+	// It must return an error if the engine has not been created
+	// with NewTransientEngine.
+	Drop(ctx context.Context) error
 	// Close the engine after ensuring all the transactions have completed.
 	Close() error
 }

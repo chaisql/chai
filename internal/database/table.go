@@ -3,12 +3,12 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -25,9 +25,9 @@ type Table struct {
 	// List of Indexes of this table.
 	// May not represent the most up to date data.
 	// Always get a fresh Table instance before relying on this field.
-	Indexes Indexes
+	Indexes []*Index
 
-	Catalog Catalog
+	Catalog *Catalog
 	Codec   encoding.Codec
 }
 
@@ -121,7 +121,7 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 
 	// insert into the table
 	var buf bytes.Buffer
-	enc := t.Tx.Codec.NewEncoder(&buf)
+	enc := t.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
@@ -160,13 +160,13 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 }
 
 // GetIndexes returns all indexes of the table.
-func (t *Table) GetIndexes() (Indexes, error) {
+func (t *Table) GetIndexes() ([]*Index, error) {
 	if t.Indexes != nil {
 		return t.Indexes, nil
 	}
 
 	names := t.Catalog.ListIndexes(t.Info.TableName)
-	indexes := make(Indexes, 0, len(names))
+	indexes := make([]*Index, 0, len(names))
 	for _, idxName := range names {
 		idx, err := t.Catalog.GetIndex(t.Tx, idxName)
 		if err != nil {
@@ -201,7 +201,7 @@ func (t *Table) Delete(key []byte) error {
 		for _, path := range idx.Info.Paths {
 			v, err := path.GetValueFromDocument(d)
 			if err != nil {
-				if err == document.ErrFieldNotFound {
+				if errors.Is(err, document.ErrFieldNotFound) {
 					v = types.NewNullValue()
 				} else {
 					return err
@@ -267,7 +267,7 @@ func (t *Table) replace(key []byte, d types.Document) error {
 
 	// encode new document
 	var buf bytes.Buffer
-	enc := t.Tx.Codec.NewEncoder(&buf)
+	enc := t.Codec.NewEncoder(&buf)
 	defer enc.Close()
 	err = enc.EncodeDocument(d)
 	if err != nil {
@@ -294,7 +294,7 @@ func (t *Table) replace(key []byte, d types.Document) error {
 
 		err = idx.Set(vs, key)
 		if err != nil {
-			if err == ErrIndexDuplicateValue {
+			if errors.Is(err, ErrIndexDuplicateValue) {
 				return errs.ErrDuplicateDocument
 			}
 
@@ -498,7 +498,7 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 	// To avoid unnecessary allocations, we create the struct once and reuse
 	// it during each iteration.
 	d := lazilyDecodedDocument{
-		codec: t.Tx.Codec,
+		codec: t.Codec,
 	}
 
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
@@ -528,14 +528,14 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	v, err := t.Store.Get(key)
 	if err != nil {
-		if err == engine.ErrKeyNotFound {
-			return nil, errs.ErrDocumentNotFound
+		if errors.Is(err, engine.ErrKeyNotFound) {
+			return nil, errors.Wrap(errs.ErrDocumentNotFound)
 		}
 		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
 	var d documentWithKey
-	d.Document = t.Tx.Codec.NewDecoder(v)
+	d.Document = t.Codec.NewDecoder(v)
 	d.key = key
 	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
 	return &d, err
@@ -550,7 +550,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
 	if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValueFromDocument(d)
-		if err == document.ErrFieldNotFound {
+		if errors.Is(err, document.ErrFieldNotFound) {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)
 		}
 		if err != nil {

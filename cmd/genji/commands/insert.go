@@ -2,13 +2,13 @@ package commands
 
 import (
 	"context"
-	"errors"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/genjidb/genji/cmd/genji/dbutil"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/urfave/cli/v2"
 )
 

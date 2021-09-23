@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -36,9 +37,9 @@ func TestValueAdd(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.Add(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -72,9 +73,9 @@ func TestValueSub(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.Sub(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -106,9 +107,9 @@ func TestValueMult(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.Mul(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -141,9 +142,9 @@ func TestValueDiv(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.Div(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -178,9 +179,9 @@ func TestValueMod(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.Mod(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -212,9 +213,9 @@ func TestValueBitwiseAnd(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.BitwiseAnd(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -245,9 +246,9 @@ func TestValueBitwiseOr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.BitwiseOr(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -277,9 +278,9 @@ func TestValueBitwiseXor(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			res, err := types.BitwiseXor(test.v, test.u)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})

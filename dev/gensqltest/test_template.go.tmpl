@@ -9,6 +9,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,14 +23,14 @@ func Test{{ .TestName }}(t *testing.T) {
 {{- end }}
 `
         err := db.Exec(q)
-        require.NoError(t, err)
+        assert.NoError(t, err)
     }
     {{""}}
     {{- range .Suite.Tests }}
     // --------------------------------------------------------------------------
     t.Run("{{ .Name }}", func(t *testing.T) {
         db, err := genji.Open(":memory:")
-        require.NoError(t, err)
+        assert.NoError(t, err)
         defer db.Close()
 
         setup(t, db)
@@ -48,11 +49,11 @@ func Test{{ .TestName }}(t *testing.T) {
             require.NotNil(t, err, "expected error, got nil")
             require.Regexp(t, regexp.MustCompile("{{ .ErrorMatch }}"), err.Error())
                 {{- else }}
-            require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+            assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
                 {{- end }}
             {{- else }}
             res, err := db.Query(q)
-            require.NoError(t, err)
+            assert.NoError(t, err)
             defer res.Close()
 
             {{- if gt (len .Result) 0 }}

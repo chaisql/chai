@@ -8,13 +8,14 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func parsePath(t testing.TB, str string) document.Path {
 	vp, err := parser.ParsePath(str)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	return vp
 }
 
@@ -50,13 +51,13 @@ func TestCreateTable(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			_, err = db.Catalog.GetTable(tx, "test")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 
@@ -68,13 +69,13 @@ func TestCreateTable(t *testing.T) {
 			testutil.MustExec(t, db, tx, `CREATE TABLE test(d double, b bool)`)
 
 			tb, err := db.Catalog.GetTable(tx, "test")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{
 				{Path: parsePath(t, "d"), Type: types.DoubleValue},
 				{Path: parsePath(t, "b"), Type: types.BoolValue},
 			}, tb.Info.FieldConstraints)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("with variable size data types", func(t *testing.T) {
@@ -88,7 +89,7 @@ func TestCreateTable(t *testing.T) {
 			`)
 
 			tb, err := db.Catalog.GetTable(tx, "test1")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{
 				{Path: parsePath(t, "foo"), Type: types.DocumentValue, IsInferred: true,
@@ -132,7 +133,7 @@ func TestCreateTable(t *testing.T) {
 				{Path: parsePath(t, "a"), Type: types.ArrayValue},
 				{Path: parsePath(t, "d"), Type: types.DocumentValue},
 			}, tb.Info.FieldConstraints)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("with variable aliases data types", func(t *testing.T) {
@@ -147,7 +148,7 @@ func TestCreateTable(t *testing.T) {
 			`)
 
 			tb, err := db.Catalog.GetTable(tx, "test2")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			require.Equal(t, database.FieldConstraints{{Path: parsePath(t, "foo"), Type: types.DocumentValue, IsInferred: true,
 				InferredBy: []document.Path{
@@ -193,7 +194,7 @@ func TestCreateTable(t *testing.T) {
 				{Path: parsePath(t, "ii"), Type: types.IntegerValue},
 				{Path: parsePath(t, "c"), Type: types.TextValue},
 			}, tb.Info.FieldConstraints)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 
 		t.Run("default values", func(t *testing.T) {
@@ -216,13 +217,13 @@ func TestCreateTable(t *testing.T) {
 
 					err := testutil.Exec(db, tx, test.query)
 					if test.fails {
-						require.Error(t, err)
+						assert.Error(t, err)
 						return
 					}
-					require.NoError(t, err)
+					assert.NoError(t, err)
 
 					tb, err := db.Catalog.GetTable(tx, "test")
-					require.NoError(t, err)
+					assert.NoError(t, err)
 
 					for _, fc := range test.constraints {
 						if fc.DefaultValue != nil {
@@ -241,7 +242,7 @@ func TestCreateTable(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INT UNIQUE, b DOUBLE UNIQUE, c UNIQUE)")
 
 			tb, err := db.Catalog.GetTable(tx, "test")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, tb.Info.FieldConstraints, 3)
 
 			require.Equal(t, &database.FieldConstraint{
@@ -262,20 +263,20 @@ func TestCreateTable(t *testing.T) {
 			}, tb.Info.FieldConstraints[2])
 
 			idx, err := db.Catalog.GetIndex(tx, "test_a_idx")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, types.IntegerValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
 			idx, err = db.Catalog.GetIndex(tx, "test_b_idx")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, types.DoubleValue, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 
 			idx, err = db.Catalog.GetIndex(tx, "test_c_idx")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Zero(t, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	})
 }
@@ -306,10 +307,10 @@ func TestCreateIndex(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }
@@ -390,10 +391,10 @@ func TestCreateSequence(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 		})
 	}
 }

@@ -184,6 +184,11 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}
 
+			withParentheses, err := p.parseOptional(scanner.LPAREN)
+			if err != nil {
+				return err
+			}
+
 			// Parse default value expression.
 			// Only a few tokens are allowed.
 			e, err := p.parseExprWithMinPrecedence(scanner.EQ.Precedence(),
@@ -217,6 +222,13 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 			}
 
 			fc.DefaultValue = expr.Constraint(e)
+
+			if withParentheses {
+				_, err = p.parseOptional(scanner.RPAREN)
+				if err != nil {
+					return err
+				}
+			}
 		case scanner.UNIQUE:
 			// if it's already unique we return an error
 			if fc.IsUnique {

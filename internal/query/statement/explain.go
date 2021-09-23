@@ -1,8 +1,7 @@
 package statement
 
 import (
-	"errors"
-
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/types"

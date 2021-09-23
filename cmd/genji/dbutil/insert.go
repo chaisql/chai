@@ -8,6 +8,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 // InsertJSON reads json documents from r and inserts them into the selected table.
@@ -35,7 +36,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		for {
 			var fb document.FieldBuffer
 			err := dec.Decode(&fb)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			if err != nil {
@@ -61,7 +62,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		for dec.More() {
 			var fb document.FieldBuffer
 			err := dec.Decode(&fb)
-			if err != nil && err != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				return err
 			}
 

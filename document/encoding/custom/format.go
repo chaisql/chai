@@ -3,8 +3,9 @@ package custom
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"io"
+
+	"github.com/genjidb/genji/internal/errors"
 )
 
 // Format is an encoding format used to encode and decode documents.

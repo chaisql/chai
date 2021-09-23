@@ -112,7 +112,10 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `100.23`, tok: NUMBER, lit: `100.23`},
 		{s: `.23`, tok: NUMBER, lit: `.23`},
 		{s: `10.3s`, tok: NUMBER, lit: `10.3`},
-		{s: `-10.3`, tok: NUMBER, lit: `-10.3`},
+		{s: `1.2e10`, tok: NUMBER, lit: `1.2e10`},
+		{s: `1.2E10`, tok: NUMBER, lit: `1.2E10`},
+		{s: `1.2e+10`, tok: NUMBER, lit: `1.2e+10`},
+		{s: `1.2e-10`, tok: NUMBER, lit: `1.2e-10`},
 
 		// Keywords
 		{s: `ADD`, tok: ADD_KEYWORD},
@@ -267,6 +270,7 @@ func TestScanString(t *testing.T) {
 		{in: `"foo\\bar"`, out: `foo\bar`},
 		{in: `"foo\"bar"`, out: `foo"bar`},
 		{in: `'foo\'bar'`, out: `foo'bar`},
+		{in: `'\xAF'`, out: `\xAF`},
 
 		{in: `"foo` + "\n", out: `foo`, err: "bad string"}, // newline in string
 		{in: `"foo`, out: `foo`, err: "bad string"},        // unclosed quotes
@@ -297,7 +301,6 @@ func TestScanRegex(t *testing.T) {
 		in  string
 		tok Token
 		lit string
-		err string
 	}{
 		{in: `/^payments\./`, tok: REGEX, lit: `^payments\.`},
 		{in: `/foo\/bar/`, tok: REGEX, lit: `foo/bar`},

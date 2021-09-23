@@ -4,9 +4,16 @@ package badgerengine
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 const (
@@ -18,6 +25,8 @@ const (
 // Engine represents a Badger engine.
 type Engine struct {
 	DB *badger.DB
+
+	transient bool
 }
 
 // NewEngine creates a Badger engine. It takes the same argument as Badger's Open function.
@@ -48,6 +57,29 @@ func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Trans
 		tx:       tx,
 		writable: opts.Writable,
 	}, nil
+}
+
+func (e *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) {
+	// build engine with fast options
+	opt := badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
+	opt.Compression = options.None
+
+	ng, err := NewEngine(opt)
+	if err != nil {
+		return nil, err
+	}
+	ng.transient = true
+	return ng, nil
+}
+
+func (e *Engine) Drop(ctx context.Context) error {
+	if !e.transient {
+		return errors.New("cannot drop persistent engine")
+	}
+
+	_ = e.Close()
+
+	return os.RemoveAll(e.DB.Opts().Dir)
 }
 
 // Close the engine and underlying Badger database.
@@ -135,8 +167,8 @@ func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
 
 	_, err := t.tx.Get(key)
 	if err != nil {
-		if err == badger.ErrKeyNotFound {
-			return nil, engine.ErrStoreNotFound
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil, errors.Wrap(engine.ErrStoreNotFound)
 		}
 
 		return nil, err
@@ -164,15 +196,15 @@ func (t *Transaction) CreateStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	key := buildStoreKey(name)
 	_, err := t.tx.Get(key)
 	if err == nil {
-		return engine.ErrStoreAlreadyExists
+		return errors.Wrap(engine.ErrStoreAlreadyExists)
 	}
-	if err != badger.ErrKeyNotFound {
+	if !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
 	}
 
@@ -188,7 +220,7 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return errors.Wrap(engine.ErrTransactionReadOnly)
 	}
 
 	s, err := t.GetStore(name)
@@ -202,8 +234,8 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	err = t.tx.Delete(buildStoreKey([]byte(name)))
-	if err == badger.ErrKeyNotFound {
-		return engine.ErrStoreNotFound
+	if errors.Is(err, badger.ErrKeyNotFound) {
+		return errors.Wrap(engine.ErrStoreNotFound)
 	}
 
 	return err

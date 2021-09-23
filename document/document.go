@@ -2,12 +2,12 @@
 package document
 
 import (
-	"errors"
 	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/buger/jsonparser"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -507,10 +507,10 @@ func (p Path) IsEqual(other Path) bool {
 // GetValueFromDocument returns the value at path p from d.
 func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, ErrFieldNotFound
+		return nil, errors.Wrap(ErrFieldNotFound)
 	}
 	if p[0].FieldName == "" {
-		return nil, ErrFieldNotFound
+		return nil, errors.Wrap(ErrFieldNotFound)
 	}
 
 	v, err := d.GetByField(p[0].FieldName)
@@ -528,16 +528,16 @@ func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 // GetValueFromArray returns the value at path p from a.
 func (p Path) GetValueFromArray(a types.Array) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, ErrFieldNotFound
+		return nil, errors.Wrap(ErrFieldNotFound)
 	}
 	if p[0].FieldName != "" {
-		return nil, ErrFieldNotFound
+		return nil, errors.Wrap(ErrFieldNotFound)
 	}
 
 	v, err := a.GetByIndex(p[0].ArrayIndex)
 	if err != nil {
-		if err == ErrValueNotFound {
-			return nil, ErrFieldNotFound
+		if errors.Is(err, ErrValueNotFound) {
+			return nil, errors.Wrap(ErrFieldNotFound)
 		}
 
 		return nil, err

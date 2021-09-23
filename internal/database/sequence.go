@@ -1,11 +1,11 @@
 package database
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -64,7 +64,7 @@ func NewSequence(info *SequenceInfo, currentValue *int64) Sequence {
 	return seq
 }
 
-func (s *Sequence) Init(tx *Transaction, catalog Catalog) error {
+func (s *Sequence) Init(tx *Transaction, catalog *Catalog) error {
 	tb, err := s.GetOrCreateTable(tx, catalog)
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func (s *Sequence) Init(tx *Transaction, catalog Catalog) error {
 	return err
 }
 
-func (s *Sequence) Drop(tx *Transaction, catalog Catalog) error {
+func (s *Sequence) Drop(tx *Transaction, catalog *Catalog) error {
 	tb, err := catalog.GetTable(tx, SequenceTableName)
 	if err != nil {
 		if errs.IsNotFoundError(err) {
@@ -92,7 +92,7 @@ func (s *Sequence) Drop(tx *Transaction, catalog Catalog) error {
 	return tb.Delete(key)
 }
 
-func (s *Sequence) Next(tx *Transaction, catalog Catalog) (int64, error) {
+func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
 	if !tx.Writable {
 		return 0, errors.New("cannot increment sequence on read-only transaction")
 	}
@@ -159,7 +159,7 @@ func (s *Sequence) Next(tx *Transaction, catalog Catalog) (int64, error) {
 	return newValue, nil
 }
 
-func (s *Sequence) SetLease(tx *Transaction, catalog Catalog, name string, v int64) error {
+func (s *Sequence) SetLease(tx *Transaction, catalog *Catalog, name string, v int64) error {
 	tb, err := s.GetOrCreateTable(tx, catalog)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func (s *Sequence) SetLease(tx *Transaction, catalog Catalog, name string, v int
 	return err
 }
 
-func (s *Sequence) GetOrCreateTable(tx *Transaction, catalog Catalog) (*Table, error) {
+func (s *Sequence) GetOrCreateTable(tx *Transaction, catalog *Catalog) (*Table, error) {
 	tb, err := catalog.GetTable(tx, SequenceTableName)
 	if err == nil || !errs.IsNotFoundError(err) {
 		return tb, err
@@ -216,7 +216,7 @@ func (s *Sequence) GenerateBaseName() string {
 
 // Release the sequence by storing the actual current value to the sequence table.
 // If the sequence has cache, the cached value is overwritten.
-func (s *Sequence) Release(tx *Transaction, catalog Catalog) error {
+func (s *Sequence) Release(tx *Transaction, catalog *Catalog) error {
 	if s.CurrentValue == nil {
 		return nil
 	}
@@ -228,4 +228,12 @@ func (s *Sequence) Release(tx *Transaction, catalog Catalog) error {
 
 	s.Cached = s.Info.Cache
 	return nil
+}
+
+func (s *Sequence) Clone() *Sequence {
+	return &Sequence{
+		Info:         s.Info.Clone(),
+		CurrentValue: s.CurrentValue,
+		Cached:       s.Cached,
+	}
 }

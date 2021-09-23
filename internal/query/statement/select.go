@@ -1,10 +1,9 @@
 package statement
 
 import (
-	"errors"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -121,22 +120,8 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 				return nil, err
 			}
 		}
-
-		// build a document expression with the
-		// projected exprs
-		d := expr.KVPairs{
-			Pairs: make([]expr.KVPair, len(stmt.ProjectionExprs)),
-		}
-
-		for i := range stmt.ProjectionExprs {
-			d.Pairs[i].K = stmt.ProjectionExprs[i].String()
-			d.Pairs[i].V = stmt.ProjectionExprs[i]
-		}
-
-		s = s.Pipe(stream.Expressions(&d))
-	} else {
-		s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
 	}
+	s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
 
 	if stmt.Distinct {
 		s = s.Pipe(stream.Distinct())

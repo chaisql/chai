@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 // BenchmarkStorePut benchmarks the Put method with 1, 10, 1000 and 10000 successive insertions.
@@ -22,7 +22,7 @@ func BenchmarkStorePut(b *testing.B, builder Builder) {
 				b.ResetTimer()
 				for j := 0; j < size; j++ {
 					k := []byte(stringutil.Sprintf("k%d", j))
-					st.Put(k, v)
+					_ = st.Put(k, v)
 				}
 				b.StopTimer()
 			}
@@ -42,7 +42,7 @@ func BenchmarkStoreScan(b *testing.B, builder Builder) {
 			for i := 0; i < size; i++ {
 				k := []byte(stringutil.Sprintf("k%d", i))
 				err := st.Put(k, v)
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -51,10 +51,10 @@ func BenchmarkStoreScan(b *testing.B, builder Builder) {
 				for it.Seek(nil); it.Valid(); it.Next() {
 				}
 				if err := it.Err(); err != nil {
-					require.NoError(b, err)
+					assert.NoError(b, err)
 				}
 				if err := it.Close(); err != nil {
-					require.NoError(b, err)
+					assert.NoError(b, err)
 				}
 			}
 			b.StopTimer()

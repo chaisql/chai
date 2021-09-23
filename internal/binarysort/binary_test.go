@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +19,7 @@ func TestOrdering(t *testing.T) {
 		{"float64", -1000, 1000, func(buf []byte, i int) []byte { return AppendFloat64(buf, float64(i)) }},
 		{"text", -1000, 1000, func(buf []byte, i int) []byte {
 			b, err := AppendBase64(nil, AppendInt64(buf, int64(i)))
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			return b
 		}},
 	}
@@ -72,7 +73,7 @@ func TestTwoWays(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := test.dec(test.enc(nil, test.want))
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Equal(t, test.want, got)
 		})
 	}

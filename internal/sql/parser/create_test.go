@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -61,7 +62,17 @@ func TestParserCreateTable(t *testing.T) {
 					},
 				},
 			}, false},
+		{"With default", "CREATE TABLE test(foo DEFAULT (\"10\"))",
+			&statement.CreateTableStmt{
+				Info: database.TableInfo{
+					TableName: "test",
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewTextValue("10")})},
+					},
+				},
+			}, false},
 		{"With default twice", "CREATE TABLE test(foo DEFAULT 10 DEFAULT 10)", nil, true},
+		{"With default and no parentheses", "CREATE TABLE test(foo DEFAULT (10)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT a)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT 1 AND 2)", nil, true},
 		{"With unique", "CREATE TABLE test(foo UNIQUE)",
@@ -250,10 +261,10 @@ func TestParserCreateTable(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})
@@ -301,10 +312,10 @@ func TestParserCreateIndex(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})
@@ -442,10 +453,10 @@ func TestParserCreateSequence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})

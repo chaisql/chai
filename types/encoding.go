@@ -1,10 +1,10 @@
 package types
 
 import (
-	"errors"
 	"io"
 
 	"github.com/genjidb/genji/internal/binarysort"
+	"github.com/genjidb/genji/internal/errors"
 )
 
 const (

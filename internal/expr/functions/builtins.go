@@ -1,16 +1,22 @@
 package functions
 
 import (
-	"errors"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
 var builtinFunctions = Definitions{
+	"typeof": &definition{
+		name:  "typeof",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &TypeOf{Expr: args[0]}, nil
+		},
+	},
 	"pk": &definition{
 		name:  "pk",
 		arity: 0,
@@ -60,6 +66,40 @@ func BuiltinDefinitions() Definitions {
 	return builtinFunctions
 }
 
+type TypeOf struct {
+	Expr expr.Expr
+}
+
+func (t *TypeOf) Eval(env *environment.Environment) (types.Value, error) {
+	v, err := t.Expr.Eval(env)
+	if err != nil {
+		return nil, err
+	}
+
+	return types.NewTextValue(v.Type().String()), nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (t *TypeOf) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*TypeOf)
+	if !ok {
+		return false
+	}
+
+	return expr.Equal(t.Expr, o.Expr)
+}
+
+func (t *TypeOf) Params() []expr.Expr { return []expr.Expr{t.Expr} }
+
+func (t *TypeOf) String() string {
+	return stringutil.Sprintf("typeof(%v)", t.Expr)
+}
+
 // PK represents the pk() function.
 // It returns the primary key of the current document.
 type PK struct{}
@@ -91,51 +131,6 @@ func (k *PK) IsEqual(other expr.Expr) bool {
 
 func (k *PK) String() string {
 	return "pk()"
-}
-
-// Cast represents the CAST expression.
-type Cast struct {
-	Expr   expr.Expr
-	CastAs types.ValueType
-}
-
-// Eval returns the primary key of the current document.
-func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
-	v, err := c.Expr.Eval(env)
-	if err != nil {
-		return v, err
-	}
-
-	return document.CastAs(v, c.CastAs)
-}
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (c Cast) IsEqual(other expr.Expr) bool {
-	if other == nil {
-		return false
-	}
-
-	o, ok := other.(Cast)
-	if !ok {
-		return false
-	}
-
-	if c.CastAs != o.CastAs {
-		return false
-	}
-
-	if c.Expr != nil {
-		return expr.Equal(c.Expr, o.Expr)
-	}
-
-	return o.Expr != nil
-}
-
-func (c Cast) Params() []expr.Expr { return []expr.Expr{c.Expr} }
-
-func (c Cast) String() string {
-	return stringutil.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }
 
 var _ expr.AggregatorBuilder = (*Count)(nil)
@@ -207,7 +202,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	v, err := c.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v != expr.NullLiteral {
@@ -281,7 +276,7 @@ type MinAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v == expr.NullLiteral {
@@ -379,7 +374,7 @@ type MaxAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v == expr.NullLiteral {
@@ -480,7 +475,7 @@ type SumAggregator struct {
 // If any of the value is a double, the returned result will be a double.
 func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 	if v.Type() != types.IntegerValue && v.Type() != types.DoubleValue {
@@ -588,7 +583,7 @@ type AvgAggregator struct {
 // Aggregate stores the average value of all non-NULL numeric values in the group.
 func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && err != document.ErrFieldNotFound {
+	if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
 		return err
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,43 +21,21 @@ func TestParserSelect(t *testing.T) {
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
-			stream.New(stream.Expressions(
-				&expr.KVPairs{
-					Pairs: []expr.KVPair{
-						{K: "1", V: testutil.ParseNamedExpr(t, "1")},
-					},
-				},
-			)),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "1"))),
 			false,
 		},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			stream.New(stream.Expressions(
-				&expr.KVPairs{
-					Pairs: []expr.KVPair{
-						{K: "[1, 2]", V: testutil.ParseNamedExpr(t, "[1, 2]")},
-					},
-				},
-			)),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
-			stream.New(stream.Expressions(
-				&expr.KVPairs{
-					Pairs: []expr.KVPair{
-						{K: "[1, 2]", V: testutil.ParseNamedExpr(t, "[1, 2]")},
-					},
-				},
-			)),
+			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
-			stream.New(stream.Expressions(
-				&expr.KVPairs{
-					Pairs: []expr.KVPair{
-						{K: "1 IN [1, 2]", V: testutil.ParseNamedExpr(t, "1 IN [1, 2]")},
-						{K: "3", V: testutil.ParseNamedExpr(t, "3")},
-					},
-				},
+			stream.New(stream.Project(
+				testutil.ParseNamedExpr(t, "1 IN [1, 2]"),
+				testutil.ParseNamedExpr(t, "3"),
 			)),
 			false,
 		},
@@ -81,7 +60,7 @@ func TestParserSelect(t *testing.T) {
 			false,
 		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
-			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1", "a > 1"))),
+			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1"))),
 			false,
 		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
@@ -178,11 +157,11 @@ func TestParserSelect(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if !test.mustFail {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Len(t, q.Statements, 1)
 				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0].(*statement.StreamStmt))
 			} else {
-				require.Error(t, err)
+				assert.Error(t, err)
 			}
 		})
 	}

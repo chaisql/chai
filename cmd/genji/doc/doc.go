@@ -2,10 +2,10 @@
 package doc
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
@@ -61,7 +61,7 @@ func funcDocString(pkg string, name string) (string, error) {
 	table := functions.DefaultPackages()
 	f, err := table.GetFunc(pkg, name)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrNotFound, err.Error())
+		return "", ErrNotFound
 	}
 	// Because we got the definition, we know that the package and function both exist.
 	p := packageDocs[pkg]

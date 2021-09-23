@@ -7,7 +7,9 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -24,6 +26,22 @@ type DB struct {
 
 func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {
 	db, err := database.New(ctx, ng, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := db.Begin(true)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	err = catalogstore.LoadCatalog(tx, db.Catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
@@ -261,7 +279,7 @@ func scanDocument(iter document.Iterator) (types.Document, error) {
 	}
 
 	if d == nil {
-		return nil, errs.ErrDocumentNotFound
+		return nil, errors.Wrap(errs.ErrDocumentNotFound)
 	}
 
 	fb := document.NewFieldBuffer()

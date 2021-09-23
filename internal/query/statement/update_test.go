@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,39 +47,39 @@ func TestUpdateStmt(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			runTest := func(indexed bool) {
 				db, err := genji.Open(":memory:")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec("CREATE TABLE test (a text not null)")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				if indexed {
 					err = db.Exec("CREATE INDEX idx_test_a ON test(a)")
-					require.NoError(t, err)
+					assert.NoError(t, err)
 				}
 
 				err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				err = db.Exec(test.query, test.params...)
 				if test.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 					return
 				}
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				st, err := db.Query("SELECT * FROM test")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer st.Close()
 
 				var buf bytes.Buffer
 
 				err = testutil.IteratorToJSONArray(&buf, st)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 
@@ -109,29 +110,29 @@ func TestUpdateStmt(t *testing.T) {
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
 				db, err := genji.Open(":memory:")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec(`CREATE TABLE foo;`)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				err = db.Exec(`INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);`)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				err = db.Exec(tt.query, tt.params...)
 				if tt.fails {
-					require.Error(t, err)
+					assert.Error(t, err)
 					return
 				}
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				st, err := db.Query("SELECT * FROM foo")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				defer st.Close()
 
 				var buf bytes.Buffer
 
 				err = testutil.IteratorToJSONArray(&buf, st)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.JSONEq(t, tt.expected, buf.String())
 			})
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -21,14 +22,9 @@ func TestParserExpr(t *testing.T) {
 		fails    bool
 	}{
 		// integers
-		{"+int8", "10", testutil.IntegerValue(10), false},
-		{"-int8", "-10", testutil.IntegerValue(-10), false},
-		{"+int16", "1000", testutil.IntegerValue(1000), false},
-		{"-int16", "-1000", testutil.IntegerValue(-1000), false},
-		{"+int32", "10000000", testutil.IntegerValue(10000000), false},
-		{"-int32", "-10000000", testutil.IntegerValue(-10000000), false},
-		{"+int64", "10000000000", testutil.IntegerValue(10000000000), false},
-		{"-int64", "-10000000000", testutil.IntegerValue(-10000000000), false},
+		{"int", "10", testutil.IntegerValue(10), false},
+		{"-int", "-10", testutil.IntegerValue(-10), false},
+		{"+int", "+10", testutil.IntegerValue(10), false},
 		{"> max int64 -> float64", "10000000000000000000", testutil.DoubleValue(10000000000000000000), false},
 		{"< min int64 -> float64", "-10000000000000000000", testutil.DoubleValue(-10000000000000000000), false},
 		{"very large int", "100000000000000000000000000000000000000000000000", testutil.DoubleValue(100000000000000000000000000000000000000000000000), false},
@@ -40,6 +36,10 @@ func TestParserExpr(t *testing.T) {
 		// strings
 		{"double quoted string", `"10.0"`, testutil.TextValue("10.0"), false},
 		{"single quoted string", "'-10.0'", testutil.TextValue("-10.0"), false},
+
+		// blobs
+		{"blob as hex string", `'\xff'`, testutil.BlobValue([]byte{255}), false},
+		{"invalid blob hex string", `'\xzz'`, nil, true},
 
 		// documents
 		{"empty document", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
@@ -154,7 +154,7 @@ func TestParserExpr(t *testing.T) {
 		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", functions.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},
@@ -173,9 +173,9 @@ func TestParserExpr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				if !expr.Equal(test.expected, ex) {
 					require.EqualValues(t, test.expected, ex)
 				}
@@ -205,24 +205,34 @@ func TestParsePath(t *testing.T) {
 			document.PathFragment{ArrayIndex: 1},
 			document.PathFragment{ArrayIndex: 2},
 		}, false},
+		{"multiple fragments with brackets", `a["b"][100].c[1][2]`, document.Path{
+			document.PathFragment{FieldName: "a"},
+			document.PathFragment{FieldName: "b"},
+			document.PathFragment{ArrayIndex: 100},
+			document.PathFragment{FieldName: "c"},
+			document.PathFragment{ArrayIndex: 1},
+			document.PathFragment{ArrayIndex: 2},
+		}, false},
 		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", document.Path{
 			document.PathFragment{FieldName: "some ident"},
 			document.PathFragment{FieldName: " with"},
 			document.PathFragment{ArrayIndex: 5},
 			document.PathFragment{FieldName: "  \"quotes"},
 		}, false},
+
 		{"negative index", `a.b[-100].c`, nil, true},
 		{"with spaces", `a.  b[100].  c`, nil, true},
 		{"starting with array", `[10].a`, nil, true},
+		{"starting with brackets", `['a']`, nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			vp, err := parser.ParsePath(test.s)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.EqualValues(t, test.expected, vp)
 			}
 		})
@@ -255,9 +265,9 @@ func TestParserParams(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.EqualValues(t, test.expected, ex)
 			}
 		})

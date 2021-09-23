@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -31,25 +32,25 @@ func TestInsertJSON(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := genji.Open(":memory:")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec(`CREATE TABLE foo`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			err = InsertJSON(db, "foo", strings.NewReader(tt.data))
 			if tt.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
 
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			res, err := db.Query("SELECT * FROM foo")
 			defer res.Close()
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			var buf bytes.Buffer
 			err = testutil.IteratorToJSONArray(&buf, res)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.JSONEq(t, tt.want, buf.String())
 		})
 	}
@@ -70,21 +71,21 @@ func TestInsertJSON(t *testing.T) {
 			`{"Name": "Ed", "Text": "Go fmt yourself!"}`}
 
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`CREATE TABLE foo`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = InsertJSON(db, "foo", strings.NewReader(jsonArray))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		i := 0
 		_ = res.Iterate(func(d types.Document) error {
 			data, err := document.MarshalJSON(d)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
 			return nil
@@ -106,22 +107,22 @@ func TestInsertJSON(t *testing.T) {
 
 		db, err := genji.Open(":memory:")
 		defer db.Close()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = db.Exec(`CREATE TABLE foo`)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		err = InsertJSON(db, "foo", strings.NewReader(jsonStream))
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		res, err := db.Query("SELECT * FROM foo")
 		defer res.Close()
-		require.NoError(t, err)
+		assert.NoError(t, err)
 
 		i := 0
 		_ = res.Iterate(func(d types.Document) error {
 			data, err := document.MarshalJSON(d)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
 			return nil
@@ -132,7 +133,7 @@ func TestInsertJSON(t *testing.T) {
 			wantCount++
 			return nil
 		})
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, wantCount, i)
 	})
 }

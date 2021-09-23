@@ -9,7 +9,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func TestGenInsertWithSelect(t *testing.T) {
@@ -22,13 +22,13 @@ CREATE TABLE bar;
 INSERT INTO bar (a, b) VALUES (1, 10);
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("same table", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -38,7 +38,7 @@ INSERT INTO bar (a, b) VALUES (1, 10);
 INSERT INTO foo SELECT * FROM foo;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -46,7 +46,7 @@ INSERT INTO foo SELECT * FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("No fields / No projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -57,7 +57,7 @@ INSERT INTO foo SELECT * FROM bar;
 SELECT pk(), * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1, "a":1.0, "b":10.0}
@@ -70,7 +70,7 @@ SELECT pk(), * FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("No fields / Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -81,7 +81,7 @@ INSERT INTO foo SELECT a FROM bar;
 SELECT pk(), * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1, "a":1.0}
@@ -94,7 +94,7 @@ SELECT pk(), * FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("With fields / No Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -105,7 +105,7 @@ INSERT INTO foo (a, b) SELECT * FROM bar;
 SELECT pk(), * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1, "a":1.0, "b":10.0}
@@ -118,7 +118,7 @@ SELECT pk(), * FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("With fields / Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -129,7 +129,7 @@ INSERT INTO foo (c, d) SELECT a, b FROM bar;
 SELECT pk(), * FROM foo;
 `
 			res, err := db.Query(q)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
 {"pk()":1, "c":1.0, "d":10.0}
@@ -142,7 +142,7 @@ SELECT pk(), * FROM foo;
 	// --------------------------------------------------------------------------
 	t.Run("Too many fields / No Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -152,7 +152,7 @@ SELECT pk(), * FROM foo;
 INSERT INTO foo (c) SELECT * FROM bar;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -160,7 +160,7 @@ INSERT INTO foo (c) SELECT * FROM bar;
 	// --------------------------------------------------------------------------
 	t.Run("Too many fields / Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -170,7 +170,7 @@ INSERT INTO foo (c) SELECT * FROM bar;
 INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -178,7 +178,7 @@ INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 	// --------------------------------------------------------------------------
 	t.Run("Too few fields / No Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -188,7 +188,7 @@ INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 INSERT INTO foo (c, d, e) SELECT * FROM bar;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -196,7 +196,7 @@ INSERT INTO foo (c, d, e) SELECT * FROM bar;
 	// --------------------------------------------------------------------------
 	t.Run("Too few fields / Projection", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -206,7 +206,7 @@ INSERT INTO foo (c, d, e) SELECT * FROM bar;
 INSERT INTO foo (c, d) SELECT a FROM bar` + "`" + `;
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})

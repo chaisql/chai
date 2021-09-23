@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -52,7 +53,7 @@ func TestParserDelete(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, &statement.StreamStmt{Stream: test.expected}, q.Statements[0].(*statement.StreamStmt))
 		})

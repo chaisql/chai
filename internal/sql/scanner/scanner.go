@@ -3,10 +3,10 @@ package scanner
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"io"
 	"strings"
 
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -86,10 +86,6 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 		if ch1 == '-' {
 			s.skipUntilNewline()
 			return COMMENT, pos, ""
-		}
-		if isDigit(ch1) {
-			s.r.unread()
-			return s.scanNumber()
 		}
 		s.r.unread()
 		return SUB, pos, ""
@@ -272,9 +268,9 @@ func (s *scanner) scanString() (tok Token, pos Pos, lit string) {
 
 	lit, err := scanString(s.r)
 
-	if err == errBadString {
+	if errors.Is(err, errBadString) {
 		return BADSTRING, pos, lit
-	} else if err == errBadEscape {
+	} else if errors.Is(err, errBadEscape) {
 		_, pos = s.r.curr()
 		return BADESCAPE, pos, lit
 	}
@@ -292,7 +288,7 @@ func (s *scanner) ScanRegex() (tok Token, pos Pos, lit string) {
 
 	b, err := scanDelimited(s.r, start, end, escapes, true)
 
-	if err == errBadEscape {
+	if errors.Is(err, errBadEscape) {
 		_, pos = s.r.curr()
 		return BADESCAPE, pos, ""
 	} else if err != nil {
@@ -317,8 +313,6 @@ func (s *scanner) scanNumber() (tok Token, pos Pos, lit string) {
 
 		// Unread the full stop so we can read it later.
 		s.r.unread()
-	} else if ch == '-' {
-		buf.WriteRune(ch)
 	} else {
 		s.r.unread()
 	}
@@ -331,6 +325,29 @@ func (s *scanner) scanNumber() (tok Token, pos Pos, lit string) {
 	if ch0, _ := s.r.read(); ch0 == '.' {
 		isDecimal = true
 		if ch1, _ := s.r.read(); isDigit(ch1) {
+			_, _ = buf.WriteRune(ch0)
+			_, _ = buf.WriteRune(ch1)
+			_, _ = buf.WriteString(s.scanDigits())
+		} else {
+			s.r.unread()
+		}
+	} else {
+		s.r.unread()
+	}
+
+	// If next code points are e or E, optional sign and digits
+	if ch0, _ := s.r.read(); ch0 == 'e' || ch0 == 'E' {
+		isDecimal = true
+		if ch1, _ := s.r.read(); ch1 == '+' || ch1 == '-' {
+			if ch2, _ := s.r.read(); isDigit(ch2) {
+				_, _ = buf.WriteRune(ch0)
+				_, _ = buf.WriteRune(ch1)
+				_, _ = buf.WriteRune(ch2)
+				_, _ = buf.WriteString(s.scanDigits())
+			} else {
+				s.r.unread()
+			}
+		} else if isDigit(ch1) {
 			_, _ = buf.WriteRune(ch0)
 			_, _ = buf.WriteRune(ch1)
 			_, _ = buf.WriteString(s.scanDigits())
@@ -575,7 +592,7 @@ func scanString(r io.RuneReader) (string, error) {
 	}
 
 	var buf bytes.Buffer
-	for {
+	for i := 0; ; i++ {
 		ch0, _, err := r.ReadRune()
 		if ch0 == ending {
 			return buf.String(), nil
@@ -595,6 +612,8 @@ func scanString(r io.RuneReader) (string, error) {
 				_, _ = buf.WriteRune('`')
 			} else if ch1 == '\'' {
 				_, _ = buf.WriteRune('\'')
+			} else if ch1 == 'x' && i == 0 {
+				_, _ = buf.WriteString(`\x`)
 			} else {
 				return string(ch0) + string(ch1), errBadEscape
 			}

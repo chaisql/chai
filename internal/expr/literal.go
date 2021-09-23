@@ -77,6 +77,9 @@ func (l LiteralExprList) String() string {
 // Eval evaluates all the expressions and returns a literalValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(env *environment.Environment) (types.Value, error) {
 	var err error
+	if len(l) == 0 {
+		return types.NewArrayValue(document.NewValueBuffer()), nil
+	}
 	values := make([]types.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(env)

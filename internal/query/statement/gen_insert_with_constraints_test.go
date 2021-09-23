@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/stretchr/testify/require"
+	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func TestGenInsertWithConstraints(t *testing.T) {
@@ -18,13 +18,13 @@ func TestGenInsertWithConstraints(t *testing.T) {
 		q := `
 `
 		err := db.Exec(q)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}
 
 	// --------------------------------------------------------------------------
 	t.Run("insert with errors, not null without type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -35,7 +35,7 @@ CREATE TABLE test_e (a NOT NULL);
 INSERT INTO test_e VALUES {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -43,7 +43,7 @@ INSERT INTO test_e VALUES {};
 	// --------------------------------------------------------------------------
 	t.Run("insert with errors, array / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -54,7 +54,7 @@ CREATE TABLE test_e (a ARRAY NOT NULL);
 INSERT INTO test_e VALUES {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -62,7 +62,7 @@ INSERT INTO test_e VALUES {};
 	// --------------------------------------------------------------------------
 	t.Run("insert with errors, array / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -73,7 +73,7 @@ CREATE TABLE test_e (a ARRAY NOT NULL);
 INSERT INTO test_e VALUES {a: 42};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -81,7 +81,7 @@ INSERT INTO test_e VALUES {a: 42};
 	// --------------------------------------------------------------------------
 	t.Run("insert with errors, blob", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -92,7 +92,7 @@ CREATE TABLE test_e (a BLOB);
 INSERT INTO test_e {a: true};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -100,7 +100,7 @@ INSERT INTO test_e {a: true};
 	// --------------------------------------------------------------------------
 	t.Run("blob / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -111,7 +111,7 @@ CREATE TABLE test_e (a BLOB NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -119,7 +119,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("blob / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -130,7 +130,7 @@ CREATE TABLE test_e (a BLOB NOT NULL);
 INSERT INTO test_e {a: 42};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -138,7 +138,7 @@ INSERT INTO test_e {a: 42};
 	// --------------------------------------------------------------------------
 	t.Run("bool / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -149,7 +149,7 @@ CREATE TABLE test_e (a BOOL NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -157,7 +157,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("bytes", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -168,7 +168,7 @@ CREATE TABLE test_e (a BYTES);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -176,7 +176,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("bytes / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -187,7 +187,7 @@ CREATE TABLE test_e (a BYTES NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -195,7 +195,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("bytes / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -206,7 +206,7 @@ CREATE TABLE test_e (a BYTES NOT NULL);
 INSERT INTO test_e {a: 42};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -214,7 +214,7 @@ INSERT INTO test_e {a: 42};
 	// --------------------------------------------------------------------------
 	t.Run("document", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -225,7 +225,7 @@ CREATE TABLE test_e (a DOCUMENT);
 INSERT INTO test_e {"a": "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -233,7 +233,7 @@ INSERT INTO test_e {"a": "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("document / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -244,7 +244,7 @@ CREATE TABLE test_e (a DOCUMENT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -252,7 +252,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("document / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -263,7 +263,7 @@ CREATE TABLE test_e (a DOCUMENT NOT NULL);
 INSERT INTO test_e {a: false};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -271,7 +271,7 @@ INSERT INTO test_e {a: false};
 	// --------------------------------------------------------------------------
 	t.Run("double", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -282,7 +282,7 @@ CREATE TABLE test_e (a DOUBLE);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -290,7 +290,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("double / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -301,7 +301,7 @@ CREATE TABLE test_e (a DOUBLE NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -309,7 +309,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("double / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -320,7 +320,7 @@ CREATE TABLE test_e (a DOUBLE NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -328,7 +328,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("double precision", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -339,7 +339,7 @@ CREATE TABLE test_e (a DOUBLE PRECISION);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -347,7 +347,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("double precision / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -358,7 +358,7 @@ CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -366,7 +366,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("double precision / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -377,7 +377,7 @@ CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -385,7 +385,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("real", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -396,7 +396,7 @@ CREATE TABLE test_e (a REAL);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -404,7 +404,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("real / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -415,7 +415,7 @@ CREATE TABLE test_e (a REAL NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -423,7 +423,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("real / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -434,7 +434,7 @@ CREATE TABLE test_e (a REAL NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -442,7 +442,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("integer", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -453,7 +453,7 @@ CREATE TABLE test_e (a INTEGER);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -461,7 +461,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("integer / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -472,7 +472,7 @@ CREATE TABLE test_e (a INTEGER NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -480,7 +480,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("integer / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -491,7 +491,7 @@ CREATE TABLE test_e (a INTEGER NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -499,7 +499,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("int2", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -510,7 +510,7 @@ CREATE TABLE test_e (a INT2);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -518,7 +518,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("int2 / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -529,7 +529,7 @@ CREATE TABLE test_e (a INT2 NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -537,7 +537,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("int2 / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -548,7 +548,7 @@ CREATE TABLE test_e (a INT NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -556,7 +556,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("int8", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -567,7 +567,7 @@ CREATE TABLE test_e (a INT8);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -575,7 +575,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("int8 / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -586,7 +586,7 @@ CREATE TABLE test_e (a INT8 NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -594,7 +594,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("int8 / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -605,7 +605,7 @@ CREATE TABLE test_e (a INT8 NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -613,7 +613,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("tinyint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -624,7 +624,7 @@ CREATE TABLE test_e (a TINYINT);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -632,7 +632,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("tinyint / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -643,7 +643,7 @@ CREATE TABLE test_e (a TINYINT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -651,7 +651,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("tinyint / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -662,7 +662,7 @@ CREATE TABLE test_e (a TINYINT NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -670,7 +670,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("bigint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -681,7 +681,7 @@ CREATE TABLE test_e (a BIGINT);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -689,7 +689,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("bigint / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -700,7 +700,7 @@ CREATE TABLE test_e (a BIGINT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -708,7 +708,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("bigint / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -719,7 +719,7 @@ CREATE TABLE test_e (a BIGINT NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -727,7 +727,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("smallint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -738,7 +738,7 @@ CREATE TABLE test_e (a SMALLINT);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -746,7 +746,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("smallint / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -757,7 +757,7 @@ CREATE TABLE test_e (a SMALLINT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -765,7 +765,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("smallint / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -776,7 +776,7 @@ CREATE TABLE test_e (a SMALLINT NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -784,7 +784,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("mediumint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -795,7 +795,7 @@ CREATE TABLE test_e (a MEDIUMINT);
 INSERT INTO test_e {a: "foo"};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -803,7 +803,7 @@ INSERT INTO test_e {a: "foo"};
 	// --------------------------------------------------------------------------
 	t.Run("mediumint / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -814,7 +814,7 @@ CREATE TABLE test_e (a MEDIUMINT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -822,7 +822,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("mediumint / not null with non-respected type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -833,7 +833,7 @@ CREATE TABLE test_e (a MEDIUMINT NOT NULL);
 INSERT INTO test_e {a: [1,2,3]};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -841,7 +841,7 @@ INSERT INTO test_e {a: [1,2,3]};
 	// --------------------------------------------------------------------------
 	t.Run("text / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -852,7 +852,7 @@ CREATE TABLE test_e (a TEXT NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -860,7 +860,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("varchar / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -871,7 +871,7 @@ CREATE TABLE test_e (a VARCHAR(255) NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})
@@ -879,7 +879,7 @@ INSERT INTO test_e {};
 	// --------------------------------------------------------------------------
 	t.Run("character / not null with type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer db.Close()
 
 		setup(t, db)
@@ -890,7 +890,7 @@ CREATE TABLE test_e (a CHARACTER(64) NOT NULL);
 INSERT INTO test_e {};
 `
 			err := db.Exec(q)
-			require.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})

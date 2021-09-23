@@ -1,14 +1,17 @@
 package stream_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +37,9 @@ func TestExpressions(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -94,15 +97,15 @@ func TestSeqScan(t *testing.T) {
 				require.True(t, ok)
 				var fb document.FieldBuffer
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				got = append(got, &fb)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
@@ -253,19 +256,19 @@ func TestPkScan(t *testing.T) {
 				var fb document.FieldBuffer
 
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
@@ -289,6 +292,76 @@ func TestPkScan(t *testing.T) {
 }
 
 func TestIndexScan(t *testing.T) {
+	testIndexScan(t, func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator {
+		testutil.MustExec(t, db, tx, "CREATE INDEX idx_test_a ON test("+indexOn+")")
+
+		op := stream.IndexScan(name, ranges...)
+		op.Reverse = reverse
+		return op
+	})
+
+	t.Run("String", func(t *testing.T) {
+		t.Run("idx_test_a", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.IndexRange{
+				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
+			}).String())
+
+			op := stream.IndexScan("idx_test_a", stream.IndexRange{
+				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
+			})
+			op.Reverse = true
+
+			require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
+		})
+
+		t.Run("idx_test_a_b", func(t *testing.T) {
+			require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.IndexRange{
+				Min: testutil.ExprList(t, `[1, 1]`),
+				Max: testutil.ExprList(t, `[2, 2]`),
+			}).String())
+
+			op := stream.IndexScan("idx_test_a_b", stream.IndexRange{
+				Min: testutil.ExprList(t, `[1, 1]`),
+				Max: testutil.ExprList(t, `[2, 2]`),
+			})
+			op.Reverse = true
+
+			require.Equal(t, `indexScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
+		})
+	})
+}
+
+func TestTransientIndexScan(t *testing.T) {
+	testIndexScan(t, func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator {
+		var paths []document.Path
+		pp := strings.Split(indexOn, ",")
+		for _, p := range pp {
+			paths = append(paths, document.NewPath(strings.TrimSpace(p)))
+		}
+
+		op := stream.TransientIndexScan("test", paths, ranges...)
+		op.Reverse = reverse
+		return op
+	})
+
+	t.Run("String", func(t *testing.T) {
+		paths := []document.Path{document.NewPath("a.b[0]"), document.NewPath("b")}
+		require.Equal(t, `transientIndexScan("test", [a.b[0], b], [[1, 1], [2, 2]])`, stream.TransientIndexScan("test", paths, stream.IndexRange{
+			Min: testutil.ExprList(t, `[1, 1]`),
+			Max: testutil.ExprList(t, `[2, 2]`),
+		}).String())
+
+		op := stream.TransientIndexScan("test", paths, stream.IndexRange{
+			Min: testutil.ExprList(t, `[1, 1]`),
+			Max: testutil.ExprList(t, `[2, 2]`),
+		})
+		op.Reverse = true
+
+		require.Equal(t, `transientIndexScanReverse("test", [a.b[0], b], [[1, 1], [2, 2]])`, op.String())
+	})
+}
+
+func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator) {
 	tests := []struct {
 		name                  string
 		indexOn               string
@@ -647,17 +720,17 @@ func TestIndexScan(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER); CREATE INDEX idx_test_a ON test("+test.indexOn+")")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER);")
 
 			for _, doc := range test.docsInTable {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
-			op := stream.IndexScan("idx_test_a", test.ranges...)
-			op.Reverse = test.reverse
+			op := getOp(db, tx, "idx_test_a", test.indexOn, test.reverse, test.ranges...)
 			var env environment.Environment
 			env.Tx = tx
 			env.Catalog = db.Catalog
+			env.DB = db
 			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int
@@ -668,52 +741,22 @@ func TestIndexScan(t *testing.T) {
 				var fb document.FieldBuffer
 
 				err := fb.Copy(d)
-				require.NoError(t, err)
+				assert.NoError(t, err)
 
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, types.NewIntegerValue(1), v)
 				i++
 				return nil
 			})
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 			} else {
-				require.NoError(t, err)
+				assert.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}
 		})
 	}
-
-	t.Run("String", func(t *testing.T) {
-		t.Run("idx_test_a", func(t *testing.T) {
-			require.Equal(t, `indexScan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.IndexRange{
-				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
-			}).String())
-
-			op := stream.IndexScan("idx_test_a", stream.IndexRange{
-				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
-			})
-			op.Reverse = true
-
-			require.Equal(t, `indexScanReverse("idx_test_a", [1, 2])`, op.String())
-		})
-
-		t.Run("idx_test_a_b", func(t *testing.T) {
-			require.Equal(t, `indexScan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.IndexRange{
-				Min: testutil.ExprList(t, `[1, 1]`),
-				Max: testutil.ExprList(t, `[2, 2]`),
-			}).String())
-
-			op := stream.IndexScan("idx_test_a_b", stream.IndexRange{
-				Min: testutil.ExprList(t, `[1, 1]`),
-				Max: testutil.ExprList(t, `[2, 2]`),
-			})
-			op.Reverse = true
-
-			require.Equal(t, `indexScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
-		})
-	})
 }

@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 // GetIndexContent iterates over the entire index and returns all the key-value pairs in order.
-func GetIndexContent(t testing.TB, tx *database.Transaction, catalog database.Catalog, indexName string) []KV {
+func GetIndexContent(t testing.TB, tx *database.Transaction, catalog *database.Catalog, indexName string) []KV {
 	t.Helper()
 
 	idx, err := catalog.GetIndex(tx, indexName)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	var content []KV
 	err = idx.AscendGreaterOrEqual([]types.Value{nil}, func(val, key []byte) error {
@@ -23,7 +23,7 @@ func GetIndexContent(t testing.TB, tx *database.Transaction, catalog database.Ca
 		})
 		return nil
 	})
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	return content
 }

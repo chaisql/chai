@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -72,65 +73,65 @@ func ExampleTx() {
 
 func TestQueryDocument(t *testing.T) {
 	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	tx, err := db.Begin(true)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
 		`)
-	require.NoError(t, err)
-	require.NoError(t, tx.Commit())
+	assert.NoError(t, err)
+	assert.NoError(t, tx.Commit())
 
 	t.Run("Should return the first document", func(t *testing.T) {
 		var a int
 		var b string
 
 		r, err := db.QueryDocument("SELECT * FROM test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = document.Scan(r, &a, &b)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 
 		tx, err := db.Begin(false)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		r, err = tx.QueryDocument("SELECT * FROM test")
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		err = document.Scan(r, &a, &b)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 	})
 
 	t.Run("Should return an error if no document", func(t *testing.T) {
 		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
-		require.Equal(t, errs.ErrDocumentNotFound, err)
+		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 	})
 }
 
 func TestPrepareThreadSafe(t *testing.T) {
 	db, err := genji.Open(":memory:")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 	defer db.Close()
 
 	err = db.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	stmt, err := db.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	g, _ := errgroup.WithContext(context.Background())
 
@@ -150,21 +151,21 @@ func TestPrepareThreadSafe(t *testing.T) {
 	}
 
 	err = g.Wait()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 }
 
 func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := genji.Open(":memory:")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -180,14 +181,14 @@ func BenchmarkSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := genji.Open(":memory:")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -203,14 +204,14 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := genji.Open(":memory:")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			p, _ := db.Prepare("SELECT b FROM foo WHERE a > 0")
@@ -227,14 +228,14 @@ func BenchmarkSelectPk(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := genji.Open(":memory:")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo(a INT PRIMARY KEY)")
-			require.NoError(b, err)
+			assert.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a) VALUES (?)", i)
-				require.NoError(b, err)
+				assert.NoError(b, err)
 			}
 
 			b.ResetTimer()

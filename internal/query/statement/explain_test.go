@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +15,7 @@ func TestExplainStmt(t *testing.T) {
 		fails    bool
 		expected string
 	}{
-		{"EXPLAIN SELECT 1 + 1", false, `"exprs({\"1 + 1\": 1 + 1})"`},
+		{"EXPLAIN SELECT 1 + 1", false, `"project(1 + 1)"`},
 		{"EXPLAIN SELECT * FROM noexist", true, ``},
 		{"EXPLAIN SELECT * FROM test", false, `"seqScan(test)"`},
 		{"EXPLAIN SELECT *, a FROM test", false, `"seqScan(test) | project(*, a)"`},
@@ -42,29 +43,32 @@ func TestExplainStmt(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.query, func(t *testing.T) {
 			db, err := genji.Open(":memory:")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 			err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE UNIQUE INDEX idx_b ON test (b);
 						CREATE INDEX idx_x_y ON test (x, y);
 					`)
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			d, err := db.QueryDocument(test.query)
 			if test.fails {
-				require.Error(t, err)
+				assert.Error(t, err)
 				return
 			}
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
 			v, err := d.GetByField("plan")
-			require.NoError(t, err)
+			assert.NoError(t, err)
 
-			require.JSONEq(t, test.expected, document.ValueToString(v))
+			got, err := document.ValueToJSON(v)
+			assert.NoError(t, err)
+
+			require.JSONEq(t, test.expected, string(got))
 		})
 	}
 }

@@ -3,10 +3,10 @@ package database
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -71,8 +71,8 @@ func (idx *Index) Arity() int {
 // Every record is stored like this:
 //   k: <encoded values><primary key>
 //   v: length of the encoded value, as an unsigned varint
-func (idx *Index) Set(vs []types.Value, k []byte) error {
-	if len(k) == 0 {
+func (idx *Index) Set(vs []types.Value, pk []byte) error {
+	if len(pk) == 0 {
 		return errors.New("cannot index value without a key")
 	}
 
@@ -95,7 +95,7 @@ func (idx *Index) Set(vs []types.Value, k []byte) error {
 		return nil
 	}
 
-	var storeKey, storeValue []byte
+	var storeKey []byte
 
 	// encode the value we are going to use as a key
 	vb := document.NewValueBuffer(vs...)
@@ -111,18 +111,21 @@ func (idx *Index) Set(vs []types.Value, k []byte) error {
 			return err
 		}
 		if ok {
-			return ErrIndexDuplicateValue
+			return errors.Wrap(ErrIndexDuplicateValue)
 		}
 	}
 
-	// we append the pk at the end of the encoded value
-	// store the length of the encoded value in the storeValue
-	vbuf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(vbuf, uint64(len(storeKey)))
-	storeValue = vbuf[:n]
-	storeKey = append(storeKey, k...)
+	// append the pk at the end of the encoded value
+	storeKey = append(storeKey, pk...)
 
-	return st.Put(storeKey, storeValue)
+	// then append the length of the key
+	vbuf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutUvarint(vbuf, uint64(len(pk)))
+	storeKey = append(storeKey, vbuf[:n]...)
+	// finally, append the size of the varint
+	storeKey = append(storeKey, byte(n))
+
+	return st.Put(storeKey, []byte{0})
 }
 
 func (idx *Index) Exists(vs []types.Value) (bool, []byte, error) {
@@ -132,7 +135,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, []byte, error) {
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
 	if err != nil {
-		if err == engine.ErrStoreNotFound {
+		if errors.Is(err, engine.ErrStoreNotFound) {
 			return false, nil, nil
 		}
 
@@ -161,8 +164,10 @@ func (idx *Index) exists(st engine.Store, seek []byte) (bool, []byte, error) {
 			return false, nil, nil
 		}
 
-		if bytes.Equal(seek, k[:len(seek)]) {
-			return true, k[len(seek):], nil
+		value, pk := idx.decodeItemKey(k)
+
+		if bytes.Equal(seek, value) {
+			return true, pk, nil
 		}
 	}
 
@@ -176,18 +181,9 @@ func (idx *Index) Delete(vs []types.Value, k []byte) error {
 		return nil
 	}
 
-	var buf []byte
-	err = idx.iterate(st, vs, false, func(item engine.Item) error {
-		buf, err = item.ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-
-		size, _ := binary.Uvarint(buf)
-
-		kk := item.Key()
-		if bytes.Equal(kk[size:], k) {
-			err = st.Delete(kk)
+	err = idx.iterate(st, vs, false, func(itmKey, value, pk []byte) error {
+		if bytes.Equal(pk, k) {
+			err = st.Delete(itmKey)
 			if err == nil {
 				err = errStop
 			}
@@ -197,7 +193,7 @@ func (idx *Index) Delete(vs []types.Value, k []byte) error {
 
 		return nil
 	})
-	if err == errStop {
+	if errors.Is(err, errStop) {
 		return nil
 	}
 	if err != nil {
@@ -295,34 +291,22 @@ func (idx *Index) iterateOnStore(pivot Pivot, reverse bool, fn func(val, key []b
 	}
 
 	st, err := idx.tx.GetStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 	if st == nil {
 		return nil
 	}
 
-	var buf []byte
-	return idx.iterate(st, pivot, reverse, func(item engine.Item) error {
-		var err error
-
-		record := item.Key()
-
-		buf, err = item.ValueCopy(buf)
-		if err != nil {
-			return err
-		}
-
-		offset, _ := binary.Uvarint(buf)
-
-		return fn(record[:offset], record[offset:])
+	return idx.iterate(st, pivot, reverse, func(itmKey, value, pk []byte) error {
+		return fn(value, pk)
 	})
 }
 
 // Truncate deletes all the index data.
 func (idx *Index) Truncate() error {
 	err := idx.tx.DropStore(idx.Info.StoreName)
-	if err != nil && err != engine.ErrStoreNotFound {
+	if err != nil && !errors.Is(err, engine.ErrStoreNotFound) {
 		return err
 	}
 
@@ -341,7 +325,7 @@ func (idx *Index) Truncate() error {
 // See IndexValueEncoder for details about how the value themselves are encoded.
 func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 	if vb.Len() > idx.Arity() {
-		return nil, ErrIndexWrongArity
+		return nil, errors.Wrap(ErrIndexWrongArity)
 	}
 
 	var buf bytes.Buffer
@@ -360,7 +344,7 @@ func getOrCreateStore(tx engine.Transaction, name []byte) (engine.Store, error) 
 		return st, nil
 	}
 
-	if err != engine.ErrStoreNotFound {
+	if !errors.Is(err, engine.ErrStoreNotFound) {
 		return nil, err
 	}
 
@@ -410,7 +394,7 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 	return seek, nil
 }
 
-func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(item engine.Item) error) error {
+func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(itmKey, value, pk []byte) error) error {
 	var err error
 
 	seek, err := idx.buildSeek(pivot, reverse)
@@ -429,7 +413,11 @@ func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(it
 			return nil
 		}
 
-		err := fn(itm)
+		itmKey := itm.Key()
+
+		value, pk := idx.decodeItemKey(itmKey)
+
+		err := fn(itmKey, value, pk)
 		if err != nil {
 			return err
 		}
@@ -441,18 +429,14 @@ func (idx *Index) iterate(st engine.Store, pivot Pivot, reverse bool, fn func(it
 	return nil
 }
 
-type Indexes []*Index
+func (idx *Index) decodeItemKey(k []byte) (value, pk []byte) {
+	// the last byte of the key is the size of the varint representing the size of the primary key.
+	varintSize := k[len(k)-1]
+	varint := k[len(k)-1-int(varintSize) : len(k)-1]
 
-func (list Indexes) GetIndex(name string) *Index {
-	for _, idx := range list {
-		if idx.Info.IndexName == name {
-			return idx
-		}
-	}
+	keySize, _ := binary.Uvarint(varint)
 
-	return nil
+	value = k[:len(k)-int(keySize)-int(varintSize)-1]
+	pk = k[len(value) : len(value)+int(keySize)]
+	return
 }
-
-func (list Indexes) Len() int           { return len(list) }
-func (list Indexes) Swap(i, j int)      { list[i], list[j] = list[j], list[i] }
-func (list Indexes) Less(i, j int) bool { return list[i].Info.IndexName < list[j].Info.IndexName }
