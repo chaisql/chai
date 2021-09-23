@@ -28,6 +28,15 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 		}
 	}
 
+	// add types to indices
+	for i := range indexes {
+		for _, ti := range tables {
+			if ti.TableName == indexes[i].TableName {
+				addTypesToIndex(ti, &indexes[i])
+				break
+			}
+		}
+	}
 	// add the __genji_catalog table to the list of tables
 	// so that it can be queried
 	ti := c.CatalogTable.Info().Clone()
@@ -49,6 +58,25 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 	}
 
 	return nil
+}
+
+func addTypesToIndex(ti database.TableInfo, info *database.IndexInfo) {
+OUTER:
+	for _, path := range info.Paths {
+		for _, fc := range ti.FieldConstraints {
+			if fc.Path.IsEqual(path) {
+				// a constraint may or may not enforce a type
+				if fc.Type != 0 {
+					info.Types = append(info.Types, types.ValueType(fc.Type))
+				}
+
+				continue OUTER
+			}
+		}
+
+		// no type was inferred for that path, add it to the index as untyped
+		info.Types = append(info.Types, types.ValueType(0))
+	}
 }
 
 func loadSequences(tx *database.Transaction, c *database.Catalog, info []database.SequenceInfo) ([]database.Sequence, error) {
