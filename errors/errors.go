@@ -24,17 +24,6 @@ func (a AlreadyExistsError) Error() string {
 	return stringutil.Sprintf("%q already exists", a.Name)
 }
 
-func IsAlreadyExistsError(err error) bool {
-	switch e := err.(type) {
-	case *errors.Error:
-		return IsAlreadyExistsError(e.Err)
-	case AlreadyExistsError, *AlreadyExistsError:
-		return true
-	default:
-		return false
-	}
-}
-
 // NotFoundError is returned when the requested table, index or sequence
 // doesn't exist.
 type NotFoundError struct {
@@ -43,15 +32,4 @@ type NotFoundError struct {
 
 func (a NotFoundError) Error() string {
 	return stringutil.Sprintf("%q not found", a.Name)
-}
-
-func IsNotFoundError(err error) bool {
-	switch e := err.(type) {
-	case *errors.Error:
-		return IsNotFoundError(e.Err)
-	case NotFoundError, *NotFoundError:
-		return true
-	default:
-		return false
-	}
 }

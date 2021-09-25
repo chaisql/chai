@@ -1,4 +1,4 @@
-// +build !debug
+//go:build !debug
 
 // Package errors provides a simple API to create and compare errors. A debug version of this package
 // exists, but captures stacktraces when error are created or wrapped. It is accessible through the
