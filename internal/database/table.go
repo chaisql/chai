@@ -11,6 +11,7 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
+	tencoding "github.com/genjidb/genji/types/encoding"
 )
 
 // A Table represents a collection of documents.
@@ -460,7 +461,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 	}
 
 	var buf bytes.Buffer
-	err = types.NewValueEncoder(&buf).Encode(v)
+	err = tencoding.NewValueEncoder(&buf).Encode(v)
 	if err != nil {
 		return nil, err
 	}
@@ -558,7 +559,7 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
 		}
 
 		var buf bytes.Buffer
-		err = types.NewValueEncoder(&buf).Encode(v)
+		err = tencoding.NewValueEncoder(&buf).Encode(v)
 		if err != nil {
 			return nil, err
 		}

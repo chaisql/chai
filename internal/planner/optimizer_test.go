@@ -420,6 +420,35 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
 			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Max: exprList(testutil.DoubleValue(1.1)), Exclusive: true})),
 		},
+		// {
+		// 	"FROM foo WHERE a = 1 OR b = 2",
+		// 	st.New(st.SeqScan("foo")).
+		// 		Pipe(st.Filter(parser.MustParseExpr("a = 1 OR b = 2"))),
+		// 	st.New(
+		// 		st.Union(
+		// 			st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true}),
+		// 			st.IndexScan("idx_foo_b", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true}),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	"FROM foo WHERE a = 1 OR b > 2",
+		// 	st.New(st.SeqScan("foo")).
+		// 		Pipe(st.Filter(parser.MustParseExpr("a = 1 OR b = 2"))),
+		// 	st.New(
+		// 		st.Union(
+		// 			st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true}),
+		// 			st.IndexScan("idx_foo_b", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exclusive: true}),
+		// 		),
+		// 	),
+		// },
+		// {
+		// 	"FROM foo WHERE a > 1 OR b > 2",
+		// 	st.New(st.SeqScan("foo")).
+		// 		Pipe(st.Filter(parser.MustParseExpr("a = 1 OR b = 2"))),
+		// 	st.New(st.SeqScan("foo")).
+		// 		Pipe(st.Filter(parser.MustParseExpr("a = 1 OR b = 2"))),
+		// },
 	}
 
 	for _, test := range tests {

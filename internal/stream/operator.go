@@ -12,6 +12,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 )
 
 const (
@@ -321,7 +322,7 @@ func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (
 		// as what the index package would do.
 		var buf bytes.Buffer
 
-		err = types.NewValueEncoder(&buf).Encode(sortV)
+		err = encoding.NewValueEncoder(&buf).Encode(sortV)
 		if err != nil {
 			return err
 		}
@@ -551,7 +552,7 @@ func Distinct() *DistinctOperator {
 // Iterate implements the Operator interface.
 func (op *DistinctOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var buf bytes.Buffer
-	enc := types.NewValueEncoder(&buf)
+	enc := encoding.NewValueEncoder(&buf)
 	m := make(map[string]struct{})
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 )
 
 // A HashAggregateOperator consumes the given stream and outputs one value per group.
@@ -110,7 +111,7 @@ func (op *HashAggregateOperator) String() string {
 // If the _group variable doesn't exist, the group is set to null.
 func newGroupEncoder() (func(env *environment.Environment) (string, error), error) {
 	var b bytes.Buffer
-	enc := types.NewValueEncoder(&b)
+	enc := encoding.NewValueEncoder(&b)
 	nullValue := types.NewNullValue()
 	err := enc.Encode(nullValue)
 	if err != nil {

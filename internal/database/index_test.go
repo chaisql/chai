@@ -15,6 +15,7 @@ import (
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -292,7 +293,7 @@ func requireEqualBinary(t *testing.T, expected types.Value, actual []byte) {
 	t.Helper()
 
 	var buf bytes.Buffer
-	err := types.NewValueEncoder(&buf).Encode(expected)
+	err := encoding.NewValueEncoder(&buf).Encode(expected)
 	assert.NoError(t, err)
 
 	data := buf.Bytes()
@@ -303,7 +304,7 @@ func requireIdxEncodedEq(t *testing.T, vs ...types.Value) func([]byte) {
 	t.Helper()
 
 	var buf bytes.Buffer
-	err := types.NewValueEncoder(&buf).Encode(types.NewArrayValue(document.NewValueBuffer(vs...)))
+	err := encoding.NewValueEncoder(&buf).Encode(types.NewArrayValue(document.NewValueBuffer(vs...)))
 	assert.NoError(t, err)
 
 	return func(actual []byte) {

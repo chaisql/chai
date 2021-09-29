@@ -14,6 +14,7 @@ import (
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -346,7 +347,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.DoubleValue)), func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(
+				err = encoding.NewValueEncoder(&buf).Encode(
 					types.NewArrayValue(
 						document.NewValueBuffer(
 							types.NewDoubleValue(float64(i)),
@@ -595,7 +596,7 @@ func TestCatalogReIndex(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(
+				err = encoding.NewValueEncoder(&buf).Encode(
 					types.NewArrayValue(
 						document.NewValueBuffer(
 							types.NewDoubleValue(float64(i)),
@@ -696,7 +697,7 @@ func TestReIndexAll(t *testing.T) {
 			var i int
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(
+				err = encoding.NewValueEncoder(&buf).Encode(
 					types.NewArrayValue(
 						document.NewValueBuffer(
 							types.NewDoubleValue(float64(i)),
@@ -718,7 +719,7 @@ func TestReIndexAll(t *testing.T) {
 			i = 0
 			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
 				var buf bytes.Buffer
-				err = types.NewValueEncoder(&buf).Encode(
+				err = encoding.NewValueEncoder(&buf).Encode(
 					types.NewArrayValue(
 						document.NewValueBuffer(
 							types.NewDoubleValue(float64(i)),

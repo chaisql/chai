@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 )
 
 var doc types.Document = func() types.Document {
@@ -28,7 +29,7 @@ var docWithKey types.Document = func() types.Document {
 
 	fb.DecodedKey = types.NewIntegerValue(1)
 	var buf bytes.Buffer
-	err = types.NewValueEncoder(&buf).Encode(fb.DecodedKey)
+	err = encoding.NewValueEncoder(&buf).Encode(fb.DecodedKey)
 	if err != nil {
 		panic(err)
 	}

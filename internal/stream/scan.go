@@ -2,7 +2,6 @@ package stream
 
 import (
 	"bytes"
-	"context"
 	"strconv"
 	"strings"
 
@@ -14,6 +13,78 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
+
+// DocumentPointer holds a document key and lazily loads the document on demand when the Iterate or GetByField method is called.
+// It implements the types.Document and the document.Keyer interfaces.
+type DocumentPointer struct {
+	key   []byte
+	Table *database.Table
+	Doc   types.Document
+}
+
+func (d *DocumentPointer) Iterate(fn func(field string, value types.Value) error) error {
+	var err error
+	if d.Doc == nil {
+		d.Doc, err = d.Table.GetDocument(d.key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return d.Doc.Iterate(fn)
+}
+
+func (d *DocumentPointer) GetByField(field string) (types.Value, error) {
+	var err error
+	if d.Doc == nil {
+		d.Doc, err = d.Table.GetDocument(d.key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return d.Doc.GetByField(field)
+}
+
+func (d *DocumentPointer) RawKey() []byte {
+	if d.key != nil {
+		return d.key
+	}
+
+	if d.Doc == nil {
+		var err error
+		d.Doc, err = d.Table.GetDocument(d.key)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	return d.Doc.(document.Keyer).RawKey()
+}
+
+func (d *DocumentPointer) Key() (types.Value, error) {
+	var err error
+	if d.Doc == nil {
+		d.Doc, err = d.Table.GetDocument(d.key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return d.Doc.(document.Keyer).Key()
+}
+
+func (d *DocumentPointer) MarshalJSON() ([]byte, error) {
+	if d.Doc == nil {
+		var err error
+		d.Doc, err = d.Table.GetDocument(d.key)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return d.Doc.(interface{ MarshalJSON() ([]byte, error) }).MarshalJSON()
+}
 
 type DocumentsOperator struct {
 	baseOperator
@@ -139,8 +210,12 @@ func (it *SeqScanOperator) Iterate(in *environment.Environment, fn func(out *env
 		iterator = table.DescendLessOrEqual
 	}
 
+	ptr := DocumentPointer{
+		Table: table,
+	}
+	newEnv.SetDocument(&ptr)
 	return iterator(nil, func(d types.Document) error {
-		newEnv.SetDocument(d)
+		ptr.Doc = d
 		return fn(&newEnv)
 	})
 }
@@ -199,7 +274,7 @@ func (it *PkScanOperator) String() string {
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	// if there are no ranges,  use a simpler and faster iteration function
+	// if there are no ranges, use a simpler and faster iteration function
 	if len(it.Ranges) == 0 {
 		s := SeqScan(it.TableName)
 		s.Reverse = it.Reverse
@@ -226,6 +301,10 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 	} else {
 		iterator = table.DescendLessOrEqual
 	}
+
+	var ptr DocumentPointer
+	ptr.Table = table
+	newEnv.SetDocument(&ptr)
 
 	for _, rng := range ranges {
 		var start, end types.Value
@@ -263,7 +342,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 				return nil
 			}
 
-			newEnv.SetDocument(d)
+			ptr.Doc = d
 			return fn(&newEnv)
 		})
 		if errors.Is(err, ErrStreamClosed) {
@@ -353,15 +432,17 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 		iterator = index.DescendLessOrEqual
 	}
 
+	ptr := DocumentPointer{
+		Table: table,
+	}
+	newEnv.SetDocument(&ptr)
+
 	// if there are no ranges use a simpler and faster iteration function
 	if len(ranges) == 0 {
 		return iterator(nil, func(val, key []byte) error {
-			d, err := table.GetDocument(key)
-			if err != nil {
-				return err
-			}
+			ptr.key = key
+			ptr.Doc = nil
 
-			newEnv.SetDocument(d)
 			return fn(&newEnv)
 		})
 	}
@@ -406,12 +487,10 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 				return nil
 			}
 
-			d, err := table.GetDocument(key)
-			if err != nil {
-				return err
-			}
+			ptr.key = key
+			ptr.Doc = nil
 
-			newEnv.SetDocument(d)
+			newEnv.SetDocument(&ptr)
 			return fn(&newEnv)
 		})
 
@@ -457,53 +536,21 @@ func (it *TransientIndexScanOperator) Iterate(in *environment.Environment, fn fu
 		return err
 	}
 
-	// create a temporary database
+	// create a temporary database, table and index
 	db := in.GetDB()
-	tdb, cleanup, err := db.NewTransientDB(context.Background())
+	temp, cleanup, err := database.NewTransientIndex(db, it.TableName, it.Paths, false)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	// create a write transaction that will be rolled back when the stream is over
-	ttx, err := tdb.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer ttx.Rollback()
-
-	// to create an index we need to create a table first,
-	// even if the table will remain empty
-	// TODO: make the catalog more flexible and accept
-	// creating an index without checking if the table exists.
-	err = tdb.Catalog.CreateTable(ttx, it.TableName, table.Info)
-	if err != nil {
-		return err
-	}
-
-	// Create an index with no name.
-	// The catalog will generate a name and set it to
-	// the idxInfo IndexName field
-	idxInfo := &database.IndexInfo{
-		TableName: it.TableName,
-		Paths:     it.Paths,
-	}
-	err = tdb.Catalog.CreateIndex(ttx, idxInfo)
-	if err != nil {
-		return err
-	}
-	idx, err := tdb.Catalog.GetIndex(ttx, idxInfo.IndexName)
-	if err != nil {
-		return err
-	}
-
 	// build the index from the original table to the transient db index
-	err = tdb.Catalog.BuildIndex(ttx, idx, table)
+	err = temp.DB.Catalog.BuildIndex(temp.Tx, temp.Index, table)
 	if err != nil {
 		return err
 	}
 
-	return it.IndexScanOperator.iterateOverIndex(in, table, idx, fn)
+	return it.IndexScanOperator.iterateOverIndex(in, table, temp.Index, fn)
 }
 
 func (it *TransientIndexScanOperator) String() string {

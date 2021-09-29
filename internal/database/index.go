@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 )
 
 var (
@@ -92,7 +93,7 @@ func (idx *Index) Set(vs []types.Value, pk []byte) error {
 
 	st, err := getOrCreateStore(idx.tx, idx.Info.StoreName)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	var storeKey []byte
@@ -178,7 +179,7 @@ func (idx *Index) exists(st engine.Store, seek []byte) (bool, []byte, error) {
 func (idx *Index) Delete(vs []types.Value, k []byte) error {
 	st, err := getOrCreateStore(idx.tx, idx.Info.StoreName)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	err = idx.iterate(st, vs, false, func(itmKey, value, pk []byte) error {
@@ -330,7 +331,7 @@ func (idx *Index) EncodeValueBuffer(vb *document.ValueBuffer) ([]byte, error) {
 
 	var buf bytes.Buffer
 
-	err := types.NewValueEncoder(&buf).Encode(types.NewArrayValue(vb))
+	err := encoding.NewValueEncoder(&buf).Encode(types.NewArrayValue(vb))
 	if err != nil {
 		return nil, err
 	}
@@ -385,7 +386,7 @@ func (idx *Index) buildSeek(pivot Pivot, reverse bool) ([]byte, error) {
 	}
 
 	// remove ArrayEnd from the encoded array
-	seek = bytes.TrimSuffix(seek, []byte{types.ArrayEnd})
+	seek = bytes.TrimSuffix(seek, []byte{encoding.ArrayEnd})
 
 	if reverse {
 		seek = append(seek, 0xFF)

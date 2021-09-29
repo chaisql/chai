@@ -20,8 +20,13 @@ vendor/
 # Benchmark and profiling files
 profile.*
 
-# Databases
+# Databases files
 *.db
+*.sqlite
+*.sqlite3
+*.csv
+
+# Builds
 cmd/genji/genji
 
 # VS Code config
