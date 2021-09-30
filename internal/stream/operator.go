@@ -717,3 +717,29 @@ func (op *IterRenameOperator) Iterate(in *environment.Environment, f func(out *e
 func (op *IterRenameOperator) String() string {
 	return stringutil.Sprintf("iterRename(%s)", strings.Join(op.FieldNames, ", "))
 }
+
+type DoOperator struct {
+	baseOperator
+	F func(out *environment.Environment) error
+}
+
+func Do(f func(out *environment.Environment) error) *DoOperator {
+	return &DoOperator{
+		F: f,
+	}
+}
+
+func (op *DoOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		err := op.F(out)
+		if err != nil {
+			return err
+		}
+
+		return f(out)
+	})
+}
+
+func (op *DoOperator) String() string {
+	return "do()"
+}

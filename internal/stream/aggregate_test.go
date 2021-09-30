@@ -56,16 +56,24 @@ func TestAggregate(t *testing.T) {
 			[]types.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
 		},
+		{
+			"no aggregator",
+			parser.MustParseExpr("a % 2"),
+			nil,
+			generateSeqDocs(t, 4),
+			testutil.MakeDocuments(t, `{"a % 2": 0}`, `{"a % 2": 1}`),
+			false,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			s := stream.New(stream.Documents(test.in...))
 			if test.groupBy != nil {
-				s = s.Pipe(stream.GroupBy(test.groupBy))
+				s = s.Pipe(stream.Sort(test.groupBy))
 			}
 
-			s = s.Pipe(stream.HashAggregate(test.builders...))
+			s = s.Pipe(stream.GroupAggregate(test.groupBy, test.builders...))
 
 			var got []types.Document
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -86,7 +94,9 @@ func TestAggregate(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `hashAggregate(a(), b())`, stream.HashAggregate(makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `groupAggregate(a % 2, a(), b())`, stream.GroupAggregate(parser.MustParseExpr("a % 2"), makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `groupAggregate(NULL, a(), b())`, stream.GroupAggregate(nil, makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `groupAggregate(a % 2)`, stream.GroupAggregate(parser.MustParseExpr("a % 2")).String())
 	})
 }
 

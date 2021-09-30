@@ -1,7 +1,6 @@
 package stream
 
 import (
-	"bytes"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -9,79 +8,60 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
-// A HashAggregateOperator consumes the given stream and outputs one value per group.
-// It reads the _group variable from the environment to determine witch group
-// to assign each value. If no _group variable is available, it will assume all
-// values are part of the same group and aggregate them into one value.
-type HashAggregateOperator struct {
+type GroupAggregateOperator struct {
 	baseOperator
 	Builders []expr.AggregatorBuilder
+	E        expr.Expr
 }
 
-// HashAggregate consumes the incoming stream and outputs one value per group.
-// It reads the _group variable from the environment to determine whitch group
-// to assign each value. If no _group variable is available, it will assume all
-// values are part of the same group and aggregate them into one value.
-// HashAggregate assumes that the stream is not sorted per group and uses a hash map
-// to group aggregates per _group value.
-func HashAggregate(builders ...expr.AggregatorBuilder) *HashAggregateOperator {
-	return &HashAggregateOperator{Builders: builders}
+// GroupAggregate consumes the incoming stream and outputs one value per group.
+// It assumes the stream is sorted by groupBy.
+func GroupAggregate(groupBy expr.Expr, builders ...expr.AggregatorBuilder) *GroupAggregateOperator {
+	return &GroupAggregateOperator{E: groupBy, Builders: builders}
 }
 
-func (op *HashAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	encGroup, err := newGroupEncoder()
-	if err != nil {
-		return err
+func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	var lastGroup types.Value
+	var ga *groupAggregator
+
+	var groupExpr string
+	if op.E != nil {
+		groupExpr = stringutil.Sprintf("%s", op.E)
 	}
 
-	// keep order of groups as they arrive to provide deterministic results.
-	var encGroupNames []string
+	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
+		if op.E == nil {
+			if ga == nil {
+				ga = newGroupAggregator(nil, groupExpr, op.Builders)
+			}
 
-	// store a groupAggregator per group
-	aggregators := make(map[string]*groupAggregator)
+			return ga.Aggregate(out)
+		}
 
-	// iterate over s and for each group, aggregate the incoming document
-	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
-		// we extract the group name from the environment and encode it
-		// to be used as a key to the aggregators map.
-		groupName, err := encGroup(out)
+		group, err := op.E.Eval(out)
 		if err != nil {
 			return err
 		}
 
-		// get the group aggregator from the map or create a new one.
-		a, ok := aggregators[groupName]
-		if !ok {
-			a = newGroupAggregator(out, op.Builders)
-			aggregators[groupName] = a
-			encGroupNames = append(encGroupNames, groupName)
+		// handle the first document of the stream
+		if lastGroup == nil {
+			lastGroup = group
+			ga = newGroupAggregator(group, groupExpr, op.Builders)
+			return ga.Aggregate(out)
 		}
 
-		// call the aggregator for that group and aggregate the document.
-		return a.Aggregate(out)
-	})
-	if err != nil {
-		return err
-	}
+		ok, err := types.IsEqual(lastGroup, group)
+		if err != nil {
+			return err
+		}
+		if ok {
+			return ga.Aggregate(out)
+		}
 
-	// if s was empty, the aggregators map will be empty as well.
-	// if so, we create one default group so that aggregators will
-	// return their default initial value.
-	// Ex: For `SELECT COUNT(*) FROM foo`, if `foo` is empty
-	// we want the following result:
-	// {"COUNT(*)": 0}
-	if len(aggregators) == 0 {
-		aggregators["_"] = newGroupAggregator(nil, op.Builders)
-		encGroupNames = append(encGroupNames, "_")
-	}
-
-	// we loop over the groups in the order they arrived.
-	for _, groupName := range encGroupNames {
-		r := aggregators[groupName]
-		e, err := r.Flush(in)
+		// if the document is from a different group, we flush the previous group, emit it and start a new group
+		e, err := ga.Flush(in)
 		if err != nil {
 			return err
 		}
@@ -89,51 +69,48 @@ func (op *HashAggregateOperator) Iterate(in *environment.Environment, f func(out
 		if err != nil {
 			return err
 		}
+
+		lastGroup = group
+		ga = newGroupAggregator(group, groupExpr, op.Builders)
+		return ga.Aggregate(out)
+	})
+	if err != nil {
+		return err
 	}
 
-	return nil
+	// if s is empty, we create a default group so that aggregators will
+	// return their default initial value.
+	// Ex: For `SELECT COUNT(*) FROM foo`, if `foo` is empty
+	// we want the following result:
+	// {"COUNT(*)": 0}
+	if ga == nil {
+		ga = newGroupAggregator(nil, "", op.Builders)
+	}
+
+	e, err := ga.Flush(in)
+	if err != nil {
+		return err
+	}
+	return f(e)
 }
 
-func (op *HashAggregateOperator) String() string {
+func (op *GroupAggregateOperator) String() string {
 	var sb strings.Builder
 
-	for i, agg := range op.Builders {
+	sb.WriteString("groupAggregate(")
+	if op.E != nil {
+		sb.WriteString(op.E.String())
+	} else {
+		sb.WriteString("NULL")
+	}
+
+	for _, agg := range op.Builders {
+		sb.WriteString(", ")
 		sb.WriteString(agg.(stringutil.Stringer).String())
-		if i+1 < len(op.Builders) {
-			sb.WriteString(", ")
-		}
 	}
 
-	return stringutil.Sprintf("hashAggregate(%s)", sb.String())
-}
-
-// newGroupEncoder returns a function that encodes the _group environment variable using a types.ValueEncoder.
-// If the _group variable doesn't exist, the group is set to null.
-func newGroupEncoder() (func(env *environment.Environment) (string, error), error) {
-	var b bytes.Buffer
-	enc := encoding.NewValueEncoder(&b)
-	nullValue := types.NewNullValue()
-	err := enc.Encode(nullValue)
-	if err != nil {
-		return nil, err
-	}
-	nullGroupName := b.String()
-	b.Reset()
-
-	return func(env *environment.Environment) (string, error) {
-		groupValue, ok := env.Get(document.NewPath(groupEnvKey))
-		if !ok {
-			return nullGroupName, nil
-		}
-
-		b.Reset()
-		err := enc.Encode(groupValue)
-		if err != nil {
-			return "", err
-		}
-
-		return b.String(), nil
-	}, nil
+	sb.WriteString(")")
+	return sb.String()
 }
 
 // a groupAggregator is an aggregator for a whole group of documents.
@@ -142,39 +119,20 @@ func newGroupEncoder() (func(env *environment.Environment) (string, error), erro
 type groupAggregator struct {
 	group       types.Value
 	groupExpr   string
-	env         *environment.Environment
 	aggregators []expr.Aggregator
 }
 
-func newGroupAggregator(outerEnv *environment.Environment, builders []expr.AggregatorBuilder) *groupAggregator {
-	var env environment.Environment
-	env.SetOuter(outerEnv)
-
+func newGroupAggregator(group types.Value, groupExpr string, builders []expr.AggregatorBuilder) *groupAggregator {
 	newAggregators := make([]expr.Aggregator, len(builders))
 	for i, b := range builders {
 		newAggregators[i] = b.Aggregator()
 	}
 
-	ga := groupAggregator{
-		env:         &env,
+	return &groupAggregator{
 		aggregators: newAggregators,
+		group:       group,
+		groupExpr:   groupExpr,
 	}
-
-	if outerEnv == nil {
-		return &ga
-	}
-
-	var ok bool
-	ga.group, ok = outerEnv.Get(document.NewPath(groupEnvKey))
-	if !ok {
-		ga.group = types.NewNullValue()
-		return &ga
-	}
-
-	groupExprValue, _ := outerEnv.Get(document.NewPath(groupExprEnvKey))
-	ga.groupExpr = groupExprValue.V().(string)
-
-	return &ga
 }
 
 func (g *groupAggregator) Aggregate(env *environment.Environment) error {

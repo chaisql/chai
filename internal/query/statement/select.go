@@ -33,13 +33,10 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 	if stmt.GroupByExpr != nil {
-		// add Group node
-		s = s.Pipe(stream.GroupBy(stmt.GroupByExpr))
-
 		var invalidProjectedField expr.Expr
 		var aggregators []expr.AggregatorBuilder
 
-		for _, pe := range stmt.ProjectionExprs {
+		for i, pe := range stmt.ProjectionExprs {
 			ne, ok := pe.(*expr.NamedExpr)
 			if !ok {
 				invalidProjectedField = pe
@@ -55,6 +52,11 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 
 			// check if this is the same expression as the one used in the GROUP BY clause
 			if expr.Equal(e, stmt.GroupByExpr) {
+				// if so, replace the expression with a path expression
+				stmt.ProjectionExprs[i] = &expr.NamedExpr{
+					ExprName: ne.ExprName,
+					Expr:     expr.Path(document.NewPath(e.String())),
+				}
 				continue
 			}
 
@@ -66,9 +68,9 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 		if invalidProjectedField != nil {
 			return nil, stringutil.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
-
 		// add Aggregation node
-		s = s.Pipe(stream.HashAggregate(aggregators...))
+		s = s.Pipe(stream.Sort(stmt.GroupByExpr))
+		s = s.Pipe(stream.GroupAggregate(stmt.GroupByExpr, aggregators...))
 	} else {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
@@ -89,7 +91,7 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 
 		// add Aggregation node
 		if len(aggregators) > 0 {
-			s = s.Pipe(stream.HashAggregate(aggregators...))
+			s = s.Pipe(stream.GroupAggregate(nil, aggregators...))
 		}
 	}
 

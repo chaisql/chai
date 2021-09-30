@@ -3,6 +3,7 @@ package parser_test
 import (
 	"testing"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -73,9 +74,9 @@ func TestParserSelect(t *testing.T) {
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.GroupBy(parser.MustParseExpr("a.b.c"))).
-				Pipe(stream.HashAggregate()).
-				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a.b.c"))),
+				Pipe(stream.Sort(parser.MustParseExpr("a.b.c"))).
+				Pipe(stream.GroupAggregate(parser.MustParseExpr("a.b.c"))).
+				Pipe(stream.Project(&expr.NamedExpr{ExprName: "a.b.c", Expr: expr.Path(document.NewPath("a.b.c"))})),
 			true, false,
 		},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
@@ -124,7 +125,7 @@ func TestParserSelect(t *testing.T) {
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(stream.SeqScan("test")).
-				Pipe(stream.HashAggregate(&functions.Count{Wildcard: true})).
+				Pipe(stream.GroupAggregate(nil, &functions.Count{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			true, false},
 		{"With NEXT VALUE FOR", "SELECT NEXT VALUE FOR foo FROM test",

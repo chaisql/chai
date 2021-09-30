@@ -31,7 +31,7 @@ func TestExplainStmt(t *testing.T) {
 		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 ORDER BY d DESC LIMIT 10 OFFSET 20", false, `"seqScan(test) | filter(c > 30) | project(a + 1) | sortReverse(d) | skip(20) | take(10)"`},
 		// {"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"indexScanReverse(\"idx_a\") | filter(c > 30) | project(a + 1) | skip(20) | take(10)"`},
 		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"seqScan(test) | filter(c > 30) | project(a + 1) | sortReverse(a) | skip(20) | take(10)"`},
-		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 GROUP BY a + 1 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"seqScan(test) | filter(c > 30) | groupBy(a + 1) | hashAggregate() | project(a + 1) | sortReverse(a) | skip(20) | take(10)"`},
+		{"EXPLAIN SELECT a + 1 FROM test WHERE c > 30 GROUP BY a + 1 ORDER BY a DESC LIMIT 10 OFFSET 20", false, `"seqScan(test) | filter(c > 30) | sort(a + 1) | groupAggregate(a + 1) | project(a + 1) | sortReverse(a) | skip(20) | take(10)"`},
 		{"EXPLAIN UPDATE test SET a = 10", false, `"seqScan(test) | set(a, 10) | tableReplace('test')"`},
 		{"EXPLAIN UPDATE test SET a = 10 WHERE c > 10", false, `"seqScan(test) | filter(c > 10) | set(a, 10) | tableReplace('test')"`},
 		{"EXPLAIN UPDATE test SET a = 10 WHERE a > 10", false, `"indexScan(\"idx_a\", [10, -1, true]) | set(a, 10) | tableReplace('test')"`},
