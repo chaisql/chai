@@ -560,56 +560,6 @@ func TestTableDelete(t *testing.T) {
 	})
 }
 
-func TestDistinct(t *testing.T) {
-	tests := []struct {
-		name   string
-		values testutil.Docs
-		want   testutil.Docs
-		fails  bool
-	}{
-		{
-			"all different",
-			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`),
-			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`),
-			false,
-		},
-		{
-			"some duplicates",
-			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": 0}`, `{"a": null}`, `{"a": null}`, `{"a": true}`, `{"a": true}`, `{"a": [1, 2]}`, `{"a": [1, 2]}`),
-			testutil.MakeDocuments(t, `{"a": 0}`, `{"a": null}`, `{"a": true}`, `{"a": [1, 2]}`),
-			false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.Documents(test.values...))
-			s = s.Pipe(stream.Distinct())
-
-			var got []types.Document
-			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
-				d, ok := env.GetDocument()
-				require.True(t, ok)
-				var fb document.FieldBuffer
-				err := fb.Copy(d)
-				assert.NoError(t, err)
-				got = append(got, &fb)
-				return nil
-			})
-			if test.fails {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				test.want.RequireEqual(t, got)
-			}
-		})
-	}
-
-	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `distinct()`, stream.Distinct().String())
-	})
-}
-
 func TestSet(t *testing.T) {
 	tests := []struct {
 		path    string

@@ -5,7 +5,6 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/types"
@@ -15,7 +14,6 @@ var optimizerRules = []func(s *stream.Stream, catalog *database.Catalog) (*strea
 	SplitANDConditionRule,
 	PrecalculateExprRule,
 	RemoveUnnecessaryProjection,
-	RemoveUnnecessaryDistinctNodeRule,
 	RemoveUnnecessaryFilterNodesRule,
 	SelectIndex,
 }
@@ -314,95 +312,6 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Catalog) (*stream
 	}
 
 	return s, nil
-}
-
-// RemoveUnnecessaryDistinctNodeRule removes any Dedup nodes
-// where projection is already unique.
-func RemoveUnnecessaryDistinctNodeRule(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
-	n := s.Op
-
-	// we assume that if we are reading from a table, the first
-	// operator of the stream has to be a SeqScanOperator
-	firstNode := s.First()
-	if firstNode == nil {
-		return s, nil
-	}
-	st, ok := firstNode.(*stream.SeqScanOperator)
-	if !ok {
-		return s, nil
-	}
-
-	info, err := catalog.GetTableInfo(st.TableName)
-	if err != nil {
-		return nil, err
-	}
-
-	// this optimization applies to project operators that immediately follow distinct
-	for n != nil {
-		if d, ok := n.(*stream.DistinctOperator); ok {
-			prev := d.GetPrev()
-			if prev != nil {
-				pn, ok := prev.(*stream.ProjectOperator)
-				if ok {
-					var indexes []*database.IndexInfo
-					for _, name := range catalog.ListIndexes(st.TableName) {
-						idx, err := catalog.GetIndexInfo(name)
-						if err != nil {
-							return nil, err
-						}
-						indexes = append(indexes, idx)
-					}
-
-					// if the projection is unique, we remove the node from the tree
-					if isProjectionUnique(indexes, pn, info.FieldConstraints.GetPrimaryKey()) {
-						s.Remove(n)
-						n = prev
-						continue
-					}
-				}
-			}
-		}
-
-		n = n.GetPrev()
-	}
-
-	return s, nil
-}
-
-func isProjectionUnique(indexes []*database.IndexInfo, po *stream.ProjectOperator, pk *database.FieldConstraint) bool {
-	for _, field := range po.Exprs {
-		_, ok := field.(*expr.NamedExpr)
-		if ok {
-			return false
-		}
-
-		switch v := field.(type) {
-		case expr.Path:
-			if pk != nil && pk.Path.IsEqual(document.Path(v)) {
-				continue
-			}
-
-			p := document.Path(v)
-			var found *database.IndexInfo
-
-			for _, info := range indexes {
-				if info.Paths[0].IsEqual(p) {
-					found = info
-					break
-				}
-			}
-
-			if found != nil && found.Unique {
-				continue
-			}
-		case *functions.PK:
-			continue
-		}
-
-		return false // if one field is not unique, so projection is not unique too.
-	}
-
-	return true
 }
 
 func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {

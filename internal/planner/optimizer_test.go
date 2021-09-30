@@ -216,75 +216,6 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 	}
 }
 
-func TestRemoveUnnecessaryDedupNodeRule(t *testing.T) {
-	tests := []struct {
-		name           string
-		root, expected *st.Stream
-	}{
-		{
-			"non-unique key",
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("b"))).
-				Pipe(st.Distinct()),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("b"))).
-				Pipe(st.Distinct()),
-		},
-		{
-			"primary key",
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("a"))).
-				Pipe(st.Distinct()),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("a"))),
-		},
-		{
-			"primary key with alias",
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("a AS A"))).
-				Pipe(st.Distinct()),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("a AS A"))),
-		},
-		{
-			"unique index",
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("c"))).
-				Pipe(st.Distinct()),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("c"))),
-		},
-		{
-			"pk() function",
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("pk()"))).
-				Pipe(st.Distinct()),
-			st.New(st.SeqScan("foo")).
-				Pipe(st.Project(parser.MustParseExpr("pk()"))),
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			db, tx, cleanup := testutil.NewTestTx(t)
-			defer cleanup()
-
-			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a integer PRIMARY KEY, b integer, c integer);
-				CREATE UNIQUE INDEX idx_foo_idx ON foo(c);
-				INSERT INTO foo (a, b, c) VALUES
-					(1, 1, 1),
-					(2, 2, 2),
-					(3, 3, 3)
-			`)
-
-			res, err := planner.RemoveUnnecessaryDistinctNodeRule(test.root, db.Catalog)
-			assert.NoError(t, err)
-			require.Equal(t, test.expected.String(), res.String())
-		})
-	}
-}
-
 func exprList(list ...expr.Expr) expr.LiteralExprList {
 	return expr.LiteralExprList(list)
 }
@@ -903,36 +834,6 @@ func TestOptimize(t *testing.T) {
 				)),
 				st.New(st.SeqScan("foo")),
 				st.New(st.SeqScan("bar")),
-			))
-
-			assert.NoError(t, err)
-			require.Equal(t, want.String(), got.String())
-		})
-
-		t.Run("RemoveUnnecessaryDedupNodeRule", func(t *testing.T) {
-			db, tx, cleanup := testutil.NewTestTx(t)
-			defer cleanup()
-			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a integer PRIMARY KEY);
-				CREATE TABLE bar(a integer PRIMARY KEY);
-			`)
-
-			got, err := planner.Optimize(
-				st.New(st.Concat(
-					st.New(st.SeqScan("foo")).
-						Pipe(st.Project(parser.MustParseExpr("a"))).
-						Pipe(st.Distinct()),
-					st.New(st.SeqScan("bar")).
-						Pipe(st.Project(parser.MustParseExpr("a"))).
-						Pipe(st.Distinct()),
-				)),
-				db.Catalog)
-
-			want := st.New(st.Concat(
-				st.New(st.SeqScan("foo")).
-					Pipe(st.Project(parser.MustParseExpr("a"))),
-				st.New(st.SeqScan("bar")).
-					Pipe(st.Project(parser.MustParseExpr("a"))),
 			))
 
 			assert.NoError(t, err)

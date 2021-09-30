@@ -114,10 +114,6 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 	}
 	s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
 
-	if stmt.Distinct {
-		s = s.Pipe(stream.Distinct())
-	}
-
 	// SELECT is read-only most of the time, unless it's using some expressions
 	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
 	for _, e := range stmt.ProjectionExprs {
@@ -130,6 +126,10 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 				return true
 			}
 		})
+	}
+
+	if stmt.Distinct {
+		s = stream.New(stream.Union(s))
 	}
 
 	return &StreamStmt{

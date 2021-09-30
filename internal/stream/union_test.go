@@ -41,6 +41,13 @@ func TestUnion(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			false,
 		},
+		{
+			"only one",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
+			nil, nil,
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			false,
+		},
 	}
 
 	for _, test := range tests {
@@ -48,11 +55,18 @@ func TestUnion(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			st := stream.New(stream.Union(
-				stream.New(stream.Documents(test.first...)),
-				stream.New(stream.Documents(test.second...)),
-				stream.New(stream.Documents(test.third...)),
-			))
+			var streams []*stream.Stream
+			if test.first != nil {
+				streams = append(streams, stream.New(stream.Documents(test.first...)))
+			}
+			if test.second != nil {
+				streams = append(streams, stream.New(stream.Documents(test.second...)))
+			}
+			if test.third != nil {
+				streams = append(streams, stream.New(stream.Documents(test.third...)))
+			}
+
+			st := stream.New(stream.Union(streams...))
 			var env environment.Environment
 			env.Tx = tx
 			env.DB = db
