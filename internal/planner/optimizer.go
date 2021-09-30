@@ -28,17 +28,28 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 	var err error
 
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
-		// If the first operation is a concat, optimize both streams individually.
-		s1, err := Optimize(firstNode.S1, catalog)
-		if err != nil {
-			return nil, err
-		}
-		s2, err := Optimize(firstNode.S2, catalog)
-		if err != nil {
-			return nil, err
+		// If the first operation is a concat, optimize all streams individually.
+		for i, st := range firstNode.Streams {
+			ss, err := Optimize(st, catalog)
+			if err != nil {
+				return nil, err
+			}
+			firstNode.Streams[i] = ss
 		}
 
-		firstNode.S1, firstNode.S2 = s1, s2
+		return s, nil
+	}
+
+	if firstNode, ok := s.First().(*stream.UnionOperator); ok {
+		// If the first operation is a union, optimize all streams individually.
+		for i, st := range firstNode.Streams {
+			ss, err := Optimize(st, catalog)
+			if err != nil {
+				return nil, err
+			}
+			firstNode.Streams[i] = ss
+		}
+
 		return s, nil
 	}
 

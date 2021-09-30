@@ -7,8 +7,12 @@ import (
 )
 
 // parseBeginStatement parses a BEGIN statement.
-// This function assumes the BEGIN token has already been consumed.
 func (p *Parser) parseBeginStatement() (statement.Statement, error) {
+	// Parse "BEGIN".
+	if err := p.parseTokens(scanner.BEGIN); err != nil {
+		return nil, err
+	}
+
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 
@@ -34,8 +38,12 @@ func (p *Parser) parseBeginStatement() (statement.Statement, error) {
 }
 
 // parseRollbackStatement parses a ROLLBACK statement.
-// This function assumes the ROLLBACK token has already been consumed.
 func (p *Parser) parseRollbackStatement() (statement.Statement, error) {
+	// Parse "ROLLBACK".
+	if err := p.parseTokens(scanner.ROLLBACK); err != nil {
+		return nil, err
+	}
+
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 
@@ -43,8 +51,11 @@ func (p *Parser) parseRollbackStatement() (statement.Statement, error) {
 }
 
 // parseCommitStatement parses a COMMIT statement.
-// This function assumes the COMMIT token has already been consumed.
 func (p *Parser) parseCommitStatement() (statement.Statement, error) {
+	// Parse "COMMIT".
+	if err := p.parseTokens(scanner.COMMIT); err != nil {
+		return nil, err
+	}
 	// parse optional TRANSACTION token
 	_, _ = p.parseOptional(scanner.TRANSACTION)
 

@@ -844,7 +844,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 }
 
 func TestOptimize(t *testing.T) {
-	t.Run("concat operator operands are optimized", func(t *testing.T) {
+	t.Run("concat and union operator operands are optimized", func(t *testing.T) {
 		t.Run("PrecalculateExprRule", func(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
@@ -854,15 +854,23 @@ func TestOptimize(t *testing.T) {
 			`)
 
 			got, err := planner.Optimize(
-				st.New(st.Concat(
-					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1 + 2"))),
-					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 1 + 2"))),
+				st.New(st.Union(
+					st.New(st.Concat(
+						st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1 + 2"))),
+						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 1 + 2"))),
+					)),
+					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c = 1 + 2"))),
+					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("d = 1 + 2"))),
 				)),
 				db.Catalog)
 
-			want := st.New(st.Concat(
-				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 3"))),
-				st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 3"))),
+			want := st.New(st.Union(
+				st.New(st.Concat(
+					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 3"))),
+					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("b = 3"))),
+				)),
+				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c = 3"))),
+				st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("d = 3"))),
 			))
 
 			assert.NoError(t, err)
@@ -878,21 +886,23 @@ func TestOptimize(t *testing.T) {
 			`)
 
 			got, err := planner.Optimize(
-				st.New(st.Concat(
-					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("10"))),
+				st.New(st.Union(
 					st.New(st.Concat(
+						st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("10"))),
 						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("11"))),
-						st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("12"))),
 					)),
+					st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("12"))),
+					st.New(st.SeqScan("bar")).Pipe(st.Filter(parser.MustParseExpr("13"))),
 				)),
 				db.Catalog)
 
-			want := st.New(st.Concat(
-				st.New(st.SeqScan("foo")),
+			want := st.New(st.Union(
 				st.New(st.Concat(
-					st.New(st.SeqScan("bar")),
+					st.New(st.SeqScan("foo")),
 					st.New(st.SeqScan("bar")),
 				)),
+				st.New(st.SeqScan("foo")),
+				st.New(st.SeqScan("bar")),
 			))
 
 			assert.NoError(t, err)

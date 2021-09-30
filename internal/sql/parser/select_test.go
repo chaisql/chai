@@ -18,56 +18,57 @@ func TestParserSelect(t *testing.T) {
 		name     string
 		s        string
 		expected *stream.Stream
+		readOnly bool
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
 			stream.New(stream.Project(testutil.ParseNamedExpr(t, "1"))),
-			false,
+			true, false,
 		},
 		{"NoTableWithTuple", "SELECT (1, 2)",
 			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
-			false,
+			true, false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
 			stream.New(stream.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
-			false,
+			true, false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
 			stream.New(stream.Project(
 				testutil.ParseNamedExpr(t, "1 IN [1, 2]"),
 				testutil.ParseNamedExpr(t, "3"),
 			)),
-			false,
+			true, false,
 		},
 		{"NoCond", "SELECT * FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(expr.Wildcard{})),
-			false,
+			true, false,
 		},
 		{"WithFields", "SELECT a, b FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))),
-			false,
+			true, false,
 		},
 		{"WithFieldsWithQuotes", "SELECT `long \"path\"` FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
-			false,
+			true, false,
 		},
 		{"WithAlias", "SELECT a AS A, b FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a", "A"), testutil.ParseNamedExpr(t, "b"))),
-			false,
+			true, false,
 		},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"), expr.Wildcard{})),
-			false,
+			true, false,
 		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
 			stream.New(stream.SeqScan("test")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "a > 1"))),
-			false,
+			true, false,
 		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})),
-			false,
+			true, false,
 		},
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			stream.New(stream.SeqScan("test")).
@@ -75,42 +76,42 @@ func TestParserSelect(t *testing.T) {
 				Pipe(stream.GroupBy(parser.MustParseExpr("a.b.c"))).
 				Pipe(stream.HashAggregate()).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a.b.c"))),
-			false,
+			true, false,
 		},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
-			false,
+			true, false,
 		},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
-			false,
+			true, false,
 		},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.SortReverse(testutil.ParsePath(t, "a.b.c"))),
-			false,
+			true, false,
 		},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Take(20)),
-			false,
+			true, false,
 		},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Skip(20)),
-			false,
+			true, false,
 		},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			stream.New(stream.SeqScan("test")).
@@ -118,20 +119,24 @@ func TestParserSelect(t *testing.T) {
 				Pipe(stream.Project(expr.Wildcard{})).
 				Pipe(stream.Skip(20)).
 				Pipe(stream.Take(10)),
-			false,
+			true, false,
 		},
-		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true},
+		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.HashAggregate(&functions.Count{Wildcard: true})).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
-			false},
+			true, false},
+		{"With NEXT VALUE FOR", "SELECT NEXT VALUE FOR foo FROM test",
+			stream.New(stream.SeqScan("test")).
+				Pipe(stream.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
+			false, false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
 			)),
-			false,
+			true, false,
 		},
 		{"CondWithUnionAll", "SELECT * FROM test1 WHERE age = 10 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
@@ -140,16 +145,170 @@ func TestParserSelect(t *testing.T) {
 					Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
 			)),
-			false,
+			true, false,
 		},
-		{"WithUnionAllThenUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 UNION ALL SELECT * FROM test3",
+		{"WithUnionAllAfterOrderBy", "SELECT * FROM test1 ORDER BY a UNION ALL SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAllAfterLimit", "SELECT * FROM test1 LIMIT 10 UNION ALL SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAllAfterOffset", "SELECT * FROM test1 OFFSET 10 UNION ALL SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAllAndOrderBy", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 ORDER BY a",
 			stream.New(stream.Concat(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))),
+			true, false,
+		},
+		{"WithUnionAllAndLimit", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 LIMIT 10",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Take(10)),
+			true, false,
+		},
+		{"WithUnionAllAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 OFFSET 20",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Skip(20)),
+			true, false,
+		},
+		{"WithUnionAllAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
+			true, false,
+		},
+
+		{"WithUnion", "SELECT * FROM test1 UNION SELECT * FROM test2",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"CondWithUnion", "SELECT * FROM test1 WHERE age = 10 UNION SELECT * FROM test2",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).
+					Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
+					Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithUnionAfterOrderBy", "SELECT * FROM test1 ORDER BY a UNION SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAfterLimit", "SELECT * FROM test1 LIMIT 10 UNION SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAfterOffset", "SELECT * FROM test1 OFFSET 10 UNION SELECT * FROM test2",
+			nil,
+			true, true,
+		},
+		{"WithUnionAndOrderBy", "SELECT * FROM test1 UNION SELECT * FROM test2 ORDER BY a",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))),
+			true, false,
+		},
+		{"WithUnionAndLimit", "SELECT * FROM test1 UNION SELECT * FROM test2 LIMIT 10",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Take(10)),
+			true, false,
+		},
+		{"WithUnionAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 OFFSET 20",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Skip(20)),
+			true, false,
+		},
+		{"WithUnionAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
+			stream.New(stream.Union(
+				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
+			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
+			true, false,
+		},
+		{"WithMultipleCompoundOps/1", "SELECT * FROM a UNION ALL SELECT * FROM b UNION ALL SELECT * FROM c",
+			stream.New(stream.Concat(
+				stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithMultipleCompoundOps/2", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c",
+			stream.New(stream.Union(
 				stream.New(stream.Concat(
-					stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
-					stream.New(stream.SeqScan("test3")).Pipe(stream.Project(expr.Wildcard{})),
-				)))),
-			false,
+					stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+					stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+				)),
+				stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithMultipleCompoundOps/2", "SELECT * FROM a UNION ALL SELECT * FROM b UNION ALL SELECT * FROM c UNION SELECT * FROM d",
+			stream.New(stream.Union(
+				stream.New(stream.Concat(
+					stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+					stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+					stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+				)),
+				stream.New(stream.SeqScan("d")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithMultipleCompoundOps/3", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c UNION SELECT * FROM d",
+			stream.New(stream.Union(
+				stream.New(stream.Concat(
+					stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+					stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+				)),
+				stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+				stream.New(stream.SeqScan("d")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithMultipleCompoundOps/4", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c UNION ALL SELECT * FROM d",
+			stream.New(stream.Concat(
+				stream.New(stream.Union(
+					stream.New(stream.Concat(
+						stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+						stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+					)),
+					stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+				)),
+				stream.New(stream.SeqScan("d")).Pipe(stream.Project(expr.Wildcard{})),
+			)),
+			true, false,
+		},
+		{"WithMultipleCompoundOpsAndNextValueFor/4", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c UNION ALL SELECT NEXT VALUE FOR foo FROM d",
+			stream.New(stream.Concat(
+				stream.New(stream.Union(
+					stream.New(stream.Concat(
+						stream.New(stream.SeqScan("a")).Pipe(stream.Project(expr.Wildcard{})),
+						stream.New(stream.SeqScan("b")).Pipe(stream.Project(expr.Wildcard{})),
+					)),
+					stream.New(stream.SeqScan("c")).Pipe(stream.Project(expr.Wildcard{})),
+				)),
+				stream.New(stream.SeqScan("d")).Pipe(stream.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
+			)),
+			false, false,
 		},
 	}
 
@@ -159,7 +318,7 @@ func TestParserSelect(t *testing.T) {
 			if !test.mustFail {
 				assert.NoError(t, err)
 				require.Len(t, q.Statements, 1)
-				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: true}, q.Statements[0].(*statement.StreamStmt))
+				require.EqualValues(t, &statement.StreamStmt{Stream: test.expected, ReadOnly: test.readOnly}, q.Statements[0].(*statement.StreamStmt))
 			} else {
 				assert.Error(t, err)
 			}

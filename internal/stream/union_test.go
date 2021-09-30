@@ -49,9 +49,9 @@ func TestUnion(t *testing.T) {
 			defer cleanup()
 
 			st := stream.New(stream.Union(
-				stream.Documents(test.first...),
-				stream.Documents(test.second...),
-				stream.Documents(test.third...),
+				stream.New(stream.Documents(test.first...)),
+				stream.New(stream.Documents(test.second...)),
+				stream.New(stream.Documents(test.third...)),
 			))
 			var env environment.Environment
 			env.Tx = tx
@@ -84,9 +84,9 @@ func TestUnion(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		st := stream.New(stream.Union(
-			stream.Documents(testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`)...),
-			stream.Documents(testutil.MakeDocuments(t, `{"a": 3}`, `{"a": 4}`)...),
-			stream.Documents(testutil.MakeDocuments(t, `{"a": 5}`, `{"a": 6}`)...),
+			stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`)...)),
+			stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 3}`, `{"a": 4}`)...)),
+			stream.New(stream.Documents(testutil.MakeDocuments(t, `{"a": 5}`, `{"a": 6}`)...)),
 		))
 
 		require.Equal(t, `union(docs({"a": 1}, {"a": 2}), docs({"a": 3}, {"a": 4}), docs({"a": 5}, {"a": 6}))`, st.String())

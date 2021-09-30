@@ -6,13 +6,12 @@ import (
 )
 
 // parseDeleteStatement parses a delete string and returns a Statement AST object.
-// This function assumes the DELETE token has already been consumed.
 func (p *Parser) parseDeleteStatement() (*statement.StreamStmt, error) {
 	var stmt statement.DeleteStmt
 	var err error
 
-	// Parse "FROM".
-	if err := p.parseTokens(scanner.FROM); err != nil {
+	// Parse "DELETE FROM".
+	if err := p.parseTokens(scanner.DELETE, scanner.FROM); err != nil {
 		return nil, err
 	}
 

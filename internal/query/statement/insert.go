@@ -26,7 +26,8 @@ func (stmt *InsertStmt) ToStream() (*StreamStmt, error) {
 		s = stmt.SelectStmt.Stream
 
 		// ensure we are not reading and writing to the same table.
-		if s.First().(*stream.SeqScanOperator).TableName == stmt.TableName {
+		// TODO(asdine): if same table, write content to a temp table.
+		if seqScan, ok := s.First().(*stream.SeqScanOperator); ok && seqScan.TableName == stmt.TableName {
 			return nil, errors.New("cannot read and write to the same table")
 		}
 

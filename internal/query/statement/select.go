@@ -10,30 +10,21 @@ import (
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
-// SelectStmt holds SELECT configuration.
-type SelectStmt struct {
-	TableName        string
-	Distinct         bool
-	WhereExpr        expr.Expr
-	GroupByExpr      expr.Expr
-	OrderBy          expr.Path
-	OrderByDirection scanner.Token
-	OffsetExpr       expr.Expr
-	LimitExpr        expr.Expr
-	ProjectionExprs  []expr.Expr
-	Union            struct {
-		All        bool
-		SelectStmt *StreamStmt
-	}
+type SelectCoreStmt struct {
+	TableName       string
+	Distinct        bool
+	WhereExpr       expr.Expr
+	GroupByExpr     expr.Expr
+	ProjectionExprs []expr.Expr
 }
 
-func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
+func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 	isReadOnly := true
 
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
-		s = stream.New(stream.SeqScan(stmt.TableName))
+		s = s.Pipe(stream.SeqScan(stmt.TableName))
 	}
 
 	if stmt.WhereExpr != nil {
@@ -127,6 +118,38 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		s = s.Pipe(stream.Distinct())
 	}
 
+	// SELECT is read-only most of the time, unless it's using some expressions
+	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
+	for _, e := range stmt.ProjectionExprs {
+		expr.Walk(e, func(e expr.Expr) bool {
+			switch e.(type) {
+			case expr.NextValueFor:
+				isReadOnly = false
+				return false
+			default:
+				return true
+			}
+		})
+	}
+
+	return &StreamStmt{
+		Stream:   s,
+		ReadOnly: isReadOnly,
+	}, nil
+}
+
+// SelectStmt holds SELECT configuration.
+type SelectStmt struct {
+	CompoundSelect   *StreamStmt
+	OrderBy          expr.Path
+	OrderByDirection scanner.Token
+	OffsetExpr       expr.Expr
+	LimitExpr        expr.Expr
+}
+
+func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
+	s := stmt.CompoundSelect.Stream
+
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
 			s = s.Pipe(stream.SortReverse(stmt.OrderBy))
@@ -171,26 +194,8 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		s = s.Pipe(stream.Take(v.V().(int64)))
 	}
 
-	if stmt.Union.SelectStmt != nil {
-		s = stream.New(stream.Concat(s, stmt.Union.SelectStmt.Stream))
-	}
-
-	// SELECT is read-only most of the time, unless it's using some expressions
-	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
-	for _, e := range stmt.ProjectionExprs {
-		expr.Walk(e, func(e expr.Expr) bool {
-			switch e.(type) {
-			case expr.NextValueFor:
-				isReadOnly = false
-				return false
-			default:
-				return true
-			}
-		})
-	}
-
 	return &StreamStmt{
 		Stream:   s,
-		ReadOnly: isReadOnly,
+		ReadOnly: stmt.CompoundSelect.ReadOnly,
 	}, nil
 }

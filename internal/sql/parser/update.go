@@ -7,10 +7,14 @@ import (
 )
 
 // parseUpdateStatement parses a update string and returns a Statement AST object.
-// This function assumes the UPDATE token has already been consumed.
 func (p *Parser) parseUpdateStatement() (*statement.StreamStmt, error) {
 	var stmt statement.UpdateStmt
 	var err error
+
+	// Parse "UPDATE".
+	if err := p.parseTokens(scanner.UPDATE); err != nil {
+		return nil, err
+	}
 
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()

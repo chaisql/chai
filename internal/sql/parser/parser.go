@@ -90,6 +90,7 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 // ParseStatement parses a Genji SQL string and returns a Statement AST object.
 func (p *Parser) ParseStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
+	p.Unscan()
 	switch tok {
 	case scanner.ALTER:
 		return p.parseAlterStatement()
@@ -210,7 +211,7 @@ func (p *Parser) parseTokens(tokens ...scanner.Token) error {
 }
 
 // parseOptional parses a list of consecutive tokens. If the first token is not
-// present, it unscans and return false. If the fist is present, all the others
+// present, it unscans and return false. If the first is present, all the others
 // must be parsed otherwise an error is returned.
 func (p *Parser) parseOptional(tokens ...scanner.Token) (bool, error) {
 	// Parse optional first token

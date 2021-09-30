@@ -5,6 +5,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/internal/stream"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
@@ -13,35 +14,8 @@ func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
 	var stmt statement.SelectStmt
 	var err error
 
-	stmt.Distinct, err = p.parseDistinct()
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse path list or query.Wildcard
-	stmt.ProjectionExprs, err = p.parseProjectedExprs()
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse "FROM".
-	var found bool
-	stmt.TableName, found, err = p.parseFrom()
-	if err != nil {
-		return nil, err
-	}
-	if !found {
-		return stmt.ToStream()
-	}
-
-	// Parse condition: "WHERE expr".
-	stmt.WhereExpr, err = p.parseCondition()
-	if err != nil {
-		return nil, err
-	}
-
-	// Parse group by: "GROUP BY expr"
-	stmt.GroupByExpr, err = p.parseGroupBy()
+	// Parse SELECT ... [UNION | UNION ALL | INTERSECT] SELECT ...
+	stmt.CompoundSelect, err = p.parseCompoundSelectStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +38,106 @@ func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
-	// Parse union: "UNION expr"
-	stmt.Union.SelectStmt, stmt.Union.All, err = p.parseUnion()
+	return stmt.ToStream()
+}
+
+func (p *Parser) parseCompoundSelectStatement() (*statement.StreamStmt, error) {
+	var stmt *statement.StreamStmt
+	var prev scanner.Token
+
+	var coreStmts []*stream.Stream
+	readOnly := true
+
+	for {
+		core, err := p.parseSelectCore()
+		if err != nil {
+			return nil, err
+		}
+		if !core.ReadOnly {
+			readOnly = false
+		}
+
+		// Parse optional compound operator
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok == scanner.UNION {
+			all, err := p.parseOptional(scanner.ALL)
+			if err != nil {
+				return nil, err
+			}
+			if all {
+				tok = scanner.ALL
+			}
+		}
+		if tok != scanner.UNION && tok != scanner.ALL {
+			p.Unscan()
+
+			if stmt == nil {
+				stmt = core
+				break
+			}
+		}
+
+		coreStmts = append(coreStmts, core.Stream)
+
+		if stmt == nil {
+			stmt = core
+		}
+		if prev != 0 && prev != tok {
+			stmt.ReadOnly = readOnly
+			switch prev {
+			case scanner.UNION:
+				stmt.Stream = stream.New(stream.Union(coreStmts...))
+			case scanner.ALL:
+				stmt.Stream = stream.New(stream.Concat(coreStmts...))
+			}
+
+			coreStmts = []*stream.Stream{stmt.Stream}
+
+			if tok != scanner.SELECT && tok != scanner.UNION && tok != scanner.ALL {
+				break
+			}
+		}
+
+		prev = tok
+	}
+
+	return stmt, nil
+}
+
+func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
+	var stmt statement.SelectCoreStmt
+	var err error
+
+	// Parse "SELECT".
+	if err := p.parseTokens(scanner.SELECT); err != nil {
+		return nil, err
+	}
+
+	stmt.Distinct, err = p.parseDistinct()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse path list or query.Wildcard
+	stmt.ProjectionExprs, err = p.parseProjectedExprs()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse "FROM".
+	stmt.TableName, err = p.parseFrom()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse condition: "WHERE expr".
+	stmt.WhereExpr, err = p.parseCondition()
+	if err != nil {
+		return nil, err
+	}
+
+	// Parse group by: "GROUP BY expr"
+	stmt.GroupByExpr, err = p.parseGroupBy()
 	if err != nil {
 		return nil, err
 	}
@@ -137,9 +209,9 @@ func (p *Parser) parseDistinct() (bool, error) {
 	return true, nil
 }
 
-func (p *Parser) parseFrom() (string, bool, error) {
+func (p *Parser) parseFrom() (string, error) {
 	if ok, err := p.parseOptional(scanner.FROM); !ok || err != nil {
-		return "", false, err
+		return "", err
 	}
 
 	// Parse table name
@@ -147,10 +219,10 @@ func (p *Parser) parseFrom() (string, bool, error) {
 	if err != nil {
 		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
-		return ident, true, pErr
+		return ident, pErr
 	}
 
-	return ident, true, nil
+	return ident, nil
 }
 
 func (p *Parser) parseGroupBy() (expr.Expr, error) {
@@ -165,20 +237,24 @@ func (p *Parser) parseGroupBy() (expr.Expr, error) {
 }
 
 func (p *Parser) parseUnion() (*statement.StreamStmt, bool, error) {
-	// Only UNION ALL is supported for the moment
-	if ok, err := p.parseOptional(scanner.UNION, scanner.ALL); !ok || err != nil {
+	if ok, err := p.parseOptional(scanner.UNION); !ok || err != nil {
 		return nil, false, err
 	}
 
-	err := p.parseTokens(scanner.SELECT)
+	unionAll, err := p.parseOptional(scanner.ALL)
 	if err != nil {
 		return nil, false, err
+	}
+
+	err = p.parseTokens(scanner.SELECT)
+	if err != nil {
+		return nil, unionAll, err
 	}
 
 	otherSelect, err := p.parseSelectStatement()
 	if err != nil {
-		return nil, false, err
+		return nil, unionAll, err
 	}
 
-	return otherSelect, false, nil
+	return otherSelect, unionAll, nil
 }

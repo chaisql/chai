@@ -9,13 +9,12 @@ import (
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
-// This function assumes the INSERT token has already been consumed.
 func (p *Parser) parseInsertStatement() (*statement.StreamStmt, error) {
 	var stmt statement.InsertStmt
 	var err error
 
-	// Parse "INTO".
-	if err := p.parseTokens(scanner.INTO); err != nil {
+	// Parse "INSERT INTO".
+	if err := p.parseTokens(scanner.INSERT, scanner.INTO); err != nil {
 		return nil, err
 	}
 
@@ -43,6 +42,7 @@ func (p *Parser) parseInsertStatement() (*statement.StreamStmt, error) {
 			return nil, err
 		}
 	case scanner.SELECT:
+		p.Unscan()
 		stmt.SelectStmt, err = p.parseSelectStatement()
 		if err != nil {
 			return nil, err

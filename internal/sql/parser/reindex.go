@@ -6,10 +6,14 @@ import (
 )
 
 // parseReindexStatement parses a reindex statement.
-// This function assumes the REINDEX token has already been consumed.
 func (p *Parser) parseReIndexStatement() (statement.Statement, error) {
 	var stmt statement.ReIndexStmt
 	var err error
+
+	// Parse "REINDEX".
+	if err := p.parseTokens(scanner.REINDEX); err != nil {
+		return nil, err
+	}
 
 	tok, _, lit := p.ScanIgnoreWhitespace()
 	if tok == scanner.IDENT {

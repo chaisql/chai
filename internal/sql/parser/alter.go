@@ -46,12 +46,11 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ statement
 }
 
 // parseAlterStatement parses a Alter query string and returns a Statement AST object.
-// This function assumes the ALTER token has already been consumed.
 func (p *Parser) parseAlterStatement() (statement.Statement, error) {
 	var err error
 
 	// Parse "TABLE".
-	if err := p.parseTokens(scanner.TABLE); err != nil {
+	if err := p.parseTokens(scanner.ALTER, scanner.TABLE); err != nil {
 		return nil, err
 	}
 

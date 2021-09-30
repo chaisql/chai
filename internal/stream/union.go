@@ -14,29 +14,32 @@ import (
 // UnionOperator is an operator that merges the results of multiple operators.
 type UnionOperator struct {
 	baseOperator
-	Ops []Operator
+	Streams []*Stream
 }
 
 // Union returns a new UnionOperator.
-func Union(ops ...Operator) *UnionOperator {
-	return &UnionOperator{Ops: ops}
+func Union(s ...*Stream) *UnionOperator {
+	return &UnionOperator{Streams: s}
 }
 
 // Iterate iterates over all the streams and returns their union.
-func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
 	var temp *database.TempResources
 	var cleanup func() error
 
 	defer func() {
 		if cleanup != nil {
-			cleanup()
+			e := cleanup()
+			if err != nil {
+				err = e
+			}
 		}
 	}()
 
 	// iterate over all the streams and insert each key in the temporary table
 	// to deduplicate them
-	for _, op := range it.Ops {
-		err := op.Iterate(in, func(out *environment.Environment) error {
+	for _, s := range it.Streams {
+		err := s.Iterate(in, func(out *environment.Environment) error {
 			doc, ok := out.GetDocument()
 			if !ok {
 				return errors.New("missing document")
@@ -77,7 +80,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	// iterate over the temporary index
-	err := temp.Index.AscendGreaterOrEqual(nil, func(val, _ []byte) error {
+	return temp.Index.AscendGreaterOrEqual(nil, func(val, _ []byte) error {
 		a, _, err := encoding.DecodeArray(val)
 		if err != nil {
 			return err
@@ -91,20 +94,17 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 		newEnv.SetDocument(doc)
 		return fn(&newEnv)
 	})
-	return err
 }
 
 func (it *UnionOperator) String() string {
 	var s strings.Builder
 
-	s.WriteString("union")
-	s.WriteRune('(')
-
-	for i, op := range it.Ops {
+	s.WriteString("union(")
+	for i, st := range it.Streams {
 		if i > 0 {
 			s.WriteString(", ")
 		}
-		s.WriteString(op.String())
+		s.WriteString(st.String())
 	}
 	s.WriteRune(')')
 

@@ -11,8 +11,12 @@ import (
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
-// This function assumes the CREATE token has already been consumed.
 func (p *Parser) parseCreateStatement() (statement.Statement, error) {
+	// Parse "CREATE".
+	if err := p.parseTokens(scanner.CREATE); err != nil {
+		return nil, err
+	}
+
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:

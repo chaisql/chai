@@ -32,7 +32,7 @@ type Database struct {
 	txmu *sync.RWMutex
 
 	// Pool of reusable transient engines to use for temporary indices.
-	TransientEnginePool *TransientEnginePool
+	TransientDatabasePool *TransientDatabasePool
 }
 
 type Options struct {
@@ -60,8 +60,9 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 		Codec:   opts.Codec,
 		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
-		TransientEnginePool: &TransientEnginePool{
-			ng: ng,
+		TransientDatabasePool: &TransientDatabasePool{
+			ng:    ng,
+			codec: opts.Codec,
 		},
 	}
 
@@ -86,26 +87,27 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 
 // NewTransientDB creates a temporary database to be used for creating temporary indices.
 func (db *Database) NewTransientDB(ctx context.Context) (*Database, func() error, error) {
-	ng, err := db.TransientEnginePool.Get(context.Background())
+	tdb, err := db.TransientDatabasePool.Get(context.Background())
 	if err != nil {
-		return nil, nil, err
-	}
-
-	tdb, err := New(ctx, ng, Options{Codec: db.Codec})
-	if err != nil {
-		_ = ng.Close()
-		_ = db.TransientEnginePool.Release(context.Background(), ng)
 		return nil, nil, err
 	}
 
 	return tdb, func() error {
-		_ = tdb.Close()
-		return db.TransientEnginePool.Release(context.Background(), ng)
+		return db.TransientDatabasePool.Release(context.Background(), tdb)
 	}, nil
 }
 
-// Close the database.
+// Close the database and the underlying engine.
 func (db *Database) Close() error {
+	err := db.closeDatabase()
+	if err != nil {
+		return err
+	}
+
+	return db.ng.Close()
+}
+
+func (db *Database) closeDatabase() error {
 	// If there is an attached transaction
 	// it must be rolled back before closing the engine.
 	if tx := db.GetAttachedTx(); tx != nil {
@@ -133,12 +135,7 @@ func (db *Database) Close() error {
 		}
 	}
 
-	err = tx.Tx.Commit()
-	if err != nil {
-		return err
-	}
-
-	return db.ng.Close()
+	return tx.Tx.Commit()
 }
 
 // GetAttachedTx returns the transaction attached to the database. It returns nil if there is no

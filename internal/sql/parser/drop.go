@@ -6,8 +6,12 @@ import (
 )
 
 // parseDropStatement parses a drop string and returns a Statement AST object.
-// This function assumes the DROP token has already been consumed.
 func (p *Parser) parseDropStatement() (statement.Statement, error) {
+	// Parse "DROP".
+	if err := p.parseTokens(scanner.DROP); err != nil {
+		return nil, err
+	}
+
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TABLE:

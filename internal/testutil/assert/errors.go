@@ -59,5 +59,5 @@ func NoErrorf(t testing.TB, err error, str string, args ...interface{}) {
 func NoError(t testing.TB, err error) {
 	t.Helper()
 
-	NoErrorf(t, err, "Expected error to be nil but got %v instead", err)
+	NoErrorf(t, err, "Expected error to be nil but got %q instead", err)
 }

@@ -5,23 +5,25 @@ import (
 	"sync"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 )
 
 const maxTransientPoolSize = 3
 
-// TransientEnginePool manages a pool of transient engines.
-// It keeps a pool of maxTransientPoolSize engines.
-type TransientEnginePool struct {
-	ng engine.Engine
+// TransientDatabasePool manages a pool of transient databases.
+// It keeps a pool of maxTransientPoolSize databases.
+type TransientDatabasePool struct {
+	ng    engine.Engine
+	codec encoding.Codec
 
 	mu   sync.Mutex
-	pool []engine.Engine
+	pool []*Database
 }
 
 // Get returns a free engine from the pool, if any. Otherwise it creates a new engine
 // and returns it.
-func (t *TransientEnginePool) Get(ctx context.Context) (engine.Engine, error) {
+func (t *TransientDatabasePool) Get(ctx context.Context) (*Database, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -31,19 +33,35 @@ func (t *TransientEnginePool) Get(ctx context.Context) (engine.Engine, error) {
 		return ng, nil
 	}
 
-	return t.ng.NewTransientEngine(ctx)
+	tng, err := t.ng.NewTransientEngine(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	tdb, err := New(ctx, tng, Options{Codec: t.codec})
+	if err != nil {
+		_ = tng.Close()
+		return nil, err
+	}
+
+	return tdb, nil
 }
 
 // Release sets the engine for reuse. If the pool is full, it drops the given engine.
-func (t *TransientEnginePool) Release(ctx context.Context, ng engine.Engine) error {
+func (t *TransientDatabasePool) Release(ctx context.Context, db *Database) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if len(t.pool) >= maxTransientPoolSize {
-		return ng.Drop(ctx)
+		err := db.Close()
+		if err != nil {
+			return err
+		}
+
+		return db.ng.Drop(ctx)
 	}
 
-	t.pool = append(t.pool, ng)
+	t.pool = append(t.pool, db)
 	return nil
 }
 
