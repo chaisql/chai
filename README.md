@@ -72,8 +72,20 @@ func main() {
     // Create a table. Schemas are optional, you don't need to specify one if not needed
     err = db.Exec("CREATE TABLE user")
 
+    // or you can create a table with constraints on certain fields
+    err = db.Exec(`
+        CREATE TABLE user(
+            id              INT     PRIMARY KEY,
+            name            TEXT    NOT NULL,
+            address.city    TEXT    DEFAULT "?",
+            friends         ARRAY,
+
+            UNIQUE(name)
+        )
+    `)
+
     // Create an index
-    err = db.Exec("CREATE INDEX idx_user_name ON test (name)")
+    err = db.Exec("CREATE INDEX idx_user_city_zip ON user (address.city, address.zipcode)")
 
     // Insert some data
     err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)

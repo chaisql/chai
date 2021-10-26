@@ -102,6 +102,7 @@ func TestFieldBuffer(t *testing.T) {
 		}{
 			{"root", `{}`, `a`, types.NewIntegerValue(1), `{"a": 1}`, false},
 			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, types.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
+			{"non existing doc", `{}`, `a.b.c`, types.NewTextValue("foo"), `{"a": {"b": {"c": "foo"}}}`, false},
 			{"nested doc", `{"a": "foo"}`, `a`, types.NewDocumentValue(document.NewFieldBuffer().
 				Add("b", types.NewArrayValue(document.NewValueBuffer().
 					Append(types.NewIntegerValue(1)).

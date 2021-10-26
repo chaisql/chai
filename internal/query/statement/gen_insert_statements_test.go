@@ -940,4 +940,50 @@ SELECT * FROM test_oc;
 
 	})
 
+	// --------------------------------------------------------------------------
+	t.Run("default on nested fields", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_df (a.b TEXT DEFAULT "foo");`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_df (a.b TEXT DEFAULT "foo");
+INSERT INTO test_df VALUES {};
+SELECT * FROM test_df;
+`
+			res, err := db.Query(q)
+			assert.NoError(t, err)
+			defer res.Close()
+			raw := `
+{
+  a: {b: "foo"}
+}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("default on array indexes", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");`, func(t *testing.T) {
+			q := `
+CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");
+INSERT INTO test_df VALUES {};
+`
+			err := db.Exec(q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+		})
+
+	})
+
 }

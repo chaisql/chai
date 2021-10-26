@@ -244,6 +244,25 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Default value on nested document field",
+			nil,
+			database.FieldConstraint{Path: document.NewPath("a.b"), DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
+			[]*database.FieldConstraint{
+				{Path: document.NewPath("a.b"), DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
+			},
+			false,
+		},
+		{
+			"Default value on array index",
+			nil,
+			database.FieldConstraint{
+				Path:         document.Path(testutil.ParsePath(t, "a[0]")),
+				DefaultValue: expr.Constraint(testutil.IntegerValue(5)),
+			},
+			nil,
+			true,
+		},
 	}
 
 	for _, test := range tests {

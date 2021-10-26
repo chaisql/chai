@@ -150,13 +150,18 @@ func (f FieldConstraints) GetPrimaryKey() *FieldConstraint {
 
 // Infer additional constraints based on user defined ones.
 // For example, given the following table:
-//   CREATE TABLE foo (a.b[0] TEXT)
+//   CREATE TABLE foo (
+//      a.b[1] TEXT,
+//      c.e DEFAULT 10
+//    )
 // this function will return a TableInfo that behaves as if the table
 // had been created like this:
 //   CREATE TABLE foo(
 //      a DOCUMENT
 //      a.b ARRAY
 //      a.b[0] TEXT
+//      c DOCUMENT DEFAULT {}
+//      c.d DEFAULT 10
 //   )
 func (f FieldConstraints) Infer() (FieldConstraints, error) {
 	newConstraints := make(FieldConstraints, 0, len(f))
@@ -179,6 +184,9 @@ func (f FieldConstraints) Infer() (FieldConstraints, error) {
 				}
 				if fc.Path[i+1].FieldName != "" {
 					newFc.Type = types.DocumentValue
+					if fc.HasDefaultValue() {
+						newFc.DefaultValue = &inferredTableExpression{v: types.NewDocumentValue(document.NewFieldBuffer())}
+					}
 				} else {
 					newFc.Type = types.ArrayValue
 				}
@@ -220,7 +228,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 				inferredFc, nonInferredFc = nonInferredFc, inferredFc
 			}
 
-			// the inferred one may have less constraints that the user-defined one
+			// the inferred one may has less constraints than the user-defined one
 			inferredFc.DefaultValue = nonInferredFc.DefaultValue
 			inferredFc.IsNotNull = nonInferredFc.IsNotNull
 			inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
@@ -228,6 +236,12 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			// detect if constraints are different
 			if !c.IsEqual(newFc) {
 				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+			}
+
+			// validate default value
+			err := f.validateDefaultValue(newFc)
+			if err != nil {
+				return err
 			}
 
 			// if both inferred, merge the InferredBy member
@@ -256,6 +270,26 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 	}
 
+	err := f.validateDefaultValue(newFc)
+	if err != nil {
+		return err
+	}
+
+	*f = append(*f, newFc)
+	return nil
+}
+
+func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
+	// ensure there is no default value on array indexes and their child nodes
+	if newFc.DefaultValue != nil {
+		for _, frag := range newFc.Path {
+			// an empty fieldname means this is an array index
+			if frag.FieldName == "" {
+				return stringutil.Errorf("default value is not allowed on array indexes and their child nodes (%q)", newFc.Path)
+			}
+		}
+	}
+
 	// ensure default value type is compatible
 	if newFc.DefaultValue != nil && !newFc.Type.IsAny() {
 		// first, try to evaluate the default value
@@ -278,7 +312,6 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 	}
 
-	*f = append(*f, newFc)
 	return nil
 }
 
@@ -464,4 +497,33 @@ type TableExpression interface {
 	Eval(tx *Transaction) (types.Value, error)
 	IsEqual(other TableExpression) bool
 	String() string
+}
+
+type inferredTableExpression struct {
+	v types.Value
+}
+
+func (t *inferredTableExpression) Eval(tx *Transaction) (types.Value, error) {
+	return t.v, nil
+}
+
+func (t *inferredTableExpression) Bind(catalog *Catalog) {}
+
+func (t *inferredTableExpression) IsEqual(other TableExpression) bool {
+	if t == nil {
+		return other == nil
+	}
+	if other == nil {
+		return false
+	}
+	o, ok := other.(*inferredTableExpression)
+	if !ok {
+		return false
+	}
+	eq, _ := types.IsEqual(t.v, o.v)
+	return eq
+}
+
+func (t *inferredTableExpression) String() string {
+	return stringutil.Sprintf("%s", t.v)
 }

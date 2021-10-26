@@ -236,8 +236,10 @@ func (fb *FieldBuffer) Set(path Path, v types.Value) error {
 		}
 	}
 
-	fb.Add(path[0].FieldName, v)
-	return nil
+	subDoc := types.NewDocumentValue(NewFieldBuffer())
+	fb.Add(path[0].FieldName, subDoc)
+
+	return fb.Set(path, v)
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.
