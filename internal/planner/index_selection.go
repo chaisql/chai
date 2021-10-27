@@ -73,6 +73,12 @@ func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, e
 		return s, nil
 	}
 
+	// ensure the table exists
+	_, err := catalog.Cache.Get(database.RelationTableType, seq.TableName)
+	if err != nil {
+		return nil, err
+	}
+
 	is := indexSelector{
 		seqScan: seq,
 		catalog: catalog,
