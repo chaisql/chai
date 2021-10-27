@@ -178,6 +178,12 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 			return types.NewDocumentValue(&buf), err
 		}
 
+		// the field is a document but the path expects an array,
+		// return an error
+		if p[0].FieldName == "" {
+			return nil, ErrFieldNotFound
+		}
+
 		va, err := buf.GetByField(p[0].FieldName)
 		if err != nil {
 			return v, err
@@ -215,31 +221,34 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		return types.NewArrayValue(&vb), err
 	}
 
-	return v, nil
+	return nil, ErrFieldNotFound
 }
 
 // Set replaces a field if it already exists or creates one if not.
+// TODO(asdine): Set should always fail with ErrFieldNotFound if the path
+// doesn't resolve to an existing field.
 func (fb *FieldBuffer) Set(path Path, v types.Value) error {
+	if len(path) == 0 || path[0].FieldName == "" {
+		return ErrFieldNotFound
+	}
+
 	if len(path) == 1 {
 		return fb.setFieldValue(path[0].FieldName, v)
 	}
 
-	for i := range fb.fields {
-		if fb.fields[i].Field == path[0].FieldName {
-			va, err := setValueAtPath(fb.fields[i].Value, path[1:], v)
-			if err != nil {
-				return err
-			}
-
-			fb.fields[i].Value = va
-			return nil
-		}
+	container, err := fb.GetByField(path[0].FieldName)
+	if err != nil {
+		return err
 	}
 
-	subDoc := types.NewDocumentValue(NewFieldBuffer())
-	fb.Add(path[0].FieldName, subDoc)
+	va, err := setValueAtPath(container, path[1:], v)
+	if err != nil {
+		return err
+	}
 
-	return fb.Set(path, v)
+	fb.setFieldValue(path[0].FieldName, va)
+
+	return nil
 }
 
 // Iterate goes through all the fields of the document and calls the given function by passing each one of them.

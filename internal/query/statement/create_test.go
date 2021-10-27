@@ -1,6 +1,7 @@
 package statement_test
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -277,6 +278,19 @@ func TestCreateTable(t *testing.T) {
 			require.Zero(t, idx.Info.Types[0])
 			require.True(t, idx.Info.Unique)
 			assert.NoError(t, err)
+		})
+
+		t.Run("default with nested doc", func(t *testing.T) {
+			db, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+
+			err := testutil.Exec(db, tx, "CREATE TABLE test (a.b.c TEXT DEFAULT 1 + 1)")
+			assert.NoError(t, err)
+
+			var buf bytes.Buffer
+			err = testutil.IteratorToJSONArray(&buf, testutil.MustQuery(t, db, tx, "INSERT INTO test VALUES {}; SELECT * FROM test"))
+			assert.NoError(t, err)
+			require.JSONEq(t, `[{"a": {"b": {"c": "2"}}}]`, buf.String())
 		})
 	})
 }

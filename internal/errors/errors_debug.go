@@ -1,4 +1,5 @@
 //go:build debug && !wasm
+// +build debug,!wasm
 
 // Package errors provides a simple API to create and compare errors.
 // It captures the stacktrace when an error is created or wrapped, which can be then be inspected for debugging purposes.

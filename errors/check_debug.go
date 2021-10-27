@@ -1,4 +1,5 @@
 //go:build debug && !wasm
+// +build debug,!wasm
 
 package errors
 
