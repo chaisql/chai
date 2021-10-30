@@ -1,6 +1,15 @@
 package types
 
-import "github.com/genjidb/genji/internal/errors"
+import (
+	"bytes"
+	"encoding/base64"
+	"encoding/hex"
+	"math"
+	"strconv"
+
+	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/stringutil"
+)
 
 // A Value stores encoded data alongside its type.
 type value struct {
@@ -151,4 +160,220 @@ func IsZeroValue(v Value) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func (v *value) MarshalText() ([]byte, error) {
+	return MarshalTextIndent(v, "", "")
+}
+
+func MarshalTextIndent(v Value, prefix, indent string) ([]byte, error) {
+	var buf bytes.Buffer
+
+	err := marshalText(&buf, v, prefix, indent, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) error {
+	switch v.Type() {
+	case NullValue:
+		dst.WriteString("NULL")
+		return nil
+	case BoolValue:
+		dst.WriteString(strconv.FormatBool(v.V().(bool)))
+		return nil
+	case IntegerValue:
+		dst.WriteString(strconv.FormatInt(v.V().(int64), 10))
+		return nil
+	case DoubleValue:
+		f := v.V().(float64)
+		abs := math.Abs(f)
+		fmt := byte('f')
+		if abs != 0 {
+			if abs < 1e-6 || abs >= 1e15 {
+				fmt = 'e'
+			}
+		}
+
+		// By default the precision is -1 to use the smallest number of digits.
+		// See https://pkg.go.dev/strconv#FormatFloat
+		prec := -1
+		// if the number is round, add .0
+		if float64(int64(f)) == f {
+			prec = 1
+		}
+		dst.WriteString(strconv.FormatFloat(v.V().(float64), fmt, prec, 64))
+		return nil
+	case TextValue:
+		dst.WriteString(strconv.Quote(v.V().(string)))
+		return nil
+	case BlobValue:
+		src := v.V().([]byte)
+		dst.WriteString("\"\\x")
+		hex.NewEncoder(dst).Write(src)
+		dst.WriteByte('"')
+		return nil
+	case ArrayValue:
+		var nonempty bool
+		dst.WriteByte('[')
+		err := v.V().(Array).Iterate(func(i int, value Value) error {
+			nonempty = true
+			if i > 0 {
+				dst.WriteByte(',')
+				if prefix == "" {
+					dst.WriteByte(' ')
+				}
+			}
+			newline(dst, prefix, indent, depth+1)
+
+			return marshalText(dst, value, prefix, indent, depth+1)
+		})
+		if err != nil {
+			return err
+		}
+		if nonempty && prefix != "" {
+			dst.WriteByte('\n')
+		}
+		dst.WriteByte(']')
+		return nil
+	case DocumentValue:
+		dst.WriteByte('{')
+		var i int
+		err := v.V().(Document).Iterate(func(field string, value Value) error {
+			if i > 0 {
+				dst.WriteByte(',')
+				if prefix == "" {
+					dst.WriteByte(' ')
+				}
+			}
+			newline(dst, prefix, indent, depth+1)
+			i++
+
+			dst.WriteString(stringutil.NormalizeIdentifier(field, '"'))
+			dst.WriteString(": ")
+
+			return marshalText(dst, value, prefix, indent, depth+1)
+		})
+		if err != nil {
+			return err
+		}
+		if i > 0 && prefix != "" {
+			dst.WriteByte('\n')
+		}
+		dst.WriteRune('}')
+		return nil
+	default:
+		return stringutil.Errorf("unexpected type: %d", v.Type())
+	}
+}
+
+func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
+	dst.WriteString(prefix)
+	for i := 0; i < depth; i++ {
+		dst.WriteString(indent)
+	}
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (v *value) MarshalJSON() ([]byte, error) {
+	switch v.Type() {
+	case BoolValue, IntegerValue, TextValue:
+		return v.MarshalText()
+	case NullValue:
+		return []byte("null"), nil
+	case DoubleValue:
+		f := v.V().(float64)
+		abs := math.Abs(f)
+		fmt := byte('f')
+		if abs != 0 {
+			if abs < 1e-6 || abs >= 1e15 {
+				fmt = 'e'
+			}
+		}
+
+		// By default the precision is -1 to use the smallest number of digits.
+		// See https://pkg.go.dev/strconv#FormatFloat
+		prec := -1
+		return strconv.AppendFloat(nil, v.V().(float64), fmt, prec, 64), nil
+	case BlobValue:
+		src := v.V().([]byte)
+		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
+		dst[0] = '"'
+		dst[len(dst)-1] = '"'
+		base64.StdEncoding.Encode(dst[1:], src)
+		return dst, nil
+	case ArrayValue:
+		return jsonArray{Array: v.V().(Array)}.MarshalJSON()
+	case DocumentValue:
+		return jsonDocument{Document: v.V().(Document)}.MarshalJSON()
+	default:
+		return nil, stringutil.Errorf("unexpected type: %d", v.Type())
+	}
+}
+
+type jsonArray struct {
+	Array
+}
+
+func (j jsonArray) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteRune('[')
+	err := j.Array.Iterate(func(i int, v Value) error {
+		if i > 0 {
+			buf.WriteString(", ")
+		}
+
+		data, err := v.MarshalJSON()
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	buf.WriteRune(']')
+
+	return buf.Bytes(), nil
+}
+
+type jsonDocument struct {
+	Document
+}
+
+func (j jsonDocument) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+
+	buf.WriteByte('{')
+
+	var notFirst bool
+	err := j.Document.Iterate(func(f string, v Value) error {
+		if notFirst {
+			buf.WriteString(", ")
+		}
+		notFirst = true
+
+		buf.WriteString(strconv.Quote(f))
+		buf.WriteString(": ")
+
+		data, err := v.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	buf.WriteByte('}')
+
+	return buf.Bytes(), nil
 }
