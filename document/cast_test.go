@@ -31,7 +31,7 @@ func TestCastAs(t *testing.T) {
 		t.Helper()
 
 		for _, test := range tests {
-			t.Run(ValueToString(test.v), func(t *testing.T) {
+			t.Run(test.v.String(), func(t *testing.T) {
 				t.Helper()
 
 				got, err := CastAs(test.v, targetType)

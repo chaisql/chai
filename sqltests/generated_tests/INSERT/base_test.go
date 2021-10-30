@@ -2,7 +2,7 @@
 * CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
 * THIS FILE SHOULD NOT BE EDITED BY HAND
  */
-package statement_test
+package generated_test
 
 import (
 	"regexp"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGenInsertStatements(t *testing.T) {
+func TestBase(t *testing.T) {
 	setup := func(t *testing.T, db *genji.DB) {
 		t.Helper()
 

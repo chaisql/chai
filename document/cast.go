@@ -147,7 +147,7 @@ func CastAsText(v types.Value) (types.Value, error) {
 		return types.NewTextValue(base64.StdEncoding.EncodeToString(v.V().([]byte))), nil
 	}
 
-	d, err := ValueToJSON(v)
+	d, err := v.MarshalJSON()
 	if err != nil {
 		return nil, err
 	}

@@ -143,11 +143,12 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
 	t.Helper()
 
-	l := types.NewDocumentValue(d1)
-	r := types.NewDocumentValue(d2)
-	ok, err := types.IsEqual(l, r)
-	assert.NoError(t, err)
-	if !ok {
-		t.Fatal(cmp.Diff(transformDoc(d1), transformDoc(d2)))
+	t1, err := types.MarshalTextIndent(types.NewDocumentValue(d1), "\n", "  ")
+	require.NoError(t, err)
+	t2, err := types.MarshalTextIndent(types.NewDocumentValue(d2), "\n", "  ")
+	require.NoError(t, err)
+
+	if diff := cmp.Diff(string(t1), string(t2)); diff != "" {
+		require.Failf(t, "mismatched documents, (-want, +got)", "%s", diff)
 	}
 }

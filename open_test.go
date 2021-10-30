@@ -74,7 +74,7 @@ func TestOpen(t *testing.T) {
 		}
 
 		if count == 6 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT 'hello')", "store_name":"Aw==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")", "store_name":"Aw==", "type":"table"}`)
 			return nil
 		}
 

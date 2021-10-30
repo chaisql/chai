@@ -1,3 +1,4 @@
+//go:build !wasm
 // +build !wasm
 
 package document
@@ -96,7 +97,7 @@ func (m mapDocument) GetByField(field string) (types.Value, error) {
 
 // MarshalJSON implements the json.Marshaler interface.
 func (m mapDocument) MarshalJSON() ([]byte, error) {
-	return JsonDocument{Document: m}.MarshalJSON()
+	return MarshalJSON(m)
 }
 
 // NewFromStruct creates a document from a struct using reflection.

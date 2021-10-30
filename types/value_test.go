@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
@@ -81,12 +83,17 @@ func TestValueMarshalText(t *testing.T) {
 		{"bytes", []byte("bar"), `"\x626172"`},
 		{"string", "bar", `"bar"`},
 		{"bool", true, "true"},
-		{"int", int(10), "10"},
+		{"int", int64(10), "10"},
 		{"float64", 10.0, "10.0"},
 		{"float64", 10.1, "10.1"},
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
 		{"null", nil, "NULL"},
-		{"document", document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)).Add("b c", types.NewTextValue("foo")), `{a: 10, "b c": "foo"}`},
+		{"document", document.NewFieldBuffer().
+			Add("a", types.NewIntegerValue(10)).
+			Add("b c", types.NewTextValue("foo")).
+			Add(`"d e"`, types.NewTextValue("foo")),
+			"{a: 10, \"b c\": \"foo\", `\"d e\"`: \"foo\"}",
+		},
 		{"array", document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")), `[10, "foo"]`},
 		{"time", now, `"` + now.Format(time.RFC3339Nano) + `"`},
 	}
@@ -98,6 +105,12 @@ func TestValueMarshalText(t *testing.T) {
 			data, err := v.MarshalText()
 			assert.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
+			if test.name != "time" {
+				e := testutil.ParseExpr(t, string(data))
+				got, err := e.Eval(&environment.Environment{})
+				assert.NoError(t, err)
+				require.Equal(t, test.value, got.V())
+			}
 		})
 	}
 }
@@ -113,16 +126,20 @@ func TestMarshalTextIndent(t *testing.T) {
 		{"bytes", []byte("bar"), `"\x626172"`},
 		{"string", "bar", `"bar"`},
 		{"bool", true, "true"},
-		{"int", int(10), "10"},
+		{"int", int64(10), "10"},
 		{"float64", 10.0, "10.0"},
 		{"float64", 10.1, "10.1"},
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
 		{"null", nil, "NULL"},
 		{"document",
-			document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)).Add("b c", types.NewTextValue("foo")),
+			document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)).Add("b c", types.NewTextValue("foo")).Add("d", types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")))),
 			`{
   a: 10,
-  "b c": "foo"
+  "b c": "foo",
+  d: [
+    10,
+    "foo"
+  ]
 }`},
 		{"array",
 			document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")),
@@ -141,6 +158,12 @@ func TestMarshalTextIndent(t *testing.T) {
 			data, err := types.MarshalTextIndent(v, "\n", "  ")
 			assert.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
+			if test.name != "time" {
+				e := testutil.ParseExpr(t, string(data))
+				got, err := e.Eval(&environment.Environment{})
+				assert.NoError(t, err)
+				require.Equal(t, test.value, got.V())
+			}
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"embed"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -177,9 +179,15 @@ func normalize(filepath string) string {
 }
 
 var packageName string
+var genDir bool
+var outputDir string
+var exclude string
 
 func init() {
 	flag.StringVar(&packageName, "package", "", "package name for the generated files")
+	flag.BoolVar(&genDir, "gen-dir", false, "create source parent directory in this directory")
+	flag.StringVar(&outputDir, "output-dir", "", "target directory")
+	flag.StringVar(&exclude, "exclude", "", "exclude directory")
 	flag.Usage = func() {
 		fmt.Println("Usage: ./gensqltest -package=[NAME] input1 input2 ...")
 	}
@@ -193,7 +201,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	paths := os.Args[2:]
+	paths := flag.Args()
 	if len(paths) < 1 {
 		flag.Usage()
 		os.Exit(-1)
@@ -207,8 +215,15 @@ func main() {
 			log.Fatal(err)
 		}
 
-		if len(gpaths) < 1 {
-			log.Fatalf("%s does not exist", p)
+		if exclude != "" {
+			gpaths, err = filterGlob(gpaths, exclude)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		if len(gpaths) == 0 {
+			log.Fatalf("%s is empty", p)
 		}
 
 		for _, gp := range gpaths {
@@ -221,7 +236,22 @@ func main() {
 
 			name := normalize(gp)
 
-			out, err := os.OpenFile(name+"_test.go", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+			var outputPath string
+			if genDir {
+				parentDir := filepath.Dir(ts.Filename)
+				outputPath = filepath.Join(outputDir, filepath.Base(parentDir))
+			}
+
+			if outputPath != "" {
+				if _, err := os.Stat(outputPath); errors.Is(err, os.ErrNotExist) {
+					err := os.MkdirAll(outputPath, os.ModePerm)
+					if err != nil {
+						log.Fatal(outputPath, " ", err)
+					}
+				}
+			}
+
+			out, err := os.OpenFile(filepath.Join(outputPath, name+"_test.go"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 			if err != nil {
 				panic(err)
 			}
@@ -237,4 +267,40 @@ func main() {
 			}
 		}
 	}
+}
+
+func filterGlob(paths []string, excludeGlob string) ([]string, error) {
+	toExclude, err := filepath.Glob(exclude)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make(map[string]struct{})
+
+	for _, p := range paths {
+		abs, err := filepath.Abs(p)
+		if err != nil {
+			return nil, err
+		}
+
+		files[abs] = struct{}{}
+	}
+
+	for _, e := range toExclude {
+		abs, err := filepath.Abs(e)
+		if err != nil {
+			return nil, err
+		}
+		delete(files, abs)
+	}
+
+	filtered := make([]string, 0, len(files))
+	for f := range files {
+		i := sort.SearchStrings(filtered, f)
+		filtered = append(filtered, "")
+		copy(filtered[i+1:], filtered[i:])
+		filtered[i] = f
+	}
+
+	return filtered, nil
 }

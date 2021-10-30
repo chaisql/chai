@@ -22,13 +22,19 @@ SELECT     1  + 1 *      2 /                    4;
 -- test: escaping, double quotes
 SELECT '"A"';
 /* result:
-{"'\"A\"'": "\"A\""}
+{`"\\"A\\""`: "\"A\""}
 */
 
 -- test: escaping, single quotes
 SELECT "'A'";
 /* result:
-{"'\\'A\\''": "'A'"}
+{`"'A'"`: "'A'"}
+*/
+
+-- test: document
+SELECT {a: 1, b: 2 + 1};
+/* result:
+{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}
 */
 
 -- test: aliases
@@ -42,4 +48,18 @@ SELECT CAST(1 AS DOUBLE) AS A;
 /* result:
 {"A": 1.0}
 */
+
+-- test: pk()
+SELECT pk();
+/* result:
+{"pk()": null}
+*/
+
+-- test: field
+SELECT a;
+-- error:
+
+-- test: wildcard
+SELECT *;
+-- error:
 

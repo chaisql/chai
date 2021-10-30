@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -162,6 +163,11 @@ func IsZeroValue(v Value) (bool, error) {
 	return false, nil
 }
 
+func (v *value) String() string {
+	data, _ := v.MarshalText()
+	return string(data)
+}
+
 func (v *value) MarshalText() ([]byte, error) {
 	return MarshalTextIndent(v, "", "")
 }
@@ -235,7 +241,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 			return err
 		}
 		if nonempty && prefix != "" {
-			dst.WriteByte('\n')
+			newline(dst, prefix, indent, depth)
 		}
 		dst.WriteByte(']')
 		return nil
@@ -252,7 +258,13 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 			newline(dst, prefix, indent, depth+1)
 			i++
 
-			dst.WriteString(stringutil.NormalizeIdentifier(field, '"'))
+			var ident string
+			if strings.HasPrefix(field, "\"") {
+				ident = stringutil.NormalizeIdentifier(field, '`')
+			} else {
+				ident = stringutil.NormalizeIdentifier(field, '"')
+			}
+			dst.WriteString(ident)
 			dst.WriteString(": ")
 
 			return marshalText(dst, value, prefix, indent, depth+1)
@@ -260,9 +272,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		if err != nil {
 			return err
 		}
-		if i > 0 && prefix != "" {
-			dst.WriteByte('\n')
-		}
+		newline(dst, prefix, indent, depth)
 		dst.WriteRune('}')
 		return nil
 	default:

@@ -1,10 +1,10 @@
 package statement_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +65,7 @@ func TestExplainStmt(t *testing.T) {
 			v, err := d.GetByField("plan")
 			assert.NoError(t, err)
 
-			got, err := document.ValueToJSON(v)
+			got, err := json.Marshal(v)
 			assert.NoError(t, err)
 
 			require.JSONEq(t, test.expected, string(got))

@@ -80,6 +80,9 @@ func (t ValueType) IsAny() bool {
 type Value interface {
 	Type() ValueType
 	V() interface{}
+	String() string
+	MarshalJSON() ([]byte, error)
+	MarshalText() ([]byte, error)
 }
 
 // A Document represents a group of key value pairs.

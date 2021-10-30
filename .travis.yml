@@ -4,7 +4,7 @@ env:
   - GO111MODULE=on
 
 go:
-  - "1.16.x"
+  - "1.17.x"
   - tip
 
 matrix:
@@ -15,7 +15,8 @@ script:
   - go mod vendor
   - make
   - make gen
-  - go test -mod vendor -race -cover -coverprofile=coverage.txt -covermode=atomic -timeout=2m ./...
+  - go get github.com/ory/go-acc
+  - go-acc ./... -- -mod vendor -race -timeout=2m
   - cd ./cmd/genji && go test -race ./... && cd -
   - cd ./engine/badgerengine && go test -race ./... && cd -
 

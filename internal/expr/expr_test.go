@@ -67,9 +67,9 @@ func TestString(t *testing.T) {
 		"true",
 		"500",
 		`foo.bar[1]`,
-		`'hello'`,
-		`[1, 2, 'foo']`,
-		`{a: 'foo', b: 10}`,
+		`"hello"`,
+		`[1, 2, "foo"]`,
+		`{a: "foo", b: 10}`,
 		"pk()",
 		"CAST(10 AS integer)",
 	}

@@ -2,7 +2,7 @@
 * CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
 * THIS FILE SHOULD NOT BE EDITED BY HAND
  */
-package statement_test
+package generated_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
-func TestGenInsertWithConstraints(t *testing.T) {
+func TestConstraints(t *testing.T) {
 	setup := func(t *testing.T, db *genji.DB) {
 		t.Helper()
 

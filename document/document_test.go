@@ -620,7 +620,7 @@ func TestPath(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				res, err := document.ValueToJSON(v)
+				res, err := json.Marshal(v)
 				assert.NoError(t, err)
 				require.JSONEq(t, test.result, string(res))
 			}

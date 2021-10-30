@@ -2,7 +2,7 @@
 * CODE GENERATED AUTOMATICALLY WITH github.com/genjidb/genji/dev/gensqltest
 * THIS FILE SHOULD NOT BE EDITED BY HAND
  */
-package statement_test
+package generated_test
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
-func TestGenSelect(t *testing.T) {
+func TestProjectionNoTable(t *testing.T) {
 	setup := func(t *testing.T, db *genji.DB) {
 		t.Helper()
 
@@ -108,7 +108,7 @@ SELECT '"A"';
 			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"'\"A\"'": "\"A\""}
+{` + "`" + `"\\"A\\""` + "`" + `: "\"A\""}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -131,7 +131,30 @@ SELECT "'A'";
 			assert.NoError(t, err)
 			defer res.Close()
 			raw := `
-{"'\\'A\\''": "'A'"}
+{` + "`" + `"'A'"` + "`" + `: "'A'"}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("document", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`SELECT {a: 1, b: 2 + 1};`, func(t *testing.T) {
+			q := `
+SELECT {a: 1, b: 2 + 1};
+`
+			res, err := db.Query(q)
+			assert.NoError(t, err)
+			defer res.Close()
+			raw := `
+{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}
 `
 			testutil.RequireStreamEq(t, raw, res)
 		})
@@ -180,6 +203,65 @@ SELECT CAST(1 AS DOUBLE) AS A;
 {"A": 1.0}
 `
 			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("pk()", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`SELECT pk();`, func(t *testing.T) {
+			q := `
+SELECT pk();
+`
+			res, err := db.Query(q)
+			assert.NoError(t, err)
+			defer res.Close()
+			raw := `
+{"pk()": null}
+`
+			testutil.RequireStreamEq(t, raw, res)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("field", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`SELECT a;`, func(t *testing.T) {
+			q := `
+SELECT a;
+`
+			err := db.Exec(q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
+		})
+
+	})
+
+	// --------------------------------------------------------------------------
+	t.Run("wildcard", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		setup(t, db)
+
+		t.Run(`SELECT *;`, func(t *testing.T) {
+			q := `
+SELECT *;
+`
+			err := db.Exec(q)
+			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
 
 	})

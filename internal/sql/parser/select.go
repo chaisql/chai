@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
@@ -148,7 +149,7 @@ func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
 // parseProjectedExprs parses the list of projected fields.
 func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 	// Parse first (required) result path.
-	pe, err := p.parseProjectedExpr()
+	pe, hasWildcard, err := p.parseProjectedExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -161,25 +162,30 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 			return pexprs, nil
 		}
 
-		if pe, err = p.parseProjectedExpr(); err != nil {
+		pe, wc, err := p.parseProjectedExpr()
+		if err != nil {
 			return nil, err
 		}
+		if wc && hasWildcard {
+			return nil, stringutil.Errorf("cannot select more than one wildcard")
+		}
+		hasWildcard = wc
 
 		pexprs = append(pexprs, pe)
 	}
 }
 
 // parseProjectedExpr parses one projected expression.
-func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
+func (p *Parser) parseProjectedExpr() (expr.Expr, bool, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return expr.Wildcard{}, nil
+		return expr.Wildcard{}, true, nil
 	}
 	p.Unscan()
 
 	pe, err := p.ParseExpr()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	ne := &expr.NamedExpr{Expr: pe}
@@ -188,16 +194,16 @@ func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
 		ne.ExprName, err = p.parseIdent()
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
-		return ne, nil
+		return ne, false, nil
 	}
 	p.Unscan()
 
 	ne.ExprName = pe.String()
 
-	return ne, nil
+	return ne, false, nil
 }
 
 func (p *Parser) parseDistinct() (bool, error) {
