@@ -74,6 +74,7 @@ func (p *Parser) parseCompoundSelectStatement() (*statement.StreamStmt, error) {
 
 			if stmt == nil {
 				stmt = core
+				stmt.ReadOnly = readOnly
 				break
 			}
 		}

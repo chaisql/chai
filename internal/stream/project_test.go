@@ -1,6 +1,7 @@
 package stream_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -61,9 +62,11 @@ func TestProject(t *testing.T) {
 				require.Equal(t, &inEnv, out.GetOuter())
 				d, ok := out.GetDocument()
 				require.True(t, ok)
-				require.JSONEq(t, test.out, document.ValueToString(types.NewDocumentValue(d)))
+				tt, err := json.Marshal(types.NewDocumentValue(d))
+				require.NoError(t, err)
+				require.JSONEq(t, test.out, string(tt))
 
-				err := d.Iterate(func(field string, want types.Value) error {
+				err = d.Iterate(func(field string, want types.Value) error {
 					got, err := d.GetByField(field)
 					assert.NoError(t, err)
 					require.Equal(t, want, got)

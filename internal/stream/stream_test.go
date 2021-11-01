@@ -1,16 +1,15 @@
 package stream_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,7 +26,9 @@ func TestStream(t *testing.T) {
 	err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 		d, ok := env.GetDocument()
 		require.True(t, ok)
-		require.JSONEq(t, fmt.Sprintf(`{"a": %d}`, count+3), document.ValueToString(types.NewDocumentValue(d)))
+		tt, err := json.Marshal(d)
+		require.NoError(t, err)
+		require.JSONEq(t, fmt.Sprintf(`{"a": %d}`, count+3), string(tt))
 		count++
 		return nil
 	})

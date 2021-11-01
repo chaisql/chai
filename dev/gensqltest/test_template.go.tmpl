@@ -16,6 +16,7 @@ import (
 func Test{{ .TestName }}(t *testing.T) {
 	setup := func(t *testing.T, db *genji.DB) {
 		t.Helper()
+        {{- if ne (len .Suite.Setup) 0 }}
 
 		q := `
 {{- range .Suite.Setup }}
@@ -24,6 +25,7 @@ func Test{{ .TestName }}(t *testing.T) {
 `
         err := db.Exec(q)
         assert.NoError(t, err)
+        {{- end }}
     }
     {{""}}
     {{- range .Suite.Tests }}

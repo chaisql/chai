@@ -36,7 +36,7 @@ func ParseResultStream(stream string) *ResultStream {
 }
 
 func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
-	// t.Helper()
+	t.Helper()
 	docs := ParseResultStream(raw)
 
 	want := document.NewValueBuffer()
