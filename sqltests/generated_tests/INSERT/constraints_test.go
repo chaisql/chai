@@ -12,15 +12,15 @@ import (
 )
 
 func TestConstraints(t *testing.T) {
-	setup := func(t *testing.T, db *genji.DB) {
+	setup := func(t *testing.T, db *genji.DB) {}
+	postSetup := func(t *testing.T, db *genji.DB) {}
+	setup = func(t *testing.T, db *genji.DB) {
 		t.Helper()
-
 		q := `
 `
 		err := db.Exec(q)
 		assert.NoError(t, err)
 	}
-
 	// --------------------------------------------------------------------------
 	t.Run("insert with errors, not null without type constraint", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
@@ -28,7 +28,7 @@ func TestConstraints(t *testing.T) {
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a NOT NULL);
@@ -37,7 +37,6 @@ INSERT INTO test_e VALUES {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -47,7 +46,7 @@ INSERT INTO test_e VALUES {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a ARRAY NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a ARRAY NOT NULL);
@@ -56,7 +55,6 @@ INSERT INTO test_e VALUES {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -66,7 +64,7 @@ INSERT INTO test_e VALUES {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a ARRAY NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a ARRAY NOT NULL);
@@ -75,7 +73,6 @@ INSERT INTO test_e VALUES {a: 42};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -85,7 +82,7 @@ INSERT INTO test_e VALUES {a: 42};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BLOB);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BLOB);
@@ -94,7 +91,6 @@ INSERT INTO test_e {a: true};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -104,7 +100,7 @@ INSERT INTO test_e {a: true};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BLOB NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BLOB NOT NULL);
@@ -113,7 +109,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -123,7 +118,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BLOB NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BLOB NOT NULL);
@@ -132,7 +127,6 @@ INSERT INTO test_e {a: 42};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -142,7 +136,7 @@ INSERT INTO test_e {a: 42};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BOOL NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BOOL NOT NULL);
@@ -151,7 +145,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -161,7 +154,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BYTES);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BYTES);
@@ -170,7 +163,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -180,7 +172,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BYTES NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BYTES NOT NULL);
@@ -189,7 +181,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -199,7 +190,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BYTES NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BYTES NOT NULL);
@@ -208,7 +199,6 @@ INSERT INTO test_e {a: 42};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -218,7 +208,7 @@ INSERT INTO test_e {a: 42};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOCUMENT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOCUMENT);
@@ -227,7 +217,6 @@ INSERT INTO test_e {"a": "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -237,7 +226,7 @@ INSERT INTO test_e {"a": "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOCUMENT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOCUMENT NOT NULL);
@@ -246,7 +235,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -256,7 +244,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOCUMENT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOCUMENT NOT NULL);
@@ -265,7 +253,6 @@ INSERT INTO test_e {a: false};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -275,7 +262,7 @@ INSERT INTO test_e {a: false};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE);
@@ -284,7 +271,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -294,7 +280,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE NOT NULL);
@@ -303,7 +289,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -313,7 +298,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE NOT NULL);
@@ -322,7 +307,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -332,7 +316,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE PRECISION);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE PRECISION);
@@ -341,7 +325,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -351,7 +334,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);
@@ -360,7 +343,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -370,7 +352,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a DOUBLE PRECISION NOT NULL);
@@ -379,7 +361,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -389,7 +370,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a REAL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a REAL);
@@ -398,7 +379,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -408,7 +388,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a REAL NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a REAL NOT NULL);
@@ -417,7 +397,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -427,7 +406,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a REAL NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a REAL NOT NULL);
@@ -436,7 +415,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -446,7 +424,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INTEGER);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INTEGER);
@@ -455,7 +433,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -465,7 +442,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INTEGER NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INTEGER NOT NULL);
@@ -474,7 +451,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -484,7 +460,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INTEGER NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INTEGER NOT NULL);
@@ -493,7 +469,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -503,7 +478,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT2);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT2);
@@ -512,7 +487,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -522,7 +496,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT2 NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT2 NOT NULL);
@@ -531,7 +505,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -541,7 +514,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT NOT NULL);
@@ -550,7 +523,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -560,7 +532,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT8);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT8);
@@ -569,7 +541,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -579,7 +550,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT8 NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT8 NOT NULL);
@@ -588,7 +559,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -598,7 +568,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a INT8 NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a INT8 NOT NULL);
@@ -607,7 +577,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -617,7 +586,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a TINYINT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a TINYINT);
@@ -626,7 +595,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -636,7 +604,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a TINYINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a TINYINT NOT NULL);
@@ -645,7 +613,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -655,7 +622,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a TINYINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a TINYINT NOT NULL);
@@ -664,7 +631,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -674,7 +640,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BIGINT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BIGINT);
@@ -683,7 +649,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -693,7 +658,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BIGINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BIGINT NOT NULL);
@@ -702,7 +667,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -712,7 +676,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a BIGINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a BIGINT NOT NULL);
@@ -721,7 +685,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -731,7 +694,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a SMALLINT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a SMALLINT);
@@ -740,7 +703,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -750,7 +712,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a SMALLINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a SMALLINT NOT NULL);
@@ -759,7 +721,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -769,7 +730,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a SMALLINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a SMALLINT NOT NULL);
@@ -778,7 +739,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -788,7 +748,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a MEDIUMINT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a MEDIUMINT);
@@ -797,7 +757,6 @@ INSERT INTO test_e {a: "foo"};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -807,7 +766,7 @@ INSERT INTO test_e {a: "foo"};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a MEDIUMINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a MEDIUMINT NOT NULL);
@@ -816,7 +775,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -826,7 +784,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a MEDIUMINT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a MEDIUMINT NOT NULL);
@@ -835,7 +793,6 @@ INSERT INTO test_e {a: [1,2,3]};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -845,7 +802,7 @@ INSERT INTO test_e {a: [1,2,3]};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a TEXT NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a TEXT NOT NULL);
@@ -854,7 +811,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -864,7 +820,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a VARCHAR(255) NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a VARCHAR(255) NOT NULL);
@@ -873,7 +829,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -883,7 +838,7 @@ INSERT INTO test_e {};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_e (a CHARACTER(64) NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_e (a CHARACTER(64) NOT NULL);
@@ -892,7 +847,6 @@ INSERT INTO test_e {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 }

@@ -27,6 +27,7 @@ type statement struct {
 	Result     []string
 	ErrorMatch string
 	Fails      bool
+	Sorted     bool
 }
 
 type test struct {
@@ -34,9 +35,15 @@ type test struct {
 	Statements []*statement
 }
 
+type suite struct {
+	Name       string
+	Statements []string
+}
+
 type testSuite struct {
 	Filename string
 	Setup    []string
+	Suites   []suite
 	Tests    []*test
 }
 
@@ -51,6 +58,8 @@ func parse(r io.Reader, filename string) *testSuite {
 
 	var readingResult bool
 	var readingSetup bool
+	var readingSuite bool
+	var suiteIndex int = -1
 
 	for s.Scan() {
 		line := s.Text()
@@ -65,9 +74,15 @@ func parse(r io.Reader, filename string) *testSuite {
 			// ignore blank lines
 		case strings.HasPrefix(line, "-- setup:"):
 			readingSetup = true
-
+		case strings.HasPrefix(line, "-- suite:"):
+			readingSuite = true
+			suiteIndex++
+			ts.Suites = append(ts.Suites, suite{
+				Name: strings.TrimPrefix(line, "-- suite: "),
+			})
 		case strings.HasPrefix(line, "-- test:"):
 			readingSetup = false
+			readingSuite = false
 
 			// create a new test
 			name := strings.TrimPrefix(line, "-- test: ")
@@ -79,7 +94,9 @@ func parse(r io.Reader, filename string) *testSuite {
 
 		case strings.HasPrefix(line, "/* result:"):
 			readingResult = true
-
+		case strings.HasPrefix(line, "/* sorted-result:"):
+			readingResult = true
+			curStmt.Sorted = true
 		case strings.HasPrefix(line, "-- error:"):
 			error := strings.TrimPrefix(line, "-- error:")
 			error = strings.TrimSpace(error)
@@ -95,7 +112,9 @@ func parse(r io.Reader, filename string) *testSuite {
 		case strings.HasPrefix(line, "--"): // ignore normal comments
 
 		default:
-			if readingSetup {
+			if readingSuite {
+				ts.Suites[suiteIndex].Statements = append(ts.Suites[suiteIndex].Statements, line)
+			} else if readingSetup {
 				ts.Setup = append(ts.Setup, line)
 			} else if readingResult && strings.TrimSpace(line) == "*/" {
 				readingResult = false
@@ -121,6 +140,25 @@ func escapeBackticks(text string) string {
 	return strings.ReplaceAll(text, "`", "`+\"`\"+`")
 }
 
+func concatSlices(s1, s2 []string) []string {
+	return append(s1, s2...)
+}
+
+func dict(values ...interface{}) (map[string]interface{}, error) {
+	if len(values)%2 != 0 {
+		return nil, errors.New("invalid dict call")
+	}
+	dict := make(map[string]interface{}, len(values)/2)
+	for i := 0; i < len(values); i += 2 {
+		key, ok := values[i].(string)
+		if !ok {
+			return nil, errors.New("dict keys must be strings")
+		}
+		dict[key] = values[i+1]
+	}
+	return dict, nil
+}
+
 func camelize(str string) string {
 	str = strings.ReplaceAll(str, "_", " ")
 	str = strings.Title(str)
@@ -134,6 +172,8 @@ func generate(ts *testSuite, packageName string, w io.Writer) error {
 
 	funcMap := template.FuncMap{
 		"escapeBackticks": escapeBackticks,
+		"concatSlices":    concatSlices,
+		"dict":            dict,
 	}
 
 	tmpl, err := template.New("test_template.go.tmpl").Funcs(funcMap).ParseFS(tmplFS, "test_template.go.tmpl")
@@ -164,7 +204,7 @@ func generate(ts *testSuite, packageName string, w io.Writer) error {
 	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("go imports error: %w", err)
 	}
 
 	_, err = w.Write(output)

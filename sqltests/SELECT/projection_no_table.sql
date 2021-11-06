@@ -1,6 +1,3 @@
--- setup:
-CREATE TABLE foo;
-
 -- test: simple projection
 SELECT 1;
 /* result:

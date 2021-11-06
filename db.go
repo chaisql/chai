@@ -20,7 +20,7 @@ import (
 
 // DB represents a collection of tables stored in the underlying engine.
 type DB struct {
-	db  *database.Database
+	DB  *database.Database
 	ctx context.Context
 }
 
@@ -47,7 +47,7 @@ func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (
 	}
 
 	return &DB{
-		db:  db,
+		DB:  db,
 		ctx: ctx,
 	}, nil
 }
@@ -60,13 +60,13 @@ func (db DB) WithContext(ctx context.Context) *DB {
 
 // Close the database.
 func (db *DB) Close() error {
-	return db.db.Close()
+	return db.DB.Close()
 }
 
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.db.BeginTx(db.ctx, &database.TxOptions{
+	tx, err := db.DB.BeginTx(db.ctx, &database.TxOptions{
 		ReadOnly: !writable,
 	})
 	if err != nil {
@@ -357,7 +357,7 @@ func (r *Result) Close() (err error) {
 func newQueryContext(db *DB, tx *Tx, params []environment.Param) *query.Context {
 	ctx := query.Context{
 		Ctx:    db.ctx,
-		DB:     db.db,
+		DB:     db.DB,
 		Params: params,
 	}
 

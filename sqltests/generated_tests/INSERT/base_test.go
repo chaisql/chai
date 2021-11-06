@@ -15,9 +15,10 @@ import (
 )
 
 func TestBase(t *testing.T) {
-	setup := func(t *testing.T, db *genji.DB) {
+	setup := func(t *testing.T, db *genji.DB) {}
+	postSetup := func(t *testing.T, db *genji.DB) {}
+	setup = func(t *testing.T, db *genji.DB) {
 		t.Helper()
-
 		q := `
 CREATE TABLE test;
 CREATE TABLE test_idx;
@@ -28,7 +29,6 @@ CREATE INDEX idx_c ON test_idx (c);
 		err := db.Exec(q)
 		assert.NoError(t, err)
 	}
-
 	// --------------------------------------------------------------------------
 	t.Run("values, no columns", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
@@ -36,7 +36,7 @@ CREATE INDEX idx_c ON test_idx (c);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES ("a", 'b', 'c');`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES ("a", 'b', 'c');
@@ -44,7 +44,6 @@ INSERT INTO test VALUES ("a", 'b', 'c');
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -54,7 +53,7 @@ INSERT INTO test VALUES ("a", 'b', 'c');
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');
@@ -71,9 +70,8 @@ SELECT pk(), * FROM test;
   "c":"c"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -83,7 +81,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a) VALUES (a);`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a) VALUES (a);
@@ -92,7 +90,6 @@ INSERT INTO test (a) VALUES (a);
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("field not found"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -102,7 +99,7 @@ INSERT INTO test (a) VALUES (a);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a) VALUES (`+"`"+`a`+"`"+`);`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a) VALUES (` + "`" + `a` + "`" + `);
@@ -111,7 +108,6 @@ INSERT INTO test (a) VALUES (` + "`" + `a` + "`" + `);
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("field not found"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -121,7 +117,7 @@ INSERT INTO test (a) VALUES (` + "`" + `a` + "`" + `);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a, `+"`"+`foo bar`+"`"+`) VALUES ('c', 'd');`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a, ` + "`" + `foo bar` + "`" + `) VALUES ('c', 'd');
@@ -137,9 +133,8 @@ SELECT pk(), * FROM test;
   "foo bar": "d"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -149,7 +144,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3]);`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
@@ -166,9 +161,8 @@ SELECT pk(), * FROM test;
   "c": [1.0, 2.0, 3.0]
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -178,7 +172,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});`, func(t *testing.T) {
 			q := `
 INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
@@ -198,9 +192,8 @@ SELECT pk(), * FROM test;
   }
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -210,7 +203,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1};`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1};
@@ -227,9 +220,8 @@ SELECT pk(), * FROM test;
   "c": true
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -239,7 +231,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES {a: [1, 2, 3]};`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES {a: [1, 2, 3]};
@@ -258,9 +250,8 @@ SELECT pk(), * FROM test;
   ]
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -270,7 +261,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES {'a': 'a', b: 2.3};`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES {'a': 'a', b: 2.3};
@@ -287,7 +278,6 @@ SELECT pk(), * FROM test;
 			assert.NoError(t, err)
 			defer res.Close()
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -297,7 +287,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES {"a": "b"};`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES {"a": "b"};
@@ -312,9 +302,8 @@ SELECT pk(), * FROM test;
   "a": "b"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -324,7 +313,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test VALUES {a: 400, b: a * 4};`, func(t *testing.T) {
 			q := `
 INSERT INTO test VALUES {a: 400, b: a * 4};
@@ -336,9 +325,8 @@ SELECT pk(), * FROM test;
 			raw := `
 {"pk()":1,"a":400.0,"b":1600.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -348,7 +336,7 @@ SELECT pk(), * FROM test;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES ("a", 'b', 'c');`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES ("a", 'b', 'c');
@@ -356,7 +344,6 @@ INSERT INTO test_idx VALUES ("a", 'b', 'c');
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -366,7 +353,7 @@ INSERT INTO test_idx VALUES ("a", 'b', 'c');
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a, b, c) VALUES ('a', 'b', 'c');`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a, b, c) VALUES ('a', 'b', 'c');
@@ -383,9 +370,8 @@ SELECT pk(), * FROM test_idx;
   "c": "c"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -395,7 +381,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a) VALUES (a);`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a) VALUES (a);
@@ -404,7 +390,6 @@ INSERT INTO test_idx (a) VALUES (a);
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("field not found"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -414,7 +399,7 @@ INSERT INTO test_idx (a) VALUES (a);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a) VALUES (`+"`"+`a`+"`"+`);`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a) VALUES (` + "`" + `a` + "`" + `);
@@ -423,7 +408,6 @@ INSERT INTO test_idx (a) VALUES (` + "`" + `a` + "`" + `);
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("field not found"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -433,7 +417,7 @@ INSERT INTO test_idx (a) VALUES (` + "`" + `a` + "`" + `);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a, `+"`"+`foo bar`+"`"+`) VALUES ('c', 'd');`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a, ` + "`" + `foo bar` + "`" + `) VALUES ('c', 'd');
@@ -449,9 +433,8 @@ SELECT pk(), * FROM test_idx;
   "foo bar": "d"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -461,7 +444,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', [1, 2, 3]);`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
@@ -478,9 +461,8 @@ SELECT pk(), * FROM test_idx;
   "c": [1.0, 2.0, 3.0]
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -490,7 +472,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
@@ -510,9 +492,8 @@ SELECT pk(), * FROM test_idx;
   }
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -522,7 +503,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES {a: 'a', b: 2.3, c: 1 = 1};`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES {a: 'a', b: 2.3, c: 1 = 1};
@@ -539,9 +520,8 @@ SELECT pk(), * FROM test_idx;
   "c": true
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -551,7 +531,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES {a: [1, 2, 3]};`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES {a: [1, 2, 3]};
@@ -570,9 +550,8 @@ SELECT pk(), * FROM test_idx;
   ]
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -582,7 +561,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES {'a': 'a', b: 2.3};`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES {'a': 'a', b: 2.3};
@@ -599,7 +578,6 @@ SELECT pk(), * FROM test_idx;
 			assert.NoError(t, err)
 			defer res.Close()
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -609,7 +587,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES {"a": "b"};`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES {"a": "b"};
@@ -624,9 +602,8 @@ SELECT pk(), * FROM test_idx;
   "a": "b"
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -636,7 +613,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test_idx VALUES {a: 400, b: a * 4};`, func(t *testing.T) {
 			q := `
 INSERT INTO test_idx VALUES {a: 400, b: a * 4};
@@ -648,9 +625,8 @@ SELECT pk(), * FROM test_idx;
 			raw := `
 {"pk()":1,"a":400.0,"b":1600.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -660,7 +636,7 @@ SELECT pk(), * FROM test_idx;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};`, func(t *testing.T) {
 			q := `
 INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
@@ -669,7 +645,6 @@ INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("cannot write to read-only table"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -679,7 +654,7 @@ INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE testpk (foo INTEGER PRIMARY KEY);`, func(t *testing.T) {
 			q := `
 CREATE TABLE testpk (foo INTEGER PRIMARY KEY);
@@ -688,7 +663,6 @@ INSERT INTO testpk (bar) VALUES (1);
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 		t.Run(`INSERT INTO testpk (bar, foo) VALUES (1, 2);`, func(t *testing.T) {
 			q := `
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
@@ -698,7 +672,6 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 			require.NotNil(t, err, "expected error, got nil")
 			require.Regexp(t, regexp.MustCompile("duplicate"), err.Error())
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -708,7 +681,7 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO test (`+"`"+`pk()`+"`"+`, `+"`"+`key`+"`"+`) VALUES (1, 2);`, func(t *testing.T) {
 			q := `
 INSERT INTO test (` + "`" + `pk()` + "`" + `, ` + "`" + `key` + "`" + `) VALUES (1, 2);
@@ -717,7 +690,6 @@ INSERT INTO test (` + "`" + `pk()` + "`" + `, ` + "`" + `key` + "`" + `) VALUES 
 			assert.NoError(t, err)
 			defer res.Close()
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -727,7 +699,7 @@ INSERT INTO test (` + "`" + `pk()` + "`" + `, ` + "`" + `key` + "`" + `) VALUES 
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_tc(`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_tc(
@@ -764,9 +736,8 @@ SELECT * FROM test_tc;
   }
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -776,7 +747,7 @@ SELECT * FROM test_tc;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_ic(a INTEGER, s.b TEXT);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_ic(a INTEGER, s.b TEXT);
@@ -785,7 +756,6 @@ INSERT INTO test_ic VALUES {s: 1};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -795,7 +765,7 @@ INSERT INTO test_ic VALUES {s: 1};
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);
@@ -821,9 +791,8 @@ SELECT * FROM test_oc;
   c: 10
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -833,7 +802,7 @@ SELECT * FROM test_oc;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_oc(a INTEGER PRIMARY KEY);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_oc(a INTEGER PRIMARY KEY);
@@ -851,9 +820,8 @@ SELECT * FROM test_oc;
   c: 3.0
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -863,7 +831,7 @@ SELECT * FROM test_oc;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_oc(a INTEGER UNIQUE);
@@ -881,9 +849,8 @@ SELECT * FROM test_oc;
   c: 3.0
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -893,7 +860,7 @@ SELECT * FROM test_oc;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_oc(a INTEGER NOT NULL);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_oc(a INTEGER NOT NULL);
@@ -902,7 +869,6 @@ INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -912,7 +878,7 @@ INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_oc(a INTEGER UNIQUE);`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_oc(a INTEGER UNIQUE);
@@ -935,9 +901,8 @@ SELECT * FROM test_oc;
   a: 3
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -947,7 +912,7 @@ SELECT * FROM test_oc;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_df (a.b TEXT DEFAULT "foo");`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_df (a.b TEXT DEFAULT "foo");
@@ -962,9 +927,8 @@ SELECT * FROM test_df;
   a: {b: "foo"}
 }
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -974,7 +938,7 @@ SELECT * FROM test_df;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");`, func(t *testing.T) {
 			q := `
 CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");
@@ -983,7 +947,6 @@ INSERT INTO test_df VALUES {};
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 }

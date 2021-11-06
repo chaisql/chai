@@ -13,17 +13,17 @@ import (
 )
 
 func TestAggregation(t *testing.T) {
-	setup := func(t *testing.T, db *genji.DB) {
+	setup := func(t *testing.T, db *genji.DB) {}
+	postSetup := func(t *testing.T, db *genji.DB) {}
+	setup = func(t *testing.T, db *genji.DB) {
 		t.Helper()
-
 		q := `
-CREATE TABLE foo(a int);
-INSERT INTO foo (a) VALUES (1), (2), (3), (4), (5);
+CREATE TABLE test(a int);
+INSERT INTO test (a) VALUES (1), (2), (3), (4), (5);
 `
 		err := db.Exec(q)
 		assert.NoError(t, err)
 	}
-
 	// --------------------------------------------------------------------------
 	t.Run("GROUP BY a", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
@@ -31,10 +31,10 @@ INSERT INTO foo (a) VALUES (1), (2), (3), (4), (5);
 		defer db.Close()
 
 		setup(t, db)
-
-		t.Run(`SELECT a FROM foo GROUP BY a`, func(t *testing.T) {
+		postSetup(t, db)
+		t.Run(`SELECT a FROM test GROUP BY a`, func(t *testing.T) {
 			q := `
-SELECT a FROM foo GROUP BY a
+SELECT a FROM test GROUP BY a
 `
 			res, err := db.Query(q)
 			assert.NoError(t, err)
@@ -46,9 +46,8 @@ SELECT a FROM foo GROUP BY a
 {"a": 4}
 {"a": 5}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -58,10 +57,10 @@ SELECT a FROM foo GROUP BY a
 		defer db.Close()
 
 		setup(t, db)
-
-		t.Run(`SELECT a % 2 FROM foo GROUP BY a % 2`, func(t *testing.T) {
+		postSetup(t, db)
+		t.Run(`SELECT a % 2 FROM test GROUP BY a % 2`, func(t *testing.T) {
 			q := `
-SELECT a % 2 FROM foo GROUP BY a % 2
+SELECT a % 2 FROM test GROUP BY a % 2
 `
 			res, err := db.Query(q)
 			assert.NoError(t, err)
@@ -70,9 +69,8 @@ SELECT a % 2 FROM foo GROUP BY a % 2
 {"a % 2": 0}
 {"a % 2": 1}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 }

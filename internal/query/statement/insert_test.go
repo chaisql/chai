@@ -120,7 +120,7 @@ func TestInsertStmt(t *testing.T) {
 		assert.NoError(t, err)
 		defer res.Close()
 
-		testutil.RequireStreamEq(t, ``, res)
+		testutil.RequireStreamEq(t, ``, res, false)
 	})
 
 	t.Run("with NEXT VALUE FOR", func(t *testing.T) {

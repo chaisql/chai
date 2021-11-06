@@ -13,9 +13,10 @@ import (
 )
 
 func TestInsertSelect(t *testing.T) {
-	setup := func(t *testing.T, db *genji.DB) {
+	setup := func(t *testing.T, db *genji.DB) {}
+	postSetup := func(t *testing.T, db *genji.DB) {}
+	setup = func(t *testing.T, db *genji.DB) {
 		t.Helper()
-
 		q := `
 CREATE TABLE foo;
 CREATE TABLE bar;
@@ -24,7 +25,6 @@ INSERT INTO bar (a, b) VALUES (1, 10);
 		err := db.Exec(q)
 		assert.NoError(t, err)
 	}
-
 	// --------------------------------------------------------------------------
 	t.Run("same table", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
@@ -32,7 +32,7 @@ INSERT INTO bar (a, b) VALUES (1, 10);
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo SELECT * FROM foo;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo SELECT * FROM foo;
@@ -40,7 +40,6 @@ INSERT INTO foo SELECT * FROM foo;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -50,7 +49,7 @@ INSERT INTO foo SELECT * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo SELECT * FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo SELECT * FROM bar;
@@ -62,9 +61,8 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1.0, "b":10.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -74,7 +72,7 @@ SELECT pk(), * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo SELECT a FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo SELECT a FROM bar;
@@ -86,9 +84,8 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -98,7 +95,7 @@ SELECT pk(), * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (a, b) SELECT * FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (a, b) SELECT * FROM bar;
@@ -110,9 +107,8 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "a":1.0, "b":10.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -122,7 +118,7 @@ SELECT pk(), * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (c, d) SELECT a, b FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (c, d) SELECT a, b FROM bar;
@@ -134,9 +130,8 @@ SELECT pk(), * FROM foo;
 			raw := `
 {"pk()":1, "c":1.0, "d":10.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -146,7 +141,7 @@ SELECT pk(), * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (c) SELECT * FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (c) SELECT * FROM bar;
@@ -154,7 +149,6 @@ INSERT INTO foo (c) SELECT * FROM bar;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -164,7 +158,7 @@ INSERT INTO foo (c) SELECT * FROM bar;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (c, d) SELECT a, b, c FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
@@ -172,7 +166,6 @@ INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -182,7 +175,7 @@ INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (c, d, e) SELECT * FROM bar;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (c, d, e) SELECT * FROM bar;
@@ -190,7 +183,6 @@ INSERT INTO foo (c, d, e) SELECT * FROM bar;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -200,7 +192,7 @@ INSERT INTO foo (c, d, e) SELECT * FROM bar;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`INSERT INTO foo (c, d) SELECT a FROM bar`+"`"+`;`, func(t *testing.T) {
 			q := `
 INSERT INTO foo (c, d) SELECT a FROM bar` + "`" + `;
@@ -208,7 +200,6 @@ INSERT INTO foo (c, d) SELECT a FROM bar` + "`" + `;
 			err := db.Exec(q)
 			assert.Errorf(t, err, "expected\n%s\nto raise an error but got none", q)
 		})
-
 	})
 
 }

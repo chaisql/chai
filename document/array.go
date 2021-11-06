@@ -57,6 +57,7 @@ func ArrayContains(a types.Array, v types.Value) (bool, error) {
 // ValueBuffer is an array that holds values in memory.
 type ValueBuffer struct {
 	Values []types.Value
+	err    error
 }
 
 // NewValueBuffer creates a buffer of values.
@@ -281,23 +282,16 @@ func (vb *ValueBuffer) IsEqual(other *ValueBuffer) bool {
 	return true
 }
 
-type sortableArray struct {
-	vb  *ValueBuffer
-	err error
+func (vb *ValueBuffer) Swap(i, j int) {
+	vb.Values[i], vb.Values[j] = vb.Values[j], vb.Values[i]
 }
 
-func (a sortableArray) Len() int {
-	return len(a.vb.Values)
-}
-
-func (a *sortableArray) Swap(i, j int) {
-	a.vb.Values[i], a.vb.Values[j] = a.vb.Values[j], a.vb.Values[i]
-}
-
-func (a *sortableArray) Less(i, j int) (ok bool) {
-	it, jt := a.vb.Values[i].Type(), a.vb.Values[j].Type()
+func (vb *ValueBuffer) Less(i, j int) (ok bool) {
+	it, jt := vb.Values[i].Type(), vb.Values[j].Type()
 	if it == jt || (it.IsNumber() && jt.IsNumber()) {
-		ok, a.err = types.IsLesserThan(a.vb.Values[i], a.vb.Values[j])
+		// TODO(asdine) make the types package work with static documents
+		// to avoid having to deal with errors?
+		ok, _ = types.IsLesserThan(vb.Values[i], vb.Values[j])
 		return
 	}
 
@@ -315,7 +309,6 @@ func (a *sortableArray) Less(i, j int) (ok bool) {
 //   - Documents
 // It doesn't sort nested arrays.
 func SortArray(a types.Array) (*ValueBuffer, error) {
-	var s sortableArray
 	vb, ok := a.(*ValueBuffer)
 	if !ok {
 		vb := NewValueBuffer()
@@ -324,13 +317,8 @@ func SortArray(a types.Array) (*ValueBuffer, error) {
 			return nil, err
 		}
 	}
-	s.vb = vb
 
-	sort.Sort(&s)
-
-	if s.err != nil {
-		return nil, s.err
-	}
+	sort.Sort(vb)
 
 	return vb, nil
 }

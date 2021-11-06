@@ -13,9 +13,10 @@ import (
 )
 
 func TestUnion(t *testing.T) {
-	setup := func(t *testing.T, db *genji.DB) {
+	setup := func(t *testing.T, db *genji.DB) {}
+	postSetup := func(t *testing.T, db *genji.DB) {}
+	setup = func(t *testing.T, db *genji.DB) {
 		t.Helper()
-
 		q := `
 CREATE TABLE foo;
 CREATE TABLE bar;
@@ -27,7 +28,6 @@ INSERT INTO baz (x,y) VALUES ("a", "a"), ("b", "b");
 		err := db.Exec(q)
 		assert.NoError(t, err)
 	}
-
 	// --------------------------------------------------------------------------
 	t.Run("basic union all", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
@@ -35,7 +35,7 @@ INSERT INTO baz (x,y) VALUES ("a", "a"), ("b", "b");
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -51,9 +51,8 @@ SELECT * FROM bar;
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -63,7 +62,7 @@ SELECT * FROM bar;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -79,9 +78,8 @@ SELECT * FROM baz;
 {"x": "a", "y": "a"}
 {"x": "b", "y": "b"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -91,7 +89,7 @@ SELECT * FROM baz;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo WHERE a > 1`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo WHERE a > 1
@@ -105,9 +103,8 @@ SELECT * FROM baz WHERE x != "b";
 {"a": 2.0, "b": 2.0}
 {"x": "a", "y": "a"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -117,7 +114,7 @@ SELECT * FROM baz WHERE x != "b";
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo WHERE a > 1`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo WHERE a > 1
@@ -131,9 +128,8 @@ SELECT * FROM foo WHERE a <= 1;
 {"a": 2.0, "b": 2.0}
 {"a": 1.0, "b": 1.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -143,7 +139,7 @@ SELECT * FROM foo WHERE a <= 1;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -163,9 +159,8 @@ SELECT * FROM baz;
 {"x": "a", "y": "a"}
 {"x": "b", "y": "b"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -175,7 +170,7 @@ SELECT * FROM baz;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -190,9 +185,8 @@ SELECT * FROM bar;
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -202,7 +196,7 @@ SELECT * FROM bar;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -218,9 +212,8 @@ SELECT * FROM baz;
 {"x": "a", "y": "a"}
 {"x": "b", "y": "b"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -230,7 +223,7 @@ SELECT * FROM baz;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo WHERE a > 1`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo WHERE a > 1
@@ -244,9 +237,8 @@ SELECT * FROM baz WHERE x != "b";
 {"a": 2.0, "b": 2.0}
 {"x": "a", "y": "a"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -256,7 +248,7 @@ SELECT * FROM baz WHERE x != "b";
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -270,9 +262,8 @@ SELECT * FROM foo;
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -282,7 +273,7 @@ SELECT * FROM foo;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo WHERE a > 1`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo WHERE a > 1
@@ -296,9 +287,8 @@ SELECT * FROM foo WHERE a <= 1;
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -308,7 +298,7 @@ SELECT * FROM foo WHERE a <= 1;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -328,9 +318,8 @@ SELECT * FROM baz;
 {"x": "a", "y": "a"}
 {"x": "b", "y": "b"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 	// --------------------------------------------------------------------------
@@ -340,7 +329,7 @@ SELECT * FROM baz;
 		defer db.Close()
 
 		setup(t, db)
-
+		postSetup(t, db)
 		t.Run(`SELECT * FROM foo`, func(t *testing.T) {
 			q := `
 SELECT * FROM foo
@@ -359,9 +348,8 @@ SELECT * FROM baz;
 {"x": "a", "y": "a"}
 {"x": "b", "y": "b"}
 `
-			testutil.RequireStreamEq(t, raw, res)
+			testutil.RequireStreamEq(t, raw, res, false)
 		})
-
 	})
 
 }

@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"errors"
+	"sort"
 	"strings"
 	"testing"
 
@@ -35,7 +36,7 @@ func ParseResultStream(stream string) *ResultStream {
 	return &ResultStream{p, env}
 }
 
-func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
+func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
 	t.Helper()
 	docs := ParseResultStream(raw)
 
@@ -67,6 +68,11 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result) {
 		return nil
 	})
 	assert.NoError(t, err)
+
+	if sorted {
+		sort.Sort(want)
+		sort.Sort(got)
+	}
 
 	expected, err := types.MarshalTextIndent(types.NewArrayValue(want), "\n", "  ")
 	assert.NoError(t, err)
