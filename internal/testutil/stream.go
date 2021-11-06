@@ -38,6 +38,11 @@ func ParseResultStream(stream string) *ResultStream {
 
 func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
 	t.Helper()
+	RequireStreamEqf(t, raw, res, sorted, "")
+}
+
+func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, msg string, args ...interface{}) {
+	t.Helper()
 	docs := ParseResultStream(raw)
 
 	want := document.NewValueBuffer()
@@ -45,13 +50,17 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
 	for {
 		v, err := docs.Next()
 		if err != nil {
-			if perr, ok := errors.Unwrap(err).(*parser.ParseError); ok {
+			if perr, ok := err.(*parser.ParseError); ok {
+				if perr.Found == "EOF" {
+					break
+				}
+			} else if perr, ok := errors.Unwrap(err).(*parser.ParseError); ok {
 				if perr.Found == "EOF" {
 					break
 				}
 			}
 		}
-		assert.NoError(t, err)
+		require.NoError(t, err, append([]interface{}{msg}, args...)...)
 
 		want.Append(v)
 	}
@@ -79,5 +88,10 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
 
 	actual, err := types.MarshalTextIndent(types.NewArrayValue(got), "\n", "  ")
 	assert.NoError(t, err)
-	require.Equal(t, string(expected), string(actual))
+
+	if msg != "" {
+		require.Equal(t, string(expected), string(actual), append([]interface{}{msg}, args...)...)
+	} else {
+		require.Equal(t, string(expected), string(actual))
+	}
 }

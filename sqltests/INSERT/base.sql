@@ -97,7 +97,7 @@ SELECT pk(), * FROM test;
 -- test: document, strings
 INSERT INTO test VALUES {'a': 'a', b: 2.3};
 SELECT pk(), * FROM test;
-/*result:
+/* result:
 {
   "pk()": 1,
   "a": "a",
@@ -247,12 +247,22 @@ INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
 CREATE TABLE testpk (foo INTEGER PRIMARY KEY);
 INSERT INTO testpk (bar) VALUES (1);
 -- error:
+
+-- test: insert with primary keys: duplicate
+CREATE TABLE testpk (foo INTEGER PRIMARY KEY);
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
 -- error: duplicate
 
 -- test: insert with shadowing
-INSERT INTO test (`pk()`, `key`) VALUES (1, 2);
+INSERT INTO test (`pk()`) VALUES (10);
+SELECT pk() AS pk, `pk()` from test;
+/* result:
+{
+  "pk": 1,
+  "pk()": 10.0
+}
+*/
 
 -- test: insert with types constraints
 CREATE TABLE test_tc(

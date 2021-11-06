@@ -1,3 +1,9 @@
+-- This file tests comparison operators with field paths
+-- of different types. It ensures the behavior (modulo ordering)
+-- remains the same regardless of index usage.
+-- It contains one test suite with no index and one test suite
+-- per field where that particular field is indexed
+
 -- setup:
 CREATE TABLE test(
     id int primary key,

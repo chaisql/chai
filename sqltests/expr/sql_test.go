@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/testutil"
 )
 
-func TestAll(t *testing.T) {
+func TestSQLExpr(t *testing.T) {
 	filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
