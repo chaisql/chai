@@ -50,7 +50,7 @@ func TestSQL(t *testing.T) {
 		t.Run(ts.Filename, func(t *testing.T) {
 			setup := func(t *testing.T, db *genji.DB) {
 				t.Helper()
-				err := db.Exec(strings.Join(ts.Setup, "\n"))
+				err := db.Exec(ts.Setup, "\n")
 				assert.NoError(t, err)
 			}
 
@@ -66,13 +66,12 @@ func TestSQL(t *testing.T) {
 								setup(t, db)
 
 								// post setup
-								if suite.PostSetup != nil {
-									err = db.Exec(strings.Join(suite.PostSetup, "\n"))
+								if suite.PostSetup != "" {
+									err = db.Exec(suite.PostSetup)
 									assert.NoError(t, err)
 								}
 
 								if test.Fails {
-
 									err := db.Exec(test.Expr)
 
 									if test.ErrorMatch != "" {
@@ -113,13 +112,13 @@ type test struct {
 
 type suite struct {
 	Name      string
-	PostSetup []string
+	PostSetup string
 	Tests     []*test
 }
 
 type testSuite struct {
 	Filename string
-	Setup    []string
+	Setup    string
 	Suites   []suite
 }
 
@@ -197,9 +196,9 @@ func parse(r io.Reader, filename string) *testSuite {
 
 		default:
 			if readingSuite {
-				ts.Suites[suiteIndex].PostSetup = append(ts.Suites[suiteIndex].PostSetup, line)
+				ts.Suites[suiteIndex].PostSetup += line + "\n"
 			} else if readingSetup {
-				ts.Setup = append(ts.Setup, line)
+				ts.Setup += line + "\n"
 			} else if readingResult && strings.TrimSpace(line) == "*/" {
 				readingResult = false
 				curTest = nil
