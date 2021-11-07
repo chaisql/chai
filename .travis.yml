@@ -15,7 +15,7 @@ script:
   - go mod vendor
   - make
   - make gen
-  - go install github.com/ory/go-acc
+  - go install github.com/ory/go-acc@latest
   - go-acc $(go list ./...) -- -mod vendor -race -timeout=2m
   - cd ./cmd/genji && go test -race ./... && cd -
   - cd ./engine/badgerengine && go test -race ./... && cd -
