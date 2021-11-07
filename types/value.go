@@ -184,6 +184,11 @@ func MarshalTextIndent(v Value, prefix, indent string) ([]byte, error) {
 }
 
 func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) error {
+	if v.V() == nil {
+		dst.WriteString("NULL")
+		return nil
+	}
+
 	switch v.Type() {
 	case NullValue:
 		dst.WriteString("NULL")

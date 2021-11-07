@@ -429,11 +429,6 @@ func TestSelectIndex_Simple(t *testing.T) {
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))),
 				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
 			},
-			{ // constraint on a[0] DOUBLE should modify the operand because it's lossless
-				"FROM foo WHERE a = [1, 1.5]",
-				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1.5]"))),
-				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1.0, 1.5]`), Exact: true})),
-			},
 		}
 
 		for _, test := range tests {
