@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
@@ -150,7 +149,7 @@ func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
 // parseProjectedExprs parses the list of projected fields.
 func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 	// Parse first (required) result path.
-	pe, hasWildcard, err := p.parseProjectedExpr()
+	pe, err := p.parseProjectedExpr()
 	if err != nil {
 		return nil, err
 	}
@@ -163,30 +162,26 @@ func (p *Parser) parseProjectedExprs() ([]expr.Expr, error) {
 			return pexprs, nil
 		}
 
-		pe, wc, err := p.parseProjectedExpr()
+		pe, err := p.parseProjectedExpr()
 		if err != nil {
 			return nil, err
 		}
-		if wc && hasWildcard {
-			return nil, stringutil.Errorf("cannot select more than one wildcard")
-		}
-		hasWildcard = wc
 
 		pexprs = append(pexprs, pe)
 	}
 }
 
 // parseProjectedExpr parses one projected expression.
-func (p *Parser) parseProjectedExpr() (expr.Expr, bool, error) {
+func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
 	// Check if the * token exists.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		return expr.Wildcard{}, true, nil
+		return expr.Wildcard{}, nil
 	}
 	p.Unscan()
 
 	pe, err := p.ParseExpr()
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	ne := &expr.NamedExpr{Expr: pe}
@@ -195,16 +190,16 @@ func (p *Parser) parseProjectedExpr() (expr.Expr, bool, error) {
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.AS {
 		ne.ExprName, err = p.parseIdent()
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
-		return ne, false, nil
+		return ne, nil
 	}
 	p.Unscan()
 
 	ne.ExprName = pe.String()
 
-	return ne, false, nil
+	return ne, nil
 }
 
 func (p *Parser) parseDistinct() (bool, error) {
@@ -241,27 +236,4 @@ func (p *Parser) parseGroupBy() (expr.Expr, error) {
 	// parse expr
 	e, err := p.ParseExpr()
 	return e, err
-}
-
-func (p *Parser) parseUnion() (*statement.StreamStmt, bool, error) {
-	if ok, err := p.parseOptional(scanner.UNION); !ok || err != nil {
-		return nil, false, err
-	}
-
-	unionAll, err := p.parseOptional(scanner.ALL)
-	if err != nil {
-		return nil, false, err
-	}
-
-	err = p.parseTokens(scanner.SELECT)
-	if err != nil {
-		return nil, unionAll, err
-	}
-
-	otherSelect, err := p.parseSelectStatement()
-	if err != nil {
-		return nil, unionAll, err
-	}
-
-	return otherSelect, unionAll, nil
 }

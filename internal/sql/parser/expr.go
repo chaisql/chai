@@ -478,19 +478,12 @@ func (p *Parser) ParseDocument() (*expr.KVPairs, error) {
 	var pair expr.KVPair
 	var err error
 
-	fields := make(map[string]struct{})
-
 	// Parse kv pairs.
 	for {
 		if pair, err = p.parseKV(); err != nil {
 			p.Unscan()
 			break
 		}
-
-		if _, ok := fields[pair.K]; ok {
-			return nil, stringutil.Errorf("duplicate field %q", pair.K)
-		}
-		fields[pair.K] = struct{}{}
 
 		pairs.Pairs = append(pairs.Pairs, pair)
 

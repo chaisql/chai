@@ -64,7 +64,12 @@ func TestParserExpr(t *testing.T) {
 				{K: "ola ", V: testutil.IntegerValue(1)},
 			}},
 			false},
-		{"bad document keys: same key", `{a: 1, a: 2, "a": 3}`, nil, true},
+		{"document keys: same key", `{a: 1, a: 2, "a": 3}`,
+			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
+				{K: "a", V: testutil.IntegerValue(1)},
+				{K: "a", V: testutil.IntegerValue(2)},
+				{K: "a", V: testutil.IntegerValue(3)},
+			}}, false},
 		{"bad document keys: param", `{?: 1}`, nil, true},
 		{"bad document keys: dot", `{a.b: 1}`, nil, true},
 		{"bad document keys: space", `{a b: 1}`, nil, true},

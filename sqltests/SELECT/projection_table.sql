@@ -15,7 +15,16 @@ SELECT * FROM test;
 
 -- test: multiple wildcards
 SELECT *, * FROM test;
--- error:
+/* result:
+{
+    "a": 1.0,
+    "b": {"a": 1.0},
+    "c": [true],
+    "a": 1.0,
+    "b": {"a": 1.0},
+    "c": [true]
+}
+*/
 
 -- test: field paths
 SELECT a, b, c FROM test;
@@ -41,4 +50,11 @@ SELECT a AS A, b.a + 1, * FROM test;
 
 -- test: wildcard and other field
 SELECT *, c FROM test;
--- error:
+/* result:
+{
+    "a": 1.0,
+    "b": {"a": 1.0},
+    "c": [true],
+    "c": [true]
+}
+*/

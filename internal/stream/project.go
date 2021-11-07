@@ -129,7 +129,7 @@ func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) e
 }
 
 func (d *MaskDocument) String() string {
-	b, _ := document.MarshalJSON(d)
+	b, _ := types.NewDocumentValue(d).MarshalText()
 	return string(b)
 }
 
