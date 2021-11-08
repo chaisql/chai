@@ -527,3 +527,25 @@ func (t *inferredTableExpression) IsEqual(other TableExpression) bool {
 func (t *inferredTableExpression) String() string {
 	return stringutil.Sprintf("%s", t.v)
 }
+
+// A TableConstraint represent a constraint specific to a table
+// and not necessarily to a single field path.
+type TableConstraint struct {
+	Check TableExpression
+}
+
+// IsEqual compares t with other member by member.
+func (t *TableConstraint) IsEqual(other *TableConstraint) bool {
+	return t.Check.IsEqual(other.Check)
+}
+
+func (t *TableConstraint) String() string {
+	if t.Check != nil {
+		return stringutil.Sprintf("CHECK (%s)", t.Check)
+	}
+
+	return ""
+}
+
+// TableConstraints holds the list of CHECK constraints.
+type TableConstraints []*TableConstraint

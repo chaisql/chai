@@ -18,6 +18,7 @@ type TableInfo struct {
 	ReadOnly  bool
 
 	FieldConstraints FieldConstraints
+	TableConstraints TableConstraints
 
 	// Name of the docid sequence if any.
 	DocidSequenceName string
@@ -44,10 +45,11 @@ func (ti *TableInfo) String() string {
 	var s strings.Builder
 
 	stringutil.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
-	if len(ti.FieldConstraints) > 0 {
+	if len(ti.FieldConstraints) > 0 || len(ti.TableConstraints) > 0 {
 		s.WriteString(" (")
 	}
 
+	var hasFieldConstraints bool
 	for i, fc := range ti.FieldConstraints {
 		if fc.IsInferred {
 			continue
@@ -58,9 +60,19 @@ func (ti *TableInfo) String() string {
 		}
 
 		s.WriteString(fc.String())
+
+		hasFieldConstraints = true
 	}
 
-	if len(ti.FieldConstraints) > 0 {
+	for i, tc := range ti.TableConstraints {
+		if i > 0 || hasFieldConstraints {
+			s.WriteString(", ")
+		}
+
+		s.WriteString(tc.String())
+	}
+
+	if len(ti.FieldConstraints) > 0 || len(ti.TableConstraints) > 0 {
 		s.WriteString(")")
 	}
 
@@ -72,6 +84,7 @@ func (ti *TableInfo) Clone() *TableInfo {
 	cp := *ti
 	cp.FieldConstraints = nil
 	cp.FieldConstraints = append(cp.FieldConstraints, ti.FieldConstraints...)
+	cp.TableConstraints = append(cp.TableConstraints, ti.TableConstraints...)
 	return &cp
 }
 
