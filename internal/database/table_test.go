@@ -244,7 +244,10 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: types.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: types.IntegerValue},
+			},
+			TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), PrimaryKey: true},
 			},
 		})
 		assert.NoError(t, err)
@@ -306,7 +309,10 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue, IsPrimaryKey: true},
+				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue},
+			},
+			TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
 			},
 		})
 		assert.NoError(t, err)
@@ -582,8 +588,12 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
-			}})
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
+			},
+			TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
+			},
+		})
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(10))
@@ -604,8 +614,12 @@ func TestTableInsert(t *testing.T) {
 		tb := createTable(t, tx, db.Catalog, database.TableInfo{
 			TableName: "test",
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
-			}})
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
+			},
+			TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
+			},
+		})
 
 		doc := document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(10))
@@ -723,8 +737,12 @@ func TestTableInsert(t *testing.T) {
 
 		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsPrimaryKey: true, IsNotNull: true},
-			}})
+				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
+			},
+			TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
+			},
+		})
 		assert.NoError(t, err)
 
 		tb, err := db.Catalog.GetTable(tx, "test")

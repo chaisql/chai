@@ -26,7 +26,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	// if there is no primary key, create a docid sequence
-	if stmt.Info.FieldConstraints.GetPrimaryKey() == nil {
+	if stmt.Info.GetPrimaryKey() == nil {
 		seq := database.SequenceInfo{
 			IncrementBy: 1,
 			Min:         1, Max: math.MaxInt64,
@@ -52,16 +52,21 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	// create a unique index for every unique constraint
-	for _, fc := range stmt.Info.FieldConstraints {
-		if fc.IsUnique {
+	for _, tc := range stmt.Info.TableConstraints {
+		if tc.Unique {
+			fc := stmt.Info.GetFieldConstraintForPath(tc.Path)
+			var tp types.ValueType
+			if fc != nil {
+				tp = fc.Type
+			}
 			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
 				TableName: stmt.Info.TableName,
-				Paths:     []document.Path{fc.Path},
+				Paths:     []document.Path{tc.Path},
 				Unique:    true,
-				Types:     []types.ValueType{fc.Type},
+				Types:     []types.ValueType{tp},
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
-					Path:      fc.Path,
+					Path:      tc.Path,
 				},
 			})
 			if err != nil {

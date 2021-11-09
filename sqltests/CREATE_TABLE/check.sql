@@ -1,13 +1,13 @@
 -- test: as field constraint
 CREATE TABLE test (
-    a CHECK(a > 10)
+    a CHECK(a > 10) CHECK(b < 10)
 );
-SELECT * FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (CHECK(a > 10))"
+  sql: "CREATE TABLE test (CHECK (a > 10), CHECK (b < 10))"
 }
 */
 
@@ -15,12 +15,12 @@ SELECT * FROM __genji_catalog WHERE name = "test";
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 100 NOT NULL PRIMARY KEY
 );
-SELECT * FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a INTEGER NOT NULL PRIMARY KEY DEFAULT 100, CHECK(a > 10))"
+  sql: "CREATE TABLE test (a INTEGER NOT NULL DEFAULT 100, CHECK (a > 10), PRIMARY KEY (a))"
 }
 */
 
@@ -34,7 +34,7 @@ CREATE TABLE test (
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 0
 );
-SELECT * FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -45,10 +45,10 @@ SELECT * FROM __genji_catalog WHERE name = "test";
 
 -- test: as field constraint, reference other fields
 CREATE TABLE test (
-    a INT CHECK (a > 10 AND b < 10)
+    a INT CHECK (a > 10 AND b < 10),
     b INT
 );
-SELECT * FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -61,8 +61,9 @@ SELECT * FROM __genji_catalog WHERE name = "test";
 CREATE TABLE test (
     a INT,
     CHECK (a > 10),
-    CHECK (a > 20),
+    CHECK (a > 20)
 );
+SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",

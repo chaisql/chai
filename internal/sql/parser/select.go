@@ -114,7 +114,7 @@ func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
-	stmt.Distinct, err = p.parseDistinct()
+	stmt.Distinct, err = p.parseOptional(scanner.DISTINCT)
 	if err != nil {
 		return nil, err
 	}
@@ -200,15 +200,6 @@ func (p *Parser) parseProjectedExpr() (expr.Expr, error) {
 	ne.ExprName = pe.String()
 
 	return ne, nil
-}
-
-func (p *Parser) parseDistinct() (bool, error) {
-	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.DISTINCT {
-		p.Unscan()
-		return false, nil
-	}
-
-	return true, nil
 }
 
 func (p *Parser) parseFrom() (string, error) {

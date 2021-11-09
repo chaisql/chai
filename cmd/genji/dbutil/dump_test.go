@@ -137,7 +137,7 @@ func TestDumpSchema(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER UNIQUE);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, UNIQUE (a));", table)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")

@@ -106,7 +106,7 @@ func TestCreateTable(t *testing.T) {
 					InferredBy: []document.Path{
 						parsePath(t, "foo.bar[1].hello"),
 					}},
-				{Path: parsePath(t, "foo.bar[1].hello"), Type: types.BlobValue, IsPrimaryKey: true},
+				{Path: parsePath(t, "foo.bar[1].hello"), Type: types.BlobValue},
 				{Path: parsePath(t, "foo.a"), Type: types.ArrayValue, IsInferred: true,
 					InferredBy: []document.Path{
 						parsePath(t, "foo.a[1][2]"),
@@ -164,7 +164,7 @@ func TestCreateTable(t *testing.T) {
 					InferredBy: []document.Path{
 						parsePath(t, "foo.bar[1].hello"),
 					}},
-				{Path: parsePath(t, "foo.bar[1].hello"), Type: types.BlobValue, IsPrimaryKey: true},
+				{Path: parsePath(t, "foo.bar[1].hello"), Type: types.BlobValue},
 				{Path: parsePath(t, "foo.a"), Type: types.ArrayValue, IsInferred: true,
 					InferredBy: []document.Path{
 						parsePath(t, "foo.a[1][2]"),
@@ -244,24 +244,33 @@ func TestCreateTable(t *testing.T) {
 
 			tb, err := db.Catalog.GetTable(tx, "test")
 			assert.NoError(t, err)
-			require.Len(t, tb.Info.FieldConstraints, 3)
+			require.Len(t, tb.Info.FieldConstraints, 2)
+			require.Len(t, tb.Info.TableConstraints, 3)
 
 			require.Equal(t, &database.FieldConstraint{
-				Path:     parsePath(t, "a"),
-				Type:     types.IntegerValue,
-				IsUnique: true,
+				Path: parsePath(t, "a"),
+				Type: types.IntegerValue,
 			}, tb.Info.FieldConstraints[0])
 
 			require.Equal(t, &database.FieldConstraint{
-				Path:     parsePath(t, "b"),
-				Type:     types.DoubleValue,
-				IsUnique: true,
+				Path: parsePath(t, "b"),
+				Type: types.DoubleValue,
 			}, tb.Info.FieldConstraints[1])
 
-			require.Equal(t, &database.FieldConstraint{
-				Path:     parsePath(t, "c"),
-				IsUnique: true,
-			}, tb.Info.FieldConstraints[2])
+			require.Equal(t, &database.TableConstraint{
+				Path:   parsePath(t, "a"),
+				Unique: true,
+			}, tb.Info.TableConstraints[0])
+
+			require.Equal(t, &database.TableConstraint{
+				Path:   parsePath(t, "b"),
+				Unique: true,
+			}, tb.Info.TableConstraints[1])
+
+			require.Equal(t, &database.TableConstraint{
+				Path:   parsePath(t, "c"),
+				Unique: true,
+			}, tb.Info.TableConstraints[2])
 
 			idx, err := db.Catalog.GetIndex(tx, "test_a_idx")
 			assert.NoError(t, err)

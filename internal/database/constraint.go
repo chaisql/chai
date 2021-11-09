@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -22,13 +24,12 @@ func (c *ConstraintViolationError) Error() string {
 type FieldConstraint struct {
 	Path         document.Path
 	Type         types.ValueType
-	IsPrimaryKey bool
 	IsNotNull    bool
-	IsUnique     bool
 	DefaultValue TableExpression
-	Identity     *FieldConstraintIdentity
-	IsInferred   bool
-	InferredBy   []document.Path
+	// IsUnique     bool
+	// IsPrimaryKey bool
+	IsInferred bool
+	InferredBy []document.Path
 }
 
 // IsEqual compares f with other member by member.
@@ -42,9 +43,9 @@ func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
 		return false
 	}
 
-	if f.IsPrimaryKey != other.IsPrimaryKey {
-		return false
-	}
+	// if f.IsPrimaryKey != other.IsPrimaryKey {
+	// 	return false
+	// }
 
 	if f.IsNotNull != other.IsNotNull {
 		return false
@@ -60,11 +61,11 @@ func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
 		}
 	}
 
-	if !f.Identity.IsEqual(other.Identity) {
-		return false
-	}
-
 	return true
+}
+
+func (f *FieldConstraint) IsEmpty() bool {
+	return f.Type.IsAny() && f.IsNotNull == false && f.DefaultValue == nil
 }
 
 func (f *FieldConstraint) String() string {
@@ -78,13 +79,13 @@ func (f *FieldConstraint) String() string {
 		s.WriteString(" NOT NULL")
 	}
 
-	if f.IsPrimaryKey {
-		s.WriteString(" PRIMARY KEY")
-	}
+	// if f.IsPrimaryKey {
+	// 	s.WriteString(" PRIMARY KEY")
+	// }
 
-	if f.IsUnique {
-		s.WriteString(" UNIQUE")
-	}
+	// if f.IsUnique {
+	// 	s.WriteString(" UNIQUE")
+	// }
 
 	if f.HasDefaultValue() {
 		s.WriteString(" DEFAULT ")
@@ -136,17 +137,17 @@ func (f FieldConstraints) Get(path document.Path) *FieldConstraint {
 	return nil
 }
 
-// GetPrimaryKey returns the field constraint of the primary key.
-// Returns nil if there is no primary key.
-func (f FieldConstraints) GetPrimaryKey() *FieldConstraint {
-	for _, fc := range f {
-		if fc.IsPrimaryKey {
-			return fc
-		}
-	}
+// // GetPrimaryKey returns the field constraint of the primary key.
+// // Returns nil if there is no primary key.
+// func (f FieldConstraints) GetPrimaryKey() *FieldConstraint {
+// 	for _, fc := range f {
+// 		if fc.IsPrimaryKey {
+// 			return fc
+// 		}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // Infer additional constraints based on user defined ones.
 // For example, given the following table:
@@ -231,7 +232,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			// the inferred one may has less constraints than the user-defined one
 			inferredFc.DefaultValue = nonInferredFc.DefaultValue
 			inferredFc.IsNotNull = nonInferredFc.IsNotNull
-			inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
+			// inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
 
 			// detect if constraints are different
 			if !c.IsEqual(newFc) {
@@ -262,12 +263,12 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 
 		// ensure we don't have duplicate primary keys
-		if c.IsPrimaryKey && newFc.IsPrimaryKey {
-			return stringutil.Errorf(
-				"multiple primary keys are not allowed (%q is primary key)",
-				c.Path.String(),
-			)
-		}
+		// if c.IsPrimaryKey && newFc.IsPrimaryKey {
+		// 	return stringutil.Errorf(
+		// 		"multiple primary keys are not allowed (%q is primary key)",
+		// 		c.Path.String(),
+		// 	)
+		// }
 	}
 
 	err := f.validateDefaultValue(newFc)
@@ -293,7 +294,7 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 	// ensure default value type is compatible
 	if newFc.DefaultValue != nil && !newFc.Type.IsAny() {
 		// first, try to evaluate the default value
-		v, err := newFc.DefaultValue.Eval(nil)
+		v, err := newFc.DefaultValue.Eval(nil, nil)
 		// if there is no error, check if the default value can be converted to the type of the constraint
 		if err == nil {
 			_, err = document.CastAs(v, newFc.Type)
@@ -316,13 +317,7 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 }
 
 // ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*document.FieldBuffer, error) {
-	fb := document.NewFieldBuffer()
-	err := fb.Copy(d)
-	if err != nil {
-		return nil, err
-	}
-
+func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) (*document.FieldBuffer, error) {
 	// generate default values for all fields
 	for _, fc := range f {
 		if fc.DefaultValue == nil {
@@ -338,7 +333,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*
 			return nil, err
 		}
 
-		v, err := fc.DefaultValue.Eval(tx)
+		v, err := fc.DefaultValue.Eval(tx, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -348,7 +343,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, d types.Document) (*
 		}
 	}
 
-	fb, err = f.ConvertDocument(fb)
+	fb, err := f.ConvertDocument(fb)
 	if err != nil {
 		return nil, err
 	}
@@ -475,26 +470,9 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a types.Array, 
 	return vb, err
 }
 
-type FieldConstraintIdentity struct {
-	SequenceName string
-	Always       bool
-}
-
-func (f *FieldConstraintIdentity) IsEqual(other *FieldConstraintIdentity) bool {
-	if f == nil {
-		return other == nil
-	}
-
-	if other == nil {
-		return false
-	}
-
-	return f.SequenceName == other.SequenceName && f.Always == other.Always
-}
-
 type TableExpression interface {
 	Bind(catalog *Catalog)
-	Eval(tx *Transaction) (types.Value, error)
+	Eval(tx *Transaction, d types.Document) (types.Value, error)
 	IsEqual(other TableExpression) bool
 	String() string
 }
@@ -503,7 +481,7 @@ type inferredTableExpression struct {
 	v types.Value
 }
 
-func (t *inferredTableExpression) Eval(tx *Transaction) (types.Value, error) {
+func (t *inferredTableExpression) Eval(tx *Transaction, d types.Document) (types.Value, error) {
 	return t.v, nil
 }
 
@@ -531,12 +509,22 @@ func (t *inferredTableExpression) String() string {
 // A TableConstraint represent a constraint specific to a table
 // and not necessarily to a single field path.
 type TableConstraint struct {
-	Check TableExpression
+	Name       string
+	Path       document.Path
+	Check      TableExpression
+	Unique     bool
+	PrimaryKey bool
 }
 
 // IsEqual compares t with other member by member.
 func (t *TableConstraint) IsEqual(other *TableConstraint) bool {
-	return t.Check.IsEqual(other.Check)
+	if t == nil {
+		return other == nil
+	}
+	if other == nil {
+		return false
+	}
+	return t.Name == other.Name && t.Path.IsEqual(other.Path) && t.Check.IsEqual(other.Check) && t.Unique == other.Unique && t.PrimaryKey == other.PrimaryKey
 }
 
 func (t *TableConstraint) String() string {
@@ -544,8 +532,113 @@ func (t *TableConstraint) String() string {
 		return stringutil.Sprintf("CHECK (%s)", t.Check)
 	}
 
+	if t.PrimaryKey {
+		return stringutil.Sprintf("PRIMARY KEY (%s)", t.Path)
+	}
+
+	if t.Unique {
+		return stringutil.Sprintf("UNIQUE (%s)", t.Path)
+	}
+
 	return ""
 }
 
 // TableConstraints holds the list of CHECK constraints.
 type TableConstraints []*TableConstraint
+
+// ValidateDocument checks all the table constraint for the given document.
+func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) error {
+	for _, tc := range *t {
+		if tc.Check == nil {
+			continue
+		}
+
+		v, err := tc.Check.Eval(tx, fb)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tc.Check, fb, v)
+		var ok bool
+		switch v.Type() {
+		case types.BoolValue:
+			ok = v.V().(bool)
+		case types.IntegerValue:
+			ok = v.V().(int64) != 0
+		case types.DoubleValue:
+			ok = v.V().(float64) != 0
+		case types.NullValue:
+			ok = true
+		}
+
+		if !ok {
+			return stringutil.Errorf("document violates check constraint %q", tc.Name)
+		}
+	}
+
+	return nil
+}
+
+func (t *TableConstraints) AddCheck(tableName string, e TableExpression) {
+	var i int
+	for _, tc := range *t {
+		if tc.Check != nil {
+			i++
+		}
+	}
+
+	name := tableName + "_" + "check"
+	if i > 0 {
+		name += strconv.Itoa(i)
+	}
+
+	*t = append(*t, &TableConstraint{
+		Name:  name,
+		Check: e,
+	})
+}
+
+func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Path) error {
+	for _, tc := range *t {
+		if tc.PrimaryKey {
+			return stringutil.Errorf("multiple primary keys for table %q are not allowed", tableName)
+		}
+	}
+
+	*t = append(*t, &TableConstraint{
+		Path:       p,
+		PrimaryKey: true,
+	})
+
+	return nil
+}
+
+// AddUnique adds a unique constraint to the table.
+// If the constraint is already present, it is ignored.
+func (t *TableConstraints) AddUnique(p document.Path) {
+	for _, tc := range *t {
+		if tc.Unique && tc.Path.IsEqual(p) {
+			return
+		}
+	}
+
+	*t = append(*t, &TableConstraint{
+		Path:   p,
+		Unique: true,
+	})
+}
+
+func (t *TableConstraints) Merge(other TableConstraints) error {
+	for _, tc := range other {
+		if tc.PrimaryKey {
+			if err := t.AddPrimaryKey(tc.Name, tc.Path); err != nil {
+				return err
+			}
+		} else if tc.Unique {
+			t.AddUnique(tc.Path)
+		} else if tc.Check != nil {
+			t.AddCheck(tc.Name, tc.Check)
+		}
+	}
+
+	return nil
+}

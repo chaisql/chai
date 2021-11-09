@@ -19,12 +19,7 @@ UPDATE test SET a = 1;
 CREATE TABLE test (a CHECK(a > 10));
 INSERT INTO test (a) VALUES (11);
 UPDATE test SET a = "hello";
-SELECT * FROM test;
-/* result:
-{
-    a: "hello"
-}
-*/
+-- error: document violates check constraint "test_check"
 
 -- test: no type constraint, null
 CREATE TABLE test (a CHECK(a > 10));

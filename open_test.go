@@ -49,7 +49,7 @@ func TestOpen(t *testing.T) {
 	err = res1.Iterate(func(d types.Document) error {
 		count++
 		if count == 1 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
 			return nil
 		}
 
@@ -64,7 +64,7 @@ func TestOpen(t *testing.T) {
 		}
 
 		if count == 4 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL UNIQUE, b.c[0].d DOUBLE PRIMARY KEY)", "store_name":"AQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE, UNIQUE (a), PRIMARY KEY (b.c[0].d))", "store_name":"AQ==", "type":"table"}`)
 			return nil
 		}
 
@@ -74,7 +74,7 @@ func TestOpen(t *testing.T) {
 		}
 
 		if count == 6 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL PRIMARY KEY DEFAULT \"hello\")", "store_name":"Aw==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", PRIMARY KEY (a))", "store_name":"Aw==", "type":"table"}`)
 			return nil
 		}
 

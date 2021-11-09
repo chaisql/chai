@@ -85,6 +85,7 @@ const (
 	BY
 	CACHE
 	CAST
+	CHECK
 	COMMIT
 	CONFLICT
 	CREATE
@@ -229,6 +230,7 @@ var tokens = [...]string{
 	BY:          "BY",
 	CACHE:       "CACHE",
 	CAST:        "CAST",
+	CHECK:       "CHECK",
 	COMMIT:      "COMMIT",
 	CONFLICT:    "CONFLICT",
 	CREATE:      "CREATE",

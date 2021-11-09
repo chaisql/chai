@@ -7,7 +7,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND (name = "test2" O
 /* result:
 {
   "name": "test2",
-  "sql": "CREATE TABLE test2 (a INTEGER PRIMARY KEY)"
+  "sql": "CREATE TABLE test2 (a INTEGER, PRIMARY KEY (a))"
 }
 */
 

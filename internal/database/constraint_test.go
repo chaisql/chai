@@ -44,18 +44,6 @@ func TestFieldConstraintsInfer(t *testing.T) {
 			false,
 		},
 		{
-			"Primary key",
-			[]*database.FieldConstraint{
-				{Path: document.NewPath("a"), Type: types.ArrayValue, IsPrimaryKey: true},
-				{Path: document.NewPath("a", "0"), Type: types.IntegerValue},
-			},
-			[]*database.FieldConstraint{
-				{Path: document.NewPath("a"), Type: types.ArrayValue, IsPrimaryKey: true},
-				{Path: document.NewPath("a", "0"), Type: types.IntegerValue},
-			},
-			false,
-		},
-		{
 			"Complex path",
 			[]*database.FieldConstraint{{Path: document.NewPath("a", "b", "3", "1", "c"), Type: types.IntegerValue}},
 			[]*database.FieldConstraint{
@@ -180,13 +168,6 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			"Same path",
 			[]*database.FieldConstraint{{Path: document.NewPath("a"), Type: types.IntegerValue}},
 			database.FieldConstraint{Path: document.NewPath("a"), Type: types.IntegerValue},
-			nil,
-			true,
-		},
-		{
-			"Duplicate primary key",
-			[]*database.FieldConstraint{{Path: document.NewPath("a"), IsPrimaryKey: true, Type: types.IntegerValue}},
-			database.FieldConstraint{Path: document.NewPath("b"), IsPrimaryKey: true, Type: types.IntegerValue},
 			nil,
 			true,
 		},
