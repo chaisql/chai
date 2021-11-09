@@ -59,7 +59,7 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	fb, err := t.Info.FieldConstraints.ValidateDocument(t.Tx, d)
+	fb, err := t.Info.ValidateDocument(t.Tx, d)
 	if err != nil {
 		if onConflict != nil {
 			if ce, ok := err.(*ConstraintViolationError); ok && ce.Constraint == "NOT NULL" {
@@ -156,7 +156,7 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 	return documentWithKey{
 		Document: fb,
 		key:      key,
-		pk:       t.Info.FieldConstraints.GetPrimaryKey(),
+		pk:       t.Info.GetPrimaryKey(),
 	}, nil
 }
 
@@ -229,7 +229,7 @@ func (t *Table) Replace(key []byte, d types.Document) (types.Document, error) {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
-	d, err := t.Info.FieldConstraints.ValidateDocument(t.Tx, d)
+	d, err := t.Info.ValidateDocument(t.Tx, d)
 	if err != nil {
 		return nil, err
 	}
@@ -428,7 +428,7 @@ func (t *Table) EncodeValue(v types.Value) ([]byte, error) {
 func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error) {
 	var err error
 
-	pk := t.Info.FieldConstraints.GetPrimaryKey()
+	pk := t.Info.GetPrimaryKey()
 	if pk == nil {
 		// if no primary key was defined, convert the pivot to an integer then to an unsigned integer
 		// and encode it as a varint
@@ -502,7 +502,7 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 		codec: t.Codec,
 	}
 
-	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
+	d.pk = t.Info.GetPrimaryKey()
 
 	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
@@ -538,7 +538,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 	var d documentWithKey
 	d.Document = t.Codec.NewDecoder(v)
 	d.key = key
-	d.pk = t.Info.FieldConstraints.GetPrimaryKey()
+	d.pk = t.Info.GetPrimaryKey()
 	return &d, err
 }
 
@@ -549,7 +549,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
 func (t *Table) generateKey(info *TableInfo, d types.Document) ([]byte, error) {
-	if pk := t.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
+	if pk := t.Info.GetPrimaryKey(); pk != nil {
 		v, err := pk.Path.GetValueFromDocument(d)
 		if errors.Is(err, document.ErrFieldNotFound) {
 			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)

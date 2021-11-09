@@ -28,7 +28,7 @@ type ValueRange struct {
 func (r *ValueRange) evalRange(table *database.Table, env *environment.Environment) (*encodedValueRange, bool, error) {
 	var err error
 
-	pk := table.Info.FieldConstraints.GetPrimaryKey()
+	pk := table.Info.GetPrimaryKey()
 
 	rng := encodedValueRange{
 		pkType:      pk.Type,

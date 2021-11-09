@@ -18,10 +18,11 @@ func Constraint(e Expr) *ConstraintExpr {
 	}
 }
 
-func (t *ConstraintExpr) Eval(tx *database.Transaction) (types.Value, error) {
+func (t *ConstraintExpr) Eval(tx *database.Transaction, d types.Document) (types.Value, error) {
 	var env environment.Environment
 	env.Catalog = t.Catalog
 	env.Tx = tx
+	env.SetDocument(d)
 
 	if t.Expr == nil {
 		return NullLiteral, errors.New("missing expression")

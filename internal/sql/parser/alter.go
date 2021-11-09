@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
@@ -25,21 +26,29 @@ func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.A
 
 func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ statement.AlterTableAddField, err error) {
 	var stmt statement.AlterTableAddField
-	stmt.TableName = tableName
+	stmt.Info.TableName = tableName
 
 	// Parse "FIELD".
 	if err := p.parseTokens(scanner.FIELD); err != nil {
 		return stmt, err
 	}
 
+	var fc database.FieldConstraint
 	// Parse new field definition.
-	err = p.parseFieldDefinition(&stmt.Constraint)
+	err = p.parseFieldDefinition(&fc, &stmt.Info)
 	if err != nil {
 		return stmt, err
 	}
 
-	if stmt.Constraint.IsPrimaryKey {
+	if stmt.Info.GetPrimaryKey() != nil {
 		return stmt, &ParseError{Message: "cannot add a PRIMARY KEY constraint"}
+	}
+
+	if !fc.IsEmpty() {
+		err = stmt.Info.FieldConstraints.Add(&fc)
+		if err != nil {
+			return stmt, err
+		}
 	}
 
 	return stmt, nil

@@ -30,7 +30,10 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -79,14 +82,37 @@ func TestParserCreateTable(t *testing.T) {
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
-					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), IsUnique: true},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Unique: true},
 					},
 				},
 			}, false},
 
 		{"With not null twice", "CREATE TABLE test(foo NOT NULL NOT NULL)", nil, true},
-		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)", nil, true},
+		{"With unique twice", "CREATE TABLE test(foo UNIQUE UNIQUE)", &statement.CreateTableStmt{
+			Info: database.TableInfo{
+				TableName: "test",
+				TableConstraints: []*database.TableConstraint{
+					{Path: document.Path(testutil.ParsePath(t, "foo")), Unique: true},
+				},
+			},
+		}, false},
+		{"With check", "CREATE TABLE test(a CHECK(a > 10), b int CHECK(a > 20) CHECK(b > 10), CHECK(a > 30))",
+			&statement.CreateTableStmt{
+				Info: database.TableInfo{
+					TableName: "test",
+					FieldConstraints: []*database.FieldConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "b")), Type: types.IntegerValue},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Name: "test_check", Check: expr.Constraint(testutil.ParseExpr(t, "a > 10"))},
+						{Name: "test_check1", Check: expr.Constraint(testutil.ParseExpr(t, "a > 20"))},
+						{Name: "test_check2", Check: expr.Constraint(testutil.ParseExpr(t, "b > 10"))},
+						{Name: "test_check3", Check: expr.Constraint(testutil.ParseExpr(t, "a > 30"))},
+					},
+				},
+			},
+			false},
 		{"With type and not null", "CREATE TABLE test(foo INTEGER NOT NULL)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
@@ -101,7 +127,10 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsNotNull: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -110,7 +139,10 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsPrimaryKey: true, IsNotNull: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsNotNull: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -119,9 +151,12 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), Type: types.IntegerValue, IsNotNull: true},
 						{Path: document.Path(testutil.ParsePath(t, "baz[4][1].bat")), Type: types.TextValue},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -130,8 +165,11 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsPrimaryKey: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -141,7 +179,9 @@ func TestParserCreateTable(t *testing.T) {
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
-						{Path: document.Path(testutil.ParsePath(t, "bar")), IsPrimaryKey: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "bar")), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -153,8 +193,11 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
 						{Path: document.Path(testutil.ParsePath(t, "bar")), IsNotNull: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Unique: true},
 					},
 				},
 			}, false},
@@ -164,7 +207,9 @@ func TestParserCreateTable(t *testing.T) {
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
 						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
-						{Path: document.Path(testutil.ParsePath(t, "bar")), IsUnique: true},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "bar")), Unique: true},
 					},
 				},
 			}, false},
@@ -173,7 +218,10 @@ func TestParserCreateTable(t *testing.T) {
 				Info: database.TableInfo{
 					TableName: "test",
 					FieldConstraints: []*database.FieldConstraint{
-						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue, IsUnique: true},
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Type: types.IntegerValue},
+					},
+					TableConstraints: []*database.TableConstraint{
+						{Path: document.Path(testutil.ParsePath(t, "foo")), Unique: true},
 					},
 				},
 			}, false},

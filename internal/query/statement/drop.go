@@ -41,7 +41,7 @@ func (stmt DropTableStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	// if there is no primary key, drop the docid sequence
-	if tb.Info.FieldConstraints.GetPrimaryKey() == nil {
+	if tb.Info.GetPrimaryKey() == nil {
 		err = ctx.Catalog.DropSequence(ctx.Tx, tb.Info.DocidSequenceName)
 		if err != nil {
 			return res, err

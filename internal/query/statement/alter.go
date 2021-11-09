@@ -39,8 +39,7 @@ func (stmt AlterStmt) Run(ctx *Context) (Result, error) {
 }
 
 type AlterTableAddField struct {
-	TableName  string
-	Constraint database.FieldConstraint
+	Info database.TableInfo
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
@@ -53,14 +52,11 @@ func (stmt AlterTableAddField) IsReadOnly() bool {
 func (stmt AlterTableAddField) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	if stmt.TableName == "" {
-		return res, errors.New("missing table name")
+	var fc *database.FieldConstraint
+	if stmt.Info.FieldConstraints != nil {
+		fc = stmt.Info.FieldConstraints[0]
 	}
 
-	if stmt.Constraint.Path == nil {
-		return res, errors.New("missing field name")
-	}
-
-	err := ctx.Catalog.AddFieldConstraint(ctx.Tx, stmt.TableName, stmt.Constraint)
+	err := ctx.Catalog.AddFieldConstraint(ctx.Tx, stmt.Info.TableName, fc, stmt.Info.TableConstraints)
 	return res, err
 }

@@ -24,8 +24,7 @@ var sequenceTableInfo = &TableInfo{
 					FieldName: "name",
 				},
 			},
-			Type:         types.TextValue,
-			IsPrimaryKey: true,
+			Type: types.TextValue,
 		},
 		{
 			Path: document.Path{
@@ -34,6 +33,16 @@ var sequenceTableInfo = &TableInfo{
 				},
 			},
 			Type: types.IntegerValue,
+		},
+	},
+	TableConstraints: []*TableConstraint{
+		{
+			Path: document.Path{
+				document.PathFragment{
+					FieldName: "name",
+				},
+			},
+			PrimaryKey: true,
 		},
 	},
 }

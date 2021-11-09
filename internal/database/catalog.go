@@ -338,7 +338,7 @@ func (c *Catalog) dropIndex(tx *Transaction, name string) error {
 }
 
 // AddFieldConstraint adds a field constraint to a table.
-func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc FieldConstraint) error {
+func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc *FieldConstraint, tcs TableConstraints) error {
 	r, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return err
@@ -346,7 +346,14 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc Field
 	ti := r.(*TableInfo)
 
 	clone := ti.Clone()
-	err = clone.FieldConstraints.Add(&fc)
+	if fc != nil {
+		err = clone.FieldConstraints.Add(fc)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = clone.TableConstraints.Merge(tcs)
 	if err != nil {
 		return err
 	}
@@ -761,6 +768,16 @@ func newCatalogStore() *CatalogStore {
 		info: &TableInfo{
 			TableName: TableName,
 			StoreName: []byte(TableName),
+			TableConstraints: []*TableConstraint{
+				{
+					PrimaryKey: true,
+					Path: document.Path{
+						document.PathFragment{
+							FieldName: "name",
+						},
+					},
+				},
+			},
 			FieldConstraints: []*FieldConstraint{
 				{
 					Path: document.Path{
@@ -768,8 +785,7 @@ func newCatalogStore() *CatalogStore {
 							FieldName: "name",
 						},
 					},
-					Type:         types.TextValue,
-					IsPrimaryKey: true,
+					Type: types.TextValue,
 				},
 				{
 					Path: document.Path{

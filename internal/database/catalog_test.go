@@ -11,6 +11,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -112,12 +113,15 @@ func TestCatalogTable(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
-		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
-			{Path: testutil.ParseDocumentPath(t, "name"), Type: types.TextValue, IsNotNull: true},
-			{Path: testutil.ParseDocumentPath(t, "age"), Type: types.IntegerValue, IsPrimaryKey: true},
-			{Path: testutil.ParseDocumentPath(t, "gender"), Type: types.TextValue},
-			{Path: testutil.ParseDocumentPath(t, "city"), Type: types.TextValue},
-		}}
+		ti := &database.TableInfo{
+			FieldConstraints: []*database.FieldConstraint{
+				{Path: testutil.ParseDocumentPath(t, "name"), Type: types.TextValue, IsNotNull: true},
+				{Path: testutil.ParseDocumentPath(t, "age"), Type: types.IntegerValue},
+				{Path: testutil.ParseDocumentPath(t, "gender"), Type: types.TextValue},
+				{Path: testutil.ParseDocumentPath(t, "city"), Type: types.TextValue},
+			}, TableConstraints: []*database.TableConstraint{
+				{Path: testutil.ParseDocumentPath(t, "age"), PrimaryKey: true},
+			}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "foo", ti)
@@ -194,9 +198,11 @@ func TestCatalogTable(t *testing.T) {
 
 		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
 			{Path: testutil.ParseDocumentPath(t, "name"), Type: types.TextValue, IsNotNull: true},
-			{Path: testutil.ParseDocumentPath(t, "age"), Type: types.IntegerValue, IsPrimaryKey: true},
+			{Path: testutil.ParseDocumentPath(t, "age"), Type: types.IntegerValue},
 			{Path: testutil.ParseDocumentPath(t, "gender"), Type: types.TextValue},
 			{Path: testutil.ParseDocumentPath(t, "city"), Type: types.TextValue},
+		}, TableConstraints: []*database.TableConstraint{
+			{Path: testutil.ParseDocumentPath(t, "age"), PrimaryKey: true},
 		}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
@@ -211,7 +217,10 @@ func TestCatalogTable(t *testing.T) {
 			fieldToAdd := database.FieldConstraint{
 				Path: testutil.ParseDocumentPath(t, "last_name"), Type: types.TextValue,
 			}
-			err := catalog.AddFieldConstraint(tx, "foo", fieldToAdd)
+			// Add table constraint
+			var tcs database.TableConstraints
+			tcs.AddCheck("foo", expr.Constraint(testutil.ParseExpr(t, "last_name > first_name")))
+			err := catalog.AddFieldConstraint(tx, "foo", &fieldToAdd, tcs)
 			assert.NoError(t, err)
 
 			tb, err := catalog.GetTable(tx, "foo")
@@ -220,22 +229,22 @@ func TestCatalogTable(t *testing.T) {
 			// The field constraints should not be the same.
 
 			require.Contains(t, tb.Info.FieldConstraints, &fieldToAdd)
+			require.Equal(t, expr.Constraint(testutil.ParseExpr(t, "last_name > first_name")), tb.Info.TableConstraints[1].Check)
 
 			// Renaming a non existing table should return an error
-			err = catalog.AddFieldConstraint(tx, "bar", fieldToAdd)
+			err = catalog.AddFieldConstraint(tx, "bar", &fieldToAdd, nil)
 			if !errors.Is(err, errs.NotFoundError{}) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "bar"})
 			}
 
 			// Adding a existing field should return an error
-			err = catalog.AddFieldConstraint(tx, "foo", *ti.FieldConstraints[0])
+			err = catalog.AddFieldConstraint(tx, "foo", ti.FieldConstraints[0], nil)
 			assert.Error(t, err)
 
 			// Adding a second primary key should return an error
-			fieldToAdd = database.FieldConstraint{
-				Path: testutil.ParseDocumentPath(t, "foobar"), Type: types.IntegerValue, IsPrimaryKey: true,
-			}
-			err = catalog.AddFieldConstraint(tx, "foo", fieldToAdd)
+			tcs = nil
+			tcs.AddPrimaryKey("foo", testutil.ParseDocumentPath(t, "address"))
+			err = catalog.AddFieldConstraint(tx, "foo", nil, tcs)
 			assert.Error(t, err)
 
 			return errDontCommit
@@ -311,8 +320,8 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "test", &database.TableInfo{
-				FieldConstraints: database.FieldConstraints{
-					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				TableConstraints: []*database.TableConstraint{
+					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
 			if err != nil {
@@ -493,8 +502,8 @@ func TestCatalogReIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "test", &database.TableInfo{
-				FieldConstraints: database.FieldConstraints{
-					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				TableConstraints: []*database.TableConstraint{
+					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
 			assert.NoError(t, err)
@@ -545,8 +554,8 @@ func TestCatalogReIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "test", &database.TableInfo{
-				FieldConstraints: database.FieldConstraints{
-					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				TableConstraints: []*database.TableConstraint{
+					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
 			assert.NoError(t, err)
@@ -640,8 +649,8 @@ func TestReIndexAll(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "test1", &database.TableInfo{
-				FieldConstraints: database.FieldConstraints{
-					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				TableConstraints: []*database.TableConstraint{
+					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
 			assert.NoError(t, err)
@@ -649,8 +658,8 @@ func TestReIndexAll(t *testing.T) {
 			assert.NoError(t, err)
 
 			err = catalog.CreateTable(tx, "test2", &database.TableInfo{
-				FieldConstraints: database.FieldConstraints{
-					{Path: testutil.ParseDocumentPath(t, "a"), IsPrimaryKey: true},
+				TableConstraints: []*database.TableConstraint{
+					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
 			assert.NoError(t, err)
@@ -759,11 +768,11 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d types.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT PRIMARY KEY, seq INTEGER)", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
 		case 1:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq CACHE 16", "type":"sequence"}`)
 		case 2:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE UNIQUE)", "store_name":"AQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE, UNIQUE (b[3].c))", "store_name":"AQ==", "type":"table"}`)
 		case 3:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "path":"b[3].c"}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
 		case 4:

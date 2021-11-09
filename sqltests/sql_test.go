@@ -133,6 +133,7 @@ func parse(r io.Reader, filename string) *testSuite {
 	var readingResult bool
 	var readingSetup bool
 	var readingSuite bool
+	var readingCommentBlock bool
 	var suiteIndex int = -1
 
 	var lineCount = 0
@@ -147,7 +148,11 @@ func parse(r io.Reader, filename string) *testSuite {
 
 		switch {
 		case line == "":
-			// ignore blank lines
+		// ignore blank lines
+		case readingCommentBlock && strings.TrimSpace(line) == "*/":
+			readingCommentBlock = false
+		case readingCommentBlock:
+			// ignore comment blocks
 		case strings.HasPrefix(line, "-- setup:"):
 			readingSetup = true
 		case strings.HasPrefix(line, "-- suite:"):
@@ -191,9 +196,11 @@ func parse(r io.Reader, filename string) *testSuite {
 				curTest.Fails = true
 			}
 			curTest = nil
-
-		case strings.HasPrefix(line, "--"): // ignore normal comments
-
+		case strings.HasPrefix(line, "/*"): // ignore block comments
+			readingCommentBlock = true
+		case strings.HasPrefix(line, "--"):
+			// ignore line comments
+		case !readingResult && strings.TrimSpace(line) == "*/":
 		default:
 			if readingSuite {
 				ts.Suites[suiteIndex].PostSetup += line + "\n"

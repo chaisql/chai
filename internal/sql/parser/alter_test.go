@@ -48,28 +48,41 @@ func TestParserAlterTableAddField(t *testing.T) {
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo ADD FIELD bar", statement.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{},
-		}, true},
-		{"With type", "ALTER TABLE foo ADD FIELD bar integer", statement.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{
-				Path: document.Path(testutil.ParsePath(t, "bar")),
-				Type: types.IntegerValue,
+		{"Basic", "ALTER TABLE foo ADD FIELD bar", nil, true},
+		{"With type", "ALTER TABLE foo ADD FIELD bar integer", statement.AlterTableAddField{
+			Info: database.TableInfo{
+				TableName: "foo",
+				FieldConstraints: []*database.FieldConstraint{
+					{
+						Path: document.Path(testutil.ParsePath(t, "bar")),
+						Type: types.IntegerValue,
+					},
+				},
 			},
 		}, false},
-		{"With not null", "ALTER TABLE foo ADD FIELD bar NOT NULL", statement.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{
-				Path:      document.Path(testutil.ParsePath(t, "bar")),
-				IsNotNull: true,
+		{"With not null", "ALTER TABLE foo ADD FIELD bar NOT NULL", statement.AlterTableAddField{
+			Info: database.TableInfo{
+				TableName: "foo",
+				FieldConstraints: []*database.FieldConstraint{
+					{
+						Path:      document.Path(testutil.ParsePath(t, "bar")),
+						IsNotNull: true,
+					},
+				},
 			},
 		}, false},
-		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", statement.AlterTableAddField{}, true},
-		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", statement.AlterTableAddField{TableName: "foo",
-			Constraint: database.FieldConstraint{
-				Path:         document.Path(testutil.ParsePath(t, "bar")),
-				Type:         types.IntegerValue,
-				IsNotNull:    true,
-				DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
+		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", nil, true},
+		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", statement.AlterTableAddField{
+			Info: database.TableInfo{
+				TableName: "foo",
+				FieldConstraints: []*database.FieldConstraint{
+					{
+						Path:         document.Path(testutil.ParsePath(t, "bar")),
+						Type:         types.IntegerValue,
+						IsNotNull:    true,
+						DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
+					},
+				},
 			},
 		}, false},
 		{"With error / missing FIELD keyword", "ALTER TABLE foo ADD bar", nil, true},

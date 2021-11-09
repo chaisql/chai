@@ -18,6 +18,7 @@ type TableInfo struct {
 	ReadOnly  bool
 
 	FieldConstraints FieldConstraints
+	TableConstraints TableConstraints
 
 	// Name of the docid sequence if any.
 	DocidSequenceName string
@@ -39,15 +40,66 @@ func (ti *TableInfo) GenerateBaseName() string {
 	return ti.TableName
 }
 
+// ValidateDocument calls Convert then ensures the document validates against the field constraints.
+func (ti *TableInfo) ValidateDocument(tx *Transaction, d types.Document) (*document.FieldBuffer, error) {
+	fb := document.NewFieldBuffer()
+	err := fb.Copy(d)
+	if err != nil {
+		return nil, err
+	}
+
+	fb, err = ti.FieldConstraints.ValidateDocument(tx, fb)
+	if err != nil {
+		return nil, err
+	}
+
+	err = ti.TableConstraints.ValidateDocument(tx, fb)
+	if err != nil {
+		return nil, err
+	}
+
+	return fb, nil
+}
+
+func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
+	for _, tc := range ti.TableConstraints {
+		if tc.PrimaryKey == false {
+			continue
+		}
+
+		fc := ti.GetFieldConstraintForPath(tc.Path)
+		if fc == nil {
+			return &FieldConstraint{
+				Path: tc.Path,
+			}
+		}
+
+		return fc
+	}
+
+	return nil
+}
+
+func (ti *TableInfo) GetFieldConstraintForPath(p document.Path) *FieldConstraint {
+	for _, fc := range ti.FieldConstraints {
+		if fc.Path.IsEqual(p) {
+			return fc
+		}
+	}
+
+	return nil
+}
+
 // String returns a SQL representation.
 func (ti *TableInfo) String() string {
 	var s strings.Builder
 
 	stringutil.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
-	if len(ti.FieldConstraints) > 0 {
+	if len(ti.FieldConstraints) > 0 || len(ti.TableConstraints) > 0 {
 		s.WriteString(" (")
 	}
 
+	var hasFieldConstraints bool
 	for i, fc := range ti.FieldConstraints {
 		if fc.IsInferred {
 			continue
@@ -58,9 +110,19 @@ func (ti *TableInfo) String() string {
 		}
 
 		s.WriteString(fc.String())
+
+		hasFieldConstraints = true
 	}
 
-	if len(ti.FieldConstraints) > 0 {
+	for i, tc := range ti.TableConstraints {
+		if i > 0 || hasFieldConstraints {
+			s.WriteString(", ")
+		}
+
+		s.WriteString(tc.String())
+	}
+
+	if len(ti.FieldConstraints) > 0 || len(ti.TableConstraints) > 0 {
 		s.WriteString(")")
 	}
 
@@ -71,7 +133,9 @@ func (ti *TableInfo) String() string {
 func (ti *TableInfo) Clone() *TableInfo {
 	cp := *ti
 	cp.FieldConstraints = nil
+	cp.TableConstraints = nil
 	cp.FieldConstraints = append(cp.FieldConstraints, ti.FieldConstraints...)
+	cp.TableConstraints = append(cp.TableConstraints, ti.TableConstraints...)
 	return &cp
 }
 

@@ -128,6 +128,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `BETWEEN`, tok: BETWEEN},
 		{s: `CACHE`, tok: CACHE},
 		{s: `CAST`, tok: CAST},
+		{s: `CHECK`, tok: CHECK},
 		{s: `COMMIT`, tok: COMMIT},
 		{s: `CONFLICT`, tok: CONFLICT},
 		{s: `CREATE`, tok: CREATE},

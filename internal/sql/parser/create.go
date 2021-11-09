@@ -59,30 +59,6 @@ func (p *Parser) parseCreateTableStatement() (*statement.CreateTableStmt, error)
 	return &stmt, err
 }
 
-func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint) (err error) {
-	fc.Path, err = p.parsePath()
-	if err != nil {
-		return err
-	}
-
-	fc.Type, err = p.parseType()
-	if err != nil {
-		p.Unscan()
-	}
-
-	err = p.parseFieldConstraint(fc)
-	if err != nil {
-		return err
-	}
-
-	if fc.Type.IsAny() && fc.DefaultValue == nil && !fc.IsNotNull && !fc.IsPrimaryKey && !fc.IsUnique {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
-	}
-
-	return nil
-}
-
 func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
@@ -116,15 +92,17 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 		// if set to false, we are still parsing field definitions
 		if !parsingTableConstraints {
 			var fc database.FieldConstraint
-
-			err = p.parseFieldDefinition(&fc)
+			err := p.parseFieldDefinition(&fc, &stmt.Info)
 			if err != nil {
 				return err
 			}
 
-			err = stmt.Info.FieldConstraints.Add(&fc)
-			if err != nil {
-				return err
+			// if the field definition is empty, we ignore it
+			if !fc.IsEmpty() {
+				err = stmt.Info.FieldConstraints.Add(&fc)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -139,22 +117,25 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 		return err
 	}
 
-	// ensure only one primary key
-	var pkFound bool
-	for _, fc := range stmt.Info.FieldConstraints {
-		if fc.IsPrimaryKey {
-			if pkFound {
-				return stringutil.Errorf("table %q has more than one primary key", stmt.Info.TableName)
-			}
-
-			pkFound = true
-		}
-	}
-
 	return nil
 }
 
-func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
+func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint, info *database.TableInfo) error {
+	var err error
+
+	fc.Path, err = p.parsePath()
+	if err != nil {
+		return err
+	}
+
+	fc.Type, err = p.parseType()
+	if err != nil {
+		p.Unscan()
+	}
+
+	var addedTc int
+
+LOOP:
 	for {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
 		switch tok {
@@ -164,12 +145,11 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				return err
 			}
 
-			// if it's already a primary key we return an error
-			if fc.IsPrimaryKey {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			err = info.TableConstraints.AddPrimaryKey(info.TableName, fc.Path)
+			if err != nil {
+				return err
 			}
-
-			fc.IsPrimaryKey = true
+			addedTc++
 		case scanner.NOT:
 			// Parse "NULL"
 			if err := p.parseTokens(scanner.NULL); err != nil {
@@ -234,17 +214,42 @@ func (p *Parser) parseFieldConstraint(fc *database.FieldConstraint) error {
 				}
 			}
 		case scanner.UNIQUE:
-			// if it's already unique we return an error
-			if fc.IsUnique {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+			info.TableConstraints.AddUnique(fc.Path)
+			addedTc++
+		case scanner.CHECK:
+			// Parse "("
+			err := p.parseTokens(scanner.LPAREN)
+			if err != nil {
+				return err
 			}
 
-			fc.IsUnique = true
+			e, err := p.ParseExpr()
+			if err != nil {
+				return err
+			}
+
+			// Parse ")"
+			err = p.parseTokens(scanner.RPAREN)
+			if err != nil {
+				return err
+			}
+
+			info.TableConstraints.AddCheck(info.TableName, expr.Constraint(e))
+			addedTc++
 		default:
 			p.Unscan()
-			return nil
+			break LOOP
 		}
 	}
+
+	// if no constraint was added we return an error. i.e:
+	// CREATE TABLE t (a)
+	if fc.IsEmpty() && addedTc == 0 {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
+	}
+
+	return nil
 }
 
 func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, error) {
@@ -270,20 +275,8 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 			return false, err
 		}
 
-		if pk := stmt.Info.FieldConstraints.GetPrimaryKey(); pk != nil {
-			return false, stringutil.Errorf("table %q has more than one primary key", stmt.Info.TableName)
-		}
-		fc := stmt.Info.FieldConstraints.Get(primaryKeyPath)
-		if fc == nil {
-			err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
-				Path:         primaryKeyPath,
-				IsPrimaryKey: true,
-			})
-			if err != nil {
-				return false, err
-			}
-		} else {
-			fc.IsPrimaryKey = true
+		if err := stmt.Info.TableConstraints.AddPrimaryKey(stmt.Info.TableName, primaryKeyPath); err != nil {
+			return false, err
 		}
 
 		return true, nil
@@ -305,18 +298,27 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 			return false, err
 		}
 
-		fc := stmt.Info.FieldConstraints.Get(uniquePath)
-		if fc == nil {
-			err = stmt.Info.FieldConstraints.Add(&database.FieldConstraint{
-				Path:     uniquePath,
-				IsUnique: true,
-			})
-			if err != nil {
-				return false, err
-			}
-		} else {
-			fc.IsUnique = true
+		stmt.Info.TableConstraints.AddUnique(uniquePath)
+		return true, nil
+	case scanner.CHECK:
+		// Parse "("
+		err = p.parseTokens(scanner.LPAREN)
+		if err != nil {
+			return false, err
 		}
+
+		e, err := p.ParseExpr()
+		if err != nil {
+			return false, err
+		}
+
+		// Parse ")"
+		err = p.parseTokens(scanner.RPAREN)
+		if err != nil {
+			return false, err
+		}
+
+		stmt.Info.TableConstraints.AddCheck(stmt.Info.TableName, expr.Constraint(e))
 
 		return true, nil
 	default:
