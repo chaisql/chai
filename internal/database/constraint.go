@@ -1,7 +1,6 @@
 package database
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -26,10 +25,8 @@ type FieldConstraint struct {
 	Type         types.ValueType
 	IsNotNull    bool
 	DefaultValue TableExpression
-	// IsUnique     bool
-	// IsPrimaryKey bool
-	IsInferred bool
-	InferredBy []document.Path
+	IsInferred   bool
+	InferredBy   []document.Path
 }
 
 // IsEqual compares f with other member by member.
@@ -42,10 +39,6 @@ func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
 	if f.Type != other.Type {
 		return false
 	}
-
-	// if f.IsPrimaryKey != other.IsPrimaryKey {
-	// 	return false
-	// }
 
 	if f.IsNotNull != other.IsNotNull {
 		return false
@@ -65,7 +58,7 @@ func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
 }
 
 func (f *FieldConstraint) IsEmpty() bool {
-	return f.Type.IsAny() && f.IsNotNull == false && f.DefaultValue == nil
+	return f.Type.IsAny() && !f.IsNotNull && f.DefaultValue == nil
 }
 
 func (f *FieldConstraint) String() string {
@@ -78,14 +71,6 @@ func (f *FieldConstraint) String() string {
 	if f.IsNotNull {
 		s.WriteString(" NOT NULL")
 	}
-
-	// if f.IsPrimaryKey {
-	// 	s.WriteString(" PRIMARY KEY")
-	// }
-
-	// if f.IsUnique {
-	// 	s.WriteString(" UNIQUE")
-	// }
 
 	if f.HasDefaultValue() {
 		s.WriteString(" DEFAULT ")
@@ -136,18 +121,6 @@ func (f FieldConstraints) Get(path document.Path) *FieldConstraint {
 
 	return nil
 }
-
-// // GetPrimaryKey returns the field constraint of the primary key.
-// // Returns nil if there is no primary key.
-// func (f FieldConstraints) GetPrimaryKey() *FieldConstraint {
-// 	for _, fc := range f {
-// 		if fc.IsPrimaryKey {
-// 			return fc
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 // Infer additional constraints based on user defined ones.
 // For example, given the following table:
@@ -261,14 +234,6 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			(*f)[i] = newFc
 			return nil
 		}
-
-		// ensure we don't have duplicate primary keys
-		// if c.IsPrimaryKey && newFc.IsPrimaryKey {
-		// 	return stringutil.Errorf(
-		// 		"multiple primary keys are not allowed (%q is primary key)",
-		// 		c.Path.String(),
-		// 	)
-		// }
 	}
 
 	err := f.validateDefaultValue(newFc)
@@ -557,7 +522,6 @@ func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldB
 		if err != nil {
 			return err
 		}
-		fmt.Println(tc.Check, fb, v)
 		var ok bool
 		switch v.Type() {
 		case types.BoolValue:
