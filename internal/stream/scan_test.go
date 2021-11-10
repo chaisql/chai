@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -331,35 +330,35 @@ func TestIndexScan(t *testing.T) {
 	})
 }
 
-func TestTransientIndexScan(t *testing.T) {
-	testIndexScan(t, func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator {
-		var paths []document.Path
-		pp := strings.Split(indexOn, ",")
-		for _, p := range pp {
-			paths = append(paths, document.NewPath(strings.TrimSpace(p)))
-		}
+// func TestTransientIndexScan(t *testing.T) {
+// 	testIndexScan(t, func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator {
+// 		var paths []document.Path
+// 		pp := strings.Split(indexOn, ",")
+// 		for _, p := range pp {
+// 			paths = append(paths, document.NewPath(strings.TrimSpace(p)))
+// 		}
 
-		op := stream.TransientIndexScan("test", paths, ranges...)
-		op.Reverse = reverse
-		return op
-	})
+// 		op := stream.TransientIndexScan("test", paths, ranges...)
+// 		op.Reverse = reverse
+// 		return op
+// 	})
 
-	t.Run("String", func(t *testing.T) {
-		paths := []document.Path{document.NewPath("a.b[0]"), document.NewPath("b")}
-		require.Equal(t, `transientIndexScan("test", [a.b[0], b], [[1, 1], [2, 2]])`, stream.TransientIndexScan("test", paths, stream.IndexRange{
-			Min: testutil.ExprList(t, `[1, 1]`),
-			Max: testutil.ExprList(t, `[2, 2]`),
-		}).String())
+// 	t.Run("String", func(t *testing.T) {
+// 		paths := []document.Path{document.NewPath("a.b[0]"), document.NewPath("b")}
+// 		require.Equal(t, `transientIndexScan("test", [a.b[0], b], [[1, 1], [2, 2]])`, stream.TransientIndexScan("test", paths, stream.IndexRange{
+// 			Min: testutil.ExprList(t, `[1, 1]`),
+// 			Max: testutil.ExprList(t, `[2, 2]`),
+// 		}).String())
 
-		op := stream.TransientIndexScan("test", paths, stream.IndexRange{
-			Min: testutil.ExprList(t, `[1, 1]`),
-			Max: testutil.ExprList(t, `[2, 2]`),
-		})
-		op.Reverse = true
+// 		op := stream.TransientIndexScan("test", paths, stream.IndexRange{
+// 			Min: testutil.ExprList(t, `[1, 1]`),
+// 			Max: testutil.ExprList(t, `[2, 2]`),
+// 		})
+// 		op.Reverse = true
 
-		require.Equal(t, `transientIndexScanReverse("test", [a.b[0], b], [[1, 1], [2, 2]])`, op.String())
-	})
-}
+// 		require.Equal(t, `transientIndexScanReverse("test", [a.b[0], b], [[1, 1], [2, 2]])`, op.String())
+// 	})
+// }
 
 func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator) {
 	tests := []struct {

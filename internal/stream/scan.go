@@ -544,11 +544,11 @@ func (it *TransientIndexScanOperator) Iterate(in *environment.Environment, fn fu
 	}
 	defer cleanup()
 
-	// build the index from the original table to the transient db index
-	err = temp.DB.Catalog.BuildIndex(temp.Tx, temp.Index, table)
-	if err != nil {
-		return err
-	}
+	// // build the index from the original table to the transient db index
+	// err = temp.DB.Catalog.BuildIndex(temp.Tx, temp.Index, table)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return it.IndexScanOperator.iterateOverIndex(in, table, temp.Index, fn)
 }

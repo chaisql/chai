@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"testing"
@@ -15,7 +14,6 @@ import (
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -314,32 +312,16 @@ func TestCatalogCreateTable(t *testing.T) {
 }
 
 func TestCatalogCreateIndex(t *testing.T) {
-	t.Run("Should create an index, build it and return it", func(t *testing.T) {
+	t.Run("Should create an index, and return it", func(t *testing.T) {
 		db, cleanup := testutil.NewTestDB(t)
 		defer cleanup()
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.CreateTable(tx, "test", &database.TableInfo{
+			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				TableConstraints: []*database.TableConstraint{
 					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
 				},
 			})
-			if err != nil {
-				return err
-			}
-
-			tb, err := catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
-
-			for i := int64(0); i < 10; i++ {
-				_, err = tb.Insert(document.NewFieldBuffer().
-					Add("a", types.NewIntegerValue(i)).
-					Add("b", types.NewIntegerValue(i*10)),
-				)
-				assert.NoError(t, err)
-			}
-
-			return nil
 		})
 
 		clone := cloneCatalog(db.Catalog)
@@ -352,25 +334,6 @@ func TestCatalogCreateIndex(t *testing.T) {
 			idx, err := catalog.GetIndex(tx, "idx_a")
 			assert.NoError(t, err)
 			require.NotNil(t, idx)
-
-			var i int
-			err = idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.DoubleValue)), func(v, k []byte) error {
-				var buf bytes.Buffer
-				err = encoding.NewValueEncoder(&buf).Encode(
-					types.NewArrayValue(
-						document.NewValueBuffer(
-							types.NewDoubleValue(float64(i)),
-						),
-					),
-				)
-				assert.NoError(t, err)
-				enc := buf.Bytes()
-				require.Equal(t, enc, v)
-				i++
-				return nil
-			})
-			require.Equal(t, 10, i)
-			assert.NoError(t, err)
 
 			return errDontCommit
 		})
@@ -494,260 +457,6 @@ func TestTxDropIndex(t *testing.T) {
 			assert.ErrorIs(t, err, errs.NotFoundError{Name: "idxFoo"})
 			return nil
 		})
-	})
-}
-
-func TestCatalogReIndex(t *testing.T) {
-	prepareTableFn := func(t *testing.T, db *database.Database) {
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.CreateTable(tx, "test", &database.TableInfo{
-				TableConstraints: []*database.TableConstraint{
-					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
-				},
-			})
-			assert.NoError(t, err)
-			tb, err := catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
-
-			for i := int64(0); i < 10; i++ {
-				_, err = tb.Insert(document.NewFieldBuffer().
-					Add("a", types.NewIntegerValue(i)).
-					Add("b", types.NewIntegerValue(i*10)),
-				)
-				assert.NoError(t, err)
-			}
-
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "a",
-				TableName: "test",
-				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
-			})
-			assert.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "b",
-				TableName: "test",
-				Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
-			})
-			assert.NoError(t, err)
-
-			return nil
-		})
-	}
-
-	t.Run("Should fail if not found", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
-
-		prepareTableFn(t, db)
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.ReIndex(tx, "foo")
-			assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
-			return nil
-		})
-	})
-
-	t.Run("Should not fail if field not found", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.CreateTable(tx, "test", &database.TableInfo{
-				TableConstraints: []*database.TableConstraint{
-					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
-				},
-			})
-			assert.NoError(t, err)
-
-			tb, err := catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
-
-			_, err = tb.Insert(document.NewFieldBuffer().
-				Add("a", types.NewIntegerValue(1)),
-			)
-			assert.NoError(t, err)
-
-			return catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "b",
-				TableName: "test",
-				Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
-			})
-		})
-
-		clone := cloneCatalog(db.Catalog)
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.ReIndex(tx, "b")
-			assert.NoError(t, err)
-
-			return errDontCommit
-		})
-
-		require.Equal(t, clone, db.Catalog)
-	})
-
-	t.Run("Should reindex the index", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
-
-		prepareTableFn(t, db)
-
-		clone := cloneCatalog(db.Catalog)
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.ReIndex(tx, "a")
-			assert.NoError(t, err)
-
-			idx, err := catalog.GetIndex(tx, "a")
-			assert.NoError(t, err)
-
-			var i int
-			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
-				var buf bytes.Buffer
-				err = encoding.NewValueEncoder(&buf).Encode(
-					types.NewArrayValue(
-						document.NewValueBuffer(
-							types.NewDoubleValue(float64(i)),
-						),
-					),
-				)
-				assert.NoError(t, err)
-				enc := buf.Bytes()
-				require.Equal(t, enc, v)
-				i++
-				return nil
-			})
-			require.Equal(t, 10, i)
-			assert.NoError(t, err)
-
-			_, err = catalog.GetIndex(tx, "b")
-			assert.NoError(t, err)
-
-			return errDontCommit
-		})
-
-		require.Equal(t, clone, db.Catalog)
-	})
-}
-
-func TestReIndexAll(t *testing.T) {
-	t.Run("Should succeed if no indexes", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.ReIndexAll(tx)
-			assert.NoError(t, err)
-			return nil
-		})
-	})
-
-	t.Run("Should reindex all indexes", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.CreateTable(tx, "test1", &database.TableInfo{
-				TableConstraints: []*database.TableConstraint{
-					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
-				},
-			})
-			assert.NoError(t, err)
-			tb1, err := catalog.GetTable(tx, "test1")
-			assert.NoError(t, err)
-
-			err = catalog.CreateTable(tx, "test2", &database.TableInfo{
-				TableConstraints: []*database.TableConstraint{
-					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
-				},
-			})
-			assert.NoError(t, err)
-			tb2, err := catalog.GetTable(tx, "test2")
-			assert.NoError(t, err)
-
-			for i := int64(0); i < 10; i++ {
-				_, err = tb1.Insert(document.NewFieldBuffer().
-					Add("a", types.NewIntegerValue(i)).
-					Add("b", types.NewIntegerValue(i*10)),
-				)
-				assert.NoError(t, err)
-				_, err = tb2.Insert(document.NewFieldBuffer().
-					Add("a", types.NewIntegerValue(i)).
-					Add("b", types.NewIntegerValue(i*10)),
-				)
-				assert.NoError(t, err)
-			}
-
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "t1a",
-				TableName: "test1",
-				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
-			})
-			assert.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "t2a",
-				TableName: "test2",
-				Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
-			})
-			assert.NoError(t, err)
-
-			return nil
-		})
-
-		clone := cloneCatalog(db.Catalog)
-
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.ReIndexAll(tx)
-			assert.NoError(t, err)
-			idx, err := catalog.GetIndex(tx, "t1a")
-			assert.NoError(t, err)
-
-			var i int
-			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
-				var buf bytes.Buffer
-				err = encoding.NewValueEncoder(&buf).Encode(
-					types.NewArrayValue(
-						document.NewValueBuffer(
-							types.NewDoubleValue(float64(i)),
-						),
-					),
-				)
-				assert.NoError(t, err)
-				enc := buf.Bytes()
-				require.Equal(t, enc, v)
-				i++
-				return nil
-			})
-			require.Equal(t, 10, i)
-			assert.NoError(t, err)
-
-			idx, err = catalog.GetIndex(tx, "t2a")
-			assert.NoError(t, err)
-
-			i = 0
-			err = idx.AscendGreaterOrEqual([]types.Value{types.NewEmptyValue(types.DoubleValue)}, func(v, k []byte) error {
-				var buf bytes.Buffer
-				err = encoding.NewValueEncoder(&buf).Encode(
-					types.NewArrayValue(
-						document.NewValueBuffer(
-							types.NewDoubleValue(float64(i)),
-						),
-					),
-				)
-				assert.NoError(t, err)
-				enc := buf.Bytes()
-				require.Equal(t, enc, v)
-				i++
-				return nil
-			})
-			require.Equal(t, 10, i)
-			assert.NoError(t, err)
-
-			return errDontCommit
-		})
-
-		require.Equal(t, clone, db.Catalog)
 	})
 }
 

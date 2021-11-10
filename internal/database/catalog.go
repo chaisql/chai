@@ -247,23 +247,7 @@ OUTER:
 		return err
 	}
 
-	err = c.CatalogTable.Insert(tx, info)
-	if err != nil {
-		return err
-	}
-
-	idx, err := c.GetIndex(tx, info.IndexName)
-	if err != nil {
-		return err
-	}
-
-	tb, err := c.GetTable(tx, info.TableName)
-	if err != nil {
-		return err
-	}
-
-	err = c.BuildIndex(tx, idx, tb)
-	return err
+	return c.CatalogTable.Insert(tx, info)
 }
 
 // GetIndex returns an index by name.
@@ -442,63 +426,6 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 		}
 
 		err = c.CatalogTable.Replace(tx, seqName, clone)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// ReIndex truncates and recreates selected index from scratch.
-func (c *Catalog) ReIndex(tx *Transaction, indexName string) error {
-	idx, err := c.GetIndex(tx, indexName)
-	if err != nil {
-		return err
-	}
-
-	tb, err := c.GetTable(tx, idx.Info.TableName)
-	if err != nil {
-		return err
-	}
-
-	err = idx.Truncate()
-	if err != nil {
-		return err
-	}
-
-	return c.BuildIndex(tx, idx, tb)
-}
-
-func (c *Catalog) BuildIndex(tx *Transaction, idx *Index, table *Table) error {
-	return table.Iterate(func(d types.Document) error {
-		var err error
-		values := make([]types.Value, len(idx.Info.Paths))
-		for i, path := range idx.Info.Paths {
-			values[i], err = path.GetValueFromDocument(d)
-			if errors.Is(err, document.ErrFieldNotFound) {
-				return nil
-			}
-			if err != nil {
-				return err
-			}
-		}
-
-		err = idx.Set(values, d.(document.Keyer).RawKey())
-		if err != nil {
-			return stringutil.Errorf("error while building the index: %w", err)
-		}
-
-		return nil
-	})
-}
-
-// ReIndexAll truncates and recreates all indexes of the database from scratch.
-func (c *Catalog) ReIndexAll(tx *Transaction) error {
-	indexes := c.Cache.ListObjects(RelationIndexType)
-
-	for _, indexName := range indexes {
-		err := c.ReIndex(tx, indexName)
 		if err != nil {
 			return err
 		}

@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/types"
 )
 
@@ -104,8 +105,14 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 		return res, err
 	}
 
-	err = ctx.Catalog.ReIndex(ctx.Tx, stmt.Info.IndexName)
-	return res, err
+	s := stream.New(stream.SeqScan(stmt.Info.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
+
+	ss := StreamStmt{
+		Stream:   s,
+		ReadOnly: false,
+	}
+
+	return ss.Run(ctx)
 }
 
 // CreateSequenceStmt represents a parsed CREATE SEQUENCE statement.
