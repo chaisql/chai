@@ -63,7 +63,7 @@ func (ti *TableInfo) ValidateDocument(tx *Transaction, d types.Document) (*docum
 
 func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
 	for _, tc := range ti.TableConstraints {
-		if tc.PrimaryKey == false {
+		if !tc.PrimaryKey {
 			continue
 		}
 

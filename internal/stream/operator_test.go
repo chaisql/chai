@@ -214,64 +214,6 @@ func TestSkip(t *testing.T) {
 	})
 }
 
-func TestGroupBy(t *testing.T) {
-	tests := []struct {
-		e     expr.Expr
-		in    []types.Document
-		group types.Value
-		fails bool
-	}{
-		{
-			parser.MustParseExpr("10"),
-			testutil.MakeDocuments(t, `{"a": 10}`),
-			types.NewIntegerValue(10),
-			false,
-		},
-		{
-			parser.MustParseExpr("null"),
-			testutil.MakeDocuments(t, `{"a": 10}`),
-			types.NewNullValue(),
-			false,
-		},
-		{
-			parser.MustParseExpr("a"),
-			testutil.MakeDocuments(t, `{"a": 10}`),
-			types.NewIntegerValue(10),
-			false,
-		},
-		{
-			parser.MustParseExpr("b"),
-			testutil.MakeDocuments(t, `{"a": 10}`),
-			types.NewNullValue(),
-			false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.e.String(), func(t *testing.T) {
-			var want environment.Environment
-			want.Set("_group", test.group)
-			want.Set("_group_expr", types.NewTextValue(test.e.String()))
-
-			s := stream.New(stream.Documents(test.in...)).Pipe(stream.GroupBy(test.e))
-			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				out.SetOuter(nil)
-				require.Equal(t, &want, out)
-				return nil
-			})
-			if test.fails {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-
-	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.GroupBy(parser.MustParseExpr("1")).String(), "groupBy(1)")
-	})
-}
-
 func generateSeqDocs(t testing.TB, max int) (docs []types.Document) {
 	t.Helper()
 
@@ -280,79 +222,6 @@ func generateSeqDocs(t testing.TB, max int) (docs []types.Document) {
 	}
 
 	return docs
-}
-
-func TestSort(t *testing.T) {
-	tests := []struct {
-		name     string
-		sortExpr expr.Expr
-		values   []types.Document
-		want     []types.Document
-		fails    bool
-		desc     bool
-	}{
-		{
-			"ASC",
-			parser.MustParseExpr("a"),
-			[]types.Document{
-				testutil.MakeDocument(t, `{"a": 0}`),
-				testutil.MakeDocument(t, `{"a": null}`),
-				testutil.MakeDocument(t, `{"a": true}`),
-			},
-			[]types.Document{
-				testutil.MakeDocument(t, `{"a": null}`),
-				testutil.MakeDocument(t, `{"a": true}`),
-				testutil.MakeDocument(t, `{"a": 0}`),
-			},
-			false,
-			false,
-		},
-		{
-			"DESC",
-			parser.MustParseExpr("a"),
-			[]types.Document{
-				testutil.MakeDocument(t, `{"a": 0}`),
-				testutil.MakeDocument(t, `{"a": null}`),
-				testutil.MakeDocument(t, `{"a": true}`),
-			},
-			[]types.Document{
-				testutil.MakeDocument(t, `{"a": 0}`),
-				testutil.MakeDocument(t, `{"a": true}`),
-				testutil.MakeDocument(t, `{"a": null}`),
-			},
-			false,
-			true,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.Documents(test.values...))
-			if test.desc {
-				s = s.Pipe(stream.SortReverse(test.sortExpr))
-			} else {
-				s = s.Pipe(stream.Sort(test.sortExpr))
-			}
-
-			var got []types.Document
-			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
-				d, ok := env.GetDocument()
-				require.True(t, ok)
-				got = append(got, d)
-				return nil
-			})
-			if test.fails {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				require.Equal(t, test.want, got)
-			}
-		})
-	}
-
-	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `sort(a)`, stream.Sort(parser.MustParseExpr("a")).String())
-	})
 }
 
 func TestTableInsert(t *testing.T) {
@@ -410,14 +279,16 @@ func TestTableInsert(t *testing.T) {
 
 func TestTableReplace(t *testing.T) {
 	tests := []struct {
-		name                      string
-		docsInTable, in, expected testutil.Docs
-		fails                     bool
+		name        string
+		docsInTable testutil.Docs
+		op          stream.Operator
+		expected    testutil.Docs
+		fails       bool
 	}{
 		{
 			"doc with key",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			stream.Set(testutil.ParseDocumentPath(t, "b"), testutil.ParseExpr(t, "2")),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
 			false,
 		},
@@ -430,26 +301,20 @@ func TestTableReplace(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 
-			tb, err := db.Catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
-
-			for i, doc := range test.docsInTable {
+			for _, doc := range test.docsInTable {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
-				kk, err := doc.GetByField("a")
-				assert.NoError(t, err)
-				k, err := tb.EncodeValue(kk)
-				assert.NoError(t, err)
-				test.in[i].(*document.FieldBuffer).EncodedKey = k
 			}
 
 			in := environment.Environment{}
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
-			s := stream.New(stream.Documents(test.in...)).Pipe(stream.TableReplace("test"))
+			s := stream.New(stream.SeqScan("test")).
+				Pipe(test.op).
+				Pipe(stream.TableReplace("test"))
 
 			var i int
-			err = s.Iterate(&in, func(out *environment.Environment) error {
+			err := s.Iterate(&in, func(out *environment.Environment) error {
 				d, ok := out.GetDocument()
 				require.True(t, ok)
 
@@ -489,16 +354,17 @@ func TestTableReplace(t *testing.T) {
 
 func TestTableDelete(t *testing.T) {
 	tests := []struct {
-		name                  string
-		docsInTable, expected testutil.Docs
-		in                    types.Document
-		fails                 bool
+		name        string
+		docsInTable testutil.Docs
+		op          stream.Operator
+		expected    testutil.Docs
+		fails       bool
 	}{
 		{
 			"doc with key",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 3}`),
-			testutil.MakeDocument(t, `{"a": 2}`),
+			stream.Filter(testutil.ParseExpr(t, `a > 1`)),
+			testutil.MakeDocuments(t, `{"a": 1}`),
 			false,
 		},
 	}
@@ -518,20 +384,9 @@ func TestTableDelete(t *testing.T) {
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
-			tb, err := db.Catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
-			kk, err := test.in.GetByField("a")
-			assert.NoError(t, err)
+			s := stream.New(stream.SeqScan("test")).Pipe(test.op).Pipe(stream.TableDelete("test"))
 
-			k, err := tb.EncodeValue(kk)
-			assert.NoError(t, err)
-			test.in.(*document.FieldBuffer).EncodedKey = k
-
-			s := stream.New(stream.Documents(test.in)).Pipe(stream.TableDelete("test"))
-
-			err = s.Iterate(&env, func(out *environment.Environment) error {
-				d, _ := out.GetDocument()
-				require.Equal(t, test.in, d)
+			err := s.Iterate(&env, func(out *environment.Environment) error {
 				return nil
 			})
 			if test.fails {

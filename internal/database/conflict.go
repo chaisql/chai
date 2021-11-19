@@ -18,14 +18,5 @@ func OnInsertConflictDoReplace(t *Table, key []byte, d types.Document, err error
 		return d, err
 	}
 
-	d, err = t.Replace(key, d)
-	if err != nil {
-		return nil, err
-	}
-
-	return documentWithKey{
-		Document: d,
-		key:      key,
-		pk:       t.Info.GetPrimaryKey(),
-	}, nil
+	return t.Replace(key, d)
 }

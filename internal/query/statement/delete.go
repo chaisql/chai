@@ -28,9 +28,9 @@ func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.SortReverse(stmt.OrderBy))
+			s = s.Pipe(stream.TempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.Sort(stmt.OrderBy))
+			s = s.Pipe(stream.TempTreeSort(stmt.OrderBy))
 		}
 	}
 

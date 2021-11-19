@@ -7,6 +7,12 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
+var (
+	TableKey            = document.Path{document.PathFragment{FieldName: "$table"}}
+	DocPKKey            = document.Path{document.PathFragment{FieldName: "$pk"}}
+	OriginalDocumentKey = document.Path{document.PathFragment{FieldName: "$originalDocument"}}
+)
+
 // A Param represents a parameter passed by the user to the statement.
 type Param struct {
 	// Name of the param
@@ -58,15 +64,15 @@ func (e *Environment) Get(path document.Path) (v types.Value, ok bool) {
 		return e.Outer.Get(path)
 	}
 
-	return
+	return types.NewNullValue(), false
 }
 
-func (e *Environment) Set(name string, v types.Value) {
+func (e *Environment) Set(path document.Path, v types.Value) {
 	if e.Vars == nil {
 		e.Vars = document.NewFieldBuffer()
 	}
 
-	e.Vars.Set(document.Path{document.PathFragment{FieldName: name}}, v)
+	e.Vars.Set(path, v)
 }
 
 func (e *Environment) GetDocument() (types.Document, bool) {

@@ -117,7 +117,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.AscendGreaterOrEqual(nil, func(d types.Document) error {
+	err = tb.AscendGreaterOrEqual(nil, func(key []byte, d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err

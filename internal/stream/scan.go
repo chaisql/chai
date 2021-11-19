@@ -46,34 +46,6 @@ func (d *DocumentPointer) GetByField(field string) (types.Value, error) {
 	return d.Doc.GetByField(field)
 }
 
-func (d *DocumentPointer) RawKey() []byte {
-	if d.key != nil {
-		return d.key
-	}
-
-	if d.Doc == nil {
-		var err error
-		d.Doc, err = d.Table.GetDocument(d.key)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return d.Doc.(document.Keyer).RawKey()
-}
-
-func (d *DocumentPointer) Key() (types.Value, error) {
-	var err error
-	if d.Doc == nil {
-		d.Doc, err = d.Table.GetDocument(d.key)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return d.Doc.(document.Keyer).Key()
-}
-
 func (d *DocumentPointer) MarshalJSON() ([]byte, error) {
 	if d.Doc == nil {
 		var err error
@@ -202,20 +174,18 @@ func (it *SeqScanOperator) Iterate(in *environment.Environment, fn func(out *env
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
+	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
 
-	var iterator func(pivot types.Value, fn func(d types.Document) error) error
+	var iterator func(pivot types.Value, fn func(key []byte, d types.Document) error) error
 	if !it.Reverse {
 		iterator = table.AscendGreaterOrEqual
 	} else {
 		iterator = table.DescendLessOrEqual
 	}
 
-	ptr := DocumentPointer{
-		Table: table,
-	}
-	newEnv.SetDocument(&ptr)
-	return iterator(nil, func(d types.Document) error {
-		ptr.Doc = d
+	return iterator(nil, func(key []byte, d types.Document) error {
+		newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+		newEnv.SetDocument(d)
 		return fn(&newEnv)
 	})
 }
@@ -283,6 +253,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
+	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
 
 	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
 	if err != nil {
@@ -294,17 +265,13 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 		return err
 	}
 
-	var iterator func(pivot types.Value, fn func(d types.Document) error) error
+	var iterator func(pivot types.Value, fn func(key []byte, d types.Document) error) error
 
 	if !it.Reverse {
 		iterator = table.AscendGreaterOrEqual
 	} else {
 		iterator = table.DescendLessOrEqual
 	}
-
-	var ptr DocumentPointer
-	ptr.Table = table
-	newEnv.SetDocument(&ptr)
 
 	for _, rng := range ranges {
 		var start, end types.Value
@@ -324,9 +291,7 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 			}
 		}
 
-		err = iterator(start, func(d types.Document) error {
-			key := d.(document.Keyer).RawKey()
-
+		err = iterator(start, func(key []byte, d types.Document) error {
 			if !rng.IsInRange(key) {
 				// if we reached the end of our range, we can stop iterating.
 				if encEnd == nil {
@@ -342,7 +307,9 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 				return nil
 			}
 
-			ptr.Doc = d
+			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+			newEnv.SetDocument(d)
+
 			return fn(&newEnv)
 		})
 		if errors.Is(err, ErrStreamClosed) {
@@ -418,6 +385,7 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table *database.Table, index *database.Index, fn func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
+	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.Name()))
 
 	ranges, err := it.Ranges.EncodeBuffer(index, table, in)
 	if err != nil || len(ranges) != len(it.Ranges) {
@@ -443,6 +411,7 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 			ptr.key = key
 			ptr.Doc = nil
 
+			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
 			return fn(&newEnv)
 		})
 	}
@@ -490,6 +459,7 @@ func (it *IndexScanOperator) iterateOverIndex(in *environment.Environment, table
 			ptr.key = key
 			ptr.Doc = nil
 
+			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
 			newEnv.SetDocument(&ptr)
 			return fn(&newEnv)
 		})

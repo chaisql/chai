@@ -79,7 +79,7 @@ func (s *Sequence) Init(tx *Transaction, catalog *Catalog) error {
 		return err
 	}
 
-	_, err = tb.Insert(document.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
+	_, _, err = tb.Insert(document.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
 	return err
 }
 

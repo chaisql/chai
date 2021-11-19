@@ -785,7 +785,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
-	_, err := tb.Insert(relationToDocument(r))
+	_, _, err := tb.Insert(relationToDocument(r))
 	if errors.Is(err, errs.ErrDuplicateDocument) {
 		return errors.Wrap(errs.AlreadyExistsError{Name: r.Name()})
 	}

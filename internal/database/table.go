@@ -41,8 +41,8 @@ func (t *Table) Truncate() error {
 // If a primary key has been specified during the table creation, the field is expected to be present
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
-// It returns the inserted document alongside its key. They key can be accessed using the document.Keyer interface.
-func (t *Table) Insert(d types.Document) (types.Document, error) {
+// It returns the inserted document alongside its key.
+func (t *Table) Insert(d types.Document) ([]byte, types.Document, error) {
 	return t.InsertWithConflictResolution(d, nil)
 }
 
@@ -54,39 +54,41 @@ func (t *Table) Insert(d types.Document) (types.Document, error) {
 // but not to all indexes)
 // To avoid that, we must first ensure there are no conflict (duplicate primary keys, unique constraints violation, etc.),
 // run the conflict resolution function if needed and then start writing to the engine.
-func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInsertConflictAction) (types.Document, error) {
+func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInsertConflictAction) ([]byte, types.Document, error) {
 	if t.Info.ReadOnly {
-		return nil, errors.New("cannot write to read-only table")
+		return nil, nil, errors.New("cannot write to read-only table")
 	}
 
 	fb, err := t.Info.ValidateDocument(t.Tx, d)
 	if err != nil {
 		if onConflict != nil {
 			if ce, ok := err.(*ConstraintViolationError); ok && ce.Constraint == "NOT NULL" {
-				return onConflict(t, nil, d, err)
+				d, err := onConflict(t, nil, d, err)
+				return nil, d, err
 			}
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
 	key, err := t.generateKey(t.Info, d)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// ensure the key is not already present in the table
 	_, err = t.Store.Get(key)
 	if err == nil {
 		if onConflict != nil {
-			return onConflict(t, key, d, err)
+			d, err := onConflict(t, key, d, err)
+			return key, d, err
 		}
 
-		return nil, errs.ErrDuplicateDocument
+		return nil, nil, errs.ErrDuplicateDocument
 	}
 
 	indexes, err := t.GetIndexes()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// ensure there is no index violation
@@ -109,14 +111,15 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 
 		duplicate, dKey, err := idx.Exists(vs)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if duplicate {
 			if onConflict != nil {
-				return onConflict(t, dKey, d, err)
+				d, err := onConflict(t, dKey, d, err)
+				return key, d, err
 			}
 
-			return nil, errs.ErrDuplicateDocument
+			return nil, nil, errs.ErrDuplicateDocument
 		}
 	}
 
@@ -126,12 +129,12 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 	defer enc.Close()
 	err = enc.EncodeDocument(fb)
 	if err != nil {
-		return nil, stringutil.Errorf("failed to encode document: %w", err)
+		return nil, nil, stringutil.Errorf("failed to encode document: %w", err)
 	}
 
 	err = t.Store.Put(key, buf.Bytes())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// update indexes
@@ -149,15 +152,11 @@ func (t *Table) InsertWithConflictResolution(d types.Document, onConflict OnInse
 
 		err = idx.Set(vs, key)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
-	return documentWithKey{
-		Document: fb,
-		key:      key,
-		pk:       t.Info.GetPrimaryKey(),
-	}, nil
+	return key, fb, nil
 }
 
 // GetIndexes returns all indexes of the table.
@@ -306,30 +305,6 @@ func (t *Table) replace(key []byte, d types.Document) error {
 	return nil
 }
 
-type documentWithKey struct {
-	types.Document
-
-	key []byte
-	pk  *FieldConstraint
-}
-
-func (e documentWithKey) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSON(e)
-}
-
-func (e documentWithKey) RawKey() []byte {
-	return e.key
-}
-
-func (e documentWithKey) Key() (types.Value, error) {
-	if e.pk == nil {
-		docid, _ := binary.Uvarint(e.key)
-		return types.NewIntegerValue(int64(docid)), nil
-	}
-
-	return e.pk.Path.GetValueFromDocument(&e)
-}
-
 // This document implementation waits until
 // GetByField or Iterate are called to
 // fetch the value from the engine store.
@@ -341,7 +316,6 @@ type lazilyDecodedDocument struct {
 	buf     []byte
 	codec   encoding.Codec
 	decoder encoding.Decoder
-	pk      *FieldConstraint
 	dirty   bool
 }
 
@@ -381,20 +355,6 @@ func (d *lazilyDecodedDocument) Iterate(fn func(field string, value types.Value)
 	return d.decoder.Iterate(fn)
 }
 
-func (d *lazilyDecodedDocument) RawKey() []byte {
-	return d.item.Key()
-}
-
-func (d *lazilyDecodedDocument) Key() (types.Value, error) {
-	k := d.item.Key()
-	if d.pk == nil {
-		docid, _ := binary.Uvarint(k)
-		return types.NewIntegerValue(int64(docid)), nil
-	}
-
-	return d.pk.Path.GetValueFromDocument(d)
-}
-
 func (d *lazilyDecodedDocument) Reset() {
 	d.dirty = true
 	d.item = nil
@@ -413,7 +373,7 @@ func (d *lazilyDecodedDocument) MarshalJSON() ([]byte, error) {
 
 // Iterate goes through all the documents of the table and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
-func (t *Table) Iterate(fn func(d types.Document) error) error {
+func (t *Table) Iterate(fn func(key []byte, d types.Document) error) error {
 	return t.AscendGreaterOrEqual(nil, fn)
 }
 
@@ -472,7 +432,7 @@ func (t *Table) encodeValueToKey(info *TableInfo, v types.Value) ([]byte, error)
 // is greater than or equal to the pivot.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the beginning of the table.
-func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d types.Document) error) error {
+func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(key []byte, d types.Document) error) error {
 	return t.iterate(pivot, false, fn)
 }
 
@@ -480,11 +440,11 @@ func (t *Table) AscendGreaterOrEqual(pivot types.Value, fn func(d types.Document
 // is less than or equal to the pivot, in reverse order.
 // The pivot is converted to the type of the primary key, if any, prior to iteration.
 // If the pivot is empty, it iterates from the end of the table in reverse order.
-func (t *Table) DescendLessOrEqual(pivot types.Value, fn func(d types.Document) error) error {
+func (t *Table) DescendLessOrEqual(pivot types.Value, fn func(key []byte, d types.Document) error) error {
 	return t.iterate(pivot, true, fn)
 }
 
-func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Document) error) error {
+func (t *Table) iterate(pivot types.Value, reverse bool, fn func(key []byte, d types.Document) error) error {
 	var seek []byte
 
 	// if there is a pivot, convert it to the right type
@@ -502,8 +462,6 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 		codec: t.Codec,
 	}
 
-	d.pk = t.Info.GetPrimaryKey()
-
 	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
@@ -513,7 +471,7 @@ func (t *Table) iterate(pivot types.Value, reverse bool, fn func(d types.Documen
 		// d must be passed as pointer, not value,
 		// because passing a value to an interface
 		// requires an allocation, while it doesn't for a pointer.
-		err := fn(&d)
+		err := fn(d.item.Key(), &d)
 		if err != nil {
 			return err
 		}
@@ -535,11 +493,7 @@ func (t *Table) GetDocument(key []byte) (types.Document, error) {
 		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
-	var d documentWithKey
-	d.Document = t.Codec.NewDecoder(v)
-	d.key = key
-	d.pk = t.Info.GetPrimaryKey()
-	return &d, err
+	return t.Codec.NewDecoder(v), err
 }
 
 // generate a key for d based on the table configuration.

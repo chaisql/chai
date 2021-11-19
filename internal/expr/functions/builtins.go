@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"encoding/binary"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
@@ -111,13 +113,29 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return expr.NullLiteral, nil
 	}
 
-	keyer, ok := d.(document.Keyer)
+	tableName, ok := env.Get(environment.TableKey)
 	if !ok {
 		return expr.NullLiteral, nil
 	}
 
-	v, err := keyer.Key()
-	return v, err
+	dpk, ok := env.Get(environment.DocPKKey)
+	if !ok {
+		return expr.NullLiteral, nil
+	}
+
+	info, err := env.GetCatalog().GetTableInfo(tableName.V().(string))
+	if err != nil {
+		return nil, err
+	}
+
+	pk := info.GetPrimaryKey()
+	if pk == nil {
+		// decode as docid
+		docid, _ := binary.Uvarint(dpk.V().([]byte))
+		return types.NewIntegerValue(int64(docid)), nil
+	}
+
+	return pk.Path.GetValueFromDocument(d)
 }
 
 func (*PK) Params() []expr.Expr { return nil }

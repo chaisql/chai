@@ -69,7 +69,7 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 			return nil, stringutil.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 		// add Aggregation node
-		s = s.Pipe(stream.Sort(stmt.GroupByExpr))
+		s = s.Pipe(stream.TempTreeSort(stmt.GroupByExpr))
 		s = s.Pipe(stream.GroupAggregate(stmt.GroupByExpr, aggregators...))
 	} else {
 		// if there is no GROUP BY clause, check if there are any aggregation function
@@ -154,9 +154,9 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.SortReverse(stmt.OrderBy))
+			s = s.Pipe(stream.TempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.Sort(stmt.OrderBy))
+			s = s.Pipe(stream.TempTreeSort(stmt.OrderBy))
 		}
 	}
 

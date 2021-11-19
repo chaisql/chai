@@ -1,7 +1,6 @@
 package expr_test
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -11,7 +10,6 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,27 +21,14 @@ var doc types.Document = func() types.Document {
 	}`))
 }()
 
-var docWithKey types.Document = func() types.Document {
-	fb := document.NewFieldBuffer()
-	err := fb.Copy(doc)
-	if err != nil {
-		panic(err)
-	}
-
-	fb.DecodedKey = types.NewIntegerValue(1)
-	var buf bytes.Buffer
-	err = encoding.NewValueEncoder(&buf).Encode(fb.DecodedKey)
-	if err != nil {
-		panic(err)
-	}
-	fb.EncodedKey = buf.Bytes()
-
-	return fb
-}()
-
 var envWithDoc = environment.New(doc)
 
-var envWithDocAndKey = environment.New(docWithKey)
+var envWithDocAndKey *environment.Environment = func() *environment.Environment {
+	env := environment.New(doc)
+	env.Set(environment.TableKey, types.NewTextValue("string"))
+	env.Set(environment.DocPKKey, types.NewBlobValue([]byte("foo")))
+	return env
+}()
 
 var nullLiteral = types.NewNullValue()
 

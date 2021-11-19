@@ -36,6 +36,11 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			return errors.New("missing document")
 		}
 
+		key, ok := out.Get(environment.DocPKKey)
+		if !ok {
+			return errors.New("missing document key")
+		}
+
 		values := make([]types.Value, len(idx.Info.Paths))
 		for i, path := range idx.Info.Paths {
 			values[i], err = path.GetValueFromDocument(d)
@@ -47,7 +52,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			}
 
 		}
-		err = idx.Set(values, d.(document.Keyer).RawKey())
+		err = idx.Set(values, key.V().([]byte))
 		if err != nil {
 			return stringutil.Errorf("error while building the index: %w", err)
 		}

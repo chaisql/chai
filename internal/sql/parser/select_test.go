@@ -78,7 +78,7 @@ func TestParserSelect(t *testing.T) {
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.Sort(parser.MustParseExpr("a.b.c"))).
+				Pipe(stream.TempTreeSort(parser.MustParseExpr("a.b.c"))).
 				Pipe(stream.GroupAggregate(parser.MustParseExpr("a.b.c"))).
 				Pipe(stream.Project(&expr.NamedExpr{ExprName: "a.b.c", Expr: expr.Path(document.NewPath("a.b.c"))})),
 			true, false,
@@ -87,21 +87,21 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.Sort(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Project(expr.Wildcard{})).
-				Pipe(stream.SortReverse(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(stream.TempTreeSortReverse(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
@@ -168,7 +168,7 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Concat(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
-			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))),
+			)).Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a"))),
 			true, false,
 		},
 		{"WithUnionAllAndLimit", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 LIMIT 10",
@@ -189,7 +189,7 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Concat(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
-			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
+			)).Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
 			true, false,
 		},
 
@@ -225,7 +225,7 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Union(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
-			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))),
+			)).Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a"))),
 			true, false,
 		},
 		{"WithUnionAndLimit", "SELECT * FROM test1 UNION SELECT * FROM test2 LIMIT 10",
@@ -246,7 +246,7 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Union(
 				stream.New(stream.SeqScan("test1")).Pipe(stream.Project(expr.Wildcard{})),
 				stream.New(stream.SeqScan("test2")).Pipe(stream.Project(expr.Wildcard{})),
-			)).Pipe(stream.Sort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
+			)).Pipe(stream.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.Skip(20)).Pipe(stream.Take(10)),
 			true, false,
 		},
 		{"WithMultipleCompoundOps/1", "SELECT * FROM a UNION ALL SELECT * FROM b UNION ALL SELECT * FROM c",

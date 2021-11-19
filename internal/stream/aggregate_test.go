@@ -68,15 +68,29 @@ func TestAggregate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			s := stream.New(stream.Documents(test.in...))
+			db, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
+
+			for _, doc := range test.in {
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
+			}
+
+			var env environment.Environment
+			env.DB = db
+			env.Tx = tx
+			env.Catalog = db.Catalog
+
+			s := stream.New(stream.SeqScan("test"))
 			if test.groupBy != nil {
-				s = s.Pipe(stream.Sort(test.groupBy))
+				s = s.Pipe(stream.TempTreeSort(test.groupBy))
 			}
 
 			s = s.Pipe(stream.GroupAggregate(test.groupBy, test.builders...))
 
 			var got []types.Document
-			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
+			err := s.Iterate(&env, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
 				var fb document.FieldBuffer

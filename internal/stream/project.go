@@ -38,6 +38,9 @@ func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *envi
 	return op.Prev.Iterate(in, func(env *environment.Environment) error {
 		mask.Env = env
 		mask.Exprs = op.Exprs
+		if d, ok := env.GetDocument(); ok {
+			newEnv.Set(environment.OriginalDocumentKey, types.NewDocumentValue(d))
+		}
 		newEnv.SetDocument(&mask)
 		newEnv.SetOuter(env)
 		return f(&newEnv)

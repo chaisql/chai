@@ -1,8 +1,6 @@
 package stream
 
 import (
-	"bytes"
-	"container/heap"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -12,13 +10,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
-)
-
-const (
-	groupEnvKey     = "_group"
-	groupExprEnvKey = "_group_expr"
-	accEnvKey       = "_acc"
 )
 
 // ErrInvalidResult is returned when an expression supposed to evaluate to a document
@@ -200,187 +191,6 @@ func (op *SkipOperator) String() string {
 	return stringutil.Sprintf("skip(%d)", op.N)
 }
 
-// A GroupByOperator applies an expression on each value of the stream and stores the result in the _group
-// variable in the output stream.
-type GroupByOperator struct {
-	baseOperator
-	E expr.Expr
-}
-
-// GroupBy applies e on each value of the stream and stores the result in the _group
-// variable in the output stream.
-func GroupBy(e expr.Expr) *GroupByOperator {
-	return &GroupByOperator{E: e}
-}
-
-// Iterate implements the Operator interface.
-func (op *GroupByOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
-
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		v, err := op.E.Eval(out)
-		if err != nil {
-			return err
-		}
-
-		newEnv.Set(groupEnvKey, v)
-		newEnv.Set(groupExprEnvKey, types.NewTextValue(stringutil.Sprintf("%s", op.E)))
-		newEnv.SetOuter(out)
-		return f(&newEnv)
-	})
-}
-
-func (op *GroupByOperator) String() string {
-	return stringutil.Sprintf("groupBy(%s)", op.E)
-}
-
-// A SortOperator consumes every value of the stream and outputs them in order.
-type SortOperator struct {
-	baseOperator
-	Expr expr.Expr
-	Desc bool
-}
-
-// Sort consumes every value of the stream and outputs them in order.
-// It operates a partial sort on the iterator using a heap.
-// This ensures a O(k+n log n) time complexity, where k is the sum of
-// Take() + Skip() operators, if provided, otherwise k = n.
-// If the sorting is in ascending order, a min-heap will be used
-// otherwise a max-heap will be used instead.
-// Once the heap is filled entirely with the content of the incoming stream, a stream is returned.
-// During iteration, the stream will pop the k-smallest or k-largest elements, depending on
-// the chosen sorting order (ASC or DESC).
-// This function is not memory efficient as it is loading the entire stream in memory before
-// returning the k-smallest or k-largest elements.
-func Sort(e expr.Expr) *SortOperator {
-	return &SortOperator{Expr: e}
-}
-
-// SortReverse does the same as Sort but in descending order.
-func SortReverse(e expr.Expr) *SortOperator {
-	return &SortOperator{Expr: e, Desc: true}
-}
-
-func (op *SortOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	h, err := op.sortStream(op.Prev, in)
-	if err != nil {
-		return err
-	}
-
-	for h.Len() > 0 {
-		node := heap.Pop(h).(heapNode)
-		err := f(node.data)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (op *SortOperator) sortStream(prev Operator, in *environment.Environment) (heap.Interface, error) {
-	var h heap.Interface
-	if op.Desc {
-		h = new(maxHeap)
-	} else {
-		h = new(minHeap)
-	}
-
-	heap.Init(h)
-
-	getValue := op.Expr.Eval
-	if p, ok := op.Expr.(expr.Path); ok {
-		getValue = func(env *environment.Environment) (types.Value, error) {
-			for env != nil {
-				d, ok := env.GetDocument()
-				if !ok {
-					env = env.GetOuter()
-					continue
-				}
-
-				v, err := document.Path(p).GetValueFromDocument(d)
-				if errors.Is(err, document.ErrFieldNotFound) {
-					env = env.GetOuter()
-					continue
-				}
-				return v, err
-			}
-
-			return types.NewNullValue(), nil
-		}
-	}
-
-	return h, prev.Iterate(in, func(env *environment.Environment) error {
-		sortV, err := getValue(env)
-		if err != nil {
-			return err
-		}
-
-		// We need to make sure sort behaviour
-		// is the same with or without indexes.
-		// To achieve that, the value must be encoded using the same method
-		// as what the index package would do.
-		var buf bytes.Buffer
-
-		err = encoding.NewValueEncoder(&buf).Encode(sortV)
-		if err != nil {
-			return err
-		}
-
-		node := heapNode{
-			value: buf.Bytes(),
-		}
-		e, err := env.Clone()
-		if err != nil {
-			return err
-		}
-		node.data = e
-
-		heap.Push(h, node)
-
-		return nil
-	})
-}
-
-func (op *SortOperator) String() string {
-	if op.Desc {
-		return stringutil.Sprintf("sortReverse(%s)", op.Expr)
-	}
-
-	return stringutil.Sprintf("sort(%s)", op.Expr)
-}
-
-type heapNode struct {
-	value []byte
-	data  *environment.Environment
-}
-
-type minHeap []heapNode
-
-func (h minHeap) Len() int           { return len(h) }
-func (h minHeap) Less(i, j int) bool { return bytes.Compare(h[i].value, h[j].value) < 0 }
-func (h minHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *minHeap) Push(x interface{}) {
-	*h = append(*h, x.(heapNode))
-}
-
-func (h *minHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
-type maxHeap struct {
-	minHeap
-}
-
-func (h maxHeap) Less(i, j int) bool {
-	return bytes.Compare(h.minHeap[i].value, h.minHeap[j].value) > 0
-}
-
 // A TableInsertOperator inserts incoming documents to the table.
 type TableInsertOperator struct {
 	baseOperator
@@ -412,10 +222,12 @@ func (op *TableInsertOperator) Iterate(in *environment.Environment, f func(out *
 			}
 		}
 
-		d, err = table.InsertWithConflictResolution(d, op.OnConflict)
+		key, d, err := table.InsertWithConflictResolution(d, op.OnConflict)
 		if err != nil {
 			return err
 		}
+		newEnv.Set(environment.TableKey, types.NewTextValue(op.Name))
+		newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
 		newEnv.SetDocument(d)
 
 		newEnv.SetOuter(env)
@@ -445,7 +257,6 @@ func TableReplace(tableName string) *TableReplaceOperator {
 // Iterate implements the Operator interface.
 func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var table *database.Table
-	var newEnv environment.Environment
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		d, ok := out.GetDocument()
@@ -461,23 +272,17 @@ func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out 
 			}
 		}
 
-		ker, ok := d.(document.Keyer)
+		key, ok := out.Get(environment.DocPKKey)
 		if !ok {
 			return errors.New("missing key")
 		}
 
-		k := ker.RawKey()
-		if k == nil {
-			return errors.New("missing key")
-		}
-
-		_, err := table.Replace(ker.RawKey(), d)
+		_, err := table.Replace(key.V().([]byte), d)
 		if err != nil {
 			return err
 		}
 
-		newEnv.SetOuter(out)
-		return f(&newEnv)
+		return f(out)
 	})
 }
 
@@ -499,14 +304,8 @@ func TableDelete(tableName string) *TableDeleteOperator {
 // Iterate implements the Operator interface.
 func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var table *database.Table
-	var newEnv environment.Environment
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		d, ok := out.GetDocument()
-		if !ok {
-			return errors.New("missing document")
-		}
-
 		if table == nil {
 			var err error
 			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
@@ -515,23 +314,17 @@ func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *
 			}
 		}
 
-		ker, ok := d.(document.Keyer)
+		key, ok := out.Get(environment.DocPKKey)
 		if !ok {
 			return errors.New("missing key")
 		}
 
-		k := ker.RawKey()
-		if k == nil {
-			return errors.New("missing key")
-		}
-
-		err := table.Delete(ker.RawKey())
+		err := table.Delete(key.V().([]byte))
 		if err != nil {
 			return err
 		}
 
-		newEnv.SetOuter(out)
-		return f(&newEnv)
+		return f(out)
 	})
 }
 

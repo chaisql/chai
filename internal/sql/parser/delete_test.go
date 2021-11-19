@@ -36,14 +36,14 @@ func TestParserDelete(t *testing.T) {
 		{"WithOrderByThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age OFFSET 20",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.Sort(parser.MustParseExpr("age"))).
+				Pipe(stream.TempTreeSort(parser.MustParseExpr("age"))).
 				Pipe(stream.Skip(20)).
 				Pipe(stream.TableDelete("test")),
 		},
 		{"WithOrderByThenLimitThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age LIMIT 10 OFFSET 20",
 			stream.New(stream.SeqScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.Sort(parser.MustParseExpr("age"))).
+				Pipe(stream.TempTreeSort(parser.MustParseExpr("age"))).
 				Pipe(stream.Skip(20)).
 				Pipe(stream.Take(10)).
 				Pipe(stream.TableDelete("test")),

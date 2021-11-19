@@ -57,7 +57,20 @@ func TestSQL(t *testing.T) {
 			if len(ts.Suites) > 0 {
 				for _, suite := range ts.Suites {
 					t.Run(suite.Name, func(t *testing.T) {
-						for _, test := range suite.Tests {
+						var tests []*test
+
+						for _, tt := range suite.Tests {
+							if tt.Only {
+								tests = []*test{tt}
+								break
+							}
+						}
+
+						if tests == nil {
+							tests = suite.Tests
+						}
+
+						for _, test := range tests {
 							t.Run(test.Name, func(t *testing.T) {
 								db, err := genji.Open(":memory:")
 								assert.NoError(t, err)
@@ -108,6 +121,7 @@ type test struct {
 	Fails      bool
 	Sorted     bool
 	Line       int
+	Only       bool
 }
 
 type suite struct {
@@ -135,6 +149,7 @@ func parse(r io.Reader, filename string) *testSuite {
 	var readingSuite bool
 	var readingCommentBlock bool
 	var suiteIndex int = -1
+	var only bool
 
 	var lineCount = 0
 	for s.Scan() {
@@ -161,6 +176,9 @@ func parse(r io.Reader, filename string) *testSuite {
 			ts.Suites = append(ts.Suites, suite{
 				Name: strings.TrimPrefix(line, "-- suite: "),
 			})
+		case strings.HasPrefix(line, "-- only:"):
+			only = true
+			fallthrough
 		case strings.HasPrefix(line, "-- test:"):
 			readingSetup = false
 			readingSuite = false
@@ -170,7 +188,9 @@ func parse(r io.Reader, filename string) *testSuite {
 			curTest = &test{
 				Name: name,
 				Line: lineCount,
+				Only: only,
 			}
+			only = false
 			// if there are no suites, create one by default
 			if suiteIndex == -1 {
 				suiteIndex++
