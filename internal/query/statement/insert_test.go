@@ -19,11 +19,11 @@ func TestInsertStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"pk()":1,"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"pk()":1,"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
+		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":1,"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":1,"a":[1,2,3]}]`, nil},
+		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":[1],"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":[1],"a":[1,2,3]}]`, nil},
 		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 
@@ -102,7 +102,7 @@ func TestInsertStmt(t *testing.T) {
 
 		d, err := db.QueryDocument(`insert into test (a) VALUES (1) RETURNING *, pk(), a AS A`)
 		assert.NoError(t, err)
-		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": 1, "A": 1}`)
+		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": [1], "A": 1}`)
 	})
 
 	t.Run("ensure rollback", func(t *testing.T) {
@@ -170,10 +170,10 @@ func TestInsertSelect(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Same table", `INSERT INTO foo SELECT * FROM foo`, true, ``, nil},
-		{"No fields / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"pk()":1, "a":1, "b":10}]`, nil},
-		{"No fields / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"pk()":1, "a":1}]`, nil},
-		{"With fields / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, false, `[{"pk()":1, "a":1, "b":10}]`, nil},
-		{"With fields / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"pk()":1, "c":1, "d":10}]`, nil},
+		{"No fields / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"pk()":[1], "a":1, "b":10}]`, nil},
+		{"No fields / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"pk()":[1], "a":1}]`, nil},
+		{"With fields / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, false, `[{"pk()":[1], "a":1, "b":10}]`, nil},
+		{"With fields / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"pk()":[1], "c":1, "d":10}]`, nil},
 		{"Too many fields / No Projection", `INSERT INTO foo (c) SELECT * FROM bar`, true, ``, nil},
 		{"Too many fields / Projection", `INSERT INTO foo (c, d) SELECT a, b, c FROM bar`, true, ``, nil},
 		{"Too few fields / No Projection", `INSERT INTO foo (c, d, e) SELECT * FROM bar`, true, ``, nil},

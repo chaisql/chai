@@ -1,0 +1,39 @@
+name: Go
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.17
+
+      - name: Vendor
+        run: go mod vendor
+
+      - name: Build
+        run: make
+
+      - name: Install go-acc
+        run: go install github.com/ory/go-acc@latest
+
+      - name: Test Genji
+        run: go-acc $(go list ./...) -- -mod vendor -race -timeout=2m
+
+      - name: Test Genji CLI
+        run: cd ./cmd/genji && go test -race ./... && cd -
+
+      - name: Test Badget Engine
+        run: cd ./engine/badgerengine && go test -race ./... && cd -
+
+      - name: Upload Codecov
+        run: bash <(curl -s https://codecov.io/bash)

@@ -87,7 +87,7 @@ func (q *Query) Prepare(context *Context) error {
 }
 
 // Run executes all the statements in their own transaction and returns the last result.
-func (q *Query) Run(context *Context) (*statement.Result, error) {
+func (q Query) Run(context *Context) (*statement.Result, error) {
 	var res statement.Result
 	var err error
 
@@ -109,7 +109,7 @@ func (q *Query) Run(context *Context) (*statement.Result, error) {
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(ctx, context.DB, q)
+			err = qa.alterQuery(ctx, context.DB, &q)
 			if err != nil {
 				if tx := context.GetTx(); tx != nil {
 					tx.Rollback()
