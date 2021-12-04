@@ -82,6 +82,15 @@ func ParseDocumentPath(t testing.TB, p string) document.Path {
 	return vp
 }
 
+func ParseDocumentPaths(t testing.TB, str ...string) []document.Path {
+	var paths []document.Path
+	for _, s := range str {
+		paths = append(paths, ParseDocumentPath(t, s))
+	}
+
+	return paths
+}
+
 func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
 	t.Helper()
 

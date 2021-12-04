@@ -3,6 +3,7 @@ package parser
 import (
 	"math"
 
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -145,7 +146,7 @@ LOOP:
 				return err
 			}
 
-			err = info.TableConstraints.AddPrimaryKey(info.TableName, fc.Path)
+			err = info.TableConstraints.AddPrimaryKey(info.TableName, []document.Path{fc.Path})
 			if err != nil {
 				return err
 			}
@@ -214,7 +215,7 @@ LOOP:
 				}
 			}
 		case scanner.UNIQUE:
-			info.TableConstraints.AddUnique(fc.Path)
+			info.TableConstraints.AddUnique([]document.Path{fc.Path})
 			addedTc++
 		case scanner.CHECK:
 			// Parse "("
@@ -259,46 +260,36 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 	switch tok {
 	case scanner.PRIMARY:
 		// Parse "KEY ("
-		err = p.parseTokens(scanner.KEY, scanner.LPAREN)
+		err = p.parseTokens(scanner.KEY)
 		if err != nil {
 			return false, err
 		}
 
-		primaryKeyPath, err := p.parsePath()
+		paths, err := p.parsePathList()
 		if err != nil {
 			return false, err
 		}
-
-		// Parse ")"
-		err = p.parseTokens(scanner.RPAREN)
-		if err != nil {
-			return false, err
+		if len(paths) == 0 {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+			return false, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
 
-		if err := stmt.Info.TableConstraints.AddPrimaryKey(stmt.Info.TableName, primaryKeyPath); err != nil {
+		if err := stmt.Info.TableConstraints.AddPrimaryKey(stmt.Info.TableName, paths); err != nil {
 			return false, err
 		}
 
 		return true, nil
 	case scanner.UNIQUE:
-		// Parse "("
-		err = p.parseTokens(scanner.LPAREN)
+		paths, err := p.parsePathList()
 		if err != nil {
 			return false, err
 		}
-
-		uniquePath, err := p.parsePath()
-		if err != nil {
-			return false, err
+		if len(paths) == 0 {
+			tok, pos, lit := p.ScanIgnoreWhitespace()
+			return false, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
 
-		// Parse ")"
-		err = p.parseTokens(scanner.RPAREN)
-		if err != nil {
-			return false, err
-		}
-
-		stmt.Info.TableConstraints.AddUnique(uniquePath)
+		stmt.Info.TableConstraints.AddUnique(paths)
 		return true, nil
 	case scanner.CHECK:
 		// Parse "("

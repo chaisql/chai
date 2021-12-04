@@ -8,18 +8,13 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 var _ types.Document = new(document.FieldBuffer)
-
-func parsePath(t testing.TB, p string) document.Path {
-	path, err := parser.ParsePath(p)
-	assert.NoError(t, err)
-	return path
-}
 
 func TestFieldBuffer(t *testing.T) {
 	var buf document.FieldBuffer
@@ -169,7 +164,7 @@ func TestFieldBuffer(t *testing.T) {
 				err := json.Unmarshal([]byte(test.document), &buf)
 				assert.NoError(t, err)
 
-				path := parsePath(t, test.deletePath)
+				path := testutil.ParseDocumentPath(t, test.deletePath)
 
 				err = buf.Delete(path)
 				if test.fails {

@@ -31,17 +31,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		groupExpr = stringutil.Sprintf("%s", op.E)
 	}
 
-	// var tableName string
-
 	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
-		// if tableName == "" {
-		// 	v, ok := out.Get(environment.TableKey)
-		// 	if !ok {
-		// 		return errors.New("missing table name")
-		// 	}
-		// 	tableName = v.String()
-		// }
-
 		if op.E == nil {
 			if ga == nil {
 				ga = newGroupAggregator(nil, groupExpr, op.Builders)

@@ -191,7 +191,7 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), Type: types.IntegerValue},
 			},
 			TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo.a[1]"), PrimaryKey: true},
+				{Paths: testutil.ParseDocumentPaths(t, "foo.a[1]"), PrimaryKey: true},
 			},
 		})
 		assert.NoError(t, err)
@@ -256,7 +256,7 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo"), Type: types.IntegerValue},
 			},
 			TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
+				{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 			},
 		})
 		assert.NoError(t, err)
@@ -496,7 +496,7 @@ func TestTableInsert(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
 			},
 			TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
+				{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 			},
 		})
 
@@ -631,7 +631,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		assert.NoError(t, err)
 
-		err = tb.Iterate(nil, false, func(key tree.Key, _ types.Document) error {
+		err = tb.IterateOnRange(nil, false, func(key tree.Key, _ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
@@ -685,7 +685,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(nil, false, func(tree.Key, types.Document) error {
+				tb.IterateOnRange(nil, false, func(tree.Key, types.Document) error {
 					return nil
 				})
 			}

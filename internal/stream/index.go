@@ -1,6 +1,9 @@
 package stream
 
 import (
+	"strconv"
+	"strings"
+
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
@@ -211,4 +214,110 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 
 func (op *IndexDeleteOperator) String() string {
 	return stringutil.Sprintf("indexDelete(%q)", op.indexName)
+}
+
+// A IndexScanOperator iterates over the documents of an index.
+type IndexScanOperator struct {
+	baseOperator
+
+	// IndexName references the index that will be used to perform the scan
+	IndexName string
+	// Ranges defines the boundaries of the scan, each corresponding to one value of the group of values
+	// being indexed in the case of a composite index.
+	Ranges Ranges
+	// Reverse indicates the direction used to traverse the index.
+	Reverse bool
+}
+
+// IndexScan creates an iterator that iterates over each document of the given table.
+func IndexScan(name string, ranges ...Range) *IndexScanOperator {
+	if len(ranges) == 0 {
+		panic("IndexScan: no ranges specified")
+	}
+	return &IndexScanOperator{IndexName: name, Ranges: ranges}
+}
+
+// IndexScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+func IndexScanReverse(name string, ranges ...Range) *IndexScanOperator {
+	return &IndexScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
+}
+
+func (it *IndexScanOperator) String() string {
+	var s strings.Builder
+
+	s.WriteString("indexScan")
+	if it.Reverse {
+		s.WriteString("Reverse")
+	}
+
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.IndexName))
+	if len(it.Ranges) > 0 {
+		s.WriteString(", ")
+		s.WriteString(it.Ranges.String())
+	}
+
+	s.WriteString(")")
+
+	return s.String()
+}
+
+// Iterate over the documents of the table. Each document is stored in the environment
+// that is passed to the fn function, using SetCurrentValue.
+func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	catalog := in.GetCatalog()
+	tx := in.GetTx()
+
+	index, err := catalog.GetIndex(tx, it.IndexName)
+	if err != nil {
+		return err
+	}
+
+	info, err := catalog.GetIndexInfo(it.IndexName)
+	if err != nil {
+		return err
+	}
+
+	table, err := catalog.GetTable(tx, info.TableName)
+	if err != nil {
+		return err
+	}
+
+	var newEnv environment.Environment
+	newEnv.SetOuter(in)
+	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.Name()))
+
+	ranges, err := it.Ranges.Eval(in)
+	if err != nil || len(ranges) != len(it.Ranges) {
+		return err
+	}
+
+	ptr := DocumentPointer{
+		Table: table,
+	}
+	newEnv.SetDocument(&ptr)
+
+	for _, rng := range ranges {
+		r, err := rng.ToTreeRange(&table.Info.FieldConstraints, info.Paths)
+		if err != nil {
+			return err
+		}
+
+		err = index.IterateOnRange(r, it.Reverse, func(key tree.Key) error {
+			ptr.key = key
+			ptr.Doc = nil
+			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+
+			return fn(&newEnv)
+		})
+		if errors.Is(err, ErrStreamClosed) {
+			err = nil
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

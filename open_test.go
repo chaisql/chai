@@ -69,7 +69,7 @@ func TestOpen(t *testing.T) {
 		}
 
 		if count == 5 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "path":"a"}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
 			return nil
 		}
 

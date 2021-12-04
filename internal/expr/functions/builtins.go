@@ -1,8 +1,6 @@
 package functions
 
 import (
-	"fmt"
-
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
@@ -130,13 +128,24 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 	}
 
 	pk := info.GetPrimaryKey()
-	if pk == nil {
-		fmt.Println("pk() -> ", vs[0])
-		// decode as docid
-		return vs[0], nil
+	if pk != nil {
+		for i, tp := range pk.Types {
+			if !tp.IsAny() {
+				vs[i], err = document.CastAs(vs[i], tp)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 
-	return document.CastAs(vs[0], pk.Type)
+	vb := document.NewValueBuffer()
+
+	for _, v := range vs {
+		vb.Append(v)
+	}
+
+	return types.NewArrayValue(vb), nil
 }
 
 func (*PK) Params() []expr.Expr { return nil }

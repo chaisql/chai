@@ -133,9 +133,12 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOp
 	if err != nil {
 		return nil, err
 	}
-	selected = i.associatePkWithNodes(tb, nodes)
-	if selected != nil {
-		cost = selected.Cost()
+	pk := tb.GetPrimaryKey()
+	if pk != nil {
+		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Paths, nodes)
+		if selected != nil {
+			cost = selected.Cost()
+		}
 	}
 
 	// get all the indexes for this table and associate them
@@ -146,7 +149,7 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOp
 			return nil, err
 		}
 
-		candidate := i.associateIndexWithNodes(idxInfo, nodes)
+		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Paths, nodes)
 
 		if candidate == nil {
 			continue
@@ -216,37 +219,6 @@ func (i *indexSelector) isFilterIndexable(f *stream.FilterOperator) *filterNode 
 	return &node
 }
 
-func (i *indexSelector) associatePkWithNodes(tb *database.TableInfo, nodes filterNodes) *candidate {
-	// TODO: add support for the pk() function
-	pk := tb.GetPrimaryKey()
-
-	if pk == nil {
-		return nil
-	}
-
-	n := nodes.getByPath(pk.Path)
-	if n == nil {
-		return nil
-	}
-
-	var ranges stream.Ranges
-	if n.operator == scanner.IN {
-		for _, e := range n.operand.(expr.LiteralExprList) {
-			ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, []document.Path{pk.Path}, e))
-		}
-	} else {
-		ranges = append(ranges, i.buildRangeFromOperator(n.operator, []document.Path{pk.Path}, n.operand))
-	}
-
-	return &candidate{
-		nodes:      filterNodes{n},
-		rangesCost: ranges.Cost(),
-		replaceRootBy: []stream.Operator{
-			stream.PkScan(tb.TableName, ranges...),
-		},
-	}
-}
-
 // for a given index, select all filter nodes that match according to the following rules:
 // - from left to right, associate each indexed path to a filter node and stop when there is no
 // node available or the node is not compatible
@@ -261,11 +233,11 @@ func (i *indexSelector) associatePkWithNodes(tb *database.TableInfo, nodes filte
 //   -> range = {min: [3], exact: true}
 //  filter(a IN (1, 2))
 //   -> ranges = [1], [2]
-func (i *indexSelector) associateIndexWithNodes(idx *database.IndexInfo, nodes filterNodes) *candidate {
-	found := make([]*filterNode, 0, len(idx.Paths))
+func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, nodes filterNodes) *candidate {
+	found := make([]*filterNode, 0, len(paths))
 
 	var hasIn bool
-	for _, p := range idx.Paths {
+	for _, p := range paths {
 		n := nodes.getByPath(p)
 		if n == nil {
 			break
@@ -297,23 +269,32 @@ func (i *indexSelector) associateIndexWithNodes(idx *database.IndexInfo, nodes f
 	var ranges stream.Ranges
 
 	if !hasIn {
-		ranges = stream.Ranges{i.buildRangeFromFilterNodes(idx, found...)}
+		ranges = stream.Ranges{i.buildRangeFromFilterNodes(found...)}
 	} else {
-		ranges = i.buildRangesFromFilterNodes(idx, found)
+		ranges = i.buildRangesFromFilterNodes(paths, found)
 	}
 
-	return &candidate{
+	c := candidate{
 		nodes:      found,
 		rangesCost: ranges.Cost(),
-		isIndex:    true,
-		isUnique:   idx.Unique,
-		replaceRootBy: []stream.Operator{
-			stream.IndexScan(idx.IndexName, ranges...),
-		},
+		isIndex:    isIndex,
+		isUnique:   isUnique,
 	}
+
+	if !isIndex {
+		c.replaceRootBy = []stream.Operator{
+			stream.PkScan(treeName, ranges...),
+		}
+	} else {
+		c.replaceRootBy = []stream.Operator{
+			stream.IndexScan(treeName, ranges...),
+		}
+	}
+
+	return &c
 }
 
-func (i *indexSelector) buildRangesFromFilterNodes(idx *database.IndexInfo, filters []*filterNode) stream.Ranges {
+func (i *indexSelector) buildRangesFromFilterNodes(paths []document.Path, filters []*filterNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
 	// so that: filter(a IN (10, 11)) | filter(b = 20) | filter(c IN (30, 31))
 	// becomes:
@@ -344,7 +325,7 @@ func (i *indexSelector) buildRangesFromFilterNodes(idx *database.IndexInfo, filt
 	var ranges stream.Ranges
 
 	i.walkExpr(l, func(row []expr.Expr) {
-		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, idx.Paths[:len(row)], row...))
+		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, paths[:len(row)], row...))
 	})
 
 	return ranges
@@ -372,7 +353,7 @@ func (i *indexSelector) walkExpr(l [][]expr.Expr, fn func(row []expr.Expr)) {
 	}
 }
 
-func (i *indexSelector) buildRangeFromFilterNodes(idx *database.IndexInfo, filters ...*filterNode) stream.Range {
+func (i *indexSelector) buildRangeFromFilterNodes(filters ...*filterNode) stream.Range {
 	// first, generate a list of paths and a list of expressions
 	paths := make([]document.Path, 0, len(filters))
 	el := make(expr.LiteralExprList, 0, len(filters))

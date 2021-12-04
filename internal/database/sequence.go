@@ -38,10 +38,8 @@ var sequenceTableInfo = &TableInfo{
 	},
 	TableConstraints: []*TableConstraint{
 		{
-			Path: document.Path{
-				document.PathFragment{
-					FieldName: "name",
-				},
+			Paths: []document.Path{
+				document.NewPath("name"),
 			},
 			PrimaryKey: true,
 		},
@@ -228,9 +226,9 @@ func (s *Sequence) SetName(name string) {
 func (s *Sequence) GenerateBaseName() string {
 	var sb strings.Builder
 	sb.WriteString(s.Info.Owner.TableName)
-	if s.Info.Owner.Path != nil {
+	if len(s.Info.Owner.Paths) > 0 {
 		sb.WriteString("_")
-		sb.WriteString(s.Info.Owner.Path.String())
+		sb.WriteString(s.Info.Owner.Paths.String())
 	}
 	sb.WriteString("_seq")
 	return sb.String()

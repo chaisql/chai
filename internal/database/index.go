@@ -14,10 +14,6 @@ import (
 var (
 	// ErrIndexDuplicateValue is returned when a value is already associated with a key
 	ErrIndexDuplicateValue = errors.New("duplicate value")
-
-	// ErrIndexWrongArity is returned when trying to index more values that what an
-	// index supports.
-	ErrIndexWrongArity = errors.New("wrong index arity")
 )
 
 // An Index associates encoded values with keys.
@@ -28,17 +24,15 @@ var (
 type Index struct {
 	// How many values the index is operating on.
 	// For example, an index created with `CREATE INDEX idx_a_b ON foo (a, b)` has an arity of 2.
-	Arity  int
-	Unique bool
-	Tree   *tree.Tree
+	Arity int
+	Tree  *tree.Tree
 }
 
 // NewIndex creates an index that associates values with a list of keys.
 func NewIndex(tr *tree.Tree, opts IndexInfo) *Index {
 	return &Index{
-		Tree:   tr,
-		Arity:  len(opts.Paths),
-		Unique: opts.Unique,
+		Tree:  tr,
+		Arity: len(opts.Paths),
 	}
 }
 
@@ -72,17 +66,6 @@ func (idx *Index) Set(vs []types.Value, key tree.Key) error {
 	treeKey, err := tree.NewKey(values...)
 	if err != nil {
 		return err
-	}
-
-	// if the index is unique, we need to check if the value is already associated with the key
-	if idx.Unique {
-		found, _, err := idx.Exists(vs)
-		if err != nil {
-			return err
-		}
-		if found {
-			return errors.Wrap(ErrIndexDuplicateValue)
-		}
 	}
 
 	return idx.Tree.Put(treeKey, nil)
@@ -160,12 +143,6 @@ func (idx *Index) Delete(vs []types.Value, key tree.Key) error {
 	return engine.ErrKeyNotFound
 }
 
-func (idx *Index) Iterate(pivot tree.Key, reverse bool, fn func(key tree.Key) error) error {
-	return idx.Tree.Iterate(pivot, reverse, idx.iterateFn(func(itmKey, key tree.Key) error {
-		return fn(key)
-	}))
-}
-
 // IterateOnRange seeks for the pivot and then goes through all the subsequent key value pairs in increasing or decreasing order and calls the given function for each pair.
 // If the given function returns an error, the iteration stops and returns that error.
 // If the pivot(s) is/are empty, starts from the beginning.
@@ -215,23 +192,6 @@ func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey t
 
 		return fn(k, pk)
 	})
-}
-
-func (idx *Index) iterateFn(fn func(itmKey tree.Key, key tree.Key) error) func(k tree.Key, v types.Value) error {
-	return func(k tree.Key, v types.Value) error {
-		// we don't care about the value, we just want to extract the key
-		// which is the last element of the encoded array
-		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})
-
-		kv, err := encoding.DecodeValue(k[pos+1:])
-		if err != nil {
-			return err
-		}
-
-		pk := tree.Key(kv.V().([]byte))
-
-		return fn(k, pk)
-	}
 }
 
 // Truncate deletes all the index data.

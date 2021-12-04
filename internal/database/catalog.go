@@ -293,8 +293,8 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 	}
 
 	// check if the index has been created by a table constraint
-	if info.Owner.Path != nil {
-		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Path)
+	if len(info.Owner.Paths) > 0 {
+		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Paths)
 	}
 
 	_, err = c.Cache.Delete(tx, RelationIndexType, name)
@@ -697,10 +697,8 @@ func newCatalogStore() *CatalogStore {
 			TableConstraints: []*TableConstraint{
 				{
 					PrimaryKey: true,
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "name",
-						},
+					Paths: []document.Path{
+						document.NewPath("name"),
 					},
 				},
 			},
@@ -862,12 +860,7 @@ func sequenceInfoToDocument(seq *SequenceInfo) types.Document {
 	buf.Add("sql", types.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
-		owner := document.NewFieldBuffer().Add("table_name", types.NewTextValue(seq.Owner.TableName))
-		if seq.Owner.Path != nil {
-			owner.Add("path", types.NewTextValue(seq.Owner.Path.String()))
-		}
-
-		buf.Add("owner", types.NewDocumentValue(owner))
+		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&seq.Owner)))
 	}
 
 	return buf
@@ -875,8 +868,12 @@ func sequenceInfoToDocument(seq *SequenceInfo) types.Document {
 
 func ownerToDocument(owner *Owner) types.Document {
 	buf := document.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
-	if owner.Path != nil {
-		buf.Add("path", types.NewTextValue(owner.Path.String()))
+	if owner.Paths != nil {
+		vb := document.NewValueBuffer()
+		for _, p := range owner.Paths {
+			vb.Append(types.NewTextValue(p.String()))
+		}
+		buf.Add("paths", types.NewArrayValue(vb))
 	}
 
 	return buf

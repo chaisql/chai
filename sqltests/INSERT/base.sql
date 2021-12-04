@@ -15,7 +15,7 @@ INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": "b",
   "c":"c"
@@ -35,7 +35,7 @@ INSERT INTO test (a, `foo bar`) VALUES ('c', 'd');
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "c",
   "foo bar": "d"
 }
@@ -46,7 +46,7 @@ INSERT INTO test (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b":"b",
   "c": [1.0, 2.0, 3.0]
@@ -58,7 +58,7 @@ INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": "b",
   "c": {
@@ -73,7 +73,7 @@ INSERT INTO test VALUES {a: 'a', b: 2.3, c: 1 = 1};
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": 2.3,
   "c": true
@@ -85,7 +85,7 @@ INSERT INTO test VALUES {a: [1, 2, 3]};
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": [
     1.0,
     2.0,
@@ -99,7 +99,7 @@ INSERT INTO test VALUES {'a': 'a', b: 2.3};
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": 2.3
 }
@@ -110,7 +110,7 @@ INSERT INTO test VALUES {"a": "b"};
 SELECT pk(), * FROM test;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "b"
 }
 */
@@ -119,7 +119,7 @@ SELECT pk(), * FROM test;
 INSERT INTO test VALUES {a: 400, b: a * 4};
 SELECT pk(), * FROM test;
 /* result:
-{"pk()":1,"a":400.0,"b":1600.0}
+{"pk()":[1],"a":400.0,"b":1600.0}
 */
 
 -- with indexes
@@ -132,7 +132,7 @@ INSERT INTO test_idx (a, b, c) VALUES ('a', 'b', 'c');
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": "b",
   "c": "c"
@@ -152,7 +152,7 @@ INSERT INTO test_idx (a, `foo bar`) VALUES ('c', 'd');
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "c",
   "foo bar": "d"
 }
@@ -163,7 +163,7 @@ INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', [1, 2, 3]);
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b":"b",
   "c": [1.0, 2.0, 3.0]
@@ -175,7 +175,7 @@ INSERT INTO test_idx (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": "b",
   "c": {
@@ -190,7 +190,7 @@ INSERT INTO test_idx VALUES {a: 'a', b: 2.3, c: 1 = 1};
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": 2.3,
   "c": true
@@ -202,7 +202,7 @@ INSERT INTO test_idx VALUES {a: [1, 2, 3]};
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": [
     1.0,
     2.0,
@@ -216,7 +216,7 @@ INSERT INTO test_idx VALUES {'a': 'a', b: 2.3};
 SELECT pk(), * FROM test_idx;
 /*result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "a",
   "b": 2.3
 }
@@ -227,7 +227,7 @@ INSERT INTO test_idx VALUES {"a": "b"};
 SELECT pk(), * FROM test_idx;
 /* result:
 {
-  "pk()": 1,
+  "pk()": [1],
   "a": "b"
 }
 */
@@ -236,7 +236,7 @@ SELECT pk(), * FROM test_idx;
 INSERT INTO test_idx VALUES {a: 400, b: a * 4};
 SELECT pk(), * FROM test_idx;
 /* result:
-{"pk()":1,"a":400.0,"b":1600.0}
+{"pk()":[1],"a":400.0,"b":1600.0}
 */
 
 -- test: read-only tables
@@ -259,7 +259,7 @@ INSERT INTO test (`pk()`) VALUES (10);
 SELECT pk() AS pk, `pk()` from test;
 /* result:
 {
-  "pk": 1,
+  "pk": [1],
   "pk()": 10.0
 }
 */

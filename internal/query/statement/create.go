@@ -3,7 +3,6 @@ package statement
 import (
 	"math"
 
-	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stream"
@@ -56,11 +55,11 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 		if tc.Unique {
 			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
 				TableName: stmt.Info.TableName,
-				Paths:     []document.Path{tc.Path},
+				Paths:     tc.Paths,
 				Unique:    true,
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
-					Path:      tc.Path,
+					Paths:     tc.Paths,
 				},
 			})
 			if err != nil {

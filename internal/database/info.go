@@ -61,20 +61,26 @@ func (ti *TableInfo) ValidateDocument(tx *Transaction, d types.Document) (*docum
 	return fb, nil
 }
 
-func (ti *TableInfo) GetPrimaryKey() *FieldConstraint {
+func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
+	var pk PrimaryKey
+
 	for _, tc := range ti.TableConstraints {
 		if !tc.PrimaryKey {
 			continue
 		}
 
-		fc := ti.GetFieldConstraintForPath(tc.Path)
-		if fc == nil {
-			return &FieldConstraint{
-				Path: tc.Path,
+		pk.Paths = tc.Paths
+
+		for _, pp := range tc.Paths {
+			fc := ti.GetFieldConstraintForPath(pp)
+			if fc != nil {
+				pk.Types = append(pk.Types, fc.Type)
+			} else {
+				pk.Types = append(pk.Types, 0)
 			}
 		}
 
-		return fc
+		return &pk
 	}
 
 	return nil
@@ -137,6 +143,11 @@ func (ti *TableInfo) Clone() *TableInfo {
 	cp.FieldConstraints = append(cp.FieldConstraints, ti.FieldConstraints...)
 	cp.TableConstraints = append(cp.TableConstraints, ti.TableConstraints...)
 	return &cp
+}
+
+type PrimaryKey struct {
+	Paths document.Paths
+	Types []types.ValueType
 }
 
 // IndexInfo holds the configuration of an index.
@@ -282,5 +293,5 @@ func (s SequenceInfo) Clone() *SequenceInfo {
 // path must also be filled.
 type Owner struct {
 	TableName string
-	Path      document.Path
+	Paths     document.Paths
 }

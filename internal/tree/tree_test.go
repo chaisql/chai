@@ -226,6 +226,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 		reverse bool
 		keys    []tree.Key
 	}{
+		{"asc/nil-range", nil, false, keys},
 		{"asc/empty-range", &tree.Range{}, false, keys},
 		{"asc/ >= [5]", &tree.Range{Min: MustNewKey(t, types.NewIntegerValue(5))}, false, keys[5:]},
 		{"asc/ > [5]", &tree.Range{Min: MustNewKey(t, types.NewIntegerValue(5)), Exclusive: true}, false, keys[6:]},

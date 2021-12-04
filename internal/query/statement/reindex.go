@@ -1,8 +1,6 @@
 package statement
 
 import (
-	"fmt"
-
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stream"
@@ -43,7 +41,6 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	var streams []*stream.Stream
 
 	for _, indexName := range indexNames {
-		fmt.Println("indexName", indexName)
 		idx, err := ctx.Catalog.GetIndex(ctx.Tx, indexName)
 		if err != nil {
 			return nil, err

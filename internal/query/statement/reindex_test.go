@@ -1,12 +1,12 @@
 package statement_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,7 +45,6 @@ func TestReIndex(t *testing.T) {
 			// truncate all indexes
 			c := db.Catalog
 			for _, idxName := range c.ListIndexes("") {
-				fmt.Println("truncating", idxName)
 				idx, err := c.GetIndex(tx, idxName)
 				assert.NoError(t, err)
 				err = idx.Truncate()
@@ -74,7 +73,7 @@ func TestReIndex(t *testing.T) {
 				}
 
 				i := 0
-				err = idx.Iterate(nil, false, func(key tree.Key) error {
+				err = idx.Tree.Iterate(nil, false, func(tree.Key, types.Value) error {
 					i++
 					return nil
 				})

@@ -94,7 +94,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.Iterate(nil, false, func(key tree.Key, d types.Document) error {
+	err = tb.IterateOnRange(nil, false, func(key tree.Key, d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err
@@ -234,7 +234,15 @@ func ownerFromDocument(d types.Document) (*database.Owner, error) {
 		return nil, err
 	}
 	if err == nil {
-		owner.Path, err = parser.ParsePath(v.V().(string))
+		err = v.V().(types.Array).Iterate(func(i int, value types.Value) error {
+			pp, err := parser.ParsePath(v.V().(string))
+			if err != nil {
+				return err
+			}
+
+			owner.Paths = append(owner.Paths, pp)
+			return nil
+		})
 		if err != nil {
 			return nil, err
 		}

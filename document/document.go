@@ -549,3 +549,33 @@ func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 
 	return nil, ErrFieldNotFound
 }
+
+type Paths []Path
+
+func (p Paths) String() string {
+	var sb strings.Builder
+
+	for i, pt := range p {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(pt.String())
+	}
+
+	return sb.String()
+}
+
+// IsEqual returns whether other is equal to p.
+func (p Paths) IsEqual(other Paths) bool {
+	if len(other) != len(p) {
+		return false
+	}
+
+	for i := range p {
+		if !other[i].IsEqual(p[i]) {
+			return false
+		}
+	}
+
+	return true
+}

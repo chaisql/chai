@@ -467,21 +467,10 @@ func (t *inferredTableExpression) String() string {
 // and not necessarily to a single field path.
 type TableConstraint struct {
 	Name       string
-	Path       document.Path
+	Paths      document.Paths
 	Check      TableExpression
 	Unique     bool
 	PrimaryKey bool
-}
-
-// IsEqual compares t with other member by member.
-func (t *TableConstraint) IsEqual(other *TableConstraint) bool {
-	if t == nil {
-		return other == nil
-	}
-	if other == nil {
-		return false
-	}
-	return t.Name == other.Name && t.Path.IsEqual(other.Path) && t.Check.IsEqual(other.Check) && t.Unique == other.Unique && t.PrimaryKey == other.PrimaryKey
 }
 
 func (t *TableConstraint) String() string {
@@ -490,11 +479,11 @@ func (t *TableConstraint) String() string {
 	}
 
 	if t.PrimaryKey {
-		return stringutil.Sprintf("PRIMARY KEY (%s)", t.Path)
+		return stringutil.Sprintf("PRIMARY KEY (%s)", t.Paths)
 	}
 
 	if t.Unique {
-		return stringutil.Sprintf("UNIQUE (%s)", t.Path)
+		return stringutil.Sprintf("UNIQUE (%s)", t.Paths)
 	}
 
 	return ""
@@ -553,7 +542,7 @@ func (t *TableConstraints) AddCheck(tableName string, e TableExpression) {
 	})
 }
 
-func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Path) error {
+func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Paths) error {
 	for _, tc := range *t {
 		if tc.PrimaryKey {
 			return stringutil.Errorf("multiple primary keys for table %q are not allowed", tableName)
@@ -561,7 +550,7 @@ func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Path) erro
 	}
 
 	*t = append(*t, &TableConstraint{
-		Path:       p,
+		Paths:      p,
 		PrimaryKey: true,
 	})
 
@@ -570,15 +559,15 @@ func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Path) erro
 
 // AddUnique adds a unique constraint to the table.
 // If the constraint is already present, it is ignored.
-func (t *TableConstraints) AddUnique(p document.Path) {
+func (t *TableConstraints) AddUnique(p document.Paths) {
 	for _, tc := range *t {
-		if tc.Unique && tc.Path.IsEqual(p) {
+		if tc.Unique && tc.Paths.IsEqual(p) {
 			return
 		}
 	}
 
 	*t = append(*t, &TableConstraint{
-		Path:   p,
+		Paths:  p,
 		Unique: true,
 	})
 }
@@ -586,11 +575,11 @@ func (t *TableConstraints) AddUnique(p document.Path) {
 func (t *TableConstraints) Merge(other TableConstraints) error {
 	for _, tc := range other {
 		if tc.PrimaryKey {
-			if err := t.AddPrimaryKey(tc.Name, tc.Path); err != nil {
+			if err := t.AddPrimaryKey(tc.Name, tc.Paths); err != nil {
 				return err
 			}
 		} else if tc.Unique {
-			t.AddUnique(tc.Path)
+			t.AddUnique(tc.Paths)
 		} else if tc.Check != nil {
 			t.AddCheck(tc.Name, tc.Check)
 		}

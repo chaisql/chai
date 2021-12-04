@@ -49,7 +49,7 @@ func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
 	if err == nil {
 		return nil, nil, &errs.ConstraintViolationError{
 			Constraint: "PRIMARY KEY",
-			Paths:      []document.Path{t.Info.GetPrimaryKey().Path},
+			Paths:      t.Info.GetPrimaryKey().Paths,
 			Key:        key,
 		}
 	}
@@ -120,79 +120,22 @@ func (d *lazilyDecodedDocument) Iterate(fn func(field string, value types.Value)
 	return doc.Iterate(fn)
 }
 
-// ValueToKey encodes a value following primary key constraints.
-// It can be used to manually add a new entry to the store or to compare
-// with other keys while iterating on the table.
-// TODO(asdine): Change Table methods to receive values and build keys from them?
-func (t *Table) ValueToKey(v types.Value) (tree.Key, error) {
-	var err error
-
-	pk := t.Info.GetPrimaryKey()
-	if pk == nil {
-		// if no primary key was defined, cast the value as integer
-		v, err = document.CastAsInteger(v)
-		if err != nil {
-			return nil, err
-		}
-
-		return tree.NewKey(v)
-	}
-
-	// if a primary key was defined and the primary is typed, convert the value to the right type.
-	if !pk.Type.IsAny() {
-		v, err = document.CastAs(v, pk.Type)
-		if err != nil {
-			return nil, err
-		}
-		// it no primary key type is specified,
-		// and the value to encode is an integer
-		// convert it to a double.
-	} else if v.Type() == types.IntegerValue {
-		v, err = document.CastAsDouble(v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return tree.NewKey(v)
-}
-
-// Iterate goes through all the documents of the table and calls the given function by passing each one of them.
-// If the given function returns an error, the iteration stops.
-// If a pivot is specified and reverse is false, the iteration will return all documents greater
-// than or equal to the pivot in ascending order.
-// If a pivot is specified and reverse is true, the iteration will return all documents less
-// than or equal to the pivot, in descending order.
-// Prior to iteration, The pivot is converted to the type of the primary key, if any.
-func (t *Table) Iterate(pivot Pivot, reverse bool, fn func(key tree.Key, d types.Document) error) error {
-	var key tree.Key
-	if len(pivot) > 0 {
-		var err error
-		key, err = t.ValueToKey(pivot[0])
-		if err != nil {
-			return err
-		}
-	}
-
-	var d lazilyDecodedDocument
-
-	return t.Tree.Iterate(key, reverse, func(k tree.Key, v types.Value) error {
-		d.Value = v
-		return fn(k, &d)
-	})
-}
-
 func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d types.Document) error) error {
 	var paths []document.Path
 
 	pk := t.Info.GetPrimaryKey()
 	if pk != nil {
-		paths = append(paths, pk.Path)
+		paths = pk.Paths
 	}
 
-	r, err := rng.ToTreeRange(&t.Info.FieldConstraints, paths)
-	if err != nil {
-		return err
+	var r *tree.Range
+	var err error
+
+	if rng != nil {
+		r, err = rng.ToTreeRange(&t.Info.FieldConstraints, paths)
+		if err != nil {
+			return err
+		}
 	}
 
 	var d lazilyDecodedDocument
@@ -224,15 +167,20 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 // key is generated, called the docid.
 func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error) {
 	if pk := t.Info.GetPrimaryKey(); pk != nil {
-		v, err := pk.Path.GetValueFromDocument(d)
-		if errors.Is(err, document.ErrFieldNotFound) {
-			return nil, stringutil.Errorf("missing primary key at path %q", pk.Path)
-		}
-		if err != nil {
-			return nil, err
+		vs := make([]types.Value, 0, len(pk.Paths))
+		for _, p := range pk.Paths {
+			v, err := p.GetValueFromDocument(d)
+			if errors.Is(err, document.ErrFieldNotFound) {
+				return nil, stringutil.Errorf("missing primary key at path %q", p)
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			vs = append(vs, v)
 		}
 
-		return tree.NewKey(v)
+		return tree.NewKey(vs...)
 	}
 
 	seq, err := t.Catalog.GetSequence(t.Info.DocidSequenceName)

@@ -119,7 +119,7 @@ func TestCatalogTable(t *testing.T) {
 				{Path: testutil.ParseDocumentPath(t, "gender"), Type: types.TextValue},
 				{Path: testutil.ParseDocumentPath(t, "city"), Type: types.TextValue},
 			}, TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "age"), PrimaryKey: true},
+				{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
 			}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
@@ -201,7 +201,7 @@ func TestCatalogTable(t *testing.T) {
 			{Path: testutil.ParseDocumentPath(t, "gender"), Type: types.TextValue},
 			{Path: testutil.ParseDocumentPath(t, "city"), Type: types.TextValue},
 		}, TableConstraints: []*database.TableConstraint{
-			{Path: testutil.ParseDocumentPath(t, "age"), PrimaryKey: true},
+			{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
 		}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
@@ -242,7 +242,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Adding a second primary key should return an error
 			tcs = nil
-			tcs.AddPrimaryKey("foo", testutil.ParseDocumentPath(t, "address"))
+			tcs.AddPrimaryKey("foo", []document.Path{testutil.ParseDocumentPath(t, "address")})
 			err = catalog.AddFieldConstraint(tx, "foo", nil, tcs)
 			assert.Error(t, err)
 
@@ -320,7 +320,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				TableConstraints: []*database.TableConstraint{
-					{Path: testutil.ParseDocumentPath(t, "a"), PrimaryKey: true},
+					{Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, PrimaryKey: true},
 				},
 			})
 		})
@@ -484,7 +484,7 @@ func TestReadOnlyTables(t *testing.T) {
 		case 2:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE, UNIQUE (b[3].c))", "store_name":"AQ==", "type":"table"}`)
 		case 3:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "path":"b[3].c"}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "paths":["b[3].c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
 		case 4:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
 		case 5:
