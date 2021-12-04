@@ -11,7 +11,7 @@
 
 ## Introduction
 
-[![Build Status](https://travis-ci.org/genjidb/genji.svg)](https://travis-ci.org/genjidb/genji)
+[![Build Status](https://github.com/genjidb/genji/actions/workflows/go.yml/badge.svg)](https://github.com/genjidb/genji/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/genjidb/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
