@@ -36,7 +36,10 @@ func TestScan(t *testing.T) {
 
 	var buf bytes.Buffer
 	codec := msgpack.NewCodec()
-	err := codec.NewEncoder(&buf).EncodeDocument(nestedDoc)
+	err := codec.EncodeValue(&buf, types.NewDocumentValue(nestedDoc))
+	assert.NoError(t, err)
+
+	dec, err := codec.DecodeValue(buf.Bytes())
 	assert.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
@@ -77,7 +80,7 @@ func TestScan(t *testing.T) {
 		)).
 		Add("o", types.NewNullValue()).
 		Add("p", types.NewTextValue(now.Format(time.RFC3339Nano))).
-		Add("r", types.NewDocumentValue(codec.NewDecoder(buf.Bytes()))).
+		Add("r", dec).
 		Add("s", types.NewArrayValue(document.NewValueBuffer(types.NewBoolValue(true), types.NewBoolValue(false)))).
 		Add("u", types.NewArrayValue(document.NewValueBuffer(
 			types.NewDocumentValue(

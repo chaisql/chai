@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
@@ -230,7 +229,14 @@ func (i *indexSelector) associatePkWithNodes(tb *database.TableInfo, nodes filte
 		return nil
 	}
 
-	ranges := getRangesFromOp(n.operator, n.operand)
+	var ranges stream.Ranges
+	if n.operator == scanner.IN {
+		for _, e := range n.operand.(expr.LiteralExprList) {
+			ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, []document.Path{pk.Path}, e))
+		}
+	} else {
+		ranges = append(ranges, i.buildRangeFromOperator(n.operator, []document.Path{pk.Path}, n.operand))
+	}
 
 	return &candidate{
 		nodes:      filterNodes{n},
@@ -288,10 +294,10 @@ func (i *indexSelector) associateIndexWithNodes(idx *database.IndexInfo, nodes f
 
 	// in case there is an IN operator in the list, we need to generate multiple ranges.
 	// If not, we only need one range.
-	var ranges stream.IndexRanges
+	var ranges stream.Ranges
 
 	if !hasIn {
-		ranges = stream.IndexRanges{i.buildRangeFromFilterNodes(idx, found...)}
+		ranges = stream.Ranges{i.buildRangeFromFilterNodes(idx, found...)}
 	} else {
 		ranges = i.buildRangesFromFilterNodes(idx, found)
 	}
@@ -307,7 +313,7 @@ func (i *indexSelector) associateIndexWithNodes(idx *database.IndexInfo, nodes f
 	}
 }
 
-func (i *indexSelector) buildRangesFromFilterNodes(idx *database.IndexInfo, filters []*filterNode) stream.IndexRanges {
+func (i *indexSelector) buildRangesFromFilterNodes(idx *database.IndexInfo, filters []*filterNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
 	// so that: filter(a IN (10, 11)) | filter(b = 20) | filter(c IN (30, 31))
 	// becomes:
@@ -335,10 +341,10 @@ func (i *indexSelector) buildRangesFromFilterNodes(idx *database.IndexInfo, filt
 	// 11, 20, 30
 	// 11, 20, 31
 
-	var ranges stream.IndexRanges
+	var ranges stream.Ranges
 
 	i.walkExpr(l, func(row []expr.Expr) {
-		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, idx.Paths[:len(row)], idx, row...))
+		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, idx.Paths[:len(row)], row...))
 	})
 
 	return ranges
@@ -366,7 +372,7 @@ func (i *indexSelector) walkExpr(l [][]expr.Expr, fn func(row []expr.Expr)) {
 	}
 }
 
-func (i *indexSelector) buildRangeFromFilterNodes(idx *database.IndexInfo, filters ...*filterNode) stream.IndexRange {
+func (i *indexSelector) buildRangeFromFilterNodes(idx *database.IndexInfo, filters ...*filterNode) stream.Range {
 	// first, generate a list of paths and a list of expressions
 	paths := make([]document.Path, 0, len(filters))
 	el := make(expr.LiteralExprList, 0, len(filters))
@@ -378,13 +384,12 @@ func (i *indexSelector) buildRangeFromFilterNodes(idx *database.IndexInfo, filte
 	// use last filter node to determine the direction of the range
 	filter := filters[len(filters)-1]
 
-	return i.buildRangeFromOperator(filter.operator, paths, idx, el...)
+	return i.buildRangeFromOperator(filter.operator, paths, el...)
 }
 
-func (i *indexSelector) buildRangeFromOperator(op scanner.Token, paths []document.Path, idx *database.IndexInfo, operands ...expr.Expr) stream.IndexRange {
-	rng := stream.IndexRange{
-		Paths:      paths,
-		IndexArity: len(idx.Paths),
+func (i *indexSelector) buildRangeFromOperator(op scanner.Token, paths []document.Path, operands ...expr.Expr) stream.Range {
+	rng := stream.Range{
+		Paths: paths,
 	}
 
 	el := expr.LiteralExprList(operands)
@@ -483,47 +488,4 @@ func operatorIsIndexCompatible(op expr.Operator) bool {
 	}
 
 	return false
-}
-
-func getRangesFromOp(op scanner.Token, e expr.Expr) stream.ValueRanges {
-	var ranges stream.ValueRanges
-
-	switch op {
-	case scanner.EQ:
-		ranges = ranges.Append(stream.ValueRange{
-			Min:   e,
-			Exact: true,
-		})
-	case scanner.GT:
-		ranges = ranges.Append(stream.ValueRange{
-			Min:       e,
-			Exclusive: true,
-		})
-	case scanner.GTE:
-		ranges = ranges.Append(stream.ValueRange{
-			Min: e,
-		})
-	case scanner.LT:
-		ranges = ranges.Append(stream.ValueRange{
-			Max:       e,
-			Exclusive: true,
-		})
-	case scanner.LTE:
-		ranges = ranges.Append(stream.ValueRange{
-			Max: e,
-		})
-	case scanner.IN:
-		// operatorCanUseIndex made sure e is a expression list.
-		el := e.(expr.LiteralExprList)
-		for i := range el {
-			ranges = ranges.Append(stream.ValueRange{
-				Min:   el[i],
-				Exact: true,
-			})
-		}
-	default:
-		panic(stringutil.Sprintf("unknown operator %#v", op))
-	}
-
-	return ranges
 }

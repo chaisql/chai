@@ -252,7 +252,7 @@ INSERT INTO testpk (bar) VALUES (1);
 CREATE TABLE testpk (foo INTEGER PRIMARY KEY);
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
--- error: duplicate
+-- error:
 
 -- test: insert with shadowing
 INSERT INTO test (`pk()`) VALUES (10);
@@ -303,13 +303,48 @@ CREATE TABLE test_ic(a INTEGER, s.b TEXT);
 INSERT INTO test_ic VALUES {s: 1};
 -- error:
 
--- test: insert with on conflict do nothing
+-- test: insert with on conflict do nothing, pk
+CREATE TABLE test_oc(a INTEGER PRIMARY KEY);
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1
+}
+*/
+
+-- test: insert with on conflict do nothing, unique
+CREATE TABLE test_oc(a INTEGER UNIQUE);
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1
+}
+*/
+
+-- test: insert with on conflict do nothing, unique with default
+CREATE TABLE test_oc(a INTEGER, b INTEGER UNIQUE DEFAULT 10);
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a) VALUES (1) ON CONFLICT DO NOTHING;
+SELECT * FROM test_oc;
+/* result:
+{
+  a: 1,
+  b: 10
+}
+*/
+
+-- test: insert with on conflict do nothing, overall
 CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER PRIMARY KEY, c INTEGER UNIQUE DEFAULT 10);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
-INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO NOTHING;
-INSERT INTO test_oc (a, b, c) VALUES (2, 1, 4) ON CONFLICT DO NOTHING;
-INSERT INTO test_oc (a, b, c) VALUES (2, 2, 1) ON CONFLICT DO NOTHING;
-INSERT INTO test_oc (a, b) VALUES (2, 2) ON CONFLICT DO NOTHING;
+INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO NOTHING; -- unique constraint
+INSERT INTO test_oc (a, b, c) VALUES (2, 1, 4) ON CONFLICT DO NOTHING; -- primary key
+INSERT INTO test_oc (a, b, c) VALUES (2, 2, 1) ON CONFLICT DO NOTHING; -- unique constraint
+INSERT INTO test_oc (a, b) VALUES (2, 2); -- should insert
+INSERT INTO test_oc (a, b) VALUES (3, 3) ON CONFLICT DO NOTHING; -- should not insert
 SELECT * FROM test_oc;
 /* result:
 {

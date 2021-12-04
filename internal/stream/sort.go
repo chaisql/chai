@@ -1,16 +1,12 @@
 package stream
 
 import (
-	"bytes"
-
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
 // A TempTreeSortOperator consumes every value of the stream and outputs them in order.
@@ -34,74 +30,63 @@ func TempTreeSortReverse(e expr.Expr) *TempTreeSortOperator {
 func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	db := in.GetDB()
 
-	tmp, cleanup, err := database.NewTransientIndex(db, "sort", []document.Path{{}, {}, {}}, false)
+	tr, cleanup, err := database.NewTransientTree(db)
 	if err != nil {
 		return err
 	}
 	defer cleanup()
 
-	var buf bytes.Buffer
+	var counter int64
 
 	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
-		doc, ok := out.GetDocument()
-		if !ok {
-			return errors.New("missing document")
-		}
-
+		// evaluate the sort expression
 		v, err := op.Expr.Eval(out)
 		if err != nil {
 			return err
 		}
 
-		buf.Reset()
-		// TODO check if the document is already encoded
-		err = db.Codec.NewEncoder(&buf).EncodeDocument(doc)
+		doc, ok := out.GetDocument()
+		if !ok {
+			panic("missing document")
+		}
+
+		tableName, _ := out.Get(environment.TableKey)
+
+		key, _ := out.Get(environment.DocPKKey)
+
+		tk, err := tree.NewKey(v, tableName, key, types.NewIntegerValue(counter))
 		if err != nil {
 			return err
 		}
 
-		tableName, ok := out.Get(environment.TableKey)
-		if !ok {
-			return errors.New("missing table name")
-		}
-		// document key is optional
-		key, _ := out.Get(environment.DocPKKey)
+		counter++
 
-		return tmp.Index.Set([]types.Value{v, tableName, key}, buf.Bytes())
+		return tr.Put(tk, types.NewDocumentValue(doc))
 	})
 	if err != nil {
 		return err
 	}
 
-	iterate := tmp.Index.AscendGreaterOrEqual
-	if op.Desc {
-		iterate = tmp.Index.DescendLessOrEqual
-	}
-
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	doc := db.Codec.NewDecoder(nil)
-	return iterate(nil, func(idxKey, encDoc []byte) error {
-		a, _, err := encoding.DecodeArray(idxKey)
+	return tr.Iterate(nil, op.Desc, func(k tree.Key, v types.Value) error {
+		kv, err := k.Decode()
 		if err != nil {
 			return err
 		}
 
-		tableName, err := a.GetByIndex(1)
-		if err != nil {
-			return err
+		tableName := kv[1]
+		if tableName.Type() != types.NullValue {
+			newEnv.Set(environment.TableKey, tableName)
 		}
-		newEnv.Set(environment.TableKey, tableName)
 
-		docKey, err := a.GetByIndex(2)
-		if err != nil && err != document.ErrFieldNotFound {
-			return err
-		} else if err == nil {
+		docKey := kv[2]
+		if docKey.Type() != types.NullValue {
 			newEnv.Set(environment.DocPKKey, docKey)
 		}
 
-		doc.Reset(encDoc)
+		doc := v.V().(types.Document)
 
 		newEnv.SetDocument(doc)
 

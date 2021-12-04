@@ -7,7 +7,7 @@ import (
 
 // parseReindexStatement parses a reindex statement.
 func (p *Parser) parseReIndexStatement() (statement.Statement, error) {
-	var stmt statement.ReIndexStmt
+	stmt := statement.NewReIndexStatement()
 	var err error
 
 	// Parse "REINDEX".

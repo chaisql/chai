@@ -42,12 +42,11 @@ func benchmarkEncodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 
 	codec := codecBuilder()
 
+	d := types.NewDocumentValue(&fb)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var buf bytes.Buffer
-		enc := codec.NewEncoder(&buf)
-		enc.EncodeDocument(&fb)
-		enc.Close()
+		codec.EncodeValue(&buf, d)
 	}
 }
 
@@ -58,14 +57,18 @@ func benchmarkDocumentGetByField(b *testing.B, codecBuilder func() encoding.Code
 		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
+	d := types.NewDocumentValue(&fb)
+
 	codec := codecBuilder()
 	var buf bytes.Buffer
-	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
+	err := codec.EncodeValue(&buf, d)
 	assert.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		codec.NewDecoder(buf.Bytes()).GetByField("name-99")
+		v, _ := codec.DecodeValue(buf.Bytes())
+		doc := v.V().(types.Document)
+		doc.GetByField("name-99")
 	}
 }
 
@@ -76,12 +79,15 @@ func benchmarkDocumentIterate(b *testing.B, codecBuilder func() encoding.Codec) 
 		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
+	d := types.NewDocumentValue(&fb)
+
 	codec := codecBuilder()
 	var buf bytes.Buffer
-	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
+	err := codec.EncodeValue(&buf, d)
 	assert.NoError(b, err)
 
-	doc := codec.NewDecoder(buf.Bytes())
+	v, _ := codec.DecodeValue(buf.Bytes())
+	doc := v.V().(types.Document)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -98,12 +104,15 @@ func benchmarkDecodeDocument(b *testing.B, codecBuilder func() encoding.Codec) {
 		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
+	d := types.NewDocumentValue(&fb)
+
 	codec := codecBuilder()
 	var buf bytes.Buffer
-	err := codec.NewEncoder(&buf).EncodeDocument(&fb)
+	err := codec.EncodeValue(&buf, d)
 	assert.NoError(b, err)
 
-	doc := codec.NewDecoder(buf.Bytes())
+	v, _ := codec.DecodeValue(buf.Bytes())
+	doc := v.V().(types.Document)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

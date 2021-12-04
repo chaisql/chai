@@ -14,6 +14,24 @@ type Statement interface {
 	IsReadOnly() bool
 }
 
+type basePreparedStatement struct {
+	Preparer Preparer
+	ReadOnly bool
+}
+
+func (stmt *basePreparedStatement) IsReadOnly() bool {
+	return stmt.ReadOnly
+}
+
+func (stmt *basePreparedStatement) Run(ctx *Context) (Result, error) {
+	s, err := stmt.Preparer.Prepare(ctx)
+	if err != nil {
+		return Result{}, err
+	}
+
+	return s.Run(ctx)
+}
+
 type Context struct {
 	DB      *database.Database
 	Tx      *database.Transaction
@@ -22,7 +40,7 @@ type Context struct {
 }
 
 type Preparer interface {
-	Prepare(tx *Context) error
+	Prepare(*Context) (Statement, error)
 }
 
 // Result of a query.

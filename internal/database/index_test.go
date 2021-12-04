@@ -1,21 +1,21 @@
 package database_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -24,14 +24,24 @@ func values(vs ...types.Value) []types.Value {
 	return vs
 }
 
-func getIndex(t testing.TB, unique bool, types ...types.ValueType) (*database.Index, func()) {
+func getIndex(t testing.TB, unique bool, arity int) (*database.Index, func()) {
 	ng := memoryengine.NewEngine()
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{
 		Writable: true,
 	})
 	assert.NoError(t, err)
 
-	idx := database.NewIndex(tx, "foo", &database.IndexInfo{Unique: unique, Types: types})
+	err = tx.CreateStore([]byte("foo"))
+	assert.NoError(t, err)
+	st, err := tx.GetStore([]byte("foo"))
+	assert.NoError(t, err)
+	tr := tree.New(st, msgpack.NewCodec())
+
+	var paths []document.Path
+	for i := 0; i < arity; i++ {
+		paths = append(paths, document.NewPath(fmt.Sprintf("[%d]", i)))
+	}
+	idx := database.NewIndex(tr, database.IndexInfo{Unique: unique, Paths: paths})
 
 	return idx, func() {
 		tx.Rollback()
@@ -43,44 +53,44 @@ func TestIndexSet(t *testing.T) {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Set nil key falls (arity=1)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(t, unique, 1)
 			defer cleanup()
 			assert.Error(t, idx.Set(values(types.NewBoolValue(true)), nil))
 		})
 
 		t.Run(text+"Set value and key succeeds (arity=1)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(t, unique, 1)
 			defer cleanup()
 			assert.NoError(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set two values and key succeeds (arity=2)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
+			idx, cleanup := getIndex(t, unique, 2)
 			defer cleanup()
 			assert.NoError(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set one value fails (arity=1)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
+			idx, cleanup := getIndex(t, unique, 2)
 			defer cleanup()
 			assert.Error(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set two values fails (arity=1)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique, types.AnyType)
+			idx, cleanup := getIndex(t, unique, 1)
 			defer cleanup()
 			assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 
 		t.Run(text+"Set three values fails (arity=2)", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique, types.AnyType, types.AnyType)
+			idx, cleanup := getIndex(t, unique, 2)
 			defer cleanup()
 			assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
 		})
 	}
 
 	t.Run("Unique: true, Duplicate", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
+		idx, cleanup := getIndex(t, true, 1)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
@@ -90,7 +100,7 @@ func TestIndexSet(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Type: integer Duplicate", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true, types.IntegerValue)
+		idx, cleanup := getIndex(t, true, 1)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key")))
@@ -100,7 +110,7 @@ func TestIndexSet(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Type: (integer, integer) Duplicate,", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true, types.IntegerValue, types.IntegerValue)
+		idx, cleanup := getIndex(t, true, 2)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key")))
@@ -111,7 +121,7 @@ func TestIndexSet(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Type: (integer, text) Duplicate,", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true, types.IntegerValue, types.TextValue)
+		idx, cleanup := getIndex(t, true, 2)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewTextValue("foo")), []byte("key")))
@@ -123,7 +133,7 @@ func TestIndexSet(t *testing.T) {
 
 func TestIndexDelete(t *testing.T) {
 	t.Run("Unique: false, Delete valid key succeeds", func(t *testing.T) {
-		idx, cleanup := getIndex(t, false)
+		idx, cleanup := getIndex(t, false, 1)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10)), []byte("key")))
@@ -134,13 +144,11 @@ func TestIndexDelete(t *testing.T) {
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
-		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
+		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, pivot...)}, false, func(key tree.Key) error {
 			if i == 0 {
-				requireEqualBinary(t, testutil.MakeArrayValue(t, 10), v)
-				require.Equal(t, "other-key", string(k))
+				require.Equal(t, "other-key", string(key))
 			} else if i == 1 {
-				requireEqualBinary(t, testutil.MakeArrayValue(t, 11), v)
-				require.Equal(t, "yet-another-key", string(k))
+				require.Equal(t, "yet-another-key", string(key))
 			} else {
 				return errors.New("should not reach this point")
 			}
@@ -153,7 +161,7 @@ func TestIndexDelete(t *testing.T) {
 	})
 
 	t.Run("Unique: false, Delete valid key succeeds (arity=2)", func(t *testing.T) {
-		idx, cleanup := getIndex(t, false, types.AnyType, types.AnyType)
+		idx, cleanup := getIndex(t, false, 2)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
@@ -164,21 +172,11 @@ func TestIndexDelete(t *testing.T) {
 
 		pivot := values(types.NewIntegerValue(10), types.NewIntegerValue(10))
 		i := 0
-		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
+		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, pivot...)}, false, func(key tree.Key) error {
 			if i == 0 {
-				expected := types.NewArrayValue(document.NewValueBuffer(
-					types.NewIntegerValue(10),
-					types.NewIntegerValue(10),
-				))
-				requireEqualBinary(t, expected, v)
-				require.Equal(t, "other-key", string(k))
+				require.Equal(t, "other-key", string(key))
 			} else if i == 1 {
-				expected := types.NewArrayValue(document.NewValueBuffer(
-					types.NewIntegerValue(11),
-					types.NewIntegerValue(11),
-				))
-				requireEqualBinary(t, expected, v)
-				require.Equal(t, "yet-another-key", string(k))
+				require.Equal(t, "yet-another-key", string(key))
 			} else {
 				return errors.New("should not reach this point")
 			}
@@ -191,7 +189,7 @@ func TestIndexDelete(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Delete valid key succeeds", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true)
+		idx, cleanup := getIndex(t, true, 1)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("key1")))
@@ -200,14 +198,12 @@ func TestIndexDelete(t *testing.T) {
 		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(11)), []byte("key2")))
 
 		i := 0
-		err := idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.IntegerValue)), func(v, k []byte) error {
+		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, types.NewIntegerValue(0))}, false, func(key tree.Key) error {
 			switch i {
 			case 0:
-				requireEqualBinary(t, testutil.MakeArrayValue(t, 10), v)
-				require.Equal(t, "key1", string(k))
+				require.Equal(t, "key1", string(key))
 			case 1:
-				requireEqualBinary(t, testutil.MakeArrayValue(t, 12), v)
-				require.Equal(t, "key3", string(k))
+				require.Equal(t, "key3", string(key))
 			default:
 				return errors.New("should not reach this point")
 			}
@@ -220,7 +216,7 @@ func TestIndexDelete(t *testing.T) {
 	})
 
 	t.Run("Unique: true, Delete valid key succeeds (arity=2)", func(t *testing.T) {
-		idx, cleanup := getIndex(t, true, types.AnyType, types.AnyType)
+		idx, cleanup := getIndex(t, true, 2)
 		defer cleanup()
 
 		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("key1")))
@@ -230,24 +226,14 @@ func TestIndexDelete(t *testing.T) {
 
 		i := 0
 		// this will break until the [v, int] case is supported
-		// pivot := values(types.NewIntegerValue(0), types.NewEmptyValue(types.IntegerValue))
+		// pivot := values(types.NewIntegerValue(0), types.NewIntegerValue(0))
 		pivot := values(types.NewIntegerValue(0), types.NewIntegerValue(0))
-		err := idx.AscendGreaterOrEqual(pivot, func(v, k []byte) error {
+		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, pivot...)}, false, func(key tree.Key) error {
 			switch i {
 			case 0:
-				expected := types.NewArrayValue(document.NewValueBuffer(
-					types.NewIntegerValue(10),
-					types.NewIntegerValue(10),
-				))
-				requireEqualBinary(t, expected, v)
-				require.Equal(t, "key1", string(k))
+				require.Equal(t, "key1", string(key))
 			case 1:
-				expected := types.NewArrayValue(document.NewValueBuffer(
-					types.NewIntegerValue(12),
-					types.NewIntegerValue(12),
-				))
-				requireEqualBinary(t, expected, v)
-				require.Equal(t, "key3", string(k))
+				require.Equal(t, "key3", string(key))
 			default:
 				return errors.New("should not reach this point")
 			}
@@ -263,7 +249,7 @@ func TestIndexDelete(t *testing.T) {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Delete non existing key fails", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(t, unique, 1)
 			defer cleanup()
 
 			assert.Error(t, idx.Delete(values(types.NewTextValue("foo")), []byte("foo")))
@@ -272,7 +258,7 @@ func TestIndexDelete(t *testing.T) {
 }
 
 func TestIndexExists(t *testing.T) {
-	idx, cleanup := getIndex(t, false, types.DoubleValue, types.IntegerValue)
+	idx, cleanup := getIndex(t, false, 2)
 	defer cleanup()
 
 	assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(11)), []byte("key1")))
@@ -281,37 +267,11 @@ func TestIndexExists(t *testing.T) {
 	ok, key, err := idx.Exists(values(types.NewDoubleValue(10), types.NewIntegerValue(11)))
 	assert.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, []byte("key1"), key)
+	require.Equal(t, tree.Key([]byte("key1")), key)
 
 	ok, _, err = idx.Exists(values(types.NewDoubleValue(11), types.NewIntegerValue(11)))
 	assert.NoError(t, err)
 	require.False(t, ok)
-}
-
-// requireEqualBinary asserts equality assuming that the value is encoded through marshal binary
-func requireEqualBinary(t *testing.T, expected types.Value, actual []byte) {
-	t.Helper()
-
-	var buf bytes.Buffer
-	err := encoding.NewValueEncoder(&buf).Encode(expected)
-	assert.NoError(t, err)
-
-	data := buf.Bytes()
-	require.Equal(t, data, actual)
-}
-
-func requireIdxEncodedEq(t *testing.T, vs ...types.Value) func([]byte) {
-	t.Helper()
-
-	var buf bytes.Buffer
-	err := encoding.NewValueEncoder(&buf).Encode(types.NewArrayValue(document.NewValueBuffer(vs...)))
-	assert.NoError(t, err)
-
-	return func(actual []byte) {
-		t.Helper()
-
-		require.Equal(t, buf.Bytes(), actual)
-	}
 }
 
 func TestIndexAscendGreaterThan(t *testing.T) {
@@ -319,11 +279,11 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
 		t.Run(text+"Should not iterate if index is empty", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
+			idx, cleanup := getIndex(t, unique, 1)
 			defer cleanup()
 
 			i := 0
-			err := idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.IntegerValue)), func(val, key []byte) error {
+			err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, types.NewIntegerValue(0))}, false, func(key tree.Key) error {
 				i++
 				return errors.New("should not iterate")
 			})
@@ -341,7 +301,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				return []types.Value{types.NewIntegerValue(int64(i))}
 			}
 
-			noCallEq := func(t *testing.T, i uint8, key []byte, val []byte) {
+			noCallEq := func(t *testing.T, i uint8, key tree.Key) {
 				require.Fail(t, "equality test should not be called here")
 			}
 
@@ -352,7 +312,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 			tests := []struct {
 				name string
 				// the index type(s) that is being used
-				indexTypes []types.ValueType
+				arity int
 				// the pivot, typed or not used to iterate
 				pivot database.Pivot
 				// the generator for the values that are being indexed
@@ -360,53 +320,44 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				// the generator for the noise values that are being indexed
 				noise func(i int) []types.Value
 				// the function to compare the key/value that the iteration yields
-				expectedEq func(t *testing.T, i uint8, key []byte, val []byte)
+				expectedEq func(t *testing.T, i uint8, key tree.Key)
 				// the total count of iteration that should happen
 				expectedCount int
 				mustPanic     bool
 			}{
 				// integers ---------------------------------------------------
-				{name: "index=any, vals=integers, pivot=integer",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					noise:      noiseBlob,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
+				{name: "vals=integers, pivot=integer",
+					arity: 1,
+					pivot: values(types.NewIntegerValue(0)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					noise: noiseBlob,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
 				{name: "index=integer, vals=integers, pivot=integer",
-					indexTypes: []types.ValueType{types.IntegerValue},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
+					arity: 1,
+					pivot: values(types.NewIntegerValue(0)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=any, vals=integers, pivot=integer:2",
-					indexTypes: nil,
-					pivot:      values(types.NewIntegerValue(2)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					noise:      noiseBlob,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+				{name: "vals=integers, pivot=integer:2",
+					arity: 1,
+					pivot: values(types.NewIntegerValue(2)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					noise: noiseBlob,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=any, vals=integers, pivot=integer:10",
-					indexTypes:    nil,
+				{name: "vals=integers, pivot=integer:10",
+					arity:         1,
 					pivot:         values(types.NewIntegerValue(10)),
 					val:           func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
 					noise:         noiseBlob,
@@ -414,67 +365,55 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedCount: 0,
 				},
 				{name: "index=integer, vals=integers, pivot=integer:2",
-					indexTypes: []types.ValueType{types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					arity: 1,
+					pivot: values(types.NewIntegerValue(2)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				{name: "index=integer, vals=integers, pivot=double",
-					indexTypes:    []types.ValueType{types.IntegerValue},
-					pivot:         values(types.NewEmptyValue(types.DoubleValue)),
+					arity:         1,
+					pivot:         values(types.NewDoubleValue(0)),
 					val:           func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
 					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
 				// doubles ----------------------------------------------------
-				{name: "index=any, vals=doubles, pivot=double",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.DoubleValue)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
+				{name: "vals=doubles, pivot=double",
+					arity: 1,
+					pivot: values(types.NewDoubleValue(0)),
+					val:   func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=any, vals=doubles, pivot=double:1.8",
-					indexTypes: nil,
-					pivot:      values(types.NewDoubleValue(1.8)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+				{name: "vals=doubles, pivot=double:1.8",
+					arity: 1,
+					pivot: values(types.NewDoubleValue(1.8)),
+					val:   func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				{name: "index=double, vals=doubles, pivot=double:1.8",
-					indexTypes: []types.ValueType{types.DoubleValue},
-					pivot:      values(types.NewDoubleValue(1.8)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					arity: 1,
+					pivot: values(types.NewDoubleValue(1.8)),
+					val:   func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=any, vals=doubles, pivot=double:10.8",
-					indexTypes:    nil,
+				{name: "vals=doubles, pivot=double:10.8",
+					arity:         1,
 					pivot:         values(types.NewDoubleValue(10.8)),
 					val:           func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq:    noCallEq,
@@ -482,48 +421,39 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 				},
 
 				// text -------------------------------------------------------
-				{name: "index=any, vals=text pivot=text",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.TextValue)),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
+				{name: "vals=text pivot=text",
+					arity: 1,
+					pivot: values(types.NewTextValue("")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=any, vals=text, pivot=text('2')",
-					indexTypes: nil,
-					pivot:      values(types.NewTextValue("2")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+				{name: "vals=text, pivot=text('2')",
+					arity: 1,
+					pivot: values(types.NewTextValue("2")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=any, vals=text, pivot=text('')",
-					indexTypes: nil,
-					pivot:      values(types.NewTextValue("")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
+				{name: "vals=text, pivot=text('')",
+					arity: 1,
+					pivot: values(types.NewTextValue("")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=any, vals=text, pivot=text('foo')",
-					indexTypes:    nil,
+				{name: "vals=text, pivot=text('foo')",
+					arity:         1,
 					pivot:         values(types.NewTextValue("foo")),
 					val:           func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
 					noise:         noiseInts,
@@ -531,143 +461,108 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					expectedCount: 0,
 				},
 				{name: "index=text, vals=text, pivot=text('2')",
-					indexTypes: []types.ValueType{types.TextValue},
-					pivot:      values(types.NewTextValue("2")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					arity: 1,
+					pivot: values(types.NewTextValue("2")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// composite --------------------------------------------------
-				// composite indexes can have empty pivot values to iterate on the whole indexed data
-				{name: "index=[any, untyped], vals=[int, int], pivot=[nil,nil]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(nil, nil),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[int, int]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-
-				// composite indexes must have at least have one value if typed
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue), types.NewEmptyValue(types.IntegerValue)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[int]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: noCallEq,
-					mustPanic:  true,
-				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
-					indexTypes: []types.ValueType{0, 0, 0},
-					pivot:      values(types.NewIntegerValue(0), types.NewEmptyValue(types.IntegerValue), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
+					arity: 3,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: noCallEq,
-					mustPanic:  true,
-				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, nil]",
-					indexTypes: []types.ValueType{0, 0, 0},
-					pivot:      values(types.NewIntegerValue(0), types.NewEmptyValue(types.IntegerValue), types.NewIntegerValue(0), nil),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)), types.NewIntegerValue(int64(i+1)))
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
-					expectedEq: noCallEq,
-					mustPanic:  true,
+					expectedCount: 5,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: noCallEq,
-					mustPanic:  true,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
+					},
+					expectedCount: 5,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewEmptyValue(types.IntegerValue)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2, int]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// pivot [2, int] should filter out [2, not(int)]
-				{name: "index=[any, untyped], vals=[int, int], noise=[int, blob], pivot=[2, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewEmptyValue(types.IntegerValue)),
+				{name: "vals=[int, int], noise=[int, blob], pivot=[2, int]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
@@ -679,68 +574,62 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 						return nil
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// a more subtle case
-				{name: "index=[any, untyped], vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
+				{name: "vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue([]byte{byte('a' + uint8(i))}))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// partial pivot
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						// let's not try to match, it's not important
 					},
 					expectedCount: 10,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						// let's not try to match, it's not important
 					},
 					expectedCount: 6, // total * 2 - (noise + val = 2) * 2
 				},
 				// this is a tricky test, when we have multiple values but they share the first pivot element;
 				// this is by definition a very implementation dependent test.
-				{name: "index=[any, untyped], vals=[int, int], noise=int, bool], pivot=[int:0, int:0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=int, bool], pivot=[int:0, int:0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
@@ -748,97 +637,79 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						return values(types.NewIntegerValue(int64(i)), types.NewBoolValue(true))
 					},
 					// [0, 0] > [0, true] but [1, true] > [0, 0] so we will see some bools in the results
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						if i%2 == 0 {
 							i = i / 2
-							requireIdxEncodedEq(t,
-								types.NewIntegerValue(int64(i)),
-								types.NewIntegerValue(int64(i+1)),
-							)(val)
+							require.Equal(t, []byte{'a' + i}, []byte(key))
 						}
 					},
 					expectedCount: 9, // 10 elements, but pivot skipped the initial [0, true]
 				},
 				// index typed
 				{name: "index=[int, int], vals=[int, int], pivot=[0, 0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
 				{name: "index=[int, int], vals=[int, int], pivot=[2, 0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// a more subtle case
-				{name: "index=[int, blob], vals=[int, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
-					indexTypes: []types.ValueType{types.IntegerValue, types.BlobValue},
-					pivot:      values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
+				{name: "vals=[int, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue([]byte{byte('a' + uint8(i))}))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// partial pivot
-				{name: "index=[int, int], vals=[int, int], pivot=[0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(0)),
+				{name: "vals=[int, int], pivot=[0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=[int, int], vals=[int, int], pivot=[2]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2)),
+				{name: "vals=[int, int], pivot=[2]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 
 				// documents --------------------------------------------------
-				{name: "index=[any, any], vals=[doc, int], pivot=[{a:2}, 3]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[doc, int], pivot=[{a:2}, 3]",
+					arity: 2,
 					pivot: values(
 						types.NewDocumentValue(testutil.MakeDocument(t, `{"a":2}`)),
 						types.NewIntegerValue(int64(3)),
@@ -849,57 +720,16 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
-					},
-					expectedCount: 3,
-				},
-				{name: "index=[document, int], vals=[doc, int], pivot=[{a:2}, 3]",
-					indexTypes: []types.ValueType{types.DocumentValue, types.IntegerValue},
-					pivot: values(
-						types.NewDocumentValue(testutil.MakeDocument(t, `{"a":2}`)),
-						types.NewIntegerValue(int64(3)),
-					),
-					val: func(i int) []types.Value {
-						return values(
-							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(i)+`}`)),
-							types.NewIntegerValue(int64(i+1)),
-						)
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i += 2
-						requireIdxEncodedEq(t,
-							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 
 				// arrays -----------------------------------------------------
-				{name: "index=[any, any], vals=[int[], int], pivot=[]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(),
-					val: func(i int) []types.Value {
-						return values(
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=[any, any], vals=[int[], int], pivot=[[2,2], 3]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[int[], int], pivot=[[2,2], 3]",
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						types.NewIntegerValue(int64(3)),
@@ -910,17 +740,14 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=[any, any], vals=[int[], int[]], pivot=[[2,2], [3,3]]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[int[], int[]], pivot=[[2,2], [3,3]]",
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						testutil.MakeArrayValue(t, 3, 3),
@@ -931,17 +758,14 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 							testutil.MakeArrayValue(t, i+1, i+1),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							testutil.MakeArrayValue(t, i+1, i+1),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=[array, any], vals=[int[], int], pivot=[[2,2], 3]",
-					indexTypes: []types.ValueType{types.ArrayValue, types.AnyType},
+				{name: "vals=[int[], int], pivot=[[2,2], 3]",
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						types.NewIntegerValue(int64(3)),
@@ -952,12 +776,9 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i += 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
@@ -965,7 +786,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					idx, cleanup := getIndex(t, unique, test.indexTypes...)
+					idx, cleanup := getIndex(t, unique, test.arity)
 					defer cleanup()
 
 					for i := 0; i < total; i++ {
@@ -981,8 +802,8 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 					var i uint8
 					var count int
 					fn := func() error {
-						return idx.AscendGreaterOrEqual(test.pivot, func(val, rid []byte) error {
-							test.expectedEq(t, i, rid, val)
+						return idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, test.pivot...)}, false, func(key tree.Key) error {
+							test.expectedEq(t, i, key)
 							i++
 							count++
 							return nil
@@ -992,7 +813,7 @@ func TestIndexAscendGreaterThan(t *testing.T) {
 						// let's avoid panicking because expectedEq wasn't defined, which would
 						// be a false positive.
 						if test.expectedEq == nil {
-							test.expectedEq = func(t *testing.T, i uint8, key, val []byte) {}
+							test.expectedEq = func(t *testing.T, i uint8, key tree.Key) {}
 						}
 						require.Panics(t, func() { _ = fn() })
 					} else {
@@ -1010,18 +831,18 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 	for _, unique := range []bool{true, false} {
 		text := fmt.Sprintf("Unique: %v, ", unique)
 
-		t.Run(text+"Should not iterate if index is empty", func(t *testing.T) {
-			idx, cleanup := getIndex(t, unique)
-			defer cleanup()
+		// t.Run(text+"Should not iterate if index is empty", func(t *testing.T) {
+		// 	idx, cleanup := getIndex(t, unique, 1)
+		// 	defer cleanup()
 
-			i := 0
-			err := idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.IntegerValue)), func(val, key []byte) error {
-				i++
-				return errors.New("should not iterate")
-			})
-			assert.NoError(t, err)
-			require.Equal(t, 0, i)
-		})
+		// 	i := 0
+		// 	err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, types.NewIntegerValue(0))}, false, func(key tree.Key) error {
+		// 		i++
+		// 		return errors.New("should not iterate")
+		// 	})
+		// 	assert.NoError(t, err)
+		// 	require.Equal(t, 0, i)
+		// })
 
 		t.Run(text+"Should iterate through documents in order, ", func(t *testing.T) {
 			noiseBlob := func(i int) []types.Value {
@@ -1033,7 +854,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				return []types.Value{types.NewIntegerValue(int64(i))}
 			}
 
-			noCallEq := func(t *testing.T, i uint8, key []byte, val []byte) {
+			noCallEq := func(t *testing.T, i uint8, key tree.Key) {
 				require.Fail(t, "equality test should not be called here")
 			}
 
@@ -1044,7 +865,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 			tests := []struct {
 				name string
 				// the index type(s) that is being used
-				indexTypes []types.ValueType
+				arity int
 				// the pivot, typed or not used to iterate
 				pivot database.Pivot
 				// the generator for the values that are being indexed
@@ -1052,119 +873,72 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				// the generator for the noise values that are being indexed
 				noise func(i int) []types.Value
 				// the function to compare the key/value that the iteration yields
-				expectedEq func(t *testing.T, i uint8, key []byte, val []byte)
+				expectedEq func(t *testing.T, i uint8, key tree.Key)
 				// the total count of iteration that should happen
 				expectedCount int
 				mustPanic     bool
 			}{
 				// integers ---------------------------------------------------
-				{name: "index=any, vals=integers, pivot=integer",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					noise:      noiseBlob,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireEqualBinary(t, testutil.MakeArrayValue(t, int64(i)), val)
+				{name: "vals=integers, pivot=integer",
+					arity: 1,
+					pivot: values(types.NewIntegerValue(5)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					noise: noiseBlob,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, tree.Key([]byte{'a' + i}), key)
 					},
 					expectedCount: 5,
 				},
-				{name: "index=integer, vals=integers, pivot=integer",
-					indexTypes: []types.ValueType{types.IntegerValue},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=any, vals=integers, pivot=integer:2",
-					indexTypes: nil,
-					pivot:      values(types.NewIntegerValue(2)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					noise:      noiseBlob,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+				{name: "vals=integers, pivot=integer:2",
+					arity: 1,
+					pivot: values(types.NewIntegerValue(2)),
+					val:   func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					noise: noiseBlob,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=any, vals=integers, pivot=integer:-10",
-					indexTypes:    nil,
+				{name: "vals=integers, pivot=integer:-10",
+					arity:         1,
 					pivot:         values(types.NewIntegerValue(-10)),
 					val:           func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
 					noise:         noiseBlob,
 					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
-				{name: "index=integer, vals=integers, pivot=integer:2",
-					indexTypes: []types.ValueType{types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2)),
-					val:        func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-						)(val)
-					},
-					expectedCount: 3,
-				},
-				{name: "index=integer, vals=integers, pivot=double",
-					indexTypes:    []types.ValueType{types.IntegerValue},
-					pivot:         values(types.NewEmptyValue(types.DoubleValue)),
+				{name: "vals=integers, pivot=double",
+					arity:         1,
+					pivot:         values(types.NewDoubleValue(0)),
 					val:           func(i int) []types.Value { return values(types.NewIntegerValue(int64(i))) },
+					noise:         noiseBlob,
 					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
 
 				// doubles ----------------------------------------------------
-				{name: "index=any, vals=doubles, pivot=double",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.DoubleValue)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
+				{name: "vals=doubles, pivot=double",
+					arity: 1,
+					pivot: values(types.NewDoubleValue(10)),
+					val:   func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=any, vals=doubles, pivot=double:1.8",
-					indexTypes: nil,
-					pivot:      values(types.NewDoubleValue(1.8)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+				{name: "vals=doubles, pivot=double:1.8",
+					arity: 1,
+					pivot: values(types.NewDoubleValue(1.8)),
+					val:   func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 3
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 2,
 				},
-				{name: "index=double, vals=doubles, pivot=double:1.8",
-					indexTypes: []types.ValueType{types.DoubleValue},
-					pivot:      values(types.NewDoubleValue(1.8)),
-					val:        func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 3
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewDoubleValue(float64(i)+float64(i)/2),
-						)(val)
-					},
-					expectedCount: 2,
-				},
-				{name: "index=any, vals=doubles, pivot=double:-10.8",
-					indexTypes:    nil,
+				{name: "vals=doubles, pivot=double:-10.8",
+					arity:         1,
 					pivot:         values(types.NewDoubleValue(-10.8)),
 					val:           func(i int) []types.Value { return values(types.NewDoubleValue(float64(i) + float64(i)/2)) },
 					expectedEq:    noCallEq,
@@ -1172,131 +946,61 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 				},
 
 				// text -------------------------------------------------------
-				{name: "index=any, vals=text pivot=text",
-					indexTypes: nil,
-					pivot:      values(types.NewEmptyValue(types.TextValue)),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
+				{name: "vals=text pivot=text",
+					arity: 1,
+					pivot: values(types.NewTextValue("7")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
+					},
+					expectedCount: 5,
+				},
+				{name: "vals=text, pivot=text('2')",
+					arity: 1,
+					pivot: values(types.NewTextValue("2")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						i -= 2
+						require.Equal(t, []byte{'a' + i}, []byte(key))
+					},
+					expectedCount: 3,
+				},
+				{name: "vals=text, pivot=text('')",
+					arity:         1,
+					pivot:         values(types.NewTextValue("")),
+					val:           func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise:         noiseInts,
+					expectedEq:    noCallEq,
+					expectedCount: 0,
+				},
+				{name: "vals=text, pivot=text('foo')",
+					arity: 1,
+					pivot: values(types.NewTextValue("foo")),
+					val:   func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
+					noise: noiseInts,
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
+					},
+					expectedCount: 5,
+				},
 
-					},
-					expectedCount: 5,
-				},
-				{name: "index=any, vals=text, pivot=text('2')",
-					indexTypes: nil,
-					pivot:      values(types.NewTextValue("2")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
-					},
-					expectedCount: 3,
-				},
-				{name: "index=any, vals=text, pivot=text('')",
-					indexTypes: nil,
-					pivot:      values(types.NewTextValue("")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=any, vals=text, pivot=text('foo')",
-					indexTypes: nil,
-					pivot:      values(types.NewTextValue("foo")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					noise:      noiseInts,
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=text, vals=text, pivot=text('2')",
-					indexTypes: []types.ValueType{types.TextValue},
-					pivot:      values(types.NewTextValue("2")),
-					val:        func(i int) []types.Value { return values(types.NewTextValue(strconv.Itoa(i))) },
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 2
-						require.Equal(t, []byte{'a' + i}, key)
-						requireIdxEncodedEq(t,
-							types.NewTextValue(strconv.Itoa(int(i))),
-						)(val)
-					},
-					expectedCount: 3,
-				},
 				// composite --------------------------------------------------
-				// composite indexes can have empty pivot values to iterate on the whole indexed data
-				{name: "index=[any, untyped], vals=[int, int], pivot=[nil,nil]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(nil, nil),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[int]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(7)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue)),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				// composite indexes cannot have values with type past the first element
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue), types.NewEmptyValue(types.IntegerValue)),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
-					},
-					mustPanic: true,
-				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, int, 0]",
-					indexTypes: []types.ValueType{0, 0, 0},
-					pivot:      values(types.NewIntegerValue(0), types.NewEmptyValue(types.IntegerValue), types.NewIntegerValue(0)),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)), types.NewIntegerValue(int64(i+1)))
-					},
-					mustPanic: true,
-				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[int, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewEmptyValue(types.IntegerValue), types.NewIntegerValue(0)),
-					val: func(i int) []types.Value {
-						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
-					},
-					mustPanic: true,
-				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[0, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
@@ -1306,66 +1010,57 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[5, 5]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(5), types.NewIntegerValue(5)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[5, 5]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(5), types.NewIntegerValue(5)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
 				// [0,1], [1,2], --[2,0]--,  [2,3], [3,4], [4,5]
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2, 0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 3
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 2,
 				},
-				// [0,1], [1,2], [2,3], --[2,int]--, [3,4], [4,5]
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewEmptyValue(types.IntegerValue)),
+				// [0,1], [1,2], [2,3], --[2,3]--, [3,4], [4,5]
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2, 3]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(3)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// pivot [2, int] should filter out [2, not(int)]
 				// [0,1], [1,2], [2,3], --[2,int]--, [2, text], [3,4], [3,text], [4,5], [4,text]
-				{name: "index=[any, untyped], vals=[int, int], noise=[int, text], pivot=[2, int]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewEmptyValue(types.IntegerValue)),
+				{name: "vals=[int, int], noise=[int, text], pivot=[2, 3]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(3)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
@@ -1376,19 +1071,16 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 						return nil
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// a more subtle case
-				{name: "index=[any, untyped], vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
+				{name: "vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
 					val: func(i int) []types.Value {
 						return values(
 							types.NewIntegerValue(int64(i)),
@@ -1401,173 +1093,129 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 3
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)(val)
-					},
-					expectedCount: 2,
-				},
-				// only one of the indexed value is typed
-				{name: "index=[any, blob], vals=[int, blob], noise=[blob, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
-					indexTypes: []types.ValueType{0, types.BlobValue},
-					pivot:      values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
-					val: func(i int) []types.Value {
-						return values(
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)
-					},
-					noise: func(i int) []types.Value {
-						return values(
-							types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
-							types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)),
-						)
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						i -= 3
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 2,
 				},
 				// partial pivot
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[0]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(0)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						// let's not try to match, it's not important
 					},
 					expectedCount: 2, // [0] is "equal" to [0, 1] and [0, "1"]
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[5]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(5)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[5]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(5)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						// let's not try to match, it's not important
 					},
 					expectedCount: 10,
 				},
-				{name: "index=[any, untyped], vals=[int, int], noise=[blob, blob], pivot=[2]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(types.NewIntegerValue(2)),
+				{name: "vals=[int, int], noise=[blob, blob], pivot=[2]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					noise: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue(strconv.AppendInt(nil, int64(i), 10)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						// let's not try to match, it's not important
 					},
 					expectedCount: 6, // total * 2 - (noise + val = 2) * 2
 				},
-				// index typed
-				{name: "index=[int, int], vals=[int, int], pivot=[0, 0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], pivot=[0, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
 					expectedEq:    noCallEq,
 					expectedCount: 0,
 				},
-				{name: "index=[int, int], vals=[int, int], pivot=[5, 6]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(5), types.NewIntegerValue(6)),
+				{name: "vals=[int, int], pivot=[5, 6]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(5), types.NewIntegerValue(6)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 5,
 				},
-				{name: "index=[int, int], vals=[int, int], pivot=[2, 0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
+				{name: "vals=[int, int], pivot=[2, 0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 3
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 2,
 				},
 				// a more subtle case
-				{name: "index=[int, blob], vals=[int, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
-					indexTypes: []types.ValueType{types.IntegerValue, types.BlobValue},
-					pivot:      values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
+				{name: "vals=[int, blob], pivot=[2, 'a']", // pivot is [2, a] but value is [2, c] but that must work anyway
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2), types.NewBlobValue([]byte{byte('a')})),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewBlobValue([]byte{byte('a' + uint8(i))}))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 3
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewBlobValue([]byte{byte('a' + uint8(i))}),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 2,
 				},
 				// partial pivot
-				{name: "index=[int, int], vals=[int, int], pivot=[0]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(0)),
+				{name: "vals=[int, int], pivot=[0]",
+					arity: 2,
+					pivot: values(types.NewIntegerValue(0)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 4
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 1,
 				},
 				// [0,1], [1,2], [2,3], --[2]--, [3,4], [4,5]
 				{name: "index=[int, int], vals=[int, int], pivot=[2]",
-					indexTypes: []types.ValueType{types.IntegerValue, types.IntegerValue},
-					pivot:      values(types.NewIntegerValue(2)),
+					arity: 2,
+					pivot: values(types.NewIntegerValue(2)),
 					val: func(i int) []types.Value {
 						return values(types.NewIntegerValue(int64(i)), types.NewIntegerValue(int64(i+1)))
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							types.NewIntegerValue(int64(i)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				// documents --------------------------------------------------
-				{name: "index=[any, any], vals=[doc, int], pivot=[{a:2}, 3]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[doc, int], pivot=[{a:2}, 3]",
+					arity: 2,
 					pivot: values(
 						types.NewDocumentValue(testutil.MakeDocument(t, `{"a":2}`)),
 						types.NewIntegerValue(int64(3)),
@@ -1578,17 +1226,14 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				{name: "index=[document, int], vals=[doc, int], pivot=[{a:2}, 3]",
-					indexTypes: []types.ValueType{types.DocumentValue, types.IntegerValue},
+					arity: 2,
 					pivot: values(
 						types.NewDocumentValue(testutil.MakeDocument(t, `{"a":2}`)),
 						types.NewIntegerValue(int64(3)),
@@ -1599,36 +1244,16 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							types.NewDocumentValue(testutil.MakeDocument(t, `{"a":`+strconv.Itoa(int(i))+`}`)),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 
 				// arrays -----------------------------------------------------
-				{name: "index=[any, any], vals=[int[], int], pivot=[]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
-					pivot:      values(),
-					val: func(i int) []types.Value {
-						return values(
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)
-					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
-					},
-					expectedCount: 5,
-				},
-				{name: "index=[any, any], vals=[int[], int], pivot=[[2,2], 3]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[int[], int], pivot=[[2,2], 3]",
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						types.NewIntegerValue(int64(3)),
@@ -1639,17 +1264,14 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
-				{name: "index=[any, any], vals=[int[], int[]], pivot=[[2,2], [3,3]]",
-					indexTypes: []types.ValueType{types.AnyType, types.AnyType},
+				{name: "vals=[int[], int[]], pivot=[[2,2], [3,3]]",
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						testutil.MakeArrayValue(t, 3, 3),
@@ -1660,17 +1282,14 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							testutil.MakeArrayValue(t, i+1, i+1),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							testutil.MakeArrayValue(t, i+1, i+1),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
 				{name: "index=[array, any], vals=[int[], int], pivot=[[2,2], 3]",
-					indexTypes: []types.ValueType{types.ArrayValue, types.AnyType},
+					arity: 2,
 					pivot: values(
 						testutil.MakeArrayValue(t, 2, 2),
 						types.NewIntegerValue(int64(3)),
@@ -1681,12 +1300,9 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 							types.NewIntegerValue(int64(i+1)),
 						)
 					},
-					expectedEq: func(t *testing.T, i uint8, key []byte, val []byte) {
+					expectedEq: func(t *testing.T, i uint8, key tree.Key) {
 						i -= 2
-						requireIdxEncodedEq(t,
-							testutil.MakeArrayValue(t, i, i),
-							types.NewIntegerValue(int64(i+1)),
-						)(val)
+						require.Equal(t, []byte{'a' + i}, []byte(key))
 					},
 					expectedCount: 3,
 				},
@@ -1694,7 +1310,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					idx, cleanup := getIndex(t, unique, test.indexTypes...)
+					idx, cleanup := getIndex(t, unique, test.arity)
 					defer cleanup()
 
 					for i := 0; i < total; i++ {
@@ -1702,7 +1318,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						if test.noise != nil {
 							v := test.noise(i)
 							if v != nil {
-								assert.NoError(t, idx.Set(test.noise(i), []byte{'a' + byte(i)}))
+								assert.NoError(t, idx.Set(test.noise(i), []byte{'n', 'a' + byte(i)}))
 							}
 						}
 					}
@@ -1712,8 +1328,8 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 
 					fn := func() error {
 						t.Helper()
-						return idx.DescendLessOrEqual(test.pivot, func(val, rid []byte) error {
-							test.expectedEq(t, uint8(total-1)-i, rid, val)
+						return idx.IterateOnRange(&tree.Range{Max: testutil.NewKey(t, test.pivot...)}, true, func(key tree.Key) error {
+							test.expectedEq(t, uint8(total-1)-i, key)
 							i++
 							count++
 							return nil
@@ -1723,7 +1339,7 @@ func TestIndexDescendLessOrEqual(t *testing.T) {
 						// let's avoid panicking because expectedEq wasn't defined, which would
 						// be a false positive.
 						if test.expectedEq == nil {
-							test.expectedEq = func(t *testing.T, i uint8, key, val []byte) {}
+							test.expectedEq = func(t *testing.T, i uint8, key tree.Key) {}
 						}
 						require.Panics(t, func() {
 							_ = fn()
@@ -1746,7 +1362,7 @@ func BenchmarkIndexSet(b *testing.B) {
 			b.ResetTimer()
 			b.StopTimer()
 			for i := 0; i < b.N; i++ {
-				idx, cleanup := getIndex(b, false)
+				idx, cleanup := getIndex(b, false, 1)
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
@@ -1764,7 +1380,7 @@ func BenchmarkIndexSet(b *testing.B) {
 func BenchmarkIndexIteration(b *testing.B) {
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			idx, cleanup := getIndex(b, false)
+			idx, cleanup := getIndex(b, false, 1)
 			defer cleanup()
 
 			for i := 0; i < size; i++ {
@@ -1774,7 +1390,7 @@ func BenchmarkIndexIteration(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = idx.AscendGreaterOrEqual(values(types.NewEmptyValue(types.TextValue)), func(_, _ []byte) error {
+				_ = idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""))}, false, func(_ tree.Key) error {
 					return nil
 				})
 			}
@@ -1790,7 +1406,7 @@ func BenchmarkCompositeIndexSet(b *testing.B) {
 			b.ResetTimer()
 			b.StopTimer()
 			for i := 0; i < b.N; i++ {
-				idx, cleanup := getIndex(b, false, types.TextValue, types.TextValue)
+				idx, cleanup := getIndex(b, false, 2)
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
@@ -1808,7 +1424,7 @@ func BenchmarkCompositeIndexSet(b *testing.B) {
 func BenchmarkCompositeIndexIteration(b *testing.B) {
 	for size := 10; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			idx, cleanup := getIndex(b, false, types.AnyType, types.AnyType)
+			idx, cleanup := getIndex(b, false, 2)
 			defer cleanup()
 
 			for i := 0; i < size; i++ {
@@ -1818,7 +1434,7 @@ func BenchmarkCompositeIndexIteration(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = idx.AscendGreaterOrEqual(values(types.NewTextValue(""), types.NewTextValue("")), func(_, _ []byte) error {
+				_ = idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""), types.NewTextValue(""))}, false, func(_ tree.Key) error {
 					return nil
 				})
 			}

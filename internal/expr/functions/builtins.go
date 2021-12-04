@@ -1,13 +1,14 @@
 package functions
 
 import (
-	"encoding/binary"
+	"fmt"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -108,11 +109,6 @@ type PK struct{}
 
 // Eval returns the primary key of the current document.
 func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
-	if !ok {
-		return expr.NullLiteral, nil
-	}
-
 	tableName, ok := env.Get(environment.TableKey)
 	if !ok {
 		return expr.NullLiteral, nil
@@ -123,6 +119,11 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return expr.NullLiteral, nil
 	}
 
+	vs, err := tree.Key(dpk.V().([]byte)).Decode()
+	if err != nil {
+		return expr.NullLiteral, err
+	}
+
 	info, err := env.GetCatalog().GetTableInfo(tableName.V().(string))
 	if err != nil {
 		return nil, err
@@ -130,12 +131,12 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 
 	pk := info.GetPrimaryKey()
 	if pk == nil {
+		fmt.Println("pk() -> ", vs[0])
 		// decode as docid
-		docid, _ := binary.Uvarint(dpk.V().([]byte))
-		return types.NewIntegerValue(int64(docid)), nil
+		return vs[0], nil
 	}
 
-	return pk.Path.GetValueFromDocument(d)
+	return document.CastAs(vs[0], pk.Type)
 }
 
 func (*PK) Params() []expr.Expr { return nil }

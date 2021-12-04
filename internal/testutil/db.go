@@ -15,7 +15,30 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
+	"github.com/stretchr/testify/require"
 )
+
+func NewTestStore(t testing.TB, name string) engine.Store {
+	t.Helper()
+
+	ng := memoryengine.NewEngine()
+
+	tx, err := ng.Begin(context.Background(), engine.TxOptions{Writable: true})
+	require.NoError(t, err)
+
+	err = tx.CreateStore([]byte(name))
+	require.NoError(t, err)
+
+	st, err := tx.GetStore([]byte(name))
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		tx.Rollback()
+		ng.Close()
+	})
+
+	return st
+}
 
 func NewTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
@@ -69,6 +92,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	if err != nil {
 		return err
 	}
+	defer res.Close()
 
 	return res.Iterate(func(d types.Document) error {
 		return nil

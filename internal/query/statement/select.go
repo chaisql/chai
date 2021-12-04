@@ -18,7 +18,7 @@ type SelectCoreStmt struct {
 	ProjectionExprs []expr.Expr
 }
 
-func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
+func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 	isReadOnly := true
 
 	var s *stream.Stream
@@ -142,15 +142,72 @@ func (stmt *SelectCoreStmt) ToStream() (*StreamStmt, error) {
 
 // SelectStmt holds SELECT configuration.
 type SelectStmt struct {
-	CompoundSelect   *StreamStmt
-	OrderBy          expr.Path
-	OrderByDirection scanner.Token
-	OffsetExpr       expr.Expr
-	LimitExpr        expr.Expr
+	basePreparedStatement
+
+	CompoundSelect    []*SelectCoreStmt
+	CompoundOperators []scanner.Token
+	OrderBy           expr.Path
+	OrderByDirection  scanner.Token
+	OffsetExpr        expr.Expr
+	LimitExpr         expr.Expr
 }
 
-func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
-	s := stmt.CompoundSelect.Stream
+func NewSelectStatement() *SelectStmt {
+	var p SelectStmt
+
+	p.basePreparedStatement = basePreparedStatement{
+		Preparer: &p,
+		ReadOnly: true,
+	}
+
+	return &p
+}
+
+// Prepare implements the Preparer interface.
+func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
+	var s *stream.Stream
+
+	var prev scanner.Token
+
+	var coreStmts []*stream.Stream
+	var readOnly bool = true
+
+	for i, coreSelect := range stmt.CompoundSelect {
+		coreStmt, err := coreSelect.Prepare(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(stmt.CompoundSelect) == 1 {
+			s = coreStmt.Stream
+			readOnly = coreStmt.ReadOnly
+			break
+		}
+
+		coreStmts = append(coreStmts, coreStmt.Stream)
+
+		if !coreStmt.ReadOnly {
+			readOnly = false
+		}
+
+		var tok scanner.Token
+		if i < len(stmt.CompoundOperators) {
+			tok = stmt.CompoundOperators[i]
+		}
+
+		if prev != 0 && prev != tok {
+			switch prev {
+			case scanner.UNION:
+				s = stream.New(stream.Union(coreStmts...))
+			case scanner.ALL:
+				s = stream.New(stream.Concat(coreStmts...))
+			}
+
+			coreStmts = []*stream.Stream{s}
+		}
+
+		prev = tok
+	}
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
@@ -196,8 +253,10 @@ func (stmt *SelectStmt) ToStream() (*StreamStmt, error) {
 		s = s.Pipe(stream.Take(v.V().(int64)))
 	}
 
-	return &StreamStmt{
+	st := StreamStmt{
 		Stream:   s,
-		ReadOnly: stmt.CompoundSelect.ReadOnly,
-	}, nil
+		ReadOnly: readOnly,
+	}
+
+	return st.Prepare(ctx)
 }

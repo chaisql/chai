@@ -5,19 +5,11 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
-
-type ConstraintViolationError struct {
-	Constraint string
-	Path       document.Path
-}
-
-func (c *ConstraintViolationError) Error() string {
-	return stringutil.Sprintf("%s constraint error: %s", c.Constraint, c.Path)
-}
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
@@ -325,7 +317,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 			// to the right type above.
 			// check if it is required but null.
 			if v.Type() == types.NullValue {
-				return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
+				return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{fc.Path}}
 			}
 
 			continue
@@ -335,7 +327,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 			return nil, err
 		}
 
-		return nil, &ConstraintViolationError{"NOT NULL", fc.Path}
+		return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{fc.Path}}
 	}
 
 	return fb, nil

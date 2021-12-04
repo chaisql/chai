@@ -5,7 +5,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
@@ -32,16 +31,16 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		groupExpr = stringutil.Sprintf("%s", op.E)
 	}
 
-	var tableName string
+	// var tableName string
 
 	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if tableName == "" {
-			v, ok := out.Get(environment.TableKey)
-			if !ok {
-				return errors.New("missing table name")
-			}
-			tableName = v.String()
-		}
+		// if tableName == "" {
+		// 	v, ok := out.Get(environment.TableKey)
+		// 	if !ok {
+		// 		return errors.New("missing table name")
+		// 	}
+		// 	tableName = v.String()
+		// }
 
 		if op.E == nil {
 			if ga == nil {
@@ -72,7 +71,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		}
 
 		// if the document is from a different group, we flush the previous group, emit it and start a new group
-		e, err := ga.Flush(tableName, out)
+		e, err := ga.Flush(out)
 		if err != nil {
 			return err
 		}
@@ -98,7 +97,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		ga = newGroupAggregator(nil, "", op.Builders)
 	}
 
-	e, err := ga.Flush(tableName, in)
+	e, err := ga.Flush(in)
 	if err != nil {
 		return err
 	}
@@ -157,7 +156,7 @@ func (g *groupAggregator) Aggregate(env *environment.Environment) error {
 	return nil
 }
 
-func (g *groupAggregator) Flush(tableName string, env *environment.Environment) (*environment.Environment, error) {
+func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Environment, error) {
 	fb := document.NewFieldBuffer()
 
 	// add the current group to the document
@@ -176,7 +175,7 @@ func (g *groupAggregator) Flush(tableName string, env *environment.Environment) 
 	var newEnv environment.Environment
 	newEnv.SetOuter(env)
 	newEnv.SetDocument(fb)
-	newEnv.Set(environment.TableKey, types.NewTextValue(tableName))
+	// newEnv.Set(environment.TableKey, types.NewTextValue(tableName))
 
 	return &newEnv, nil
 }

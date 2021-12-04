@@ -233,14 +233,14 @@ func TestSelectIndex_Simple(t *testing.T) {
 		{
 			"FROM foo WHERE a = 1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -248,7 +248,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -256,7 +256,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("c > 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_b", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_b", st.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("c > 3"))),
 		},
 		{
@@ -265,7 +265,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
@@ -275,7 +275,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.TextValue("hello")), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
@@ -285,7 +285,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("c = 'hello'"))).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.TextValue("hello")), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(st.Project(parser.MustParseExpr("a"))),
 		},
@@ -297,7 +297,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 					testutil.ExprList(t, `[1, 2]`),
 				),
 			)),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true}, st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true}, st.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})),
 		},
 		{
 			"FROM foo WHERE 1 IN a",
@@ -307,19 +307,19 @@ func TestSelectIndex_Simple(t *testing.T) {
 		{
 			"FROM foo WHERE a >= 10",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a >= 10"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(10))})),
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: exprList(testutil.IntegerValue(10))})),
 		},
 		{
 			"FROM foo WHERE k = 1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = 1"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(1), Exact: true})),
+			st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})),
 		},
 		{
 			"FROM foo WHERE k = 1 AND b = 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("k = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(1), Exact: true})).
+			st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
 		},
 		{
@@ -327,7 +327,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("2 = k"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.IntegerValue(2), Exact: true})).
+			st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
@@ -335,7 +335,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k < 2"))),
 		},
 		{
@@ -343,13 +343,13 @@ func TestSelectIndex_Simple(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("k = 'hello'"))),
-			st.New(st.PkScan("foo", st.ValueRange{Min: testutil.TextValue("hello"), Exact: true})).
+			st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{ // c is an INT, 1.1 cannot be converted to int without precision loss, don't use the index
 			"FROM foo WHERE c < 1.1",
 			st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("c < 1.1"))),
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Max: exprList(testutil.DoubleValue(1.1)), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_c", st.Range{Max: exprList(testutil.DoubleValue(1.1)), Exclusive: true})),
 		},
 		// {
 		// 	"FROM foo WHERE a = 1 OR b = 2",
@@ -417,17 +417,17 @@ func TestSelectIndex_Simple(t *testing.T) {
 			{
 				"FROM foo WHERE k = [1, 1]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1, 1]"))),
-				st.New(st.PkScan("foo", st.ValueRange{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
+				st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.ExprList(t, `[1, 1]`)), Exact: true})),
 			},
 			{ // constraint on k[0] INT should not modify the operand
 				"FROM foo WHERE k = [1.5, 1.5]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("k = [1.5, 1.5]"))),
-				st.New(st.PkScan("foo", st.ValueRange{Min: testutil.ExprList(t, `[1.5, 1.5]`), Exact: true})),
+				st.New(st.PkScan("foo", st.Range{Min: exprList(testutil.ExprList(t, `[1.5, 1.5]`)), Exact: true})),
 			},
 			{
 				"FROM foo WHERE a = [1, 1]",
 				st.New(st.SeqScan("foo")).Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))),
-				st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
+				st.New(st.IndexScan("idx_foo_a", st.Range{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
 			},
 		}
 
@@ -472,42 +472,42 @@ func TestSelectIndex_Composite(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d = 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d > 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d < 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d < 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d <= 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d <= 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`)})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Max: testutil.ExprList(t, `[1, 2]`)})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d >= 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d >= 2"))),
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`)})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.ExprList(t, `[1, 2]`)})),
 		},
 		{
 			"FROM foo WHERE a > 1 AND d > 2",
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a > 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[1]`), Exclusive: true})).
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: testutil.ExprList(t, `[1]`), Exclusive: true})).
 				Pipe(st.Filter(parser.MustParseExpr("d > 2"))),
 		},
 		{
@@ -515,7 +515,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a > ?"))).
 				Pipe(st.Filter(parser.MustParseExpr("d > ?"))),
-			st.New(st.IndexScan("idx_foo_a", st.IndexRange{Min: testutil.ExprList(t, `[?]`), Exclusive: true})).
+			st.New(st.IndexScan("idx_foo_a", st.Range{Min: testutil.ExprList(t, `[?]`), Exclusive: true})).
 				Pipe(st.Filter(parser.MustParseExpr("d > ?"))),
 		},
 		{
@@ -524,28 +524,28 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 3"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2, 3]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.ExprList(t, `[1, 2, 3]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2", // c is omitted, but it can still use idx_foo_a_b_c
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b > 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b > 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b < 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b < 2"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 and k = 3", // c is omitted, but it can still use idx_foo_a_b_c
@@ -553,7 +553,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})).
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("k = 3"))),
 		},
 		// If a path is missing from the query, we can still the index, with paths after the missing one are
@@ -563,7 +563,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			st.New(st.SeqScan("foo")).
 				Pipe(st.Filter(parser.MustParseExpr("x = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
-			st.New(st.IndexScan("idx_foo_x_y_z", st.IndexRange{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_x_y_z", st.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("z = 2"))),
 		},
 		{
@@ -572,7 +572,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
 			// c will be picked because it's a unique index and thus has a lower cost
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))),
 		},
 		{
@@ -581,7 +581,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 2"))),
 			// c will be picked because it's a unique index and thus has a lower cost
-			st.New(st.IndexScan("idx_foo_c", st.IndexRange{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
+			st.New(st.IndexScan("idx_foo_c", st.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})).
 				Pipe(st.Filter(parser.MustParseExpr("b = 1"))),
 		},
 		{
@@ -590,7 +590,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(st.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 'a'"))),
-			st.New(st.IndexScan("idx_foo_a_b_c", st.IndexRange{Min: exprList(testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.TextValue("a")), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_b_c", st.Range{Min: exprList(testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.TextValue("a")), Exact: true})),
 		},
 
 		{
@@ -604,8 +604,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("d = 4"))),
 			st.New(st.IndexScan("idx_foo_a_d",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
 			)),
 		},
 		{
@@ -620,8 +620,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c = 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 3, 4]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 3, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 3, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 3, 4]`), Exact: true},
 			)),
 		},
 		{
@@ -636,8 +636,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
 			)).Pipe(st.Filter(parser.MustParseExpr("c > 4"))),
 		},
 		{
@@ -652,8 +652,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(st.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
 			)).Pipe(st.Filter(parser.MustParseExpr("c < 4"))),
 		},
 		{
@@ -673,10 +673,10 @@ func TestSelectIndex_Composite(t *testing.T) {
 				)).
 				Pipe(st.Filter(parser.MustParseExpr("c > 5"))),
 			st.New(st.IndexScan("idx_foo_a_b_c",
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
-				st.IndexRange{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				st.Range{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
 			)).Pipe(st.Filter(parser.MustParseExpr("c > 5"))),
 		},
 		{
@@ -725,7 +725,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				st.New(st.SeqScan("foo")).
 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
 					Pipe(st.Filter(parser.MustParseExpr("b = [2, 2]"))),
-				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
+				st.New(st.IndexScan("idx_foo_a_b", st.Range{
 					Min:   testutil.ExprList(t, `[[1, 1], [2, 2]]`),
 					Exact: true})),
 			},
@@ -734,7 +734,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				st.New(st.SeqScan("foo")).
 					Pipe(st.Filter(parser.MustParseExpr("a = [1, 1]"))).
 					Pipe(st.Filter(parser.MustParseExpr("b > [2, 2]"))),
-				st.New(st.IndexScan("idx_foo_a_b", st.IndexRange{
+				st.New(st.IndexScan("idx_foo_a_b", st.Range{
 					Min:       testutil.ExprList(t, `[[1, 1], [2, 2]]`),
 					Exclusive: true})),
 			},
@@ -858,8 +858,8 @@ func TestOptimize(t *testing.T) {
 			db.Catalog)
 
 		want := st.New(st.Concat(
-			st.New(st.IndexScan("idx_foo_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
-			st.New(st.IndexScan("idx_bar_a_d", st.IndexRange{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_foo_a_d", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			st.New(st.IndexScan("idx_bar_a_d", st.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
 		))
 
 		assert.NoError(t, err)

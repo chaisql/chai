@@ -7,7 +7,6 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/types"
 )
 
 // CreateTableStmt represents a parsed CREATE TABLE statement.
@@ -55,16 +54,10 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	// create a unique index for every unique constraint
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
-			fc := stmt.Info.GetFieldConstraintForPath(tc.Path)
-			var tp types.ValueType
-			if fc != nil {
-				tp = fc.Type
-			}
 			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
 				TableName: stmt.Info.TableName,
 				Paths:     []document.Path{tc.Path},
 				Unique:    true,
-				Types:     []types.ValueType{tp},
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
 					Path:      tc.Path,
@@ -107,7 +100,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 
 	s := stream.New(stream.SeqScan(stmt.Info.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
 
-	ss := StreamStmt{
+	ss := PreparedStreamStmt{
 		Stream:   s,
 		ReadOnly: false,
 	}

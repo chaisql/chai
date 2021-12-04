@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
@@ -252,7 +251,7 @@ func TestTableInsert(t *testing.T) {
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
-			s := stream.New(test.in).Pipe(stream.TableInsert("test", nil))
+			s := stream.New(test.in).Pipe(stream.TableInsert("test"))
 
 			var i int
 			err := s.Iterate(in, func(out *environment.Environment) error {
@@ -272,8 +271,7 @@ func TestTableInsert(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "tableInsert('test')", stream.TableInsert("test", nil).String())
-		require.Equal(t, "tableInsert('test', onConflictDoNothing)", stream.TableInsert("test", database.OnInsertConflictDoNothing).String())
+		require.Equal(t, "tableInsert(\"test\")", stream.TableInsert("test").String())
 	})
 }
 
@@ -348,7 +346,7 @@ func TestTableReplace(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.TableReplace("test").String(), "tableReplace('test')")
+		require.Equal(t, stream.TableReplace("test").String(), "tableReplace(\"test\")")
 	})
 }
 

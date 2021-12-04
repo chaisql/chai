@@ -1,6 +1,8 @@
 package environment
 
 import (
+	"strings"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stringutil"
@@ -8,9 +10,9 @@ import (
 )
 
 var (
-	TableKey            = document.Path{document.PathFragment{FieldName: "$table"}}
-	DocPKKey            = document.Path{document.PathFragment{FieldName: "$pk"}}
-	OriginalDocumentKey = document.Path{document.PathFragment{FieldName: "$originalDocument"}}
+	TableKey = document.Path{document.PathFragment{FieldName: "$table"}}
+	DocPKKey = document.Path{document.PathFragment{FieldName: "$pk"}}
+	// OriginalDocumentKey = document.Path{document.PathFragment{FieldName: "$originalDocument"}}
 )
 
 // A Param represents a parameter passed by the user to the statement.
@@ -197,4 +199,62 @@ func (e *Environment) Clone() (*Environment, error) {
 	}
 
 	return &newEnv, nil
+}
+
+func (e *Environment) MarshalJSON() ([]byte, error) {
+	var sb strings.Builder
+
+	var needComa bool
+	sb.WriteByte('{')
+	if e.Doc != nil {
+		sb.WriteString("\"Doc\":")
+		b, err := types.NewDocumentValue(e.Doc).MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		sb.Write(b)
+		needComa = true
+	}
+
+	if e.Vars != nil {
+		if needComa {
+			sb.WriteByte(',')
+		}
+		sb.WriteString("\"Vars\":")
+		b, err := types.NewDocumentValue(e.Vars).MarshalJSON()
+		if err != nil {
+			return nil, err
+		}
+		sb.Write(b)
+		needComa = true
+	}
+
+	if e.Params != nil {
+		if needComa {
+			sb.WriteByte(',')
+		}
+		sb.WriteString("\"Params\":")
+		for i, p := range e.Params {
+			if i > 0 {
+				sb.WriteByte(',')
+			}
+			sb.WriteString(stringutil.Sprintf("{\"Name\":\"%s\",\"Value\":%v}", p.Name, p.Value))
+		}
+
+		needComa = true
+	}
+
+	if e.Outer != nil {
+		if needComa {
+			sb.WriteByte(',')
+		}
+		sb.WriteString("\"Outer\":")
+		b, _ := e.Outer.MarshalJSON()
+		sb.Write(b)
+		needComa = true
+	}
+
+	sb.WriteByte('}')
+
+	return []byte(sb.String()), nil
 }

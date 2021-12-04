@@ -1,10 +1,12 @@
 package statement_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,6 +45,7 @@ func TestReIndex(t *testing.T) {
 			// truncate all indexes
 			c := db.Catalog
 			for _, idxName := range c.ListIndexes("") {
+				fmt.Println("truncating", idxName)
 				idx, err := c.GetIndex(tx, idxName)
 				assert.NoError(t, err)
 				err = idx.Truncate()
@@ -59,17 +62,19 @@ func TestReIndex(t *testing.T) {
 			for _, idxName := range db.Catalog.ListIndexes("") {
 				idx, err := db.Catalog.GetIndex(tx, idxName)
 				assert.NoError(t, err)
+				info, err := db.Catalog.GetIndexInfo(idxName)
+				assert.NoError(t, err)
 
 				shouldBeIndexed := false
 				for _, name := range test.expectReIndexed {
-					if name == idx.Info.IndexName {
+					if name == info.IndexName {
 						shouldBeIndexed = true
 						break
 					}
 				}
 
 				i := 0
-				err = idx.AscendGreaterOrEqual(nil, func(val []byte, key []byte) error {
+				err = idx.Iterate(nil, false, func(key tree.Key) error {
 					i++
 					return nil
 				})

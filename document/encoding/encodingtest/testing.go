@@ -87,12 +87,16 @@ func testEncodeDecode(t *testing.T, codecBuilder func() encoding.Codec) {
 		t.Run(test.name, func(t *testing.T) {
 			buf.Reset()
 			codec := codecBuilder()
-			err := codec.NewEncoder(&buf).EncodeDocument(test.d)
+			err := codec.EncodeValue(&buf, types.NewDocumentValue(test.d))
 			assert.NoError(t, err)
-			ok, err := types.IsEqual(types.NewDocumentValue(test.d), types.NewDocumentValue(codec.NewDecoder(buf.Bytes())))
+			v, err := codec.DecodeValue(buf.Bytes())
+			assert.NoError(t, err)
+
+			ok, err := types.IsEqual(types.NewDocumentValue(test.d), v)
 			assert.NoError(t, err)
 			require.True(t, ok)
-			data, err := document.MarshalJSON(codec.NewDecoder(buf.Bytes()))
+
+			data, err := v.MarshalJSON()
 			assert.NoError(t, err)
 			require.JSONEq(t, test.expected, string(data))
 		})
@@ -109,12 +113,15 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 
 	var buf bytes.Buffer
 
-	err := codec.NewEncoder(&buf).EncodeDocument(fb)
+	err := codec.EncodeValue(&buf, types.NewDocumentValue(fb))
 	assert.NoError(t, err)
 
-	d := codec.NewDecoder(buf.Bytes())
+	v, err := codec.DecodeValue(buf.Bytes())
+	assert.NoError(t, err)
 
-	v, err := d.GetByField("a")
+	d := v.V().(types.Document)
+
+	v, err = d.GetByField("a")
 	assert.NoError(t, err)
 
 	require.Equal(t, types.NewIntegerValue(10), v)
@@ -141,11 +148,15 @@ func testArrayGetByIndex(t *testing.T, codecBuilder func() encoding.Codec) {
 
 	var buf bytes.Buffer
 
-	err := codec.NewEncoder(&buf).EncodeDocument(document.NewFieldBuffer().Add("a", types.NewArrayValue(arr)))
+	err := codec.EncodeValue(&buf, types.NewDocumentValue(document.NewFieldBuffer().Add("a", types.NewArrayValue(arr))))
 	assert.NoError(t, err)
 
-	d := codec.NewDecoder(buf.Bytes())
-	v, err := d.GetByField("a")
+	v, err := codec.DecodeValue(buf.Bytes())
+	assert.NoError(t, err)
+
+	d := v.V().(types.Document)
+
+	v, err = d.GetByField("a")
 	assert.NoError(t, err)
 
 	require.Equal(t, types.ArrayValue, v.Type())
@@ -183,17 +194,18 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 
 	var buf bytes.Buffer
 
-	enc := codec.NewEncoder(&buf)
-	defer enc.Close()
-
-	err = enc.EncodeDocument(doc)
+	err = codec.EncodeValue(&buf, types.NewDocumentValue(doc))
 	assert.NoError(t, err)
 
-	ec := codec.NewDecoder(buf.Bytes())
-	v, err := ec.GetByField("age")
+	ec, err := codec.DecodeValue(buf.Bytes())
+	assert.NoError(t, err)
+
+	d := ec.V().(types.Document)
+
+	v, err := d.GetByField("age")
 	assert.NoError(t, err)
 	require.Equal(t, types.NewIntegerValue(10), v)
-	v, err = ec.GetByField("address")
+	v, err = d.GetByField("address")
 	assert.NoError(t, err)
 	expected, err := document.MarshalJSON(document.NewFieldBuffer().Add("address", types.NewDocumentValue(mapDoc)))
 	assert.NoError(t, err)
@@ -202,7 +214,7 @@ func testDecodeDocument(t *testing.T, codecBuilder func() encoding.Codec) {
 	require.JSONEq(t, string(expected), string(actual))
 
 	var i int
-	err = ec.Iterate(func(f string, v types.Value) error {
+	err = d.Iterate(func(f string, v types.Value) error {
 		switch f {
 		case "age":
 			require.Equal(t, types.NewIntegerValue(10), v)

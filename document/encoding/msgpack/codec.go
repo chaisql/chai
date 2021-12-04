@@ -1,10 +1,10 @@
 package msgpack
 
 import (
+	"bytes"
 	"io"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 	"github.com/vmihailenco/msgpack/v5"
@@ -15,18 +15,23 @@ import (
 type Codec struct{}
 
 // NewCodec creates a MessagePack codec.
-func NewCodec() Codec {
-	return Codec{}
+func NewCodec() *Codec {
+	return &Codec{}
 }
 
 // NewEncoder implements the encoding.Codec interface.
-func (c Codec) NewEncoder(w io.Writer) encoding.Encoder {
-	return NewEncoder(w)
+func (c *Codec) EncodeValue(w io.Writer, v types.Value) error {
+	enc := NewEncoder(w)
+	defer enc.Close()
+
+	return enc.EncodeValue(v)
 }
 
-// NewDocument implements the encoding.Codec interface.
-func (c Codec) NewDecoder(data []byte) encoding.Decoder {
-	return NewEncodedDocument(data)
+func (c *Codec) DecodeValue(raw []byte) (types.Value, error) {
+	dec := NewDecoder(bytes.NewReader(raw))
+	defer dec.Close()
+
+	return dec.DecodeValue()
 }
 
 // Encoder encodes Genji documents and values

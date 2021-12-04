@@ -272,20 +272,17 @@ func TestCreateTable(t *testing.T) {
 				Unique: true,
 			}, tb.Info.TableConstraints[2])
 
-			idx, err := db.Catalog.GetIndex(tx, "test_a_idx")
+			info, err := db.Catalog.GetIndexInfo("test_a_idx")
 			assert.NoError(t, err)
-			require.Equal(t, types.IntegerValue, idx.Info.Types[0])
-			require.True(t, idx.Info.Unique)
+			require.True(t, info.Unique)
 
-			idx, err = db.Catalog.GetIndex(tx, "test_b_idx")
+			info, err = db.Catalog.GetIndexInfo("test_b_idx")
 			assert.NoError(t, err)
-			require.Equal(t, types.DoubleValue, idx.Info.Types[0])
-			require.True(t, idx.Info.Unique)
+			require.True(t, info.Unique)
 
-			idx, err = db.Catalog.GetIndex(tx, "test_c_idx")
+			info, err = db.Catalog.GetIndexInfo("test_c_idx")
 			assert.NoError(t, err)
-			require.Zero(t, idx.Info.Types[0])
-			require.True(t, idx.Info.Unique)
+			require.True(t, info.Unique)
 			assert.NoError(t, err)
 		})
 

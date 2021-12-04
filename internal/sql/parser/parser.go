@@ -87,7 +87,7 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 	}
 }
 
-// ParseStatement parses a Genji SQL string and returns a Statement AST object.
+// ParseStatement parses a Genji SQL string and returns a statement.
 func (p *Parser) ParseStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	p.Unscan()

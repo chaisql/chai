@@ -38,8 +38,56 @@ func (c *Context) GetTx() *database.Transaction {
 	return c.DB.GetAttachedTx()
 }
 
+// Prepare the statements by calling their Prepare methods.
+// It stops at the first statement that doesn't implement the statement.Preparer interface.
+func (q *Query) Prepare(context *Context) error {
+	var err error
+	var tx *database.Transaction
+
+	ctx := context.Ctx
+
+	for i, stmt := range q.Statements {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		p, ok := stmt.(statement.Preparer)
+		if !ok {
+			return nil
+		}
+
+		if tx == nil {
+			tx = context.GetTx()
+			if tx == nil {
+				tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
+					ReadOnly: true,
+				})
+				if err != nil {
+					return err
+				}
+				defer tx.Rollback()
+			}
+		}
+
+		stmt, err := p.Prepare(&statement.Context{
+			DB:      context.DB,
+			Tx:      tx,
+			Catalog: context.DB.Catalog,
+		})
+		if err != nil {
+			return err
+		}
+
+		q.Statements[i] = stmt
+	}
+
+	return nil
+}
+
 // Run executes all the statements in their own transaction and returns the last result.
-func (q Query) Run(context *Context) (*statement.Result, error) {
+func (q *Query) Run(context *Context) (*statement.Result, error) {
 	var res statement.Result
 	var err error
 
@@ -61,7 +109,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(ctx, context.DB, &q)
+			err = qa.alterQuery(ctx, context.DB, q)
 			if err != nil {
 				if tx := context.GetTx(); tx != nil {
 					tx.Rollback()
@@ -138,50 +186,4 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 
 type queryAlterer interface {
 	alterQuery(ctx context.Context, db *database.Database, q *Query) error
-}
-
-// Prepare the statements by calling their Prepare methods.
-// It stops at the first statement that doesn't implement the statement.Preparer interface.
-func (q Query) Prepare(context *Context) error {
-	var err error
-	var tx *database.Transaction
-
-	ctx := context.Ctx
-
-	for _, stmt := range q.Statements {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
-
-		p, ok := stmt.(statement.Preparer)
-		if !ok {
-			break
-		}
-
-		if tx == nil {
-			tx = context.GetTx()
-			if tx == nil {
-				tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
-					ReadOnly: true,
-				})
-				if err != nil {
-					return err
-				}
-				defer tx.Rollback()
-			}
-		}
-
-		err = p.Prepare(&statement.Context{
-			DB:      context.DB,
-			Tx:      tx,
-			Catalog: context.DB.Catalog,
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

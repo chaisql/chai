@@ -1,4 +1,4 @@
-package msgpack
+package msgpack_test
 
 import (
 	"bytes"
@@ -7,14 +7,15 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/document/encoding/encodingtest"
+	"github.com/genjidb/genji/document/encoding/msgpack"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodec(t *testing.T) {
 	encodingtest.TestCodec(t, func() encoding.Codec {
-		return NewCodec()
+		return msgpack.NewCodec()
 	})
 }
 
@@ -29,22 +30,20 @@ func TestCompactedIntDecoding(t *testing.T) {
 		Add("normal-pos-int", types.NewIntegerValue(2048)).
 		Add("normal-neg-int", types.NewIntegerValue(-2048))
 
-	expected := `{"small-pos-int": 127, "smaller-pos-int": 2, "small-neg-int": -2, "smaller-neg-int": -32, "normal-pos-int": 2048, "normal-neg-int": -2048}`
-
-	codec := NewCodec()
+	codec := msgpack.NewCodec()
 	var buf bytes.Buffer
 
-	err := codec.NewEncoder(&buf).EncodeDocument(d)
+	err := codec.EncodeValue(&buf, types.NewDocumentValue(d))
 	assert.NoError(t, err)
 
-	doc := codec.NewDecoder(buf.Bytes())
-	data, err := document.MarshalJSON(doc)
+	doc, err := codec.DecodeValue(buf.Bytes())
 	assert.NoError(t, err)
-	require.JSONEq(t, expected, string(data))
+
+	testutil.RequireDocEqual(t, d, doc.V().(types.Document))
 }
 
 func BenchmarkCodec(b *testing.B) {
 	encodingtest.BenchmarkCodec(b, func() encoding.Codec {
-		return NewCodec()
+		return msgpack.NewCodec()
 	})
 }

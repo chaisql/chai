@@ -1,6 +1,8 @@
 package statement
 
 import (
+	"fmt"
+
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stream"
@@ -8,19 +10,24 @@ import (
 
 // ReIndexStmt is a DSL that allows creating a full REINDEX statement.
 type ReIndexStmt struct {
+	basePreparedStatement
+
 	TableOrIndexName string
 }
 
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt ReIndexStmt) IsReadOnly() bool {
-	return false
+func NewReIndexStatement() *ReIndexStmt {
+	var p ReIndexStmt
+
+	p.basePreparedStatement = basePreparedStatement{
+		Preparer: &p,
+		ReadOnly: false,
+	}
+
+	return &p
 }
 
-// Run runs the Reindex statement in the given transaction.
-// It implements the Statement interface.
-func (stmt ReIndexStmt) Run(ctx *Context) (Result, error) {
-	var res Result
-
+// Prepare implements the Preparer interface.
+func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	var indexNames []string
 
 	if stmt.TableOrIndexName == "" {
@@ -28,7 +35,7 @@ func (stmt ReIndexStmt) Run(ctx *Context) (Result, error) {
 	} else if _, err := ctx.Catalog.GetTable(ctx.Tx, stmt.TableOrIndexName); err == nil {
 		indexNames = ctx.Catalog.ListIndexes(stmt.TableOrIndexName)
 	} else if !errs.IsNotFoundError(err) {
-		return res, err
+		return nil, err
 	} else {
 		indexNames = []string{stmt.TableOrIndexName}
 	}
@@ -36,24 +43,29 @@ func (stmt ReIndexStmt) Run(ctx *Context) (Result, error) {
 	var streams []*stream.Stream
 
 	for _, indexName := range indexNames {
+		fmt.Println("indexName", indexName)
 		idx, err := ctx.Catalog.GetIndex(ctx.Tx, indexName)
 		if err != nil {
-			return res, err
+			return nil, err
+		}
+		info, err := ctx.Catalog.GetIndexInfo(indexName)
+		if err != nil {
+			return nil, err
 		}
 
 		err = idx.Truncate()
 		if err != nil {
-			return res, err
+			return nil, err
 		}
 
-		s := stream.New(stream.SeqScan(idx.Info.TableName)).Pipe(stream.IndexInsert(idx.Info.IndexName))
+		s := stream.New(stream.SeqScan(info.TableName)).Pipe(stream.IndexInsert(info.IndexName))
 		streams = append(streams, s)
 	}
 
-	ss := StreamStmt{
+	st := StreamStmt{
 		Stream:   stream.New(stream.Concat(streams...)),
 		ReadOnly: false,
 	}
 
-	return ss.Run(ctx)
+	return st.Prepare(ctx)
 }

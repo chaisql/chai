@@ -12,41 +12,45 @@ import (
 type StreamStmt struct {
 	Stream   *stream.Stream
 	ReadOnly bool
-
-	PreparedStream *stream.Stream
-}
-
-// Prepare optimizes the stream and stores it in s.
-func (s *StreamStmt) Prepare(ctx *Context) error {
-	var err error
-	s.PreparedStream, err = planner.Optimize(s.Stream, ctx.Catalog)
-	return err
 }
 
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
-func (s *StreamStmt) Run(ctx *Context) (Result, error) {
-	if s.PreparedStream == nil {
-		err := s.Prepare(ctx)
-		if err != nil {
-			return Result{}, err
-		}
+func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
+	st, err := planner.Optimize(s.Stream, ctx.Catalog)
+	if err != nil {
+		return nil, err
 	}
 
+	return &PreparedStreamStmt{
+		Stream:   st,
+		ReadOnly: s.ReadOnly,
+	}, nil
+}
+
+// PreparedStreamStmt is a PreparedStreamStmt using a Stream.
+type PreparedStreamStmt struct {
+	Stream   *stream.Stream
+	ReadOnly bool
+}
+
+// Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
+// the result.
+func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
 	return Result{
 		Iterator: &StreamStmtIterator{
-			Stream:  s.PreparedStream,
+			Stream:  s.Stream,
 			Context: ctx,
 		},
 	}, nil
 }
 
 // IsReadOnly reports whether the stream will modify the database or only read it.
-func (s *StreamStmt) IsReadOnly() bool {
+func (s *PreparedStreamStmt) IsReadOnly() bool {
 	return s.ReadOnly
 }
 
-func (s *StreamStmt) String() string {
+func (s *PreparedStreamStmt) String() string {
 	return s.Stream.String()
 }
 

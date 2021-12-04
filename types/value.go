@@ -84,14 +84,6 @@ func NewDocumentValue(d Document) Value {
 	}
 }
 
-// NewEmptyValue creates an empty value with the given type.
-// V() always returns nil.
-func NewEmptyValue(t ValueType) Value {
-	return &value{
-		tp: t,
-	}
-}
-
 // NewValueWith creates a value with the given type and value.
 func NewValueWith(t ValueType, v interface{}) Value {
 	return &value{

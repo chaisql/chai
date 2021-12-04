@@ -7,6 +7,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -54,6 +55,7 @@ type Sequence struct {
 
 	CurrentValue *int64
 	Cached       uint64
+	Key          tree.Key
 }
 
 // NewSequence creates a new or existing sequence. If currentValue is not nil
@@ -71,6 +73,16 @@ func NewSequence(info *SequenceInfo, currentValue *int64) Sequence {
 	}
 
 	return seq
+}
+
+func (s *Sequence) key() (tree.Key, error) {
+	var err error
+	if s.Key != nil {
+		return s.Key, nil
+	}
+
+	s.Key, err = tree.NewKey(types.NewTextValue(s.Info.Name))
+	return s.Key, err
 }
 
 func (s *Sequence) Init(tx *Transaction, catalog *Catalog) error {
@@ -93,12 +105,12 @@ func (s *Sequence) Drop(tx *Transaction, catalog *Catalog) error {
 		return err
 	}
 
-	key, err := tb.EncodeValue(types.NewTextValue(s.Info.Name))
+	k, err := s.key()
 	if err != nil {
 		return err
 	}
 
-	return tb.Delete(key)
+	return tb.Delete(k)
 }
 
 func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
@@ -174,11 +186,12 @@ func (s *Sequence) SetLease(tx *Transaction, catalog *Catalog, name string, v in
 		return err
 	}
 
-	key, err := tb.EncodeValue(types.NewTextValue(name))
+	k, err := s.key()
 	if err != nil {
 		return err
 	}
-	_, err = tb.Replace(key,
+
+	_, err = tb.Replace(k,
 		document.NewFieldBuffer().
 			Add("name", types.NewTextValue(name)).
 			Add("seq", types.NewIntegerValue(v)),

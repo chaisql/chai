@@ -8,6 +8,8 @@ import (
 
 // UpdateConfig holds UPDATE configuration.
 type UpdateStmt struct {
+	basePreparedStatement
+
 	TableName string
 
 	// SetPairs is used along with the Set clause. It holds
@@ -22,13 +24,24 @@ type UpdateStmt struct {
 	WhereExpr expr.Expr
 }
 
+func NewUpdateStatement() *UpdateStmt {
+	var p UpdateStmt
+
+	p.basePreparedStatement = basePreparedStatement{
+		Preparer: &p,
+		ReadOnly: false,
+	}
+
+	return &p
+}
+
 type UpdateSetPair struct {
 	Path document.Path
 	E    expr.Expr
 }
 
-// ToTree turns the statement into a stream.
-func (stmt *UpdateStmt) ToStream() *StreamStmt {
+// Prepare implements the Preparer interface.
+func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(stream.SeqScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
@@ -45,10 +58,27 @@ func (stmt *UpdateStmt) ToStream() *StreamStmt {
 		}
 	}
 
+	// validate document
+	s = s.Pipe(stream.TableValidate(stmt.TableName))
+
+	// TODO(asdine): This removes ALL indexed fields for each document
+	// even if the update modified a single field. We should only
+	// update the indexed fields that were modified.
+	indexNames := c.Catalog.ListIndexes(stmt.TableName)
+	for _, indexName := range indexNames {
+		s = s.Pipe(stream.IndexDelete(indexName))
+	}
+
 	s = s.Pipe(stream.TableReplace(stmt.TableName))
 
-	return &StreamStmt{
+	for _, indexName := range indexNames {
+		s = s.Pipe(stream.IndexInsert(indexName))
+	}
+
+	st := StreamStmt{
 		Stream:   s,
 		ReadOnly: false,
 	}
+
+	return st.Prepare(c)
 }

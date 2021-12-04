@@ -11,6 +11,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -57,7 +58,10 @@ func (c *Catalog) Init(tx *Transaction, codec encoding.Codec) error {
 		},
 	})
 	if err != nil {
-		if !errs.IsAlreadyExistsError(err) {
+		switch {
+		case errs.IsConstraintViolationError(err) && err.(*errs.ConstraintViolationError).Constraint == "PRIMARY KEY":
+		case errs.IsAlreadyExistsError(err):
+		default:
 			return err
 		}
 	}
@@ -95,7 +99,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	return &Table{
 		Tx:      tx,
-		Store:   s,
+		Tree:    tree.New(s, c.Codec),
 		Info:    ti,
 		Catalog: c,
 		Codec:   c.Codec,
@@ -169,11 +173,10 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 
 // DropTable deletes a table from the catalog
 func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
-	o, err := c.Cache.Get(RelationTableType, tableName)
+	ti, err := c.GetTableInfo(tableName)
 	if err != nil {
 		return err
 	}
-	ti := o.(*TableInfo)
 
 	if ti.ReadOnly {
 		return errors.New("cannot write to read-only table")
@@ -185,7 +188,7 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 			return err
 		}
 
-		err = c.dropIndex(tx, idx.IndexName)
+		err = c.dropIndex(tx, idx)
 		if err != nil {
 			return err
 		}
@@ -207,32 +210,10 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
-	// get the associated table
-	o, err := c.Cache.Get(RelationTableType, info.TableName)
+	// check if the associated table exists
+	_, err := c.GetTableInfo(info.TableName)
 	if err != nil {
 		return err
-	}
-	ti := o.(*TableInfo)
-
-	// if the index is created on a field on which we know the type then create a typed index.
-	// if the given info contained existing types, they are overriden.
-	info.Types = nil
-
-OUTER:
-	for _, path := range info.Paths {
-		for _, fc := range ti.FieldConstraints {
-			if fc.Path.IsEqual(path) {
-				// a constraint may or may not enforce a type
-				if fc.Type != 0 {
-					info.Types = append(info.Types, types.ValueType(fc.Type))
-				}
-
-				continue OUTER
-			}
-		}
-
-		// no type was inferred for that path, add it to the index as untyped
-		info.Types = append(info.Types, types.ValueType(0))
 	}
 
 	if info.StoreName == nil {
@@ -247,18 +228,32 @@ OUTER:
 		return err
 	}
 
-	return c.CatalogTable.Insert(tx, info)
+	err = c.CatalogTable.Insert(tx, info)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Tx.CreateStore(info.StoreName)
+	if err != nil {
+		return stringutil.Errorf("failed to create index %q: %w", info.IndexName, err)
+	}
+
+	return nil
 }
 
 // GetIndex returns an index by name.
 func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
-	r, err := c.Cache.Get(RelationIndexType, indexName)
+	info, err := c.GetIndexInfo(indexName)
 	if err != nil {
 		return nil, err
 	}
-	info := r.(*IndexInfo)
 
-	return NewIndex(tx.Tx, info.IndexName, info), nil
+	s, err := tx.Tx.GetStore(info.StoreName)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewIndex(tree.New(s, c.Codec), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -292,12 +287,10 @@ func (c *Catalog) ListIndexes(tableName string) []string {
 // DropIndex deletes an index from the
 func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 	// check if the index exists
-	r, err := c.Cache.Get(RelationIndexType, name)
+	info, err := c.GetIndexInfo(name)
 	if err != nil {
 		return err
 	}
-
-	info := r.(*IndexInfo)
 
 	// check if the index has been created by a table constraint
 	if info.Owner.Path != nil {
@@ -309,16 +302,22 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 		return err
 	}
 
-	return c.dropIndex(tx, name)
+	return c.dropIndex(tx, info)
 }
 
-func (c *Catalog) dropIndex(tx *Transaction, name string) error {
-	err := c.CatalogTable.Delete(tx, name)
+func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
+	s, err := tx.Tx.GetStore(info.StoreName)
 	if err != nil {
 		return err
 	}
 
-	return NewIndex(tx.Tx, name, nil).Truncate()
+	idx := Index{Tree: tree.New(s, c.Codec)}
+	err = idx.Truncate()
+	if err != nil {
+		return err
+	}
+
+	return c.CatalogTable.Delete(tx, info.IndexName)
 }
 
 // AddFieldConstraint adds a field constraint to a table.
@@ -774,7 +773,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 
 	return &Table{
 		Tx:      tx,
-		Store:   st,
+		Tree:    tree.New(st, s.Codec),
 		Info:    s.info,
 		Catalog: s.Catalog,
 		Codec:   s.Codec,
@@ -797,11 +796,10 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 func (s *CatalogStore) Replace(tx *Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
-	key, err := tb.EncodeValue(types.NewTextValue(name))
+	key, err := tree.NewKey(types.NewTextValue(name))
 	if err != nil {
 		return err
 	}
-
 	_, err = tb.Replace(key, relationToDocument(r))
 	return err
 }
@@ -809,7 +807,7 @@ func (s *CatalogStore) Replace(tx *Transaction, name string, r Relation) error {
 func (s *CatalogStore) Delete(tx *Transaction, name string) error {
 	tb := s.Table(tx)
 
-	key, err := tb.EncodeValue(types.NewTextValue(name))
+	key, err := tree.NewKey(types.NewTextValue(name))
 	if err != nil {
 		return err
 	}

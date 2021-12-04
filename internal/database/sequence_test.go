@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	tb, err := catalog.GetTable(tx, database.SequenceTableName)
 	assert.NoError(t, err)
 
-	k, err := tb.EncodeValue(types.NewTextValue(name))
+	k, err := tree.NewKey(types.NewTextValue(name))
 	if err != nil {
 		return nil, err
 	}

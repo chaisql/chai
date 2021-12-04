@@ -5,6 +5,7 @@ import (
 
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -16,14 +17,21 @@ func GetIndexContent(t testing.TB, tx *database.Transaction, catalog *database.C
 	assert.NoError(t, err)
 
 	var content []KV
-	err = idx.AscendGreaterOrEqual([]types.Value{nil}, func(val, key []byte) error {
+	err = idx.Iterate(nil, false, func(key tree.Key) error {
 		content = append(content, KV{
-			Key:   append([]byte{}, val...),
-			Value: append([]byte{}, key...),
+			Key: append([]byte{}, key...),
 		})
 		return nil
 	})
 	assert.NoError(t, err)
 
 	return content
+}
+
+func NewKey(t testing.TB, values ...types.Value) tree.Key {
+	t.Helper()
+
+	k, err := tree.NewKey(values...)
+	assert.NoError(t, err)
+	return k
 }

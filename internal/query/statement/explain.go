@@ -11,7 +11,7 @@ import (
 // displays information about how a statement
 // is going to be executed, without executing it.
 type ExplainStmt struct {
-	Statement Statement
+	Statement Preparer
 }
 
 // Run analyses the inner statement and displays its execution plan.
@@ -19,25 +19,25 @@ type ExplainStmt struct {
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
 func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
-	st, ok := stmt.Statement.(*StreamStmt)
-	if !ok {
-		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
-	}
-
-	err := st.Prepare(ctx)
+	st, err := stmt.Statement.Prepare(ctx)
 	if err != nil {
 		return Result{}, err
 	}
 
+	s, ok := st.(*PreparedStreamStmt)
+	if !ok {
+		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	}
+
 	var plan string
-	if st.PreparedStream != nil {
-		plan = st.PreparedStream.String()
+	if s.Stream != nil {
+		plan = s.Stream.String()
 	} else {
 		plan = "<no exec>"
 	}
 
-	newStatement := StreamStmt{
-		PreparedStream: &stream.Stream{
+	newStatement := PreparedStreamStmt{
+		Stream: &stream.Stream{
 			Op: stream.Project(
 				&expr.NamedExpr{
 					ExprName: "plan",

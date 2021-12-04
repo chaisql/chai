@@ -1,12 +1,85 @@
 package stream
 
 import (
-	"github.com/genjidb/genji/document"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
+
+// IndexValidateOperator reads the input stream and deletes the document from the specified index.
+type IndexValidateOperator struct {
+	baseOperator
+
+	indexName string
+}
+
+func IndexValidate(indexName string) *IndexValidateOperator {
+	return &IndexValidateOperator{
+		indexName: indexName,
+	}
+}
+
+func (op *IndexValidateOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	catalog := in.GetCatalog()
+	tx := in.GetTx()
+
+	info, err := catalog.GetIndexInfo(op.indexName)
+	if err != nil {
+		return err
+	}
+
+	if !info.Unique {
+		return errors.New("indexValidate can be used only on unique indexes")
+	}
+
+	idx, err := catalog.GetIndex(tx, op.indexName)
+	if err != nil {
+		return err
+	}
+
+	var newEnv environment.Environment
+
+	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		newEnv.SetOuter(out)
+
+		doc, ok := out.GetDocument()
+		if !ok {
+			return errors.New("missing document")
+		}
+
+		vs := make([]types.Value, 0, len(info.Paths))
+
+		for _, path := range info.Paths {
+			v, err := path.GetValueFromDocument(doc)
+			if err != nil {
+				v = types.NewNullValue()
+			}
+
+			vs = append(vs, v)
+		}
+
+		duplicate, key, err := idx.Exists(vs)
+		if err != nil {
+			return err
+		}
+		if duplicate {
+			return &errs.ConstraintViolationError{
+				Constraint: "UNIQUE",
+				Paths:      info.Paths,
+				Key:        key,
+			}
+		}
+
+		return fn(&newEnv)
+	})
+}
+
+func (op *IndexValidateOperator) String() string {
+	return stringutil.Sprintf("indexValidate(%q)", op.indexName)
+}
 
 // IndexInsertOperator reads the input stream and indexes each document.
 type IndexInsertOperator struct {
@@ -30,6 +103,11 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 		return err
 	}
 
+	info, err := catalog.GetIndexInfo(op.indexName)
+	if err != nil {
+		return err
+	}
+
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		d, ok := out.GetDocument()
 		if !ok {
@@ -41,20 +119,18 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			return errors.New("missing document key")
 		}
 
-		values := make([]types.Value, len(idx.Info.Paths))
-		for i, path := range idx.Info.Paths {
-			values[i], err = path.GetValueFromDocument(d)
-			if errors.Is(err, document.ErrFieldNotFound) {
-				return nil
-			}
+		vs := make([]types.Value, 0, len(info.Paths))
+		for _, path := range info.Paths {
+			v, err := path.GetValueFromDocument(d)
 			if err != nil {
-				return err
+				v = types.NewNullValue()
 			}
-
+			vs = append(vs, v)
 		}
-		err = idx.Set(values, key.V().([]byte))
+
+		err = idx.Set(vs, key.V().([]byte))
 		if err != nil {
-			return stringutil.Errorf("error while building the index: %w", err)
+			return stringutil.Errorf("error while inserting index value: %w", err)
 		}
 
 		return fn(out)
@@ -63,4 +139,76 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 
 func (op *IndexInsertOperator) String() string {
 	return stringutil.Sprintf("indexInsert(%q)", op.indexName)
+}
+
+// IndexDeleteOperator reads the input stream and deletes the document from the specified index.
+type IndexDeleteOperator struct {
+	baseOperator
+
+	indexName string
+}
+
+func IndexDelete(indexName string) *IndexDeleteOperator {
+	return &IndexDeleteOperator{
+		indexName: indexName,
+	}
+}
+
+func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	catalog := in.GetCatalog()
+	tx := in.GetTx()
+
+	info, err := catalog.GetIndexInfo(op.indexName)
+	if err != nil {
+		return err
+	}
+
+	table, err := catalog.GetTable(tx, info.TableName)
+	if err != nil {
+		return err
+	}
+
+	idx, err := catalog.GetIndex(tx, op.indexName)
+	if err != nil {
+		return err
+	}
+
+	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		dk, ok := out.Get(environment.DocPKKey)
+		if !ok {
+			return errors.New("missing document key")
+		}
+
+		key := tree.Key(dk.V().([]byte))
+
+		old, err := table.GetDocument(key)
+		if err != nil {
+			return err
+		}
+
+		info, err := catalog.GetIndexInfo(op.indexName)
+		if err != nil {
+			return err
+		}
+
+		vs := make([]types.Value, 0, len(info.Paths))
+		for _, path := range info.Paths {
+			v, err := path.GetValueFromDocument(old)
+			if err != nil {
+				v = types.NewNullValue()
+			}
+			vs = append(vs, v)
+		}
+
+		err = idx.Delete(vs, key)
+		if err != nil {
+			return err
+		}
+
+		return fn(out)
+	})
+}
+
+func (op *IndexDeleteOperator) String() string {
+	return stringutil.Sprintf("indexDelete(%q)", op.indexName)
 }

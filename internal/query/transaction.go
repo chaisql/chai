@@ -13,6 +13,11 @@ type BeginStmt struct {
 	Writable bool
 }
 
+// Prepare implements the Preparer interface.
+func (stmt BeginStmt) Prepare(*statement.Context) (statement.Statement, error) {
+	return stmt, nil
+}
+
 func (stmt BeginStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
 	if q.tx != nil {
 		return errors.New("cannot begin a transaction within a transaction")
@@ -38,6 +43,11 @@ func (stmt BeginStmt) Run(ctx *statement.Context) (statement.Result, error) {
 // RollbackStmt is a statement that rollbacks the current active transaction.
 type RollbackStmt struct{}
 
+// Prepare implements the Preparer interface.
+func (stmt RollbackStmt) Prepare(*statement.Context) (statement.Statement, error) {
+	return stmt, nil
+}
+
 func (stmt RollbackStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
 	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot rollback with no active transaction")
@@ -62,6 +72,11 @@ func (stmt RollbackStmt) Run(ctx *statement.Context) (statement.Result, error) {
 
 // CommitStmt is a statement that commits the current active transaction.
 type CommitStmt struct{}
+
+// Prepare implements the Preparer interface.
+func (stmt CommitStmt) Prepare(*statement.Context) (statement.Statement, error) {
+	return stmt, nil
+}
 
 func (stmt CommitStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
 	if q.tx == nil || q.autoCommit {

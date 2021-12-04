@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/internal/binarysort"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
@@ -16,18 +15,8 @@ import (
 type Codec struct{}
 
 // NewCodec creates a custom codec.
-func NewCodec() Codec {
-	return Codec{}
-}
-
-// NewEncoder implements the encoding.Codec interface.
-func (c Codec) NewEncoder(w io.Writer) encoding.Encoder {
-	return NewEncoder(w)
-}
-
-// NewDocument implements the encoding.Codec interface.
-func (c Codec) NewDecoder(data []byte) encoding.Decoder {
-	return &EncodedDocument{data}
+func NewCodec() *Codec {
+	return &Codec{}
 }
 
 // Encoder encodes Genji documents and values

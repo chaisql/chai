@@ -181,10 +181,12 @@ func (s *storeTx) Truncate() error {
 
 	old := s.tr
 	s.tr = btree.New(btreeDegree)
+	s.tx.ng.stores[s.name] = s.tr
 
 	// on rollback replace the new tree by the old one.
 	s.tx.onRollback = append(s.tx.onRollback, func() {
 		s.tr = old
+		s.tx.ng.stores[s.name] = old
 	})
 
 	return nil

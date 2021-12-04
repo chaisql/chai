@@ -9,8 +9,8 @@ import (
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.
-func (p *Parser) parseInsertStatement() (*statement.StreamStmt, error) {
-	var stmt statement.InsertStmt
+func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
+	stmt := statement.NewInsertStatement()
 	var err error
 
 	// Parse "INSERT INTO".
@@ -62,7 +62,7 @@ func (p *Parser) parseInsertStatement() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
-	return stmt.ToStream()
+	return stmt, nil
 }
 
 // parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
@@ -198,34 +198,34 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 	return p.ParseDocument()
 }
 
-func (p *Parser) parseOnConflictClause() (database.OnInsertConflictAction, error) {
+func (p *Parser) parseOnConflictClause() (database.OnConflictAction, error) {
 	// Parse ON CONFLICT DO clause: ON CONFLICT DO action
 	if ok, err := p.parseOptional(scanner.ON, scanner.CONFLICT); !ok || err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	// SQLite compatibility: ON CONFLICT [IGNORE | REPLACE]
 	switch tok {
 	case scanner.IGNORE:
-		return database.OnInsertConflictDoNothing, nil
+		return database.OnConflictDoNothing, nil
 	case scanner.REPLACE:
-		return database.OnInsertConflictDoReplace, nil
+		return database.OnConflictDoReplace, nil
 	}
 
 	// DO [NOTHING | REPLACE]
 	if tok != scanner.DO {
-		return nil, newParseError(scanner.Tokstr(tok, lit), []string{scanner.DO.String()}, pos)
+		return 0, newParseError(scanner.Tokstr(tok, lit), []string{scanner.DO.String()}, pos)
 	}
 
 	tok, pos, lit = p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.NOTHING:
-		return database.OnInsertConflictDoNothing, nil
+		return database.OnConflictDoNothing, nil
 	case scanner.REPLACE:
-		return database.OnInsertConflictDoReplace, nil
+		return database.OnConflictDoReplace, nil
 	}
-	return nil, newParseError(scanner.Tokstr(tok, lit), []string{scanner.NOTHING.String(), scanner.REPLACE.String()}, pos)
+	return 0, newParseError(scanner.Tokstr(tok, lit), []string{scanner.NOTHING.String(), scanner.REPLACE.String()}, pos)
 }
 
 func (p *Parser) parseReturning() ([]expr.Expr, error) {

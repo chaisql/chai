@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
+	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
@@ -189,147 +189,6 @@ func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environ
 
 func (op *SkipOperator) String() string {
 	return stringutil.Sprintf("skip(%d)", op.N)
-}
-
-// A TableInsertOperator inserts incoming documents to the table.
-type TableInsertOperator struct {
-	baseOperator
-	Name       string
-	OnConflict database.OnInsertConflictAction
-}
-
-// TableInsert inserts incoming documents to the table.
-func TableInsert(tableName string, onConflict database.OnInsertConflictAction) *TableInsertOperator {
-	return &TableInsertOperator{Name: tableName, OnConflict: onConflict}
-}
-
-// Iterate implements the Operator interface.
-func (op *TableInsertOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
-
-	var table *database.Table
-	return op.Prev.Iterate(in, func(env *environment.Environment) error {
-		d, ok := env.GetDocument()
-		if !ok {
-			return errors.New("missing document")
-		}
-
-		var err error
-		if table == nil {
-			table, err = env.GetCatalog().GetTable(env.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		key, d, err := table.InsertWithConflictResolution(d, op.OnConflict)
-		if err != nil {
-			return err
-		}
-		newEnv.Set(environment.TableKey, types.NewTextValue(op.Name))
-		newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
-		newEnv.SetDocument(d)
-
-		newEnv.SetOuter(env)
-		return f(&newEnv)
-	})
-}
-
-func (op *TableInsertOperator) String() string {
-	if op.OnConflict != nil {
-		return stringutil.Sprintf("tableInsert('%s', onConflictDoNothing)", op.Name)
-	}
-
-	return stringutil.Sprintf("tableInsert('%s')", op.Name)
-}
-
-// A TableReplaceOperator replaces documents in the table
-type TableReplaceOperator struct {
-	baseOperator
-	Name string
-}
-
-// TableReplace replaces documents in the table. Incoming documents must implement the document.Keyer interface.
-func TableReplace(tableName string) *TableReplaceOperator {
-	return &TableReplaceOperator{Name: tableName}
-}
-
-// Iterate implements the Operator interface.
-func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var table *database.Table
-
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		d, ok := out.GetDocument()
-		if !ok {
-			return errors.New("missing document")
-		}
-
-		if table == nil {
-			var err error
-			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		key, ok := out.Get(environment.DocPKKey)
-		if !ok {
-			return errors.New("missing key")
-		}
-
-		_, err := table.Replace(key.V().([]byte), d)
-		if err != nil {
-			return err
-		}
-
-		return f(out)
-	})
-}
-
-func (op *TableReplaceOperator) String() string {
-	return stringutil.Sprintf("tableReplace('%s')", op.Name)
-}
-
-// A TableDeleteOperator replaces documents in the table
-type TableDeleteOperator struct {
-	baseOperator
-	Name string
-}
-
-// TableDelete deletes documents from the table. Incoming documents must implement the document.Keyer interface.
-func TableDelete(tableName string) *TableDeleteOperator {
-	return &TableDeleteOperator{Name: tableName}
-}
-
-// Iterate implements the Operator interface.
-func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var table *database.Table
-
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if table == nil {
-			var err error
-			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		key, ok := out.Get(environment.DocPKKey)
-		if !ok {
-			return errors.New("missing key")
-		}
-
-		err := table.Delete(key.V().([]byte))
-		if err != nil {
-			return err
-		}
-
-		return f(out)
-	})
-}
-
-func (op *TableDeleteOperator) String() string {
-	return stringutil.Sprintf("tableDelete('%s')", op.Name)
 }
 
 // A SetOperator filters duplicate documents.
@@ -522,7 +381,23 @@ func Do(f func(out *environment.Environment) error) *DoOperator {
 	}
 }
 
+func NoOp() *DoOperator {
+	return noOp
+}
+
+var noOp = &DoOperator{
+	F: doNothing,
+}
+
+func doNothing(out *environment.Environment) error {
+	return nil
+}
+
 func (op *DoOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	if op.Prev == nil {
+		return nil
+	}
+
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		err := op.F(out)
 		if err != nil {
@@ -535,4 +410,57 @@ func (op *DoOperator) Iterate(in *environment.Environment, f func(out *environme
 
 func (op *DoOperator) String() string {
 	return "do()"
+}
+
+type EmitOperator struct {
+	baseOperator
+	env *environment.Environment
+}
+
+func Emit(env *environment.Environment) *EmitOperator {
+	return &EmitOperator{
+		env: env,
+	}
+}
+
+func (op *EmitOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	return f(op.env)
+}
+
+func (op *EmitOperator) String() string {
+	return "emit()"
+}
+
+// HandleConflictOperator handles any conflicts that occur during the iteration.
+type HandleConflictOperator struct {
+	baseOperator
+
+	OnConflict *Stream
+}
+
+func HandleConflict(onConflict *Stream) *HandleConflictOperator {
+	return &HandleConflictOperator{
+		OnConflict: onConflict,
+	}
+}
+
+func (op *HandleConflictOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+	var newEnv environment.Environment
+
+	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		err := fn(out)
+		if err != nil {
+			if cerr, ok := err.(*errs.ConstraintViolationError); ok {
+				newEnv.SetOuter(out)
+				newEnv.Set(environment.DocPKKey, types.NewBlobValue(cerr.Key))
+
+				err = New(Emit(&newEnv)).Pipe(op.OnConflict.First()).Iterate(in, func(out *environment.Environment) error { return nil })
+			}
+		}
+		return err
+	})
+}
+
+func (op *HandleConflictOperator) String() string {
+	return stringutil.Sprintf("HandleConflict(%s)", op.OnConflict)
 }

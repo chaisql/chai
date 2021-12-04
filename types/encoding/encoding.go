@@ -79,7 +79,7 @@ func (ve *ValueEncoder) appendValue(v types.Value) error {
 	case types.DoubleValue:
 		ve.buf = binarysort.AppendFloat64(ve.buf, v.V().(float64))
 	default:
-		return errors.New("cannot encode type " + v.Type().String() + " as key")
+		panic("cannot encode type " + v.Type().String() + " as key")
 	}
 	if err != nil {
 		return err

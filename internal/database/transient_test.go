@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
@@ -48,21 +47,5 @@ func TestTransientDatabasePool(t *testing.T) {
 
 	// when the pool is empty, it should create a new engine
 	_, err = db.TransientDatabasePool.Get(ctx)
-	require.NoError(t, err)
-}
-
-func TestNewTransientIndex(t *testing.T) {
-	db, err := New(context.Background(), memoryengine.NewEngine(), Options{Codec: msgpack.NewCodec()})
-	require.NoError(t, err)
-
-	_, cleanup, err := NewTransientIndex(db, "test", []document.Path{{}}, true)
-	require.NoError(t, err)
-
-	err = cleanup()
-	require.NoError(t, err)
-
-	_, cleanup, err = NewTransientIndex(db, "test", []document.Path{{}}, true)
-	require.NoError(t, err)
-	err = cleanup()
 	require.NoError(t, err)
 }

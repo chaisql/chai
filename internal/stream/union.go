@@ -3,12 +3,11 @@ package stream
 import (
 	"strings"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
 // UnionOperator is an operator that merges the results of multiple operators.
@@ -24,7 +23,7 @@ func Union(s ...*Stream) *UnionOperator {
 
 // Iterate iterates over all the streams and returns their union.
 func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
-	var temp *database.TempResources
+	var temp *tree.Tree
 	var cleanup func() error
 
 	defer func() {
@@ -49,18 +48,19 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 				// create a temporary database
 				db := in.GetDB()
 
-				tmp, f, err := database.NewTransientIndex(db, "union",
-					// passing a single path with nothing inside for setting the arity
-					// TODO(asdine): Is the path really useful when creating an index?
-					[]document.Path{{}}, true)
+				tr, f, err := database.NewTransientTree(db)
 				if err != nil {
 					return err
 				}
-				temp = tmp
+				temp = tr
 				cleanup = f
 			}
 
-			err := temp.Index.Set([]types.Value{types.NewDocumentValue(doc)}, []byte{0})
+			key, err := tree.NewKey(types.NewDocumentValue(doc))
+			if err != nil {
+				return err
+			}
+			err = temp.Put(key, nil)
 			if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
 				return nil
 			}
@@ -80,16 +80,13 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	// iterate over the temporary index
-	return temp.Index.AscendGreaterOrEqual(nil, func(val, _ []byte) error {
-		a, _, err := encoding.DecodeArray(val)
+	return temp.Iterate(nil, false, func(key tree.Key, _ types.Value) error {
+		kv, err := key.Decode()
 		if err != nil {
 			return err
 		}
-		v, err := a.GetByIndex(0)
-		if err != nil {
-			return err
-		}
-		doc := v.V().(types.Document)
+
+		doc := kv[0].V().(types.Document)
 
 		newEnv.SetDocument(doc)
 		return fn(&newEnv)

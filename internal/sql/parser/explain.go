@@ -25,5 +25,5 @@ func (p *Parser) parseExplainStatement() (statement.Statement, error) {
 		return nil, err
 	}
 
-	return &statement.ExplainStmt{Statement: innerStmt}, nil
+	return &statement.ExplainStmt{Statement: innerStmt.(statement.Preparer)}, nil
 }

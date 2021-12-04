@@ -150,9 +150,6 @@ type IndexInfo struct {
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
 
-	// If set, the index is typed and only accepts values of those types.
-	Types []types.ValueType
-
 	// If set, this index has been created from a table constraint
 	// i.e CREATE TABLE tbl(a INT UNIQUE)
 	// The path refers to the path this index is related to.
@@ -222,9 +219,6 @@ func (i IndexInfo) Clone() *IndexInfo {
 	for i, p := range i.Paths {
 		c.Paths[i] = p.Clone()
 	}
-
-	c.Types = make([]types.ValueType, len(i.Types))
-	copy(c.Types, i.Types)
 
 	return &c
 }

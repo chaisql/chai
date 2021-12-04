@@ -13,6 +13,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -168,9 +169,9 @@ func TestCatalogTable(t *testing.T) {
 			idxs := catalog.ListIndexes(tb.Info.Name())
 			require.Len(t, idxs, 2)
 			for _, name := range idxs {
-				idx, err := catalog.GetIndex(tx, name)
+				info, err := catalog.GetIndexInfo(name)
 				assert.NoError(t, err)
-				require.Equal(t, "zoo", idx.Info.TableName)
+				require.Equal(t, "zoo", info.TableName)
 			}
 
 			// Check that the sequences have been updated as well.
@@ -514,7 +515,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 			require.NotNil(t, seq)
 
 			tb := db.Catalog.CatalogTable.Table(tx)
-			key, err := tb.EncodeValue(types.NewTextValue("test1"))
+			key, err := tree.NewKey(types.NewTextValue("test1"))
 			assert.NoError(t, err)
 
 			_, err = tb.GetDocument(key)

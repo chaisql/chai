@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"encoding/binary"
 	"fmt"
 	"testing"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -82,64 +82,6 @@ func newDocument() *document.FieldBuffer {
 		Add("fieldb", types.NewTextValue("b"))
 }
 
-// TestTableIterate verifies Iterate behaviour.
-func TestTableIterate(t *testing.T) {
-	t.Run("Should not fail with no documents", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		i := 0
-		err := tb.Iterate(func(key []byte, d types.Document) error {
-			i++
-			return nil
-		})
-		assert.NoError(t, err)
-		require.Zero(t, i)
-	})
-
-	t.Run("Should iterate over all documents", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		for i := 0; i < 10; i++ {
-			_, _, err := tb.Insert(newDocument())
-			assert.NoError(t, err)
-		}
-
-		m := make(map[string]int)
-		err := tb.Iterate(func(key []byte, d types.Document) error {
-			m[string(key)]++
-			return nil
-		})
-		assert.NoError(t, err)
-		require.Len(t, m, 10)
-		for _, c := range m {
-			require.Equal(t, 1, c)
-		}
-	})
-
-	t.Run("Should stop if fn returns error", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		for i := 0; i < 10; i++ {
-			_, _, err := tb.Insert(newDocument())
-			assert.NoError(t, err)
-		}
-
-		i := 0
-		err := tb.Iterate(func(key []byte, _ types.Document) error {
-			i++
-			if i >= 5 {
-				return errors.New("some error")
-			}
-			return nil
-		})
-		require.EqualError(t, err, "some error")
-		require.Equal(t, 5, i)
-	})
-}
-
 // TestTableGetDocument verifies GetDocument behaviour.
 func TestTableGetDocument(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
@@ -199,7 +141,7 @@ func TestTableInsert(t *testing.T) {
 		db, cleanup := testutil.NewTestDBWithEngine(t, ng)
 		defer cleanup()
 
-		insertDoc := func(db *database.Database) (rawKey []byte) {
+		insertDoc := func(db *database.Database) (rawKey tree.Key) {
 			update(t, db, func(tx *database.Transaction) error {
 				// create table if not exists
 				tb := createTableIfNotExists(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
@@ -221,7 +163,7 @@ func TestTableInsert(t *testing.T) {
 
 		ng.Closed = false
 
-		// create new database object
+		// create a new database object
 		db, cleanup = testutil.NewTestDBWithEngine(t, ng)
 		defer cleanup()
 
@@ -229,11 +171,13 @@ func TestTableInsert(t *testing.T) {
 
 		key2 := insertDoc(db)
 
-		a, _ := binary.Uvarint(key1)
+		vs, err := key1.Decode()
 		assert.NoError(t, err)
+		a := vs[0].V().(int64)
 
-		b, _ := binary.Uvarint(key2)
+		vs, err = key2.Decode()
 		assert.NoError(t, err)
+		b := vs[0].V().(int64)
 
 		require.Equal(t, int64(a+1), int64(b))
 	})
@@ -261,7 +205,7 @@ func TestTableInsert(t *testing.T) {
 		// insert
 		key, _, err := tb.Insert(doc)
 		assert.NoError(t, err)
-		want, err := tb.EncodeValue(types.NewIntegerValue(10))
+		want, err := tree.NewKey(types.NewIntegerValue(10))
 		assert.NoError(t, err)
 
 		require.Equal(t, want, key)
@@ -272,7 +216,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again
 		_, _, err = tb.Insert(doc)
-		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
+		require.EqualError(t, err, "PRIMARY KEY constraint error: [foo.a[1]]")
 	})
 
 	t.Run("Should convert values into the right types if there are constraints", func(t *testing.T) {
@@ -292,10 +236,10 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// insert
-		key, d, err := tb.Insert(doc)
+		key, _, err := tb.Insert(doc)
 		assert.NoError(t, err)
 
-		d, err = tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		assert.NoError(t, err)
 
 		v, err := testutil.ParseDocumentPath(t, "foo[0]").GetValueFromDocument(d)
@@ -330,56 +274,10 @@ func TestTableInsert(t *testing.T) {
 				doc := document.NewFieldBuffer().
 					Add("foo", types.NewBlobValue(test))
 
-				_, _, err := tb.Insert(doc)
+				_, err = tb.Info.ValidateDocument(tx, doc)
 				assert.Error(t, err)
 			})
 		}
-	})
-
-	t.Run("Should update indexes if there are indexed fields", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
-
-		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
-		})
-		assert.NoError(t, err)
-		idx, err := db.Catalog.GetIndex(tx, "idxFoo")
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test")
-		assert.NoError(t, err)
-
-		// create one document with the foo field
-		doc1 := newDocument()
-		foo := types.NewDoubleValue(10)
-		doc1.Add("foo", foo)
-
-		// create one document without the foo field
-		doc2 := newDocument()
-
-		key1, _, err := tb.Insert(doc1)
-		assert.NoError(t, err)
-		key2, _, err := tb.Insert(doc2)
-		assert.NoError(t, err)
-
-		var count int
-		err = idx.AscendGreaterOrEqual([]types.Value{nil}, func(val, k []byte) error {
-			switch count {
-			case 0:
-				// key2, which doesn't countain the field must appear first in the next,
-				// as null values are the smallest possible values
-				require.Equal(t, key2, k)
-			case 1:
-				require.Equal(t, key1, k)
-			}
-			count++
-			return nil
-		})
-		assert.NoError(t, err)
-		require.Equal(t, 2, count)
 	})
 
 	t.Run("Should convert the fields if FieldsConstraints are specified", func(t *testing.T) {
@@ -403,11 +301,13 @@ func TestTableInsert(t *testing.T) {
 			Add("bat", types.NewIntegerValue(20))
 
 		// insert
-		key, d, err := tb.Insert(doc)
+		fb, err := tb.Info.ValidateDocument(tx, doc)
+		assert.NoError(t, err)
+		key, _, err := tb.Insert(fb)
 		assert.NoError(t, err)
 
 		// make sure the fields have been converted to the right types
-		d, err = tb.GetDocument(key)
+		d, err := tb.GetDocument(key)
 		assert.NoError(t, err)
 		v, err := d.GetByField("foo")
 		assert.NoError(t, err)
@@ -467,32 +367,32 @@ func TestTableInsert(t *testing.T) {
 		})
 
 		// insert with empty foo field should fail
-		_, _, err := tb1.Insert(document.NewFieldBuffer().
+		_, err := tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
 		assert.Error(t, err)
 
 		// insert with null foo field should fail
-		_, _, err = tb1.Insert(document.NewFieldBuffer().
+		_, err = tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
 		assert.Error(t, err)
 
 		// otherwise it should work
-		_, _, err = tb1.Insert(document.NewFieldBuffer().
+		_, err = tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
 		assert.NoError(t, err)
 
 		// insert with empty foo field should fail
-		_, _, err = tb2.Insert(document.NewFieldBuffer().
+		_, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
 		assert.Error(t, err)
 
 		// insert with null foo field should fail
-		_, _, err = tb2.Insert(document.NewFieldBuffer().
+		_, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
 		assert.Error(t, err)
 
 		// otherwise it should work
-		_, _, err = tb2.Insert(document.NewFieldBuffer().
+		_, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
 		assert.NoError(t, err)
 	})
@@ -518,29 +418,34 @@ func TestTableInsert(t *testing.T) {
 		})
 
 		// insert with empty foo field shouldn't fail
-		key, d, err := tb1.Insert(document.NewFieldBuffer().
+		fb, err := tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("bar", types.NewDoubleValue(1)))
 		assert.NoError(t, err)
 
-		d, err = tb1.GetDocument(key)
+		key, _, err := tb1.Insert(fb)
+		assert.NoError(t, err)
+
+		d, err := tb1.GetDocument(key)
 		assert.NoError(t, err)
 		v, err := d.GetByField("foo")
 		assert.NoError(t, err)
 		require.Equal(t, v.V().(float64), float64(42))
 
 		// insert with explicit null foo field should fail
-		_, _, err = tb1.Insert(document.NewFieldBuffer().
+		_, err = tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
 		assert.Error(t, err)
 
 		// otherwise it should work
-		_, _, err = tb1.Insert(document.NewFieldBuffer().
+		_, err = tb1.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewIntegerValue(1)))
 		assert.NoError(t, err)
 
 		// insert with empty foo field shouldn't fail
-		key, d, err = tb2.Insert(document.NewFieldBuffer().
+		fb, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("bar", types.NewIntegerValue(1)))
+		assert.NoError(t, err)
+		key, _, err = tb2.Insert(fb)
 		assert.NoError(t, err)
 
 		d, err = tb2.GetDocument(key)
@@ -550,12 +455,12 @@ func TestTableInsert(t *testing.T) {
 		require.Equal(t, v.V().(int64), int64(42))
 
 		// insert with explicit null foo field should fail
-		_, _, err = tb2.Insert(document.NewFieldBuffer().
+		_, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewNullValue()))
 		assert.Error(t, err)
 
 		// otherwise it should work
-		_, _, err = tb2.Insert(document.NewFieldBuffer().
+		_, err = tb2.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewDoubleValue(1)))
 		assert.NoError(t, err)
 	})
@@ -572,10 +477,10 @@ func TestTableInsert(t *testing.T) {
 		})
 
 		// insert table with only one value
-		_, _, err := tb.Insert(document.NewFieldBuffer().
+		_, err := tb.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewArrayValue(document.NewValueBuffer().Append(types.NewIntegerValue(1)))))
 		assert.Error(t, err)
-		_, _, err = tb.Insert(document.NewFieldBuffer().
+		_, err = tb.Info.ValidateDocument(tx, document.NewFieldBuffer().
 			Add("foo", types.NewArrayValue(document.NewValueBuffer().
 				Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2)))))
 		assert.NoError(t, err)
@@ -604,182 +509,7 @@ func TestTableInsert(t *testing.T) {
 
 		// insert again, should fail
 		_, _, err = tb.Insert(doc)
-		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
-	})
-
-	t.Run("Should run the onConflict function if the pk is duplicated", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		tb := createTable(t, tx, db.Catalog, database.TableInfo{
-			TableName: "test",
-			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
-			},
-			TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
-			},
-		})
-
-		doc := document.NewFieldBuffer().
-			Add("foo", types.NewIntegerValue(10))
-
-		var called int
-		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
-			called++
-			return d, nil
-		}
-
-		// insert first
-		_, _, err := tb.InsertWithConflictResolution(doc, onConflict)
-		assert.NoError(t, err)
-		require.Equal(t, 0, called)
-
-		// insert again, should call onConflict
-		_, _, err = tb.InsertWithConflictResolution(doc, onConflict)
-		assert.NoError(t, err)
-		require.Equal(t, 1, called)
-	})
-
-	t.Run("Should fail if there is a unique constraint violation", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
-		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			TableName: "test",
-			IndexName: "idx_test_foo",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
-			Unique:    true,
-		})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test")
-		assert.NoError(t, err)
-
-		doc := document.NewFieldBuffer().
-			Add("foo", types.NewIntegerValue(10))
-
-		// insert first
-		_, _, err = tb.Insert(doc)
-		assert.NoError(t, err)
-
-		// insert again, should fail
-		_, _, err = tb.Insert(doc)
-		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
-	})
-
-	t.Run("Should run the onConflict function if there is a unique constraint violation", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
-		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			TableName: "test",
-			IndexName: "idx_test_foo",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "foo")},
-			Unique:    true,
-		})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test")
-		assert.NoError(t, err)
-
-		doc := document.NewFieldBuffer().
-			Add("foo", types.NewIntegerValue(10))
-
-		var called int
-		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
-			called++
-			return d, nil
-		}
-
-		// insert first
-		_, _, err = tb.InsertWithConflictResolution(doc, onConflict)
-		assert.NoError(t, err)
-		require.Equal(t, 0, called)
-
-		// insert again, should call onConflict
-		_, _, err = tb.InsertWithConflictResolution(doc, onConflict)
-		assert.NoError(t, err)
-		require.Equal(t, 1, called)
-	})
-
-	t.Run("Should run the onConflict function if there is a NOT NULL constraint violation", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		tb := createTable(t, tx, db.Catalog, database.TableInfo{
-			TableName: "test",
-			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
-			},
-		})
-
-		doc := document.NewFieldBuffer().
-			Add("bar", types.NewIntegerValue(10))
-
-		var called int
-		onConflict := func(t *database.Table, key []byte, d types.Document, err error) (types.Document, error) {
-			called++
-			return d, nil
-		}
-
-		// insert
-		_, _, err := tb.InsertWithConflictResolution(doc, onConflict)
-		assert.NoError(t, err)
-		require.Equal(t, 1, called)
-	})
-
-	t.Run("Should replace document if the pk is duplicated, using OnInsertConflictDoReplace", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
-			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
-			},
-			TableConstraints: []*database.TableConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), PrimaryKey: true},
-			},
-		})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test")
-		assert.NoError(t, err)
-
-		doc := document.NewFieldBuffer().
-			Add("foo", types.NewIntegerValue(10))
-
-		// insert first
-		_, d1, err := tb.Insert(doc)
-		assert.NoError(t, err)
-
-		// insert again, should call OnInsertConflictDoReplace
-		_, d2, err := tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
-		assert.NoError(t, err)
-		require.Equal(t, d1, d2)
-	})
-
-	t.Run("Should not replace document  if there is a NOT NULL constraint violation, using OnInsertConflictDoReplace", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		err := db.Catalog.CreateTable(tx, "test", &database.TableInfo{
-			FieldConstraints: []*database.FieldConstraint{
-				{Path: testutil.ParseDocumentPath(t, "foo"), IsNotNull: true},
-			}})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test")
-		assert.NoError(t, err)
-
-		doc := document.NewFieldBuffer().
-			Add("bar", types.NewIntegerValue(10))
-
-		// insert
-		_, _, err = tb.InsertWithConflictResolution(doc, database.OnInsertConflictDoReplace)
-		assert.Error(t, err)
+		require.EqualError(t, err, "PRIMARY KEY constraint error: [foo]")
 	})
 }
 
@@ -873,98 +603,6 @@ func TestTableReplace(t *testing.T) {
 		assert.NoError(t, err)
 		require.Equal(t, "c", f.V().(string))
 	})
-
-	t.Run("Should update indexes", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test1"})
-		createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test2"})
-
-		// simple indexes
-		err := db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Paths:     []document.Path{document.NewPath("a")},
-			Unique:    true,
-			TableName: "test1",
-			IndexName: "idx_foo_a",
-		})
-		assert.NoError(t, err)
-
-		// composite indexes
-		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Paths:     []document.Path{document.NewPath("x"), document.NewPath("y")},
-			Unique:    true,
-			TableName: "test2",
-			IndexName: "idx_foo_x_y",
-		})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test1")
-		assert.NoError(t, err)
-
-		// insert two different documents
-		key1, _, err := tb.Insert(testutil.MakeDocument(t, `{"a": 1, "b": 1}`))
-		assert.NoError(t, err)
-		key2, _, err := tb.Insert(testutil.MakeDocument(t, `{"a": 2, "b": 2}`))
-		assert.NoError(t, err)
-
-		beforeIdxA := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
-
-		// --- a
-		// replace d1 without modifying indexed key
-		_, err = tb.Replace(key1, testutil.MakeDocument(t, `{"a": 1, "b": 3}`))
-		assert.NoError(t, err)
-
-		// indexes should be the same as before
-		require.Equal(t, beforeIdxA, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a"))
-
-		// replace d2 and modify indexed key
-		_, err = tb.Replace(key2, testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
-		assert.NoError(t, err)
-
-		// indexes should be different for d2
-		got := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_a")
-		require.Equal(t, beforeIdxA[0], got[0])
-		require.NotEqual(t, beforeIdxA[1], got[1])
-
-		// replace d1 with duplicate indexed key
-		_, err = tb.Replace(key1, testutil.MakeDocument(t, `{"a": 3, "b": 3}`))
-
-		// index should be the same as before
-		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
-
-		// --- x, y
-		tb, err = db.Catalog.GetTable(tx, "test2")
-		assert.NoError(t, err)
-		// insert two different documents
-		key1, _, err = tb.Insert(testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 1}`))
-		assert.NoError(t, err)
-		key2, _, err = tb.Insert(testutil.MakeDocument(t, `{"x": 2, "y": 2, "z": 2}`))
-		assert.NoError(t, err)
-
-		beforeIdxXY := testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
-		// replace dc1 without modifying indexed key
-		_, err = tb.Replace(key1, testutil.MakeDocument(t, `{"x": 1, "y": 1, "z": 2}`))
-		assert.NoError(t, err)
-
-		// index should be the same as before
-		require.Equal(t, beforeIdxXY, testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y"))
-
-		// replace dc2 and modify indexed key
-		_, err = tb.Replace(key2, testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
-		assert.NoError(t, err)
-
-		// indexes should be different for d2
-		got = testutil.GetIndexContent(t, tx, db.Catalog, "idx_foo_x_y")
-		require.Equal(t, beforeIdxXY[0], got[0])
-		require.NotEqual(t, beforeIdxXY[1], got[1])
-
-		// replace dc2 with duplicate indexed key
-		_, err = tb.Replace(key1, testutil.MakeDocument(t, `{"x": 3, "y": 3, "z": 3}`))
-
-		// index should be the same as before
-		assert.ErrorIs(t, err, errs.ErrDuplicateDocument)
-	})
 }
 
 // TestTableTruncate verifies Truncate behaviour.
@@ -993,69 +631,11 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		assert.NoError(t, err)
 
-		err = tb.Iterate(func(key []byte, _ types.Document) error {
+		err = tb.Iterate(nil, false, func(key tree.Key, _ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
 		assert.NoError(t, err)
-	})
-}
-
-func TestTableIndexes(t *testing.T) {
-	t.Run("Should succeed if table has no indexes", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		list, err := tb.GetIndexes()
-		assert.NoError(t, err)
-		require.Empty(t, list)
-	})
-
-	t.Run("Should return a list of all the indexes", func(t *testing.T) {
-		db, tx, cleanup := newTestTx(t)
-		defer cleanup()
-
-		err := db.Catalog.CreateTable(tx, "test1", nil)
-		assert.NoError(t, err)
-
-		err = db.Catalog.CreateTable(tx, "test2", nil)
-		assert.NoError(t, err)
-
-		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Unique:    true,
-			IndexName: "idx1a",
-			TableName: "test1",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
-		})
-		assert.NoError(t, err)
-		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Unique:    false,
-			IndexName: "idx1b",
-			TableName: "test1",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "b")},
-		})
-		assert.NoError(t, err)
-		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Unique:    false,
-			IndexName: "idx1ab",
-			TableName: "test1",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
-		})
-		assert.NoError(t, err)
-		err = db.Catalog.CreateIndex(tx, &database.IndexInfo{
-			Unique:    false,
-			IndexName: "idx2a",
-			TableName: "test2",
-			Paths:     []document.Path{testutil.ParseDocumentPath(t, "a")},
-		})
-		assert.NoError(t, err)
-
-		tb, err := db.Catalog.GetTable(tx, "test1")
-		assert.NoError(t, err)
-
-		m, err := tb.GetIndexes()
-		assert.NoError(t, err)
-		require.Len(t, m, 3)
 	})
 }
 
@@ -1105,7 +685,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.Iterate(func([]byte, types.Document) error {
+				tb.Iterate(nil, false, func(tree.Key, types.Document) error {
 					return nil
 				})
 			}

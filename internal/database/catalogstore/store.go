@@ -1,6 +1,7 @@
 package catalogstore
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -8,12 +9,14 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
 func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 	tables, indexes, sequences, err := loadCatalogStore(tx, c.CatalogTable)
 	if err != nil {
+		fmt.Println(1, err)
 		return err
 	}
 
@@ -28,15 +31,6 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 		}
 	}
 
-	// add types to indices
-	for i := range indexes {
-		for _, ti := range tables {
-			if ti.TableName == indexes[i].TableName {
-				addTypesToIndex(ti, &indexes[i])
-				break
-			}
-		}
-	}
 	// add the __genji_catalog table to the list of tables
 	// so that it can be queried
 	ti := c.CatalogTable.Info().Clone()
@@ -51,6 +45,8 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 		var seqList []database.Sequence
 		seqList, err = loadSequences(tx, c, sequences)
 		if err != nil {
+			fmt.Println(2, err)
+
 			return err
 		}
 
@@ -58,25 +54,6 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 	}
 
 	return nil
-}
-
-func addTypesToIndex(ti database.TableInfo, info *database.IndexInfo) {
-OUTER:
-	for _, path := range info.Paths {
-		for _, fc := range ti.FieldConstraints {
-			if fc.Path.IsEqual(path) {
-				// a constraint may or may not enforce a type
-				if fc.Type != 0 {
-					info.Types = append(info.Types, types.ValueType(fc.Type))
-				}
-
-				continue OUTER
-			}
-		}
-
-		// no type was inferred for that path, add it to the index as untyped
-		info.Types = append(info.Types, types.ValueType(0))
-	}
 }
 
 func loadSequences(tx *database.Transaction, c *database.Catalog, info []database.SequenceInfo) ([]database.Sequence, error) {
@@ -87,7 +64,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 
 	sequences := make([]database.Sequence, len(info))
 	for i := range info {
-		key, err := tb.EncodeValue(types.NewTextValue(info[i].Name))
+		key, err := tree.NewKey(types.NewTextValue(info[i].Name))
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +94,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.AscendGreaterOrEqual(nil, func(key []byte, d types.Document) error {
+	err = tb.Iterate(nil, false, func(key tree.Key, d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err

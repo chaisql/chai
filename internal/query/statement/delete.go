@@ -11,6 +11,8 @@ import (
 
 // DeleteConfig holds DELETE configuration.
 type DeleteStmt struct {
+	basePreparedStatement
+
 	TableName        string
 	WhereExpr        expr.Expr
 	OffsetExpr       expr.Expr
@@ -19,7 +21,18 @@ type DeleteStmt struct {
 	OrderByDirection scanner.Token
 }
 
-func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {
+func NewDeleteStatement() *DeleteStmt {
+	var p DeleteStmt
+
+	p.basePreparedStatement = basePreparedStatement{
+		Preparer: &p,
+		ReadOnly: false,
+	}
+
+	return &p
+}
+
+func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(stream.SeqScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
@@ -70,10 +83,17 @@ func (stmt *DeleteStmt) ToStream() (*StreamStmt, error) {
 		s = s.Pipe(stream.Take(v.V().(int64)))
 	}
 
+	indexNames := c.Catalog.ListIndexes(stmt.TableName)
+	for _, indexName := range indexNames {
+		s = s.Pipe(stream.IndexDelete(indexName))
+	}
+
 	s = s.Pipe(stream.TableDelete(stmt.TableName))
 
-	return &StreamStmt{
+	st := StreamStmt{
 		Stream:   s,
 		ReadOnly: false,
-	}, nil
+	}
+
+	return st.Prepare(c)
 }

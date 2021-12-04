@@ -5,17 +5,15 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stream"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.
 // This function assumes the SELECT token has already been consumed.
-func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
-	var stmt statement.SelectStmt
-	var err error
+func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
+	stmt := statement.NewSelectStatement()
 
 	// Parse SELECT ... [UNION | UNION ALL | INTERSECT] SELECT ...
-	stmt.CompoundSelect, err = p.parseCompoundSelectStatement()
+	err := p.parseCompoundSelectStatement(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -38,23 +36,14 @@ func (p *Parser) parseSelectStatement() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
-	return stmt.ToStream()
+	return stmt, nil
 }
 
-func (p *Parser) parseCompoundSelectStatement() (*statement.StreamStmt, error) {
-	var stmt *statement.StreamStmt
-	var prev scanner.Token
-
-	var coreStmts []*stream.Stream
-	readOnly := true
-
+func (p *Parser) parseCompoundSelectStatement(stmt *statement.SelectStmt) error {
 	for {
 		core, err := p.parseSelectCore()
 		if err != nil {
-			return nil, err
-		}
-		if !core.ReadOnly {
-			readOnly = false
+			return err
 		}
 
 		// Parse optional compound operator
@@ -62,50 +51,27 @@ func (p *Parser) parseCompoundSelectStatement() (*statement.StreamStmt, error) {
 		if tok == scanner.UNION {
 			all, err := p.parseOptional(scanner.ALL)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			if all {
 				tok = scanner.ALL
 			}
 		}
+
+		stmt.CompoundSelect = append(stmt.CompoundSelect, core)
+
 		if tok != scanner.UNION && tok != scanner.ALL {
 			p.Unscan()
-
-			if stmt == nil {
-				stmt = core
-				stmt.ReadOnly = readOnly
-				break
-			}
+			break
 		}
 
-		coreStmts = append(coreStmts, core.Stream)
-
-		if stmt == nil {
-			stmt = core
-		}
-		if prev != 0 && prev != tok {
-			stmt.ReadOnly = readOnly
-			switch prev {
-			case scanner.UNION:
-				stmt.Stream = stream.New(stream.Union(coreStmts...))
-			case scanner.ALL:
-				stmt.Stream = stream.New(stream.Concat(coreStmts...))
-			}
-
-			coreStmts = []*stream.Stream{stmt.Stream}
-
-			if tok != scanner.SELECT && tok != scanner.UNION && tok != scanner.ALL {
-				break
-			}
-		}
-
-		prev = tok
+		stmt.CompoundOperators = append(stmt.CompoundOperators, tok)
 	}
 
-	return stmt, nil
+	return nil
 }
 
-func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
+func (p *Parser) parseSelectCore() (*statement.SelectCoreStmt, error) {
 	var stmt statement.SelectCoreStmt
 	var err error
 
@@ -143,7 +109,7 @@ func (p *Parser) parseSelectCore() (*statement.StreamStmt, error) {
 		return nil, err
 	}
 
-	return stmt.ToStream()
+	return &stmt, nil
 }
 
 // parseProjectedExprs parses the list of projected fields.

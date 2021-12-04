@@ -23,8 +23,8 @@ func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error 
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
-	for _, stmt := range q.Statements {
-		qq := query.New(stmt)
+	for _, p := range q.Statements {
+		qq := query.New(p)
 		qctx := query.Context{
 			Ctx: ctx,
 			DB:  db.DB,

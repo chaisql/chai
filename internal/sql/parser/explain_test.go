@@ -6,22 +6,23 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParserExplain(t *testing.T) {
+	slct := statement.NewSelectStatement()
+	slct.CompoundSelect = []*statement.SelectCoreStmt{
+		{TableName: "test", ProjectionExprs: []expr.Expr{expr.Wildcard{}}},
+	}
+
 	tests := []struct {
 		name     string
 		s        string
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Explain create table", "EXPLAIN SELECT * FROM test", &statement.ExplainStmt{Statement: &statement.StreamStmt{
-			ReadOnly: true,
-			Stream:   stream.New(stream.SeqScan("test")).Pipe(stream.Project(expr.Wildcard{})),
-		}}, false},
+		{"Explain select", "EXPLAIN SELECT * FROM test", &statement.ExplainStmt{Statement: slct}, false},
 		{"Multiple Explains", "EXPLAIN EXPLAIN CREATE TABLE test", nil, true},
 	}
 
