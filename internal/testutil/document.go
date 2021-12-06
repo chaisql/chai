@@ -152,3 +152,14 @@ func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
 		require.Failf(t, "mismatched documents, (-want, +got)", "%s", diff)
 	}
 }
+
+func CloneDocument(t testing.TB, d types.Document) *document.FieldBuffer {
+	t.Helper()
+
+	var newFb document.FieldBuffer
+
+	err := newFb.Copy(d)
+	assert.NoError(t, err)
+
+	return &newFb
+}

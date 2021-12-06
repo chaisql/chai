@@ -124,11 +124,11 @@ func TestTableInsert(t *testing.T) {
 		defer cleanup()
 
 		doc := newDocument()
-		key1, _, err := tb.Insert(doc.Clone())
+		key1, _, err := tb.Insert(testutil.CloneDocument(t, doc))
 		assert.NoError(t, err)
 		require.NotEmpty(t, key1)
 
-		key2, _, err := tb.Insert(doc.Clone())
+		key2, _, err := tb.Insert(testutil.CloneDocument(t, doc))
 		assert.NoError(t, err)
 		require.NotEmpty(t, key2)
 
@@ -532,9 +532,9 @@ func TestTableDelete(t *testing.T) {
 		doc1.Add("fieldc", types.NewIntegerValue(40))
 		doc2 := newDocument()
 
-		key1, _, err := tb.Insert(doc1.Clone())
+		key1, _, err := tb.Insert(testutil.CloneDocument(t, doc1))
 		assert.NoError(t, err)
-		key2, _, err := tb.Insert(doc2.Clone())
+		key2, _, err := tb.Insert(testutil.CloneDocument(t, doc2))
 		assert.NoError(t, err)
 
 		// delete the document

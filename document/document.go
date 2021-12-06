@@ -2,7 +2,6 @@
 package document
 
 import (
-	"sort"
 	"strconv"
 	"strings"
 
@@ -55,16 +54,6 @@ func Length(d types.Document) (int, error) {
 		return nil
 	})
 	return len, err
-}
-
-// Fields returns a list of all the fields at the root of the document
-// sorted lexicographically.
-func Fields(d types.Document) ([]string, error) {
-	if fb, ok := d.(*FieldBuffer); ok {
-		return fb.Fields(), nil
-	}
-
-	return types.Fields(d)
 }
 
 // FieldBuffer stores a group of fields in memory. It implements the Document interface.
@@ -342,14 +331,6 @@ func (fb *FieldBuffer) Copy(d types.Document) error {
 	return nil
 }
 
-// Clone the buffer.
-func (fb *FieldBuffer) Clone() *FieldBuffer {
-	var newFb FieldBuffer
-
-	_ = newFb.Copy(fb)
-	return &newFb
-}
-
 // Apply a function to all the values of the buffer.
 func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)) error {
 	path := Path{PathFragment{}}
@@ -413,18 +394,6 @@ func (fb FieldBuffer) Len() int {
 // Reset the buffer.
 func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
-}
-
-// Fields returns a sorted list of root field names.
-func (fb *FieldBuffer) Fields() []string {
-	fields := make([]string, len(fb.fields))
-
-	for i := range fb.fields {
-		fields[i] = fb.fields[i].Field
-	}
-
-	sort.Strings(fields)
-	return fields
 }
 
 // A Path represents the path to a particular value within a document.

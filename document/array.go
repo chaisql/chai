@@ -1,8 +1,6 @@
 package document
 
 import (
-	"sort"
-
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
@@ -240,85 +238,4 @@ func (vb *ValueBuffer) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
-}
-
-func (vb *ValueBuffer) Types() []types.ValueType {
-	types := make([]types.ValueType, len(vb.Values))
-
-	for i, v := range vb.Values {
-		types[i] = v.Type()
-	}
-
-	return types
-}
-
-// IsEqual compares two ValueBuffer and returns true if and only if
-// both each values and types are respectively equal.
-func (vb *ValueBuffer) IsEqual(other *ValueBuffer) bool {
-	if vb.Len() != other.Len() {
-		return false
-	}
-
-	// empty buffers are always equal eh
-	if vb.Len() == 0 && other.Len() == 0 {
-		return true
-	}
-
-	otherTypes := other.Types()
-	tps := vb.Types()
-
-	for i, typ := range tps {
-		if typ != otherTypes[i] {
-			return false
-		}
-	}
-
-	for i, v := range vb.Values {
-		if eq, err := types.IsEqual(v, other.Values[i]); err != nil || !eq {
-			return false
-		}
-	}
-
-	return true
-}
-
-func (vb *ValueBuffer) Swap(i, j int) {
-	vb.Values[i], vb.Values[j] = vb.Values[j], vb.Values[i]
-}
-
-func (vb *ValueBuffer) Less(i, j int) (ok bool) {
-	it, jt := vb.Values[i].Type(), vb.Values[j].Type()
-	if it == jt || (it.IsNumber() && jt.IsNumber()) {
-		// TODO(asdine) make the types package work with static documents
-		// to avoid having to deal with errors?
-		ok, _ = types.IsLesserThan(vb.Values[i], vb.Values[j])
-		return
-	}
-
-	return it < jt
-}
-
-// SortArray creates a new sorted array.
-// Types are sorted in the following ascending order:
-//   - NULL
-//   - Booleans
-//   - Numbers
-//   - Text
-//   - Blob
-//   - Arrays
-//   - Documents
-// It doesn't sort nested arrays.
-func SortArray(a types.Array) (*ValueBuffer, error) {
-	vb, ok := a.(*ValueBuffer)
-	if !ok {
-		vb := NewValueBuffer()
-		err := vb.Copy(a)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	sort.Sort(vb)
-
-	return vb, nil
 }

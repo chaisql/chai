@@ -81,11 +81,6 @@ func TestFieldBuffer(t *testing.T) {
 		require.Zero(t, v)
 	})
 
-	t.Run("Fields", func(t *testing.T) {
-		require.Equal(t, []string{}, document.NewFieldBuffer().Fields())
-		require.Equal(t, []string{"a", "b"}, buf.Fields())
-	})
-
 	t.Run("Set", func(t *testing.T) {
 		tests := []struct {
 			name  string

@@ -79,8 +79,10 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 	assert.NoError(t, err)
 
 	if sorted {
-		sort.Sort(want)
-		sort.Sort(got)
+		swant := sortableValueBuffer(*want)
+		sgot := sortableValueBuffer(*got)
+		sort.Sort(&swant)
+		sort.Sort(&sgot)
 	}
 
 	expected, err := types.MarshalTextIndent(types.NewArrayValue(want), "\n", "  ")
@@ -94,4 +96,26 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 	} else {
 		require.Equal(t, string(expected), string(actual))
 	}
+}
+
+type sortableValueBuffer document.ValueBuffer
+
+func (vb *sortableValueBuffer) Len() int {
+	return len(vb.Values)
+}
+
+func (vb *sortableValueBuffer) Swap(i, j int) {
+	vb.Values[i], vb.Values[j] = vb.Values[j], vb.Values[i]
+}
+
+func (vb *sortableValueBuffer) Less(i, j int) (ok bool) {
+	it, jt := vb.Values[i].Type(), vb.Values[j].Type()
+	if it == jt || (it.IsNumber() && jt.IsNumber()) {
+		// TODO(asdine) make the types package work with static documents
+		// to avoid having to deal with errors?
+		ok, _ = types.IsLesserThan(vb.Values[i], vb.Values[j])
+		return
+	}
+
+	return it < jt
 }
