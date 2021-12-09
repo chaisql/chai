@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/dgraph-io/badger/v3 v3.2103.2
-	github.com/genjidb/genji v0.14.0
+	github.com/genjidb/genji v0.15.0
 	github.com/stretchr/testify v1.7.0
 )
 
@@ -35,3 +35,5 @@ require (
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+replace github.com/genjidb/genji v0.15.0 => ../../

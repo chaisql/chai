@@ -6,8 +6,8 @@ require (
 	github.com/agnivade/levenshtein v1.1.1
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/dgraph-io/badger/v3 v3.2103.2
-	github.com/genjidb/genji v0.14.0
-	github.com/genjidb/genji/engine/badgerengine v0.14.0
+	github.com/genjidb/genji v0.15.0
+	github.com/genjidb/genji/engine/badgerengine v0.15.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
 	go.etcd.io/bbolt v1.3.6
@@ -50,3 +50,7 @@ require (
 	google.golang.org/protobuf v1.26.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+replace github.com/genjidb/genji v0.15.0 => ../..
+
+replace github.com/genjidb/genji/engine/badgerengine v0.15.0 => ../../engine/badgerengine
