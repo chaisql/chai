@@ -55,7 +55,7 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s := stream.New(stream.SeqScan(info.TableName)).Pipe(stream.IndexInsert(info.IndexName))
+		s := stream.New(stream.TableScan(info.TableName)).Pipe(stream.IndexInsert(info.IndexName))
 		streams = append(streams, s)
 	}
 

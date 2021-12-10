@@ -97,7 +97,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 		return res, err
 	}
 
-	s := stream.New(stream.SeqScan(stmt.Info.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
+	s := stream.New(stream.TableScan(stmt.Info.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
 
 	ss := PreparedStreamStmt{
 		Stream:   s,

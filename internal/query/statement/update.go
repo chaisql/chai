@@ -42,7 +42,7 @@ type UpdateSetPair struct {
 
 // Prepare implements the Preparer interface.
 func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
-	s := stream.New(stream.SeqScan(stmt.TableName))
+	s := stream.New(stream.TableScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
 		s = s.Pipe(stream.Filter(stmt.WhereExpr))

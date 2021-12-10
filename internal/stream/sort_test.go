@@ -74,7 +74,7 @@ func TestTempTreeSort(t *testing.T) {
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
-			s := stream.New(stream.SeqScan("test"))
+			s := stream.New(stream.TableScan("test"))
 			if test.desc {
 				s = s.Pipe(stream.TempTreeSortReverse(test.sortExpr))
 			} else {

@@ -82,7 +82,7 @@ func TestAggregate(t *testing.T) {
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
-			s := stream.New(stream.SeqScan("test"))
+			s := stream.New(stream.TableScan("test"))
 			if test.groupBy != nil {
 				s = s.Pipe(stream.TempTreeSort(test.groupBy))
 			}

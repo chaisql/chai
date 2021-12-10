@@ -307,7 +307,7 @@ func TestTableReplace(t *testing.T) {
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
-			s := stream.New(stream.SeqScan("test")).
+			s := stream.New(stream.TableScan("test")).
 				Pipe(test.op).
 				Pipe(stream.TableReplace("test"))
 
@@ -382,7 +382,7 @@ func TestTableDelete(t *testing.T) {
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
-			s := stream.New(stream.SeqScan("test")).Pipe(test.op).Pipe(stream.TableDelete("test"))
+			s := stream.New(stream.TableScan("test")).Pipe(test.op).Pipe(stream.TableDelete("test"))
 
 			err := s.Iterate(&env, func(out *environment.Environment) error {
 				return nil

@@ -45,7 +45,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 
 		// ensure we are not reading and writing to the same table.
 		// TODO(asdine): if same table, write content to a temp table.
-		if seqScan, ok := s.First().(*stream.SeqScanOperator); ok && seqScan.TableName == stmt.TableName {
+		if tableScan, ok := s.First().(*stream.TableScanOperator); ok && tableScan.TableName == stmt.TableName {
 			return nil, errors.New("cannot read and write to the same table")
 		}
 

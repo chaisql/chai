@@ -197,69 +197,29 @@ func (op *TableDeleteOperator) String() string {
 	return stringutil.Sprintf("tableDelete('%s')", op.Name)
 }
 
-// A SeqScanOperator iterates over the documents of a table.
-type SeqScanOperator struct {
-	baseOperator
-	TableName string
-	Reverse   bool
-}
-
-// SeqScan creates an iterator that iterates over each document of the given table.
-func SeqScan(tableName string) *SeqScanOperator {
-	return &SeqScanOperator{TableName: tableName}
-}
-
-// SeqScanReverse creates an iterator that iterates over each document of the given table in reverse order.
-func SeqScanReverse(tableName string) *SeqScanOperator {
-	return &SeqScanOperator{TableName: tableName, Reverse: true}
-}
-
-func (it *SeqScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
-	if err != nil {
-		return err
-	}
-
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
-
-	return table.IterateOnRange(nil, it.Reverse, func(key tree.Key, d types.Document) error {
-		newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
-		newEnv.SetDocument(d)
-		return fn(&newEnv)
-	})
-}
-
-func (it *SeqScanOperator) String() string {
-	if !it.Reverse {
-		return stringutil.Sprintf("seqScan(%s)", it.TableName)
-	}
-	return stringutil.Sprintf("seqScanReverse(%s)", it.TableName)
-}
-
-// A PkScanOperator iterates over the documents of a table.
-type PkScanOperator struct {
+// A TableScanOperator iterates over the documents of a table.
+type TableScanOperator struct {
 	baseOperator
 	TableName string
 	Ranges    Ranges
 	Reverse   bool
 }
 
-// PkScan creates an iterator that iterates over each document of the given table.
-func PkScan(tableName string, ranges ...Range) *PkScanOperator {
-	return &PkScanOperator{TableName: tableName, Ranges: ranges}
+// TableScan creates an iterator that iterates over each document of the given table that match the given ranges.
+// If no ranges are provided, it iterates over all documents.
+func TableScan(tableName string, ranges ...Range) *TableScanOperator {
+	return &TableScanOperator{TableName: tableName, Ranges: ranges}
 }
 
-// PkScanReverse creates an iterator that iterates over each document of the given table in reverse order.
-func PkScanReverse(tableName string, ranges ...Range) *PkScanOperator {
-	return &PkScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
+// TableScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+func TableScanReverse(tableName string, ranges ...Range) *TableScanOperator {
+	return &TableScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
 }
 
-func (it *PkScanOperator) String() string {
+func (it *TableScanOperator) String() string {
 	var s strings.Builder
 
-	s.WriteString("pkScan")
+	s.WriteString("table.Scan")
 	if it.Reverse {
 		s.WriteString("Reverse")
 	}
@@ -284,7 +244,7 @@ func (it *PkScanOperator) String() string {
 
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (it *TableScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
@@ -294,9 +254,15 @@ func (it *PkScanOperator) Iterate(in *environment.Environment, fn func(out *envi
 		return err
 	}
 
-	ranges, err := it.Ranges.Eval(in)
-	if err != nil {
-		return err
+	var ranges []*database.Range
+
+	if it.Ranges == nil {
+		ranges = []*database.Range{nil}
+	} else {
+		ranges, err = it.Ranges.Eval(in)
+		if err != nil {
+			return err
+		}
 	}
 
 	for _, rng := range ranges {

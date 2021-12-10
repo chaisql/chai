@@ -22,14 +22,14 @@ func TestParserUpdate(t *testing.T) {
 		errored  bool
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Set(document.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Set(document.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
 				Pipe(stream.Set(document.Path(testutil.ParsePath(t, "b")), parser.MustParseExpr("2"))).
@@ -38,28 +38,28 @@ func TestParserUpdate(t *testing.T) {
 			false,
 		},
 		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Set(document.Path(testutil.ParsePath(t, "`   some \"path\" `")), testutil.IntegerValue(1))).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Set(document.Path(testutil.ParsePath(t, "a.b")), testutil.IntegerValue(1))).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"UNSET/No cond", "UPDATE test UNSET a",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Unset("a")).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableReplace("test")),
 			false,
 		},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
-			stream.New(stream.SeqScan("test")).
+			stream.New(stream.TableScan("test")).
 				Pipe(stream.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.Unset("a")).
 				Pipe(stream.Unset("b")).

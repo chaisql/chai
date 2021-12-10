@@ -10,7 +10,7 @@ import (
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
 // analyzing the stream for indexable filter nodes.
-// It expects the first node of the stream to be a seqScan.
+// It expects the first node of the stream to be a table.Scan.
 //
 // Compatibility of filter nodes.
 //
@@ -30,26 +30,26 @@ import (
 //   CREATE INDEX foo_a_idx ON foo (a)
 // and this query:
 //   SELECT * FROM foo WHERE a > 5 AND b > 10
-//   seqScan('foo') | filter(a > 5) | filter(b > 10) | project(*)
+//   table.Scan('foo') | filter(a > 5) | filter(b > 10) | project(*)
 // foo_a_idx matches filter(a > 5) and can be selected.
 // Now, with a different index:
 //   CREATE INDEX foo_a_b_c_idx ON foo(a, b, c)
 // and this query:
 //   SELECT * FROM foo WHERE a > 5 AND c > 20
-//   seqScan('foo') | filter(a > 5) | filter(c > 20) | project(*)
+//   table.Scan('foo') | filter(a > 5) | filter(c > 20) | project(*)
 // foo_a_b_c_idx matches with the first filter because a is the leftmost path indexed by it.
 // The second filter is not selected because it is not the second leftmost path.
 // For composite indexes, filter nodes can be selected if they match with one or more indexed path
 // consecutively, from left to right.
 // Now, let's have a look a this query:
 //   SELECT * FROM foo WHERE a = 5 AND b = 10 AND c > 15 AND d > 20
-//   seqScan('foo') | filter(a = 5) | filter(b = 10) | filter(c > 15) | filter(d > 20) | project(*)
+//   table.Scan('foo') | filter(a = 5) | filter(b = 10) | filter(c > 15) | filter(d > 20) | project(*)
 // foo_a_b_c_idx matches with first three filters because they satisfy several conditions:
 // - each of them matches with the first 3 indexed paths, consecutively.
 // - the first 2 filters use the equal operator
 // A counter-example:
 //   SELECT * FROM foo WHERE a = 5 AND b > 10 AND c > 15 AND d > 20
-//   seqScan('foo') | filter(a = 5) | filter(b > 10) | filter(c > 15) | filter(d > 20) | project(*)
+//   table.Scan('foo') | filter(a = 5) | filter(b > 10) | filter(c > 15) | filter(d > 20) | project(*)
 // foo_a_b_c_idx only matches with the first two filter nodes because while the first node uses the equal
 // operator, the second one doesn't, and thus the third node cannot be selected as well.
 //
@@ -67,7 +67,7 @@ func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, e
 	if firstNode == nil {
 		return s, nil
 	}
-	seq, ok := firstNode.(*stream.SeqScanOperator)
+	seq, ok := firstNode.(*stream.TableScanOperator)
 	if !ok {
 		return s, nil
 	}
@@ -79,8 +79,8 @@ func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, e
 	}
 
 	is := indexSelector{
-		seqScan: seq,
-		catalog: catalog,
+		tableScan: seq,
+		catalog:   catalog,
 	}
 
 	return is.SelectIndex(s)
@@ -90,8 +90,8 @@ func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, e
 // can benefit from using an index.
 // It then compares the cost of each plan and returns the cheapest stream.
 type indexSelector struct {
-	seqScan *stream.SeqScanOperator
-	catalog *database.Catalog
+	tableScan *stream.TableScanOperator
+	catalog   *database.Catalog
 }
 
 func (i *indexSelector) SelectIndex(s *stream.Stream) (*stream.Stream, error) {
@@ -129,7 +129,7 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOp
 	var cost int
 
 	// start with the primary key of the table
-	tb, err := i.catalog.GetTableInfo(i.seqScan.TableName)
+	tb, err := i.catalog.GetTableInfo(i.tableScan.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOp
 
 	// get all the indexes for this table and associate them
 	// with compatible candidates
-	for _, idxName := range i.catalog.ListIndexes(i.seqScan.TableName) {
+	for _, idxName := range i.catalog.ListIndexes(i.tableScan.TableName) {
 		idxInfo, err := i.catalog.GetIndexInfo(idxName)
 		if err != nil {
 			return nil, err
@@ -283,7 +283,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 
 	if !isIndex {
 		c.replaceRootBy = []stream.Operator{
-			stream.PkScan(treeName, ranges...),
+			stream.TableScan(treeName, ranges...),
 		}
 	} else {
 		c.replaceRootBy = []stream.Operator{
@@ -431,7 +431,7 @@ type candidate struct {
 	// or pkScan operators.
 	nodes filterNodes
 
-	// replace the seqScan by these nodes
+	// replace the table.Scan by these nodes
 	replaceRootBy []stream.Operator
 
 	// cost of the associated ranges

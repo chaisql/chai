@@ -24,7 +24,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
-		s = s.Pipe(stream.SeqScan(stmt.TableName))
+		s = s.Pipe(stream.TableScan(stmt.TableName))
 	}
 
 	if stmt.WhereExpr != nil {

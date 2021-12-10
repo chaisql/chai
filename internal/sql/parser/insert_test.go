@@ -152,38 +152,38 @@ func TestParserInsert(t *testing.T) {
 		{"Values / ON CONFLICT DO BLA", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO BLA RETURNING *",
 			nil, true},
 		{"Select / Without fields", "INSERT INTO test SELECT * FROM foo",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / Without fields / With projection", "INSERT INTO test SELECT a, b FROM foo",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields", "INSERT INTO test (a, b) SELECT * FROM foo",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT a, b FROM foo",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields / With projection / different fields", "INSERT INTO test (a, b) SELECT c, d FROM foo",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableValidate("test")).
 				Pipe(stream.TableInsert("test")),
 			false},
 		{"Select / With fields / With projection / different fields / Returning", "INSERT INTO test (a, b) SELECT c, d FROM foo RETURNING a",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableValidate("test")).
@@ -191,7 +191,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "a"))),
 			false},
 		{"Select / With fields / With projection / different fields / On conflict / Returning", "INSERT INTO test (a, b) SELECT c, d FROM foo ON CONFLICT DO NOTHING RETURNING a",
-			stream.New(stream.SeqScan("foo")).
+			stream.New(stream.TableScan("foo")).
 				Pipe(stream.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(stream.IterRename("a", "b")).
 				Pipe(stream.TableValidate("test")).
