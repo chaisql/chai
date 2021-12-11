@@ -164,12 +164,28 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 	case expr.LiteralExprList:
 		// we assume that the list of expressions contains only literals
 		// until proven wrong.
+		literalsOnly := true
 		for i, te := range t {
 			newExpr, err := precalculateExpr(te)
 			if err != nil {
 				return nil, err
 			}
+			if _, ok := newExpr.(expr.LiteralValue); !ok {
+				literalsOnly = false
+			}
 			t[i] = newExpr
+		}
+
+		// if literalsOnly is still true, it means we have a list or expressions
+		// that only contain constant values (ex: [1, true]).
+		// We can transform that into a types.Array.
+		if literalsOnly {
+			var vb document.ValueBuffer
+			for i := range t {
+				vb.Append(t[i].(expr.LiteralValue).Value)
+			}
+
+			return expr.LiteralValue{Value: types.NewArrayValue(&vb)}, nil
 		}
 	case *expr.KVPairs:
 		// we assume that the list of kvpairs contains only literals
