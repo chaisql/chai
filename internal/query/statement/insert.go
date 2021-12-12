@@ -34,7 +34,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
 	if stmt.Values != nil {
-		s = stream.New(stream.Expressions(stmt.Values...))
+		s = stream.New(stream.DocsEmit(stmt.Values...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {
@@ -50,7 +50,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		}
 
 		if len(stmt.Fields) > 0 {
-			s = s.Pipe(stream.IterRename(stmt.Fields...))
+			s = s.Pipe(stream.PathsRename(stmt.Fields...))
 		}
 	}
 
@@ -60,9 +60,9 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	if stmt.OnConflict != 0 {
 		switch stmt.OnConflict {
 		case database.OnConflictDoNothing:
-			s = s.Pipe(stream.HandleConflict(stream.New(stream.NoOp())))
+			s = s.Pipe(stream.OnConflict(nil))
 		case database.OnConflictDoReplace:
-			s = s.Pipe(stream.HandleConflict(stream.New(stream.TableReplace(stmt.TableName))))
+			s = s.Pipe(stream.OnConflict(stream.New(stream.TableReplace(stmt.TableName))))
 		default:
 			panic("unreachable")
 		}
@@ -88,7 +88,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	if len(stmt.Returning) > 0 {
-		s = s.Pipe(stream.Project(stmt.Returning...))
+		s = s.Pipe(stream.DocsProject(stmt.Returning...))
 	}
 
 	st := StreamStmt{

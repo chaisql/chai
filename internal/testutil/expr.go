@@ -115,6 +115,17 @@ func ParseExpr(t testing.TB, s string) expr.Expr {
 	return e
 }
 
+func ParseExprs(t testing.TB, s ...string) []expr.Expr {
+	t.Helper()
+
+	ex := make([]expr.Expr, len(s))
+	for i, e := range s {
+		ex[i] = ParseExpr(t, e)
+	}
+
+	return ex
+}
+
 func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
 	t.Helper()
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()

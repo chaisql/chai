@@ -25,7 +25,7 @@ ORDER BY
 
 /* result:
  {
- "plan": 'table.Scan("test") | tempTreeSort(c)'
+ "plan": 'table.Scan("test") | docs.TempTreeSort(c)'
  }
  */
 -- test: non-indexed field path, DESC
@@ -39,6 +39,6 @@ ORDER BY
 
 /* result:
  {
- "plan": 'table.Scan("test") | tempTreeSortReverse(c)'
+ "plan": 'table.Scan("test") | docs.TempTreeSortReverse(c)'
  }
  */

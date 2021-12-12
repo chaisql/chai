@@ -30,26 +30,26 @@ import (
 //   CREATE INDEX foo_a_idx ON foo (a)
 // and this query:
 //   SELECT * FROM foo WHERE a > 5 AND b > 10
-//   table.Scan('foo') | filter(a > 5) | filter(b > 10) | project(*)
-// foo_a_idx matches filter(a > 5) and can be selected.
+//   table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(b > 10) | docs.Project(*)
+// foo_a_idx matches docs.Filter(a > 5) and can be selected.
 // Now, with a different index:
 //   CREATE INDEX foo_a_b_c_idx ON foo(a, b, c)
 // and this query:
 //   SELECT * FROM foo WHERE a > 5 AND c > 20
-//   table.Scan('foo') | filter(a > 5) | filter(c > 20) | project(*)
+//   table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(c > 20) | docs.Project(*)
 // foo_a_b_c_idx matches with the first filter because a is the leftmost path indexed by it.
 // The second filter is not selected because it is not the second leftmost path.
 // For composite indexes, filter nodes can be selected if they match with one or more indexed path
 // consecutively, from left to right.
 // Now, let's have a look a this query:
 //   SELECT * FROM foo WHERE a = 5 AND b = 10 AND c > 15 AND d > 20
-//   table.Scan('foo') | filter(a = 5) | filter(b = 10) | filter(c > 15) | filter(d > 20) | project(*)
+//   table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b = 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
 // foo_a_b_c_idx matches with first three filters because they satisfy several conditions:
 // - each of them matches with the first 3 indexed paths, consecutively.
 // - the first 2 filters use the equal operator
 // A counter-example:
 //   SELECT * FROM foo WHERE a = 5 AND b > 10 AND c > 15 AND d > 20
-//   table.Scan('foo') | filter(a = 5) | filter(b > 10) | filter(c > 15) | filter(d > 20) | project(*)
+//   table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b > 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
 // foo_a_b_c_idx only matches with the first two filter nodes because while the first node uses the equal
 // operator, the second one doesn't, and thus the third node cannot be selected as well.
 //
@@ -96,9 +96,9 @@ type indexSelector struct {
 
 func (i *indexSelector) SelectIndex(s *stream.Stream) (*stream.Stream, error) {
 	// get the list of all filter nodes
-	var filterNodes []*stream.FilterOperator
+	var filterNodes []*stream.DocsFilterOperator
 	for op := s.Op; op != nil; op = op.GetPrev() {
-		if f, ok := op.(*stream.FilterOperator); ok {
+		if f, ok := op.(*stream.DocsFilterOperator); ok {
 			filterNodes = append(filterNodes, f)
 		}
 	}
@@ -111,7 +111,7 @@ func (i *indexSelector) SelectIndex(s *stream.Stream) (*stream.Stream, error) {
 	return i.selectIndex(s, filterNodes)
 }
 
-func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOperator) (*stream.Stream, error) {
+func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilterOperator) (*stream.Stream, error) {
 	// generate a list of candidates from all the filter nodes that
 	// can benefit from reading from an index or the table pk
 	nodes := make(filterNodes, 0, len(filters))
@@ -191,7 +191,7 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.FilterOp
 	return s, nil
 }
 
-func (i *indexSelector) isFilterIndexable(f *stream.FilterOperator) *filterNode {
+func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterNode {
 	// only operators can associate this node to an index
 	op, ok := f.E.(expr.Operator)
 	if !ok {
@@ -227,11 +227,11 @@ func (i *indexSelector) isFilterIndexable(f *stream.FilterOperator) *filterNode 
 // - transform all associated nodes into an index range
 // If not all indexed paths have an associated filter node, return whatever has been associated
 // A few examples for this index: CREATE INDEX ON foo(a, b, c)
-//   fitler(a = 3) | filter(b = 10) | (c > 20)
+//   fitler(a = 3) | docs.Filter(b = 10) | (c > 20)
 //   -> range = {min: [3, 10, 20]}
-//   fitler(a = 3) | filter(b > 10) | (c > 20)
+//   fitler(a = 3) | docs.Filter(b > 10) | (c > 20)
 //   -> range = {min: [3], exact: true}
-//  filter(a IN (1, 2))
+//  docs.Filter(a IN (1, 2))
 //   -> ranges = [1], [2]
 func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, nodes filterNodes) *candidate {
 	found := make([]*filterNode, 0, len(paths))
@@ -296,7 +296,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 
 func (i *indexSelector) buildRangesFromFilterNodes(paths []document.Path, filters []*filterNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
-	// so that: filter(a IN (10, 11)) | filter(b = 20) | filter(c IN (30, 31))
+	// so that: docs.Filter(a IN (10, 11)) | docs.Filter(b = 20) | docs.Filter(c IN (30, 31))
 	// becomes:
 	// [10, 11]
 	// [20]
@@ -427,7 +427,7 @@ func (f filterNodes) getByPath(p document.Path) *filterNode {
 }
 
 type candidate struct {
-	// filter operators to remove and replace by either an indexScan
+	// filter operators to remove and replace by either an index.Scan
 	// or pkScan operators.
 	nodes filterNodes
 

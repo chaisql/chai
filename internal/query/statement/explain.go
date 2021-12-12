@@ -38,7 +38,7 @@ func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 
 	newStatement := PreparedStreamStmt{
 		Stream: &stream.Stream{
-			Op: stream.Project(
+			Op: stream.DocsProject(
 				&expr.NamedExpr{
 					ExprName: "plan",
 					Expr:     expr.LiteralValue{Value: types.NewTextValue(plan)},

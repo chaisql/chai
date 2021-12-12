@@ -70,16 +70,16 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 // operation.
 // Example:
 //   this:
-//     filter(a > 2 AND b != 3 AND c < 2)
+//     docs.Filter(a > 2 AND b != 3 AND c < 2)
 //   becomes this:
-//     filter(a > 2)
-//     filter(b != 3)
-//     filter(c < 2)
+//     docs.Filter(a > 2)
+//     docs.Filter(b != 3)
+//     docs.Filter(c < 2)
 func SplitANDConditionRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
 	n := s.Op
 
 	for n != nil {
-		if f, ok := n.(*stream.FilterOperator); ok {
+		if f, ok := n.(*stream.DocsFilterOperator); ok {
 			cond := f.E
 			if cond != nil {
 				// The AND operator has one of the lowest precedence,
@@ -93,7 +93,7 @@ func SplitANDConditionRule(s *stream.Stream, _ *database.Catalog) (*stream.Strea
 					s.Remove(n)
 
 					for _, e := range exprs {
-						cur = stream.InsertAfter(cur, stream.Filter(e))
+						cur = stream.InsertAfter(cur, stream.DocsFilter(e))
 					}
 
 					if s.Op == nil {
@@ -135,12 +135,12 @@ func PrecalculateExprRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream
 	var err error
 	for n != nil {
 		switch t := n.(type) {
-		case *stream.FilterOperator:
+		case *stream.DocsFilterOperator:
 			t.E, err = precalculateExpr(t.E)
 			if err != nil {
 				return nil, err
 			}
-		case *stream.ProjectOperator:
+		case *stream.DocsProjectOperator:
 			for i, e := range t.Exprs {
 				t.Exprs[i], err = precalculateExpr(e)
 				if err != nil {
@@ -263,7 +263,7 @@ func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Catalog) (*s
 	n := s.Op
 
 	for n != nil {
-		if f, ok := n.(*stream.FilterOperator); ok {
+		if f, ok := n.(*stream.DocsFilterOperator); ok {
 			if f.E != nil {
 				switch t := f.E.(type) {
 				case expr.LiteralValue:
@@ -314,7 +314,7 @@ func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Catalog) (*stream
 	n := s.Op
 
 	for n != nil {
-		if p, ok := n.(*stream.ProjectOperator); ok {
+		if p, ok := n.(*stream.DocsProjectOperator); ok {
 			if len(p.Exprs) == 1 {
 				if _, ok := p.Exprs[0].(expr.Wildcard); ok {
 					prev := n.GetPrev()

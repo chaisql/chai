@@ -45,16 +45,16 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(stream.TableScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.Filter(stmt.WhereExpr))
+		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
 	}
 
 	if stmt.SetPairs != nil {
 		for _, pair := range stmt.SetPairs {
-			s = s.Pipe(stream.Set(pair.Path, pair.E))
+			s = s.Pipe(stream.PathsSet(pair.Path, pair.E))
 		}
 	} else if stmt.UnsetFields != nil {
 		for _, name := range stmt.UnsetFields {
-			s = s.Pipe(stream.Unset(name))
+			s = s.Pipe(stream.PathsUnset(name))
 		}
 	}
 

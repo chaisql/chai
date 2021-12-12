@@ -37,7 +37,7 @@ WHERE
 
 /* result:
  {
- "plan": 'table.Scan(\"test\", [10, -1, true]) | filter(b = 5)'
+ "plan": 'table.Scan(\"test\", [10, -1, true]) | docs.Filter(b = 5)'
  }
  */
 -- test: >
@@ -52,7 +52,7 @@ WHERE
 
 /* result:
  {
- "plan": 'table.Scan("test", [10, -1, true]) | filter(b > 5)'
+ "plan": 'table.Scan("test", [10, -1, true]) | docs.Filter(b > 5)'
  }
  */
 -- test: >=
@@ -67,7 +67,7 @@ WHERE
 
 /* result:
  {
- "plan": 'table.Scan("test", [10, -1]) | filter(b > 5)'
+ "plan": 'table.Scan("test", [10, -1]) | docs.Filter(b > 5)'
  }
  */
 -- test: <
@@ -82,6 +82,6 @@ WHERE
 
 /* result:
  {
- "plan": 'table.Scan("test", [-1, 10, true]) | filter(b > 5)'
+ "plan": 'table.Scan("test", [-1, 10, true]) | docs.Filter(b > 5)'
  }
  */

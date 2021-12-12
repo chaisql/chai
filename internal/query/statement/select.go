@@ -28,7 +28,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 	}
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.Filter(stmt.WhereExpr))
+		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
@@ -69,8 +69,8 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			return nil, stringutil.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 		// add Aggregation node
-		s = s.Pipe(stream.TempTreeSort(stmt.GroupByExpr))
-		s = s.Pipe(stream.GroupAggregate(stmt.GroupByExpr, aggregators...))
+		s = s.Pipe(stream.DocsTempTreeSort(stmt.GroupByExpr))
+		s = s.Pipe(stream.DocsGroupAggregate(stmt.GroupByExpr, aggregators...))
 	} else {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
@@ -91,7 +91,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 
 		// add Aggregation node
 		if len(aggregators) > 0 {
-			s = s.Pipe(stream.GroupAggregate(nil, aggregators...))
+			s = s.Pipe(stream.DocsGroupAggregate(nil, aggregators...))
 		}
 	}
 
@@ -114,7 +114,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			}
 		}
 	}
-	s = s.Pipe(stream.Project(stmt.ProjectionExprs...))
+	s = s.Pipe(stream.DocsProject(stmt.ProjectionExprs...))
 
 	// SELECT is read-only most of the time, unless it's using some expressions
 	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
@@ -211,9 +211,9 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.TempTreeSortReverse(stmt.OrderBy))
+			s = s.Pipe(stream.DocsTempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.TempTreeSort(stmt.OrderBy))
+			s = s.Pipe(stream.DocsTempTreeSort(stmt.OrderBy))
 		}
 	}
 
@@ -232,7 +232,7 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Skip(v.V().(int64)))
+		s = s.Pipe(stream.DocsSkip(v.V().(int64)))
 	}
 
 	if stmt.LimitExpr != nil {
@@ -250,7 +250,7 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Take(v.V().(int64)))
+		s = s.Pipe(stream.DocsTake(v.V().(int64)))
 	}
 
 	st := StreamStmt{

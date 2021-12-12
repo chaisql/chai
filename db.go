@@ -326,7 +326,7 @@ func (r *Result) Fields() []string {
 
 	// Search for the ProjectOperator. If found, extract the projected expression list
 	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*stream.ProjectOperator); ok {
+		if po, ok := op.(*stream.DocsProjectOperator); ok {
 			// if there are no projected expression, it's a wildcard
 			if len(po.Exprs) == 0 {
 				break

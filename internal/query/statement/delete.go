@@ -36,14 +36,14 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(stream.TableScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.Filter(stmt.WhereExpr))
+		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
 	}
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.TempTreeSortReverse(stmt.OrderBy))
+			s = s.Pipe(stream.DocsTempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.TempTreeSort(stmt.OrderBy))
+			s = s.Pipe(stream.DocsTempTreeSort(stmt.OrderBy))
 		}
 	}
 
@@ -62,7 +62,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Skip(v.V().(int64)))
+		s = s.Pipe(stream.DocsSkip(v.V().(int64)))
 	}
 
 	if stmt.LimitExpr != nil {
@@ -80,7 +80,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s = s.Pipe(stream.Take(v.V().(int64)))
+		s = s.Pipe(stream.DocsTake(v.V().(int64)))
 	}
 
 	indexNames := c.Catalog.ListIndexes(stmt.TableName)
