@@ -23,12 +23,12 @@ FROM
 WHERE
     a = 10
     AND b = 5;
-
 /* result:
- {
- "plan": 'index.Scan("test_a", 10) | docs.Filter(b = 5)'
- }
+{
+    "plan": 'index.Scan("test_a", 10) | docs.Filter(b = 5)'
+}
  */
+
 -- test: > vs =
 EXPLAIN
 SELECT
@@ -38,12 +38,12 @@ FROM
 WHERE
     a > 10
     AND b = 5;
-
 /* result:
  {
- "plan": 'index.Scan("test_b", 5) | docs.Filter(a > 10)'
+    "plan": 'index.Scan("test_b", 5) | docs.Filter(a > 10)'
  }
  */
+
 -- test: >
 EXPLAIN
 SELECT
@@ -53,12 +53,12 @@ FROM
 WHERE
     a > 10
     AND b > 5;
-
 /* result:
  {
- "plan": 'index.Scan("test_a", [10, -1, true]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [10, -1, true]) | docs.Filter(b > 5)'
  }
  */
+
 -- test: >=
 EXPLAIN
 SELECT
@@ -68,12 +68,12 @@ FROM
 WHERE
     a >= 10
     AND b > 5;
-
 /* result:
  {
- "plan": 'index.Scan("test_a", [10, -1]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [10, -1]) | docs.Filter(b > 5)'
  }
  */
+
 -- test: <
 EXPLAIN
 SELECT
@@ -83,9 +83,24 @@ FROM
 WHERE
     a < 10
     AND b > 5;
-
 /* result:
  {
- "plan": 'index.Scan("test_a", [-1, 10, true]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [-1, 10, true]) | docs.Filter(b > 5)'
+ }
+ */
+
+-- test: with two paths
+EXPLAIN SELECT * FROM test WHERE a < b + 1;
+/* result:
+ {
+    "plan": 'table.Scan("test") | docs.Filter(a < b + 1)'
+ }
+ */
+
+ -- test: with two paths, other side
+EXPLAIN SELECT * FROM test WHERE a + 1 < b;
+/* result:
+ {
+    "plan": 'table.Scan("test") | docs.Filter(a + 1 < b)'
  }
  */

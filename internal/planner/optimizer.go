@@ -362,14 +362,28 @@ func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 	}
 
 	// path OP expr
-	if leftIsPath && !rightIsPath {
+	if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
 		return true, document.Path(lf), op.RightHand()
 	}
 
 	// expr OP path
-	if rightIsPath && !leftIsPath {
+	if rightIsPath && !leftIsPath && !exprContainsPath(op.LeftHand()) {
 		return true, document.Path(rf), op.LeftHand()
 	}
 
 	return false, nil, nil
+}
+
+func exprContainsPath(e expr.Expr) bool {
+	var hasPath bool
+
+	expr.Walk(e, func(e expr.Expr) bool {
+		if _, ok := e.(expr.Path); ok {
+			hasPath = true
+			return false
+		}
+		return true
+	})
+
+	return hasPath
 }
