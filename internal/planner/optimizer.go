@@ -238,6 +238,17 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 		t.SetLeftHandExpr(lh)
 		t.SetRightHandExpr(rh)
 
+		if b, ok := t.(*expr.BetweenOperator); ok {
+			b.X, err = precalculateExpr(b.X)
+			if err != nil {
+				return nil, err
+			}
+
+			if _, isLit := b.X.(expr.LiteralValue); !isLit {
+				break
+			}
+		}
+
 		_, leftIsLit := lh.(expr.LiteralValue)
 		_, rightIsLit := rh.(expr.LiteralValue)
 		// if both operands are literals, we can precalculate them now
