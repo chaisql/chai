@@ -636,7 +636,7 @@ func scanBareIdent(r io.RuneScanner) string {
 		if err != nil {
 			break
 		} else if !isIdentChar(ch) {
-			r.UnreadRune()
+			_ = r.UnreadRune()
 			break
 		} else {
 			_, _ = buf.WriteRune(ch)

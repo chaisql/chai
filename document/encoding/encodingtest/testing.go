@@ -134,7 +134,7 @@ func testDocumentGetByField(t *testing.T, codecBuilder func() encoding.Codec) {
 	assert.NoError(t, err)
 	require.Equal(t, types.NewTextValue("john"), v)
 
-	v, err = d.GetByField("d")
+	_, err = d.GetByField("d")
 	assert.ErrorIs(t, err, document.ErrFieldNotFound)
 }
 

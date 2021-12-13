@@ -55,7 +55,6 @@ func ArrayContains(a types.Array, v types.Value) (bool, error) {
 // ValueBuffer is an array that holds values in memory.
 type ValueBuffer struct {
 	Values []types.Value
-	err    error
 }
 
 // NewValueBuffer creates a buffer of values.

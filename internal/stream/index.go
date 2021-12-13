@@ -150,11 +150,7 @@ func (op *IndexValidateOperator) Iterate(in *environment.Environment, fn func(ou
 		return err
 	}
 
-	var newEnv environment.Environment
-
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		newEnv.SetOuter(out)
-
 		doc, ok := out.GetDocument()
 		if !ok {
 			return errors.New("missing document")
@@ -162,28 +158,37 @@ func (op *IndexValidateOperator) Iterate(in *environment.Environment, fn func(ou
 
 		vs := make([]types.Value, 0, len(info.Paths))
 
+		// if the indexes values contain NULL somewhere,
+		// we don't check for unicity.
+		// cf: https://sqlite.org/lang_createindex.html#unique_indexes
+		var hasNull bool
 		for _, path := range info.Paths {
 			v, err := path.GetValueFromDocument(doc)
 			if err != nil {
+				hasNull = true
 				v = types.NewNullValue()
+			} else if v.Type() == types.NullValue {
+				hasNull = true
 			}
 
 			vs = append(vs, v)
 		}
 
-		duplicate, key, err := idx.Exists(vs)
-		if err != nil {
-			return err
-		}
-		if duplicate {
-			return &errs.ConstraintViolationError{
-				Constraint: "UNIQUE",
-				Paths:      info.Paths,
-				Key:        key,
+		if !hasNull {
+			duplicate, key, err := idx.Exists(vs)
+			if err != nil {
+				return err
+			}
+			if duplicate {
+				return &errs.ConstraintViolationError{
+					Constraint: "UNIQUE",
+					Paths:      info.Paths,
+					Key:        key,
+				}
 			}
 		}
 
-		return fn(&newEnv)
+		return fn(out)
 	})
 }
 

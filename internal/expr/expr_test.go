@@ -23,28 +23,7 @@ var doc types.Document = func() types.Document {
 
 var envWithDoc = environment.New(doc)
 
-var envWithDocAndKey *environment.Environment = func() *environment.Environment {
-	env := environment.New(doc)
-	env.Set(environment.TableKey, types.NewTextValue("string"))
-	env.Set(environment.DocPKKey, types.NewBlobValue([]byte("foo")))
-	return env
-}()
-
 var nullLiteral = types.NewNullValue()
-
-func testExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
-	t.Helper()
-
-	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
-	assert.NoError(t, err)
-	res, err := e.Eval(env)
-	if fails {
-		assert.Error(t, err)
-	} else {
-		assert.NoError(t, err)
-		require.Equal(t, want, res)
-	}
-}
 
 func TestString(t *testing.T) {
 	var operands = []string{
