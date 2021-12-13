@@ -26,7 +26,7 @@ func TestIndexScan(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		t.Run("idx_test_a", func(t *testing.T) {
-			require.Equal(t, `index.Scan("idx_test_a", [1, 2])`, stream.IndexScan("idx_test_a", stream.Range{
+			require.Equal(t, `index.Scan("idx_test_a", [{"min": [1], "max": [2]}])`, stream.IndexScan("idx_test_a", stream.Range{
 				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 			}).String())
 
@@ -35,11 +35,11 @@ func TestIndexScan(t *testing.T) {
 			})
 			op.Reverse = true
 
-			require.Equal(t, `index.ScanReverse("idx_test_a", [1, 2])`, op.String())
+			require.Equal(t, `index.ScanReverse("idx_test_a", [{"min": [1], "max": [2]}])`, op.String())
 		})
 
 		t.Run("idx_test_a_b", func(t *testing.T) {
-			require.Equal(t, `index.Scan("idx_test_a_b", [[1, 1], [2, 2]])`, stream.IndexScan("idx_test_a_b", stream.Range{
+			require.Equal(t, `index.Scan("idx_test_a_b", [{"min": [1, 1], "max": [2, 2]}])`, stream.IndexScan("idx_test_a_b", stream.Range{
 				Min: testutil.ExprList(t, `[1, 1]`),
 				Max: testutil.ExprList(t, `[2, 2]`),
 			}).String())
@@ -50,7 +50,7 @@ func TestIndexScan(t *testing.T) {
 			})
 			op.Reverse = true
 
-			require.Equal(t, `index.ScanReverse("idx_test_a_b", [[1, 1], [2, 2]])`, op.String())
+			require.Equal(t, `index.ScanReverse("idx_test_a_b", [{"min": [1, 1], "max": [2, 2]}])`, op.String())
 		})
 	})
 }

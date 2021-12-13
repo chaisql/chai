@@ -427,7 +427,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			{
 				"FROM foo WHERE a = [1, 1]",
 				st.New(st.TableScan("foo")).Pipe(st.DocsFilter(parser.MustParseExpr("a = [1, 1]"))),
-				st.New(st.IndexScan("idx_foo_a", st.Range{Min: testutil.ExprList(t, `[1, 1]`), Exact: true})),
+				st.New(st.IndexScan("idx_foo_a", st.Range{Min: testutil.ExprList(t, `[[1, 1]]`), Exact: true})),
 			},
 		}
 

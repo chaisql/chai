@@ -11,77 +11,41 @@ VALUES
     (5, 5, 5);
 
 -- test: =
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a = 10
-    AND b = 5;
-
+EXPLAIN SELECT * FROM test WHERE a = 10 AND b = 5;
 /* result:
- {
- "plan": 'table.Scan("test", [10, 5])'
- }
- */
+{
+    "plan": 'table.Scan("test", [{\"min\": [10, 5], \"exact\": true}])'
+}
+*/
+
 -- test: > vs =
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a > 10
-    AND b = 5;
-
+EXPLAIN SELECT * FROM test WHERE a > 10 AND b = 5;
 /* result:
- {
- "plan": 'table.Scan(\"test\", [10, -1, true]) | docs.Filter(b = 5)'
- }
- */
+{
+    "plan": 'table.Scan(\"test\", [{"min": [10], "exclusive": true}]) | docs.Filter(b = 5)'
+}
+*/
+
 -- test: >
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a > 10
-    AND b > 5;
-
+EXPLAIN SELECT * FROM test WHERE a > 10 AND b > 5;
 /* result:
- {
- "plan": 'table.Scan("test", [10, -1, true]) | docs.Filter(b > 5)'
- }
- */
+{
+    "plan": 'table.Scan("test", [{"min": [10], "exclusive": true}]) | docs.Filter(b > 5)'
+}
+*/
+
 -- test: >=
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a >= 10
-    AND b > 5;
-
+EXPLAIN SELECT * FROM test WHERE a >= 10 AND b > 5;
 /* result:
- {
- "plan": 'table.Scan("test", [10, -1]) | docs.Filter(b > 5)'
- }
- */
+{
+    "plan": 'table.Scan("test", [{"min": [10]}]) | docs.Filter(b > 5)'
+}
+*/
+
 -- test: <
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a < 10
-    AND b > 5;
-
+EXPLAIN SELECT * FROM test WHERE a < 10 AND b > 5;
 /* result:
- {
- "plan": 'table.Scan("test", [-1, 10, true]) | docs.Filter(b > 5)'
- }
- */
+{
+    "plan": 'table.Scan("test", [{"max": [10], "exclusive": true}]) | docs.Filter(b > 5)'
+}
+*/

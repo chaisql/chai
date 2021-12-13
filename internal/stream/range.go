@@ -7,7 +7,6 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // Range represents a range to select values after or before
@@ -52,26 +51,45 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 }
 
 func (r *Range) String() string {
-	format := func(el expr.LiteralExprList) string {
-		switch len(el) {
-		case 0:
-			return "-1"
-		case 1:
-			return el[0].String()
-		default:
-			return el.String()
+	var sb strings.Builder
+
+	sb.WriteByte('{')
+	var needsComa bool
+
+	if r.Min != nil {
+		sb.WriteString(`"min": `)
+		sb.WriteString(r.Min.String())
+		needsComa = true
+	}
+
+	if r.Max != nil {
+		if needsComa {
+			sb.WriteString(", ")
 		}
+		sb.WriteString(`"max": `)
+		sb.WriteString(r.Max.String())
+		needsComa = true
 	}
 
 	if r.Exact {
-		return stringutil.Sprintf("%v", format(r.Min))
+		if needsComa {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(`"exact": true`)
+		needsComa = true
 	}
 
 	if r.Exclusive {
-		return stringutil.Sprintf("[%v, %v, true]", format(r.Min), format(r.Max))
+		if needsComa {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(`"exclusive": true`)
+		needsComa = true
 	}
 
-	return stringutil.Sprintf("[%v, %v]", format(r.Min), format(r.Max))
+	sb.WriteByte('}')
+
+	return sb.String()
 }
 
 func (r *Range) IsEqual(other *Range) bool {

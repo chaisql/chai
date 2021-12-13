@@ -149,6 +149,18 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 				return false
 			}
 		}
+	case LiteralExprList:
+		for _, e := range t {
+			if !Walk(e, fn) {
+				return false
+			}
+		}
+	case *KVPairs:
+		for _, e := range t.Pairs {
+			if !Walk(e.V, fn) {
+				return false
+			}
+		}
 	}
 
 	return true

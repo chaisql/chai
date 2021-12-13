@@ -174,7 +174,7 @@ func TestTableScan(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `table.Scan("test", [1, 2])`, stream.TableScan("test", stream.Range{
+		require.Equal(t, `table.Scan("test", [{"min": [1], "max": [2]}])`, stream.TableScan("test", stream.Range{
 			Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 		}).String())
 
@@ -185,6 +185,6 @@ func TestTableScan(t *testing.T) {
 		)
 		op.Reverse = true
 
-		require.Equal(t, `table.ScanReverse("test", [1, 2, true], 10, [100, -1])`, op.String())
+		require.Equal(t, `table.ScanReverse("test", [{"min": [1], "max": [2], "exclusive": true}, {"min": [10], "exact": true}, {"min": [100]}])`, op.String())
 	})
 }

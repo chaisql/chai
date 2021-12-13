@@ -43,13 +43,14 @@ func (it *TableScanOperator) String() string {
 
 	s.WriteString(strconv.Quote(it.TableName))
 	if len(it.Ranges) > 0 {
-		s.WriteString(", ")
+		s.WriteString(", [")
 		for i, r := range it.Ranges {
 			s.WriteString(r.String())
 			if i+1 < len(it.Ranges) {
 				s.WriteString(", ")
 			}
 		}
+		s.WriteString("]")
 	}
 
 	s.WriteString(")")

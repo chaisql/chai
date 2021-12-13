@@ -15,79 +15,52 @@ VALUES
     (5, 5, 5);
 
 -- test: =
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a = 10
-    AND b = 5;
+EXPLAIN SELECT * FROM test WHERE a = 10 AND b = 5;
 /* result:
 {
-    "plan": 'index.Scan("test_a", 10) | docs.Filter(b = 5)'
+    "plan": 'index.Scan("test_a", [{"min": [10], "exact": true}]) | docs.Filter(b = 5)'
 }
- */
+*/
 
 -- test: > vs =
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a > 10
-    AND b = 5;
+EXPLAIN SELECT * FROM test WHERE a > 10 AND b = 5;
 /* result:
  {
-    "plan": 'index.Scan("test_b", 5) | docs.Filter(a > 10)'
+    "plan": 'index.Scan("test_b", [{"min": [5], "exact": true}]) | docs.Filter(a > 10)'
  }
- */
+*/
 
 -- test: >
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a > 10
-    AND b > 5;
+EXPLAIN SELECT * FROM test WHERE a > 10 AND b > 5;
 /* result:
  {
-    "plan": 'index.Scan("test_a", [10, -1, true]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [{"min": [10], "exclusive": true}]) | docs.Filter(b > 5)'
  }
- */
+*/
 
 -- test: >=
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a >= 10
-    AND b > 5;
+EXPLAIN SELECT * FROM test WHERE a >= 10 AND b > 5;
 /* result:
  {
-    "plan": 'index.Scan("test_a", [10, -1]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [{"min": [10]}]) | docs.Filter(b > 5)'
  }
- */
+*/
 
 -- test: <
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-WHERE
-    a < 10
-    AND b > 5;
+EXPLAIN SELECT * FROM test WHERE a < 10 AND b > 5;
 /* result:
  {
-    "plan": 'index.Scan("test_a", [-1, 10, true]) | docs.Filter(b > 5)'
+    "plan": 'index.Scan("test_a", [{"max": [10], "exclusive": true}]) | docs.Filter(b > 5)'
  }
- */
+*/
+
+-- test: BETWEEN
+EXPLAIN SELECT * FROM test WHERE a BETWEEN 4 AND 5 AND b > 5;
+/* result:
+ {
+    "plan": 'index.Scan("test_a", [{"min": [4], "max": [5]}]) | docs.Filter(b > 5)'
+ }
+*/
 
 -- test: with two paths
 EXPLAIN SELECT * FROM test WHERE a < b + 1;
@@ -95,7 +68,7 @@ EXPLAIN SELECT * FROM test WHERE a < b + 1;
  {
     "plan": 'table.Scan("test") | docs.Filter(a < b + 1)'
  }
- */
+*/
 
  -- test: with two paths, other side
 EXPLAIN SELECT * FROM test WHERE a + 1 < b;
@@ -103,4 +76,12 @@ EXPLAIN SELECT * FROM test WHERE a + 1 < b;
  {
     "plan": 'table.Scan("test") | docs.Filter(a + 1 < b)'
  }
- */
+*/
+
+  -- test: with two paths, with IN
+EXPLAIN SELECT * FROM test WHERE a IN (1, b + 3);
+/* result:
+ {
+    "plan": 'table.Scan("test") | docs.Filter(a IN [1, b + 3])'
+ }
+*/

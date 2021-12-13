@@ -51,8 +51,9 @@ func (it *IndexScanOperator) String() string {
 
 	s.WriteString(strconv.Quote(it.IndexName))
 	if len(it.Ranges) > 0 {
-		s.WriteString(", ")
+		s.WriteString(", [")
 		s.WriteString(it.Ranges.String())
+		s.WriteString("]")
 	}
 
 	s.WriteString(")")

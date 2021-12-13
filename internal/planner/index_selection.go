@@ -368,14 +368,14 @@ func (i *indexSelector) buildRangeFromFilterNodes(filters ...*filterNode) stream
 	return i.buildRangeFromOperator(filter.operator, paths, el...)
 }
 
-func (i *indexSelector) buildRangeFromOperator(op scanner.Token, paths []document.Path, operands ...expr.Expr) stream.Range {
+func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []document.Path, operands ...expr.Expr) stream.Range {
 	rng := stream.Range{
 		Paths: paths,
 	}
 
 	el := expr.LiteralExprList(operands)
 
-	switch op {
+	switch lastOp {
 	case scanner.EQ, scanner.IN:
 		rng.Exact = true
 		rng.Min = el
@@ -389,6 +389,28 @@ func (i *indexSelector) buildRangeFromOperator(op scanner.Token, paths []documen
 		rng.Max = el
 	case scanner.LTE:
 		rng.Max = el
+	case scanner.BETWEEN:
+		/* example:
+		CREATE TABLE test(a int, b int, c int, d int, e int);
+		CREATE INDEX on test(a, b, c, d);
+		EXPLAIN SELECT * FROM test WHERE a = 1 AND b = 10 AND c = 100 AND d BETWEEN 1000 AND 2000 AND e > 10000;
+		{
+		    "plan": 'index.Scan("test_a_b_c_d_idx", [{"min": [1, 10, 100, 1000], "max": [1, 10, 100, 2000]}]) | docs.Filter(e > 10000)'
+		}
+		*/
+		rng.Min = make(expr.LiteralExprList, len(el))
+		rng.Max = make(expr.LiteralExprList, len(el))
+		for i := range el {
+			if i == len(el)-1 {
+				e := el[i].(expr.LiteralExprList)
+				rng.Min[i] = e[0]
+				rng.Max[i] = e[1]
+				continue
+			}
+
+			rng.Min[i] = el[i]
+			rng.Max[i] = el[i]
+		}
 	}
 
 	return rng
@@ -464,9 +486,69 @@ func (c *candidate) Cost() int {
 // operatorIsIndexCompatible returns whether the operator can be used to read from an index.
 func operatorIsIndexCompatible(op expr.Operator) bool {
 	switch op.Token() {
-	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE, scanner.IN:
+	case scanner.EQ, scanner.GT, scanner.GTE, scanner.LT, scanner.LTE, scanner.IN, scanner.BETWEEN:
 		return true
 	}
 
 	return false
+}
+
+func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
+	lf, leftIsPath := op.LeftHand().(expr.Path)
+	rf, rightIsPath := op.RightHand().(expr.Path)
+
+	// Special case for IN operator: only left operand is valid for index usage
+	// valid:   a IN [1, 2, 3]
+	// invalid: 1 IN a
+	// invalid: a IN (b + 1, 2)
+	if op.Token() == scanner.IN {
+		if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
+			rh := op.RightHand()
+			// The IN operator can use indexes only if the right hand side is an expression list.
+			if _, ok := rh.(expr.LiteralExprList); !ok {
+				return false, nil, nil
+			}
+			return true, document.Path(lf), rh
+		}
+
+		return false, nil, nil
+	}
+
+	// Special case for BETWEEN operator: Given this expression (x BETWEEN a AND b),
+	// we can only use the index if the "x" is a path and "a" and "b" don't contain path expressions.
+	if op.Token() == scanner.BETWEEN {
+		bt := op.(*expr.BetweenOperator)
+		x, xIsPath := bt.X.(expr.Path)
+		if !xIsPath || exprContainsPath(bt.LeftHand()) || exprContainsPath(bt.RightHand()) {
+			return false, nil, nil
+		}
+
+		return true, document.Path(x), expr.LiteralExprList{bt.LeftHand(), bt.RightHand()}
+	}
+
+	// path OP expr
+	if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
+		return true, document.Path(lf), op.RightHand()
+	}
+
+	// expr OP path
+	if rightIsPath && !leftIsPath && !exprContainsPath(op.LeftHand()) {
+		return true, document.Path(rf), op.LeftHand()
+	}
+
+	return false, nil, nil
+}
+
+func exprContainsPath(e expr.Expr) bool {
+	var hasPath bool
+
+	expr.Walk(e, func(e expr.Expr) bool {
+		if _, ok := e.(expr.Path); ok {
+			hasPath = true
+			return false
+		}
+		return true
+	})
+
+	return hasPath
 }
