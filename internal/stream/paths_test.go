@@ -39,7 +39,7 @@ func TestSet(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.e.String(), func(t *testing.T) {
+		t.Run(test.path, func(t *testing.T) {
 			p, err := parser.ParsePath(test.path)
 			assert.NoError(t, err)
 			s := stream.New(stream.DocsEmit(test.in...)).Pipe(stream.PathsSet(p, test.e))

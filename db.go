@@ -24,8 +24,8 @@ type DB struct {
 	ctx context.Context
 }
 
-func newDatabase(ctx context.Context, ng engine.Engine, opts database.Options) (*DB, error) {
-	db, err := database.New(ctx, ng, opts)
+func New(ctx context.Context, ng engine.Engine) (*DB, error) {
+	db, err := database.New(ctx, ng)
 	if err != nil {
 		return nil, err
 	}

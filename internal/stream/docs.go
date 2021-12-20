@@ -123,7 +123,7 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 			}
 
 			v, err = d.GetByField(field)
-			if errors.Is(err, document.ErrFieldNotFound) {
+			if errors.Is(err, types.ErrFieldNotFound) {
 				continue
 			}
 			return
@@ -138,7 +138,7 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 		}
 	}
 
-	err = document.ErrFieldNotFound
+	err = types.ErrFieldNotFound
 	return
 }
 
@@ -314,8 +314,11 @@ func (op *DocsGroupAggregateOperator) Iterate(in *environment.Environment, f fun
 
 		// handle the first document of the stream
 		if lastGroup == nil {
-			lastGroup = group
-			ga = newGroupAggregator(group, groupExpr, op.Builders)
+			lastGroup, err = document.CloneValue(group)
+			if err != nil {
+				return err
+			}
+			ga = newGroupAggregator(lastGroup, groupExpr, op.Builders)
 			return ga.Aggregate(out)
 		}
 
@@ -337,8 +340,12 @@ func (op *DocsGroupAggregateOperator) Iterate(in *environment.Environment, f fun
 			return err
 		}
 
-		lastGroup = group
-		ga = newGroupAggregator(group, groupExpr, op.Builders)
+		lastGroup, err = document.CloneValue(group)
+		if err != nil {
+			return err
+		}
+
+		ga = newGroupAggregator(lastGroup, groupExpr, op.Builders)
 		return ga.Aggregate(out)
 	})
 	if err != nil {

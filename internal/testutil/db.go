@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
@@ -49,9 +48,7 @@ func NewTestDB(t testing.TB) (*database.Database, func()) {
 func NewTestDBWithEngine(t testing.TB, ng engine.Engine) (*database.Database, func()) {
 	t.Helper()
 
-	db, err := database.New(context.Background(), ng, database.Options{
-		Codec: msgpack.NewCodec(),
-	})
+	db, err := database.New(context.Background(), ng)
 	assert.NoError(t, err)
 
 	LoadCatalog(t, db)

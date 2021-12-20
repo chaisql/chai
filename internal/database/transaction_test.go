@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil/assert"
@@ -13,9 +12,7 @@ import (
 func newTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
-	db, err := database.New(context.Background(), memoryengine.NewEngine(), database.Options{
-		Codec: msgpack.NewCodec(),
-	})
+	db, err := database.New(context.Background(), memoryengine.NewEngine())
 	assert.NoError(t, err)
 
 	return db, func() {

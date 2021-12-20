@@ -5,10 +5,14 @@ import (
 )
 
 var (
+	// ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
+	// the field wasn't found in the document.
+	ErrFieldNotFound = errors.New("field not found")
 	// ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 	// the index wasn't found in the array.
 	ErrValueNotFound = errors.New("value not found")
-	errStop          = errors.New("stop")
+
+	errStop = errors.New("stop")
 )
 
 // ValueType represents a value type supported by the database.

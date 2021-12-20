@@ -72,7 +72,7 @@ func TestNewFromJSON(t *testing.T) {
 		require.Equal(t, types.NewIntegerValue(1000), v)
 
 		_, err = d.GetByField("b")
-		assert.ErrorIs(t, err, document.ErrFieldNotFound)
+		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 	})
 }
 
@@ -120,7 +120,7 @@ func TestNewFromMap(t *testing.T) {
 		require.Equal(t, types.NewNullValue(), v)
 
 		_, err = doc.GetByField("bar")
-		require.Equal(t, document.ErrFieldNotFound, err)
+		require.Equal(t, types.ErrFieldNotFound, err)
 	})
 
 	t.Run("Invalid types", func(t *testing.T) {

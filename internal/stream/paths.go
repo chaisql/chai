@@ -38,18 +38,18 @@ func (op *PathsSetOperator) Iterate(in *environment.Environment, f func(out *env
 		}
 
 		v, err := op.E.Eval(out)
-		if err != nil && !errors.Is(err, document.ErrFieldNotFound) {
+		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 			return err
 		}
 
 		fb.Reset()
-		err = fb.ScanDocument(d)
+		err = fb.Copy(d)
 		if err != nil {
 			return err
 		}
 
 		err = fb.Set(op.Path, v)
-		if errors.Is(err, document.ErrFieldNotFound) {
+		if errors.Is(err, types.ErrFieldNotFound) {
 			return nil
 		}
 		if err != nil {
@@ -95,14 +95,14 @@ func (op *PathsUnsetOperator) Iterate(in *environment.Environment, f func(out *e
 
 		_, err := d.GetByField(op.Field)
 		if err != nil {
-			if !errors.Is(err, document.ErrFieldNotFound) {
+			if !errors.Is(err, types.ErrFieldNotFound) {
 				return err
 			}
 
 			return f(out)
 		}
 
-		err = fb.ScanDocument(d)
+		err = fb.Copy(d)
 		if err != nil {
 			return err
 		}

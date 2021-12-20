@@ -113,7 +113,9 @@ func TestTableGetDocument(t *testing.T) {
 		assert.NoError(t, err)
 		fc, err := res.GetByField("fieldc")
 		assert.NoError(t, err)
-		require.Equal(t, vc, fc)
+		ok, err := types.IsEqual(vc, fc)
+		assert.NoError(t, err)
+		require.True(t, ok)
 	})
 }
 
@@ -244,7 +246,9 @@ func TestTableInsert(t *testing.T) {
 
 		v, err := testutil.ParseDocumentPath(t, "foo[0]").GetValueFromDocument(d)
 		assert.NoError(t, err)
-		require.Equal(t, types.NewIntegerValue(100), v)
+		ok, err := types.IsEqual(types.NewIntegerValue(100), v)
+		assert.NoError(t, err)
+		require.True(t, ok)
 	})
 
 	t.Run("Should fail if Pk not found in document or empty", func(t *testing.T) {
@@ -313,16 +317,24 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 		v, err = v.V().(types.Document).GetByField("bar")
 		assert.NoError(t, err)
-		require.Equal(t, types.NewIntegerValue(10), v)
+		ok, err := types.IsEqual(types.NewIntegerValue(10), v)
+		assert.NoError(t, err)
+		require.True(t, ok)
 		v, err = d.GetByField("bar")
 		assert.NoError(t, err)
-		require.Equal(t, types.NewDoubleValue(10), v)
+		ok, err = types.IsEqual(types.NewDoubleValue(10), v)
+		assert.NoError(t, err)
+		require.True(t, ok)
 		v, err = d.GetByField("baz")
 		assert.NoError(t, err)
-		require.Equal(t, types.NewTextValue("baz"), v)
+		ok, err = types.IsEqual(types.NewTextValue("baz"), v)
+		assert.NoError(t, err)
+		require.True(t, ok)
 		v, err = d.GetByField("bat")
 		assert.NoError(t, err)
-		require.Equal(t, types.NewDoubleValue(20), v)
+		ok, err = types.IsEqual(types.NewDoubleValue(20), v)
+		assert.NoError(t, err)
+		require.True(t, ok)
 	})
 
 	t.Run("Should fail if the fields cannot be converted to specified field constraints", func(t *testing.T) {

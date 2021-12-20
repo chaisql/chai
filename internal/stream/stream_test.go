@@ -106,12 +106,13 @@ func TestUnion(t *testing.T) {
 			err := st.Iterate(&env, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
-				var fb document.FieldBuffer
 
-				err := fb.Copy(d)
-				assert.NoError(t, err)
+				clone, err := document.CloneValue(types.NewDocumentValue(d))
+				if err != nil {
+					return err
+				}
 
-				got = append(got, &fb)
+				got = append(got, clone.V().(types.Document))
 				i++
 				return nil
 			})

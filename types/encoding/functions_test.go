@@ -1,4 +1,4 @@
-package binarysort
+package encoding
 
 import (
 	"bytes"
@@ -66,7 +66,7 @@ func TestTwoWays(t *testing.T) {
 		},
 		{"base64", []byte("hello"),
 			func(buf []byte, v interface{}) []byte { res, _ := AppendBase64(buf, v.([]byte)); return res },
-			func(buf []byte) (interface{}, error) { return DecodeBase64(buf) },
+			func(buf []byte) (interface{}, error) { return DecodeBase64(nil, buf) },
 		},
 	}
 

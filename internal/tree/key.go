@@ -22,8 +22,7 @@ func NewKey(values ...types.Value) (Key, error) {
 
 	var key Key
 	var buf bytes.Buffer
-	err := encoding.NewValueEncoder(&buf).
-		Encode(types.NewArrayValue(document.NewValueBuffer(values...)))
+	err := encoding.EncodeValue(&buf, types.NewArrayValue(document.NewValueBuffer(values...)))
 	if err != nil {
 		return nil, err
 	}
@@ -55,12 +54,16 @@ func (key Key) Decode() ([]types.Value, error) {
 	buf.WriteByte(byte(types.ArrayValue))
 	buf.Write(key)
 	buf.WriteByte(encoding.ArrayEnd)
-	kv, err := encoding.DecodeValue(buf.Bytes())
+
+	vb := document.NewValueBuffer()
+	enc := encoding.EncodedValue(buf.Bytes())
+	err := enc.V().(types.Array).Iterate(func(i int, value types.Value) error {
+		vb.Append(value)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	vb := kv.V().(*document.ValueBuffer)
 
 	return vb.Values, nil
 }

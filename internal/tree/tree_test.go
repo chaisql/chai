@@ -5,7 +5,6 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
@@ -54,7 +53,6 @@ func TestTreeGet(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			tree := tree.Tree{
 				Store: testutil.NewTestStore(t, "store"),
-				Codec: msgpack.NewCodec(),
 			}
 
 			err := tree.Put(key1, val)
@@ -85,7 +83,6 @@ func TestTreeDelete(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			tree := tree.Tree{
 				Store: testutil.NewTestStore(t, "store"),
-				Codec: msgpack.NewCodec(),
 			}
 
 			err := tree.Put(key1, val)
@@ -126,7 +123,6 @@ func TestTreeIterate(t *testing.T) {
 	buildTree := func() *tree.Tree {
 		tt := tree.Tree{
 			Store: testutil.NewTestStore(t, "store"),
-			Codec: msgpack.NewCodec(),
 		}
 
 		for i, k := range keys {
@@ -209,7 +205,6 @@ func TestTreeIterateOnRange(t *testing.T) {
 	buildTree := func() *tree.Tree {
 		tt := tree.Tree{
 			Store: testutil.NewTestStore(t, "store"),
-			Codec: msgpack.NewCodec(),
 		}
 
 		for i, k := range keys {

@@ -183,12 +183,8 @@ func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey t
 		// which is the last element of the encoded array
 		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})
 
-		kv, err := encoding.DecodeValue(k[pos+1:])
-		if err != nil {
-			return err
-		}
-
-		pk := tree.Key(kv.V().([]byte))
+		enc := encoding.EncodedValue(k[pos+1:])
+		pk := tree.Key(enc.V().([]byte))
 
 		return fn(k, pk)
 	})

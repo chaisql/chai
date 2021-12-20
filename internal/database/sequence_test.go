@@ -3,8 +3,6 @@ package database_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/errors"
@@ -29,7 +27,7 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	}
 
 	v, err := d.GetByField("seq")
-	if errors.Is(err, document.ErrFieldNotFound) {
+	if errors.Is(err, types.ErrFieldNotFound) {
 		return nil, nil
 	}
 	if err != nil {
@@ -392,7 +390,7 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 
 		c := database.NewCatalog()
-		err = c.Init(tx, msgpack.NewCodec())
+		err = c.Init(tx)
 		assert.NoError(t, err)
 
 		err = catalogstore.LoadCatalog(tx, c)

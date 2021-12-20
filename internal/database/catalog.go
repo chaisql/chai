@@ -6,7 +6,6 @@ import (
 	"sort"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
@@ -29,7 +28,6 @@ const (
 type Catalog struct {
 	Cache        *catalogCache
 	CatalogTable *CatalogStore
-	Codec        encoding.Codec
 }
 
 func NewCatalog() *Catalog {
@@ -39,8 +37,7 @@ func NewCatalog() *Catalog {
 	}
 }
 
-func (c *Catalog) Init(tx *Transaction, codec encoding.Codec) error {
-	c.Codec = codec
+func (c *Catalog) Init(tx *Transaction) error {
 	err := c.CatalogTable.Init(tx, c)
 	if err != nil {
 		return err
@@ -99,10 +96,9 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(s, c.Codec),
+		Tree:    tree.New(s),
 		Info:    ti,
 		Catalog: c,
-		Codec:   c.Codec,
 	}, nil
 }
 
@@ -253,7 +249,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	return NewIndex(tree.New(s, c.Codec), *info), nil
+	return NewIndex(tree.New(s), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -311,7 +307,7 @@ func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
 		return err
 	}
 
-	idx := Index{Tree: tree.New(s, c.Codec)}
+	idx := Index{Tree: tree.New(s)}
 	err = idx.Truncate()
 	if err != nil {
 		return err
@@ -686,7 +682,6 @@ func (c *catalogCache) GetTableIndexes(tableName string) []*IndexInfo {
 type CatalogStore struct {
 	Catalog *Catalog
 	info    *TableInfo
-	Codec   encoding.Codec
 }
 
 func newCatalogStore() *CatalogStore {
@@ -755,7 +750,6 @@ func (s *CatalogStore) Init(tx *Transaction, ctg *Catalog) error {
 		err = tx.Tx.CreateStore([]byte(TableName))
 	}
 
-	s.Codec = ctg.Codec
 	return err
 }
 
@@ -771,10 +765,9 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(st, s.Codec),
+		Tree:    tree.New(st),
 		Info:    s.info,
 		Catalog: s.Catalog,
-		Codec:   s.Codec,
 	}
 }
 

@@ -41,7 +41,7 @@ func (j jsonEncodedDocument) Iterate(fn func(field string, value types.Value) er
 func (j jsonEncodedDocument) GetByField(field string) (types.Value, error) {
 	v, dt, _, err := jsonparser.Get(j.data, field)
 	if dt == jsonparser.NotExist {
-		return nil, ErrFieldNotFound
+		return nil, types.ErrFieldNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (m mapDocument) GetByField(field string) (types.Value, error) {
 	M := reflect.Value(m)
 	v := M.MapIndex(reflect.ValueOf(field))
 	if v == (reflect.Value{}) {
-		return nil, ErrFieldNotFound
+		return nil, types.ErrFieldNotFound
 	}
 	return NewValue(v.Interface())
 }
@@ -274,12 +274,12 @@ func (s sliceArray) Iterate(fn func(i int, v types.Value) error) error {
 
 func (s sliceArray) GetByIndex(i int) (types.Value, error) {
 	if i >= s.ref.Len() {
-		return nil, ErrFieldNotFound
+		return nil, types.ErrFieldNotFound
 	}
 
 	v := s.ref.Index(i)
 	if !v.IsValid() {
-		return nil, ErrFieldNotFound
+		return nil, types.ErrFieldNotFound
 	}
 
 	return NewValue(v.Interface())

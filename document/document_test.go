@@ -77,7 +77,7 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = buf.GetByField("not existing")
-		assert.ErrorIs(t, err, document.ErrFieldNotFound)
+		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 		require.Zero(t, v)
 	})
 
@@ -498,7 +498,7 @@ func TestNewFromStruct(t *testing.T) {
 		assert.NoError(t, err)
 		require.Equal(t, 3, count)
 		_, err = a.GetByIndex(10)
-		assert.ErrorIs(t, err, document.ErrFieldNotFound)
+		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 		v, err = a.GetByIndex(1)
 		assert.NoError(t, err)
 		require.EqualValues(t, 2, v.V().(int64))
@@ -520,7 +520,7 @@ func TestNewFromStruct(t *testing.T) {
 		d, err := document.NewFromStruct(new(s))
 		assert.NoError(t, err)
 		_, err = d.GetByField("a")
-		assert.ErrorIs(t, err, document.ErrFieldNotFound)
+		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 
 		a := 10
 		ss := s{A: &a}

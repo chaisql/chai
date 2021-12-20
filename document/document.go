@@ -9,11 +9,8 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/types/encoding"
 )
-
-// ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
-// the field wasn't found in the document.
-var ErrFieldNotFound = errors.New("field not found")
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
 type ErrUnsupportedType struct {
@@ -96,6 +93,15 @@ type fieldValue struct {
 
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(field string, v types.Value) *FieldBuffer {
+	var err error
+
+	if ev, ok := v.(*encoding.EncodedValue); ok {
+		v, err = CloneValue(ev)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	fb.fields = append(fb.fields, fieldValue{field, v})
 	return fb
 }
@@ -116,14 +122,14 @@ func (fb FieldBuffer) GetByField(field string) (types.Value, error) {
 		}
 	}
 
-	return nil, ErrFieldNotFound
+	return nil, types.ErrFieldNotFound
 }
 
 // setFieldValue replaces a field if it already exists or creates one if not.
 func (fb *FieldBuffer) setFieldValue(field string, reqValue types.Value) error {
 	_, err := fb.GetByField(field)
 	switch err {
-	case ErrFieldNotFound:
+	case types.ErrFieldNotFound:
 		fb.Add(field, reqValue)
 		return nil
 	case nil:
@@ -152,7 +158,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		// the field is a document but the path expects an array,
 		// return an error
 		if p[0].FieldName == "" {
-			return nil, ErrFieldNotFound
+			return nil, types.ErrFieldNotFound
 		}
 
 		va, err := buf.GetByField(p[0].FieldName)
@@ -192,15 +198,15 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		return types.NewArrayValue(&vb), err
 	}
 
-	return nil, ErrFieldNotFound
+	return nil, types.ErrFieldNotFound
 }
 
 // Set replaces a field if it already exists or creates one if not.
-// TODO(asdine): Set should always fail with ErrFieldNotFound if the path
+// TODO(asdine): Set should always fail with types.ErrFieldNotFound if the path
 // doesn't resolve to an existing field.
 func (fb *FieldBuffer) Set(path Path, v types.Value) error {
 	if len(path) == 0 || path[0].FieldName == "" {
-		return ErrFieldNotFound
+		return types.ErrFieldNotFound
 	}
 
 	if len(path) == 1 {
@@ -268,7 +274,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 			}
 		}
 
-		return ErrFieldNotFound
+		return types.ErrFieldNotFound
 	case types.ArrayValue:
 		subBuf, ok := v.V().(*ValueBuffer)
 		if !ok {
@@ -277,11 +283,11 @@ func (fb *FieldBuffer) Delete(path Path) error {
 
 		idx := path[len(path)-1].ArrayIndex
 		if idx >= len(subBuf.Values) {
-			return ErrFieldNotFound
+			return types.ErrFieldNotFound
 		}
 		subBuf.Values = append(subBuf.Values[0:idx], subBuf.Values[idx+1:]...)
 	default:
-		return ErrFieldNotFound
+		return types.ErrFieldNotFound
 	}
 
 	return nil
@@ -296,39 +302,45 @@ func (fb *FieldBuffer) Replace(field string, v types.Value) error {
 		}
 	}
 
-	return ErrFieldNotFound
+	return types.ErrFieldNotFound
 }
 
 // Copy deep copies every value of the document to the buffer.
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
 func (fb *FieldBuffer) Copy(d types.Document) error {
-	err := fb.ScanDocument(d)
-	if err != nil {
-		return err
-	}
+	return d.Iterate(func(field string, value types.Value) error {
+		fb.Add(field, value)
+		return nil
+	})
+}
 
-	for i, f := range fb.fields {
-		switch f.Value.Type() {
-		case types.DocumentValue:
-			var buf FieldBuffer
-			err = buf.Copy(f.Value.V().(types.Document))
-			if err != nil {
-				return err
-			}
-
-			fb.fields[i].Value = types.NewDocumentValue(&buf)
-		case types.ArrayValue:
-			var buf ValueBuffer
-			err = buf.Copy(f.Value.V().(types.Array))
-			if err != nil {
-				return err
-			}
-
-			fb.fields[i].Value = types.NewArrayValue(&buf)
+func CloneValue(v types.Value) (types.Value, error) {
+	switch v.Type() {
+	case types.ArrayValue:
+		vb := NewValueBuffer()
+		err := v.V().(types.Array).Iterate(func(i int, value types.Value) error {
+			vb.Append(value)
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
+		return types.NewArrayValue(vb), nil
+	case types.DocumentValue:
+		fb := NewFieldBuffer()
+		err := v.V().(types.Document).Iterate(func(field string, value types.Value) error {
+			fb.Add(field, value)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return types.NewDocumentValue(fb), nil
+	case types.BlobValue:
+		return types.NewValueWith(v.Type(), append([]byte{}, v.V().([]byte)...)), nil
+	default:
+		return types.NewValueWith(v.Type(), v.V()), nil
 	}
-
-	return nil
 }
 
 // Apply a function to all the values of the buffer.
@@ -459,10 +471,10 @@ func (p Path) IsEqual(other Path) bool {
 // GetValueFromDocument returns the value at path p from d.
 func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, errors.Wrap(ErrFieldNotFound)
+		return nil, errors.Wrap(types.ErrFieldNotFound)
 	}
 	if p[0].FieldName == "" {
-		return nil, errors.Wrap(ErrFieldNotFound)
+		return nil, errors.Wrap(types.ErrFieldNotFound)
 	}
 
 	v, err := d.GetByField(p[0].FieldName)
@@ -480,16 +492,16 @@ func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 // GetValueFromArray returns the value at path p from a.
 func (p Path) GetValueFromArray(a types.Array) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, errors.Wrap(ErrFieldNotFound)
+		return nil, errors.Wrap(types.ErrFieldNotFound)
 	}
 	if p[0].FieldName != "" {
-		return nil, errors.Wrap(ErrFieldNotFound)
+		return nil, errors.Wrap(types.ErrFieldNotFound)
 	}
 
 	v, err := a.GetByIndex(p[0].ArrayIndex)
 	if err != nil {
-		if errors.Is(err, ErrValueNotFound) {
-			return nil, errors.Wrap(ErrFieldNotFound)
+		if errors.Is(err, types.ErrValueNotFound) {
+			return nil, errors.Wrap(types.ErrFieldNotFound)
 		}
 
 		return nil, err
@@ -516,7 +528,7 @@ func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 		return p.GetValueFromArray(v.V().(types.Array))
 	}
 
-	return nil, ErrFieldNotFound
+	return nil, types.ErrFieldNotFound
 }
 
 type Paths []Path

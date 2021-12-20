@@ -286,7 +286,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 			continue
 		}
 
-		if !errors.Is(err, document.ErrFieldNotFound) {
+		if !errors.Is(err, types.ErrFieldNotFound) {
 			return nil, err
 		}
 
@@ -323,7 +323,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 			continue
 		}
 
-		if !errors.Is(err, document.ErrFieldNotFound) {
+		if !errors.Is(err, types.ErrFieldNotFound) {
 			return nil, err
 		}
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
 )
@@ -25,18 +24,11 @@ type Database struct {
 	attachedTransaction *Transaction
 	attachedTxMu        sync.Mutex
 
-	// Codec used to encode documents. Defaults to MessagePack.
-	Codec encoding.Codec
-
 	// This controls concurrency on read-only and read/write transactions.
 	txmu *sync.RWMutex
 
 	// Pool of reusable transient engines to use for temporary indices.
 	TransientDatabasePool *TransientDatabasePool
-}
-
-type Options struct {
-	Codec encoding.Codec
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -50,19 +42,13 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error) {
-	if opts.Codec == nil {
-		return nil, errors.New("missing codec")
-	}
-
+func New(ctx context.Context, ng engine.Engine) (*Database, error) {
 	db := Database{
 		ng:      ng,
-		Codec:   opts.Codec,
 		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
 		TransientDatabasePool: &TransientDatabasePool{
-			ng:    ng,
-			codec: opts.Codec,
+			ng: ng,
 		},
 	}
 
@@ -72,7 +58,7 @@ func New(ctx context.Context, ng engine.Engine, opts Options) (*Database, error)
 	}
 	defer tx.Rollback()
 
-	err = db.Catalog.Init(tx, db.Codec)
+	err = db.Catalog.Init(tx)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,6 @@ package database
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
@@ -21,7 +20,6 @@ type Table struct {
 	Info *TableInfo
 
 	Catalog *Catalog
-	Codec   encoding.Codec
 }
 
 // Truncate deletes all the documents from the table.
@@ -170,7 +168,7 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error)
 		vs := make([]types.Value, 0, len(pk.Paths))
 		for _, p := range pk.Paths {
 			v, err := p.GetValueFromDocument(d)
-			if errors.Is(err, document.ErrFieldNotFound) {
+			if errors.Is(err, types.ErrFieldNotFound) {
 				return nil, stringutil.Errorf("missing primary key at path %q", p)
 			}
 			if err != nil {

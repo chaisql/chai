@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
@@ -35,7 +34,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	assert.NoError(t, err)
 	st, err := tx.GetStore([]byte("foo"))
 	assert.NoError(t, err)
-	tr := tree.New(st, msgpack.NewCodec())
+	tr := tree.New(st)
 
 	var paths []document.Path
 	for i := 0; i < arity; i++ {

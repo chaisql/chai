@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/tree"
 )
@@ -14,8 +13,7 @@ const maxTransientPoolSize = 3
 // TransientDatabasePool manages a pool of transient databases.
 // It keeps a pool of maxTransientPoolSize databases.
 type TransientDatabasePool struct {
-	ng    engine.Engine
-	codec encoding.Codec
+	ng engine.Engine
 
 	mu   sync.Mutex
 	pool []*Database
@@ -38,7 +36,7 @@ func (t *TransientDatabasePool) Get(ctx context.Context) (*Database, error) {
 		return nil, err
 	}
 
-	tdb, err := New(ctx, tng, Options{Codec: t.codec})
+	tdb, err := New(ctx, tng)
 	if err != nil {
 		_ = tng.Close()
 		return nil, err
@@ -104,5 +102,5 @@ func NewTransientTree(db *Database) (*tree.Tree, func() error, error) {
 		return nil, nil, err
 	}
 
-	return tree.New(st, db.Codec), f, nil
+	return tree.New(st), f, nil
 }

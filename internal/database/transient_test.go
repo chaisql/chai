@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document/encoding/msgpack"
 	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTransientDatabasePool(t *testing.T) {
-	db, err := New(context.Background(), memoryengine.NewEngine(), Options{Codec: msgpack.NewCodec()})
+	db, err := New(context.Background(), memoryengine.NewEngine())
 	require.NoError(t, err)
 
 	ctx := context.Background()

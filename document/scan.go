@@ -1,3 +1,4 @@
+//go:build !wasm
 // +build !wasm
 
 package document
@@ -83,7 +84,7 @@ func structScan(d types.Document, ref reflect.Value) error {
 			name = strings.ToLower(sf.Name)
 		}
 		v, err := d.GetByField(name)
-		if errors.Is(err, ErrFieldNotFound) {
+		if errors.Is(err, types.ErrFieldNotFound) {
 			v = types.NewNullValue()
 		} else if err != nil {
 			return err

@@ -3,11 +3,10 @@ package tree
 import (
 	"bytes"
 
-	"github.com/genjidb/genji/document/encoding"
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
-	kenc "github.com/genjidb/genji/types/encoding"
+	"github.com/genjidb/genji/types/encoding"
 )
 
 // A Tree is an abstraction over a k-v store that allows
@@ -21,13 +20,11 @@ import (
 // A Tree doesn't support duplicate keys.
 type Tree struct {
 	Store engine.Store
-	Codec encoding.Codec
 }
 
-func New(store engine.Store, codec encoding.Codec) *Tree {
+func New(store engine.Store) *Tree {
 	return &Tree{
 		Store: store,
-		Codec: codec,
 	}
 }
 
@@ -43,7 +40,7 @@ func (t *Tree) Put(key Key, value types.Value) error {
 
 	var buf bytes.Buffer
 
-	err := t.Codec.EncodeValue(&buf, value)
+	err := encoding.EncodeValue(&buf, value)
 	if err != nil {
 		return err
 	}
@@ -100,7 +97,7 @@ func (t *Tree) Iterate(pivot Key, reverse bool, fn func(Key, types.Value) error)
 	if pivot != nil {
 		seek = pivot
 		if reverse {
-			seek = append(seek, kenc.ArrayValueDelim, 0xFF)
+			seek = append(seek, encoding.ArrayValueDelim, 0xFF)
 		}
 	}
 
@@ -111,9 +108,7 @@ func (t *Tree) iterateRaw(seek []byte, reverse bool, fn func(Key, types.Value) e
 	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
 	defer it.Close()
 
-	value := Value{
-		codec: t.Codec,
-	}
+	var value Value
 
 	for it.Seek(seek); it.Valid(); it.Next() {
 		i := it.Item()
@@ -152,13 +147,13 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value
 		if !reverse {
 			start = rng.Min
 			if start != nil && rng.Exclusive {
-				start = append(start, kenc.ArrayValueDelim, 0xFF)
+				start = append(start, encoding.ArrayValueDelim, 0xFF)
 			}
 			end = rng.Max
 		} else {
 			start = rng.Max
 			if start != nil && !rng.Exclusive {
-				start = append(start, kenc.ArrayValueDelim, 0xFF)
+				start = append(start, encoding.ArrayValueDelim, 0xFF)
 			}
 			end = rng.Min
 		}
@@ -206,10 +201,9 @@ var errStop = errors.New("stop")
 // Value is an implementation of the types.Value interface returned by Tree.
 // It is used to lazily decode values from the underlying store.
 type Value struct {
-	item  engine.Item
-	v     types.Value
-	buf   []byte
-	codec encoding.Codec
+	item engine.Item
+	v    types.Value
+	buf  []byte
 }
 
 func (v *Value) decode() {
@@ -223,7 +217,7 @@ func (v *Value) decode() {
 		panic(err)
 	}
 
-	v.v, err = v.codec.DecodeValue(v.buf)
+	v.v, err = encoding.DecodeValue(v.buf)
 	if err != nil {
 		panic(err)
 	}

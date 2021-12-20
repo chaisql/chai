@@ -19,7 +19,7 @@ func (p Path) Eval(env *environment.Environment) (types.Value, error) {
 
 	d, ok := env.GetDocument()
 	if !ok {
-		return NullLiteral, document.ErrFieldNotFound
+		return NullLiteral, types.ErrFieldNotFound
 	}
 	dp := document.Path(p)
 
@@ -29,7 +29,7 @@ func (p Path) Eval(env *environment.Environment) (types.Value, error) {
 	}
 
 	v, err := dp.GetValueFromDocument(d)
-	if errors.Is(err, document.ErrFieldNotFound) {
+	if errors.Is(err, types.ErrFieldNotFound) {
 		return NullLiteral, nil
 	}
 
