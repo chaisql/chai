@@ -286,7 +286,7 @@ func TestTableReplace(t *testing.T) {
 			err = res.Iterate(func(d types.Document) error {
 				var fb document.FieldBuffer
 				fb.Copy(d)
-				got = append(got, fb)
+				got = append(got, &fb)
 				return nil
 			})
 			assert.NoError(t, err)
@@ -349,7 +349,7 @@ func TestTableDelete(t *testing.T) {
 			err = res.Iterate(func(d types.Document) error {
 				var fb document.FieldBuffer
 				fb.Copy(d)
-				got = append(got, fb)
+				got = append(got, &fb)
 				return nil
 			})
 			assert.NoError(t, err)

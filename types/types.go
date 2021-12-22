@@ -97,6 +97,10 @@ type Document interface {
 	// GetByField returns a value by field name.
 	// Must return ErrFieldNotFound if the field doesnt exist.
 	GetByField(field string) (Value, error)
+
+	// MarshalJSON implements the json.Marshaler interface.
+	// It returns a JSON representation of the document.
+	MarshalJSON() ([]byte, error)
 }
 
 // An Array contains a set of values.
@@ -106,4 +110,8 @@ type Array interface {
 	Iterate(fn func(i int, value Value) error) error
 	// GetByIndex returns a value by index of the array.
 	GetByIndex(i int) (Value, error)
+
+	// MarshalJSON implements the json.Marshaler interface.
+	// It returns a JSON representation of the array.
+	MarshalJSON() ([]byte, error)
 }

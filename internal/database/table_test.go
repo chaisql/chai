@@ -205,7 +205,7 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// insert
-		key, _, err := tb.Insert(doc)
+		key, _, err := tb.Insert(&doc)
 		assert.NoError(t, err)
 		want, err := tree.NewKey(types.NewIntegerValue(10))
 		assert.NoError(t, err)
@@ -217,7 +217,7 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// insert again
-		_, _, err = tb.Insert(doc)
+		_, _, err = tb.Insert(&doc)
 		require.EqualError(t, err, "PRIMARY KEY constraint error: [foo.a[1]]")
 	})
 
@@ -238,7 +238,7 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// insert
-		key, _, err := tb.Insert(doc)
+		key, _, err := tb.Insert(&doc)
 		assert.NoError(t, err)
 
 		d, err := tb.GetDocument(key)

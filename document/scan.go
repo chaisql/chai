@@ -446,3 +446,7 @@ func (it *iteratorArray) Iterate(fn func(i int, value types.Value) error) error 
 func (it *iteratorArray) GetByIndex(i int) (types.Value, error) {
 	panic("not implemented")
 }
+
+func (it *iteratorArray) MarshalJSON() ([]byte, error) {
+	return MarshalJSONArray(it)
+}

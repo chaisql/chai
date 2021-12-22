@@ -56,7 +56,7 @@ func jsonToDocument(t testing.TB, x string) types.Value {
 	err := json.Unmarshal([]byte(x), &fb)
 	assert.NoError(t, err)
 
-	return types.NewDocumentValue(fb)
+	return types.NewDocumentValue(&fb)
 }
 
 func TestCompare(t *testing.T) {
