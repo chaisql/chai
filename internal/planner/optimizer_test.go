@@ -78,9 +78,10 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.SplitANDConditionRule(test.in, nil)
+			sctx := planner.NewStreamContext(test.in)
+			err := planner.SplitANDConditionRule(sctx)
 			assert.NoError(t, err)
-			require.Equal(t, res.String(), test.expected.String())
+			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
 }
@@ -166,9 +167,10 @@ func TestPrecalculateExprRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			s := st.New(st.TableScan("foo")).
 				Pipe(st.DocsFilter(test.e))
-			res, err := planner.PrecalculateExprRule(s, nil)
+			sctx := planner.NewStreamContext(s)
+			err := planner.PrecalculateExprRule(sctx)
 			assert.NoError(t, err)
-			require.Equal(t, st.New(st.TableScan("foo")).Pipe(st.DocsFilter(test.expected)).String(), res.String())
+			require.Equal(t, st.New(st.TableScan("foo")).Pipe(st.DocsFilter(test.expected)).String(), sctx.Stream.String())
 		})
 	}
 }
@@ -205,13 +207,10 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := planner.RemoveUnnecessaryFilterNodesRule(test.root, nil)
+			sctx := planner.NewStreamContext(test.root)
+			err := planner.RemoveUnnecessaryFilterNodesRule(sctx)
 			assert.NoError(t, err)
-			if test.expected != nil {
-				require.Equal(t, test.expected.String(), res.String())
-			} else {
-				require.Equal(t, test.expected, res)
-			}
+			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
 }
@@ -398,9 +397,11 @@ func TestSelectIndex_Simple(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.SelectIndex(test.root, db.Catalog)
+			sctx := planner.NewStreamContext(test.root)
+			sctx.Catalog = db.Catalog
+			err := planner.SelectIndex(sctx)
 			assert.NoError(t, err)
-			require.Equal(t, test.expected.String(), res.String())
+			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
 
@@ -451,12 +452,14 @@ func TestSelectIndex_Simple(t *testing.T) {
 						([3, 3], [3, 3], [3, 3])
 				`)
 
-				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
+				sctx := planner.NewStreamContext(test.root)
+				sctx.Catalog = db.Catalog
+				err := planner.PrecalculateExprRule(sctx)
 				assert.NoError(t, err)
 
-				res, err = planner.SelectIndex(res, db.Catalog)
+				err = planner.SelectIndex(sctx)
 				assert.NoError(t, err)
-				require.Equal(t, test.expected.String(), res.String())
+				require.Equal(t, test.expected.String(), sctx.Stream.String())
 			})
 		}
 	})
@@ -709,9 +712,11 @@ func TestSelectIndex_Composite(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			res, err := planner.SelectIndex(test.root, db.Catalog)
+			sctx := planner.NewStreamContext(test.root)
+			sctx.Catalog = db.Catalog
+			err := planner.SelectIndex(sctx)
 			assert.NoError(t, err)
-			require.Equal(t, test.expected.String(), res.String())
+			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
 
@@ -758,12 +763,14 @@ func TestSelectIndex_Composite(t *testing.T) {
 							([3, 3], [3, 3], [3, 3])
 	`)
 
-				res, err := planner.PrecalculateExprRule(test.root, db.Catalog)
+				sctx := planner.NewStreamContext(test.root)
+				sctx.Catalog = db.Catalog
+				err := planner.PrecalculateExprRule(sctx)
 				assert.NoError(t, err)
 
-				res, err = planner.SelectIndex(res, db.Catalog)
+				err = planner.SelectIndex(sctx)
 				assert.NoError(t, err)
-				require.Equal(t, test.expected.String(), res.String())
+				require.Equal(t, test.expected.String(), sctx.Stream.String())
 			})
 		}
 	})

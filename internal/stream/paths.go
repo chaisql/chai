@@ -15,14 +15,14 @@ import (
 type PathsSetOperator struct {
 	baseOperator
 	Path document.Path
-	E    expr.Expr
+	Expr expr.Expr
 }
 
 // PathsSet filters duplicate documents based on one or more expressions.
 func PathsSet(path document.Path, e expr.Expr) *PathsSetOperator {
 	return &PathsSetOperator{
 		Path: path,
-		E:    e,
+		Expr: e,
 	}
 }
 
@@ -37,7 +37,7 @@ func (op *PathsSetOperator) Iterate(in *environment.Environment, f func(out *env
 			return errors.New("missing document")
 		}
 
-		v, err := op.E.Eval(out)
+		v, err := op.Expr.Eval(out)
 		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 			return err
 		}
@@ -64,7 +64,7 @@ func (op *PathsSetOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *PathsSetOperator) String() string {
-	return stringutil.Sprintf("paths.Set(%s, %s)", op.Path, op.E)
+	return stringutil.Sprintf("paths.Set(%s, %s)", op.Path, op.Expr)
 }
 
 // A PathsUnsetOperator filters duplicate documents.

@@ -27,7 +27,7 @@ func TestParserInsert(t *testing.T) {
 					{K: "a", V: testutil.IntegerValue(1)},
 					{K: "b", V: testutil.TextValue("foo")},
 					{K: "c", V: testutil.TextValue("bar")},
-					{K: "d", V: expr.Eq(testutil.IntegerValue(1), testutil.IntegerValue(1))},
+					{K: "d", V: testutil.BoolValue(true)},
 					{K: "e", V: &expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
 						{K: "f", V: testutil.TextValue("baz")},
 					}}},
@@ -222,7 +222,8 @@ func TestParserInsert(t *testing.T) {
 			assert.NoError(t, err)
 
 			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, &statement.PreparedStreamStmt{Stream: test.expected}, q.Statements[0].(*statement.PreparedStreamStmt))
+
+			require.Equal(t, test.expected.String(), q.Statements[0].(*statement.PreparedStreamStmt).Stream.String())
 		})
 	}
 }

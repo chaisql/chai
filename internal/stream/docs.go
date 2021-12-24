@@ -191,18 +191,18 @@ func (d *MaskDocument) MarshalJSON() ([]byte, error) {
 // A DocsFilterOperator filters values based on a given expression.
 type DocsFilterOperator struct {
 	baseOperator
-	E expr.Expr
+	Expr expr.Expr
 }
 
 // DocsFilter evaluates e for each incoming value and filters any value whose result is not truthy.
 func DocsFilter(e expr.Expr) *DocsFilterOperator {
-	return &DocsFilterOperator{E: e}
+	return &DocsFilterOperator{Expr: e}
 }
 
 // Iterate implements the Operator interface.
 func (op *DocsFilterOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		v, err := op.E.Eval(out)
+		v, err := op.Expr.Eval(out)
 		if err != nil {
 			return err
 		}
@@ -217,7 +217,7 @@ func (op *DocsFilterOperator) Iterate(in *environment.Environment, f func(out *e
 }
 
 func (op *DocsFilterOperator) String() string {
-	return stringutil.Sprintf("docs.Filter(%s)", op.E)
+	return stringutil.Sprintf("docs.Filter(%s)", op.Expr)
 }
 
 // A DocsTakeOperator closes the stream after a certain number of values.

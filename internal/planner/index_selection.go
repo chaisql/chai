@@ -2,7 +2,6 @@ package planner
 
 import (
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -58,32 +57,37 @@ import (
 // Because a table can have multiple indexes, we need to establish which of these
 // indexes should be used to run the query, if not all of them.
 // For that we generate a cost for each selected index and return the one with the cheapest cost.
-func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
-	// first we lookup for the seq scan node.
-	// Here we will assume that at this point
+func SelectIndex(sctx *StreamContext) error {
+	// Lookup the seq scan node.
+	// We will assume that at this point
 	// if there is one it has to be the
 	// first node of the stream.
-	firstNode := s.First()
+	firstNode := sctx.Stream.First()
 	if firstNode == nil {
-		return s, nil
+		return nil
 	}
 	seq, ok := firstNode.(*stream.TableScanOperator)
 	if !ok {
-		return s, nil
+		return nil
 	}
 
 	// ensure the table exists
-	_, err := catalog.Cache.Get(database.RelationTableType, seq.TableName)
+	_, err := sctx.Catalog.GetTableInfo(seq.TableName)
 	if err != nil {
-		return nil, err
+		return err
+	}
+
+	// ensure the list of filter nodes is not empty
+	if len(sctx.Filters) == 0 {
+		return nil
 	}
 
 	is := indexSelector{
 		tableScan: seq,
-		catalog:   catalog,
+		sctx:      sctx,
 	}
 
-	return is.SelectIndex(s)
+	return is.selectIndex()
 }
 
 // indexSelector analyses a stream and generates a plan for each of them that
@@ -91,31 +95,14 @@ func SelectIndex(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, e
 // It then compares the cost of each plan and returns the cheapest stream.
 type indexSelector struct {
 	tableScan *stream.TableScanOperator
-	catalog   *database.Catalog
+	sctx      *StreamContext
 }
 
-func (i *indexSelector) SelectIndex(s *stream.Stream) (*stream.Stream, error) {
-	// get the list of all filter nodes
-	var filterNodes []*stream.DocsFilterOperator
-	for op := s.Op; op != nil; op = op.GetPrev() {
-		if f, ok := op.(*stream.DocsFilterOperator); ok {
-			filterNodes = append(filterNodes, f)
-		}
-	}
-
-	// if there are no filter, return the stream untouched
-	if len(filterNodes) == 0 {
-		return s, nil
-	}
-
-	return i.selectIndex(s, filterNodes)
-}
-
-func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilterOperator) (*stream.Stream, error) {
+func (i *indexSelector) selectIndex() error {
 	// generate a list of candidates from all the filter nodes that
 	// can benefit from reading from an index or the table pk
-	nodes := make(filterNodes, 0, len(filters))
-	for _, f := range filters {
+	nodes := make(filterNodes, 0, len(i.sctx.Filters))
+	for _, f := range i.sctx.Filters {
 		filter := i.isFilterIndexable(f)
 		if filter == nil {
 			continue
@@ -129,9 +116,9 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilt
 	var cost int
 
 	// start with the primary key of the table
-	tb, err := i.catalog.GetTableInfo(i.tableScan.TableName)
+	tb, err := i.sctx.Catalog.GetTableInfo(i.tableScan.TableName)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	pk := tb.GetPrimaryKey()
 	if pk != nil {
@@ -143,10 +130,10 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilt
 
 	// get all the indexes for this table and associate them
 	// with compatible candidates
-	for _, idxName := range i.catalog.ListIndexes(i.tableScan.TableName) {
-		idxInfo, err := i.catalog.GetIndexInfo(idxName)
+	for _, idxName := range i.sctx.Catalog.ListIndexes(i.tableScan.TableName) {
+		idxInfo, err := i.sctx.Catalog.GetIndexInfo(idxName)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Paths, nodes)
@@ -170,15 +157,16 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilt
 	}
 
 	if selected == nil {
-		return s, nil
+		return nil
 	}
 
 	// remove the filter nodes from the tree
 	for _, f := range selected.nodes {
-		s.Remove(f.node)
+		i.sctx.removeFilterNode(f.node.(*stream.DocsFilterOperator))
 	}
 
 	// we replace the seq scan node by the selected root
+	s := i.sctx.Stream
 	s.Remove(s.First())
 	for i := len(selected.replaceRootBy) - 1; i >= 0; i-- {
 		if s.Op == nil {
@@ -187,13 +175,14 @@ func (i *indexSelector) selectIndex(s *stream.Stream, filters []*stream.DocsFilt
 		}
 		stream.InsertBefore(s.First(), selected.replaceRootBy[i])
 	}
+	i.sctx.Stream = s
 
-	return s, nil
+	return nil
 }
 
 func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterNode {
 	// only operators can associate this node to an index
-	op, ok := f.E.(expr.Operator)
+	op, ok := f.Expr.(expr.Operator)
 	if !ok {
 		return nil
 	}

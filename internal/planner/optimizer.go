@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-var optimizerRules = []func(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error){
+var optimizerRules = []func(sctx *StreamContext) error{
 	SplitANDConditionRule,
 	PrecalculateExprRule,
 	RemoveUnnecessaryProjection,
@@ -23,8 +23,6 @@ var optimizerRules = []func(s *stream.Stream, catalog *database.Catalog) (*strea
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
 func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
-	var err error
-
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
 		// If the first operation is a concat, optimize all streams individually.
 		for i, st := range firstNode.Streams {
@@ -51,17 +49,80 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 		return s, nil
 	}
 
+	return optimize(s, catalog)
+}
+
+type StreamContext struct {
+	Catalog     *database.Catalog
+	Stream      *stream.Stream
+	Filters     []*stream.DocsFilterOperator
+	Projections []*stream.DocsProjectOperator
+}
+
+func NewStreamContext(s *stream.Stream) *StreamContext {
+	sctx := StreamContext{
+		Stream: s,
+	}
+
+	n := s.First()
+
+	prevIsFilter := false
+
+	for n != nil {
+		switch t := n.(type) {
+		case *stream.DocsFilterOperator:
+			if prevIsFilter || len(sctx.Filters) == 0 {
+				sctx.Filters = append(sctx.Filters, t)
+				prevIsFilter = true
+			}
+		case *stream.DocsProjectOperator:
+			sctx.Projections = append(sctx.Projections, t)
+			prevIsFilter = false
+		}
+
+		n = n.GetNext()
+	}
+
+	return &sctx
+}
+
+func (sctx *StreamContext) removeFilterNodeByIndex(index int) {
+	f := sctx.Filters[index]
+	sctx.Stream.Remove(f)
+	sctx.Filters = append(sctx.Filters[:index], sctx.Filters[index+1:]...)
+}
+
+func (sctx *StreamContext) removeFilterNode(f *stream.DocsFilterOperator) {
+	for i, flt := range sctx.Filters {
+		if flt == f {
+			sctx.removeFilterNodeByIndex(i)
+			return
+		}
+	}
+}
+
+func (sctx *StreamContext) removeProjectionNode(index int) {
+	p := sctx.Projections[index]
+
+	sctx.Stream.Remove(p)
+	sctx.Projections = append(sctx.Projections[:index], sctx.Projections[index+1:]...)
+}
+
+func optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
+	sctx := NewStreamContext(s)
+	sctx.Catalog = catalog
+
 	for _, rule := range optimizerRules {
-		s, err = rule(s, catalog)
+		err := rule(sctx)
 		if err != nil {
 			return nil, err
 		}
-		if s.Op == nil {
+		if sctx.Stream == nil || sctx.Stream.Op == nil {
 			break
 		}
 	}
 
-	return s, nil
+	return sctx.Stream, nil
 }
 
 // SplitANDConditionRule splits any filter node whose condition
@@ -75,38 +136,38 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 //     docs.Filter(a > 2)
 //     docs.Filter(b != 3)
 //     docs.Filter(c < 2)
-func SplitANDConditionRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
-	n := s.Op
+func SplitANDConditionRule(sctx *StreamContext) error {
+	for i, f := range sctx.Filters {
+		cond := f.Expr
+		if cond == nil {
+			continue
+		}
+		// The AND operator has one of the lowest precedence,
+		// only OR has a lower precedence,
+		// which means that if AND is used without OR, it will be at
+		// the top of the expression tree.
+		if op, ok := cond.(expr.Operator); ok && op.Token() == scanner.AND {
+			exprs := splitANDExpr(cond)
 
-	for n != nil {
-		if f, ok := n.(*stream.DocsFilterOperator); ok {
-			cond := f.E
-			if cond != nil {
-				// The AND operator has one of the lowest precedence,
-				// only OR has a lower precedence,
-				// which means that if AND is used without OR, it will be at
-				// the top of the expression tree.
-				if op, ok := cond.(expr.Operator); ok && op.Token() == scanner.AND {
-					exprs := splitANDExpr(cond)
+			cur := f.GetPrev()
 
-					cur := n.GetPrev()
-					s.Remove(n)
+			// create new filter nodes and add them to the stream
+			for _, e := range exprs {
+				newF := stream.DocsFilter(e)
+				cur = stream.InsertAfter(cur, newF)
+				sctx.Filters = append(sctx.Filters, newF)
+			}
 
-					for _, e := range exprs {
-						cur = stream.InsertAfter(cur, stream.DocsFilter(e))
-					}
+			// remove the current expression from the stream
+			sctx.removeFilterNodeByIndex(i)
 
-					if s.Op == nil {
-						s.Op = cur
-					}
-				}
+			if sctx.Stream.Op == nil {
+				sctx.Stream.Op = cur
 			}
 		}
-
-		n = n.GetPrev()
 	}
 
-	return s, nil
+	return nil
 }
 
 // splitANDExpr takes an expression and splits it by AND operator.
@@ -129,30 +190,42 @@ func splitANDExpr(cond expr.Expr) (exprs []expr.Expr) {
 // Examples:
 //   3 + 4 --> 7
 //   3 + 1 > 10 - a --> 4 > 10 - a
-func PrecalculateExprRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
-	n := s.Op
-
+func PrecalculateExprRule(sctx *StreamContext) error {
+	n := sctx.Stream.Op
 	var err error
+
 	for n != nil {
 		switch t := n.(type) {
 		case *stream.DocsFilterOperator:
-			t.E, err = precalculateExpr(t.E)
-			if err != nil {
-				return nil, err
-			}
+			t.Expr, err = precalculateExpr(t.Expr)
 		case *stream.DocsProjectOperator:
-			for i, e := range t.Exprs {
-				t.Exprs[i], err = precalculateExpr(e)
+			for i := range t.Exprs {
+				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
 				if err != nil {
-					return nil, err
+					return err
 				}
 			}
+		case *stream.DocsTempTreeSortOperator:
+			t.Expr, err = precalculateExpr(t.Expr)
+		case *stream.PathsSetOperator:
+			t.Expr, err = precalculateExpr(t.Expr)
+		case *stream.DocsEmitOperator:
+			for i := range t.Exprs {
+				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if err != nil {
+			return err
 		}
 
 		n = n.GetPrev()
 	}
 
-	return s, nil
+	return err
 }
 
 // precalculateExpr is a recursive function that tries to precalculate
@@ -270,73 +343,56 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 // condition is a constant expression that evaluates to a truthy value.
 // if it evaluates to a falsy value, it considers that the tree
 // will not stream any document, so it returns an empty tree.
-func RemoveUnnecessaryFilterNodesRule(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
-	n := s.Op
+func RemoveUnnecessaryFilterNodesRule(sctx *StreamContext) error {
+	for i, f := range sctx.Filters {
+		switch t := f.Expr.(type) {
+		case expr.LiteralValue:
+			// Constant expression
+			// ex: WHERE 1
 
-	for n != nil {
-		if f, ok := n.(*stream.DocsFilterOperator); ok {
-			if f.E != nil {
-				switch t := f.E.(type) {
-				case expr.LiteralValue:
-					// Constant expression
-					// ex: WHERE 1
+			// if the expr is falsy, we return an empty tree
+			ok, err := types.IsTruthy(t.Value)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				sctx.Stream = new(stream.Stream)
+				return nil
+			}
 
-					// if the expr is falsy, we return an empty tree
-					ok, err := types.IsTruthy(t.Value)
-					if err != nil {
-						return nil, err
-					}
-					if !ok {
-						return &stream.Stream{}, nil
-					}
-
-					// if the expr is truthy, we remove the node from the stream
-					prev := n.GetPrev()
-					s.Remove(n)
-					n = prev
-					continue
-				case *expr.InOperator:
-					// IN operator with empty array
-					// ex: WHERE a IN []
-					lv, ok := t.RightHand().(expr.LiteralValue)
-					if ok && lv.Value.Type() == types.ArrayValue {
-						l, err := document.ArrayLength(lv.Value.V().(types.Array))
-						if err != nil {
-							return nil, err
-						}
-						// if the array is empty, we return an empty stream
-						if l == 0 {
-							return &stream.Stream{}, nil
-						}
-					}
+			// if the expr is truthy, we remove the node from the stream
+			sctx.removeFilterNodeByIndex(i)
+		case *expr.InOperator:
+			// IN operator with empty array
+			// ex: WHERE a IN []
+			lv, ok := t.RightHand().(expr.LiteralValue)
+			if ok && lv.Value.Type() == types.ArrayValue {
+				l, err := document.ArrayLength(lv.Value.V().(types.Array))
+				if err != nil {
+					return err
+				}
+				// if the array is empty, we return an empty stream
+				if l == 0 {
+					sctx.Stream = new(stream.Stream)
+					return nil
 				}
 			}
 		}
-
-		n = n.GetPrev()
 	}
 
-	return s, nil
+	return nil
 }
 
 // RemoveUnnecessaryProjection removes any project node whose
 // expression is a wildcard only.
-func RemoveUnnecessaryProjection(s *stream.Stream, _ *database.Catalog) (*stream.Stream, error) {
-	n := s.Op
-
-	for n != nil {
-		if p, ok := n.(*stream.DocsProjectOperator); ok {
-			if len(p.Exprs) == 1 {
-				if _, ok := p.Exprs[0].(expr.Wildcard); ok {
-					prev := n.GetPrev()
-					s.Remove(n)
-					n = prev
-				}
+func RemoveUnnecessaryProjection(sctx *StreamContext) error {
+	for i, p := range sctx.Projections {
+		if len(p.Exprs) == 1 {
+			if _, ok := p.Exprs[0].(expr.Wildcard); ok {
+				sctx.removeProjectionNode(i)
 			}
 		}
-
-		n = n.GetPrev()
 	}
 
-	return s, nil
+	return nil
 }
