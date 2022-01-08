@@ -592,3 +592,40 @@ func (m *maskDocument) GetByField(field string) (types.Value, error) {
 func (m *maskDocument) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(m)
 }
+
+// OnlyFields returns a new document that only contains the given fields.
+func OnlyFields(d types.Document, fields ...string) types.Document {
+	return &onlyDocument{d, fields}
+}
+
+type onlyDocument struct {
+	d      types.Document
+	fields []string
+}
+
+func (o *onlyDocument) Iterate(fn func(field string, value types.Value) error) error {
+	for _, f := range o.fields {
+		v, err := o.d.GetByField(f)
+		if err != nil {
+			continue
+		}
+
+		if err := fn(f, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (o *onlyDocument) GetByField(field string) (types.Value, error) {
+	if stringutil.Contains(o.fields, field) {
+		return o.d.GetByField(field)
+	}
+
+	return nil, types.ErrFieldNotFound
+}
+
+func (o *onlyDocument) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(o)
+}
