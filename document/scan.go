@@ -73,6 +73,13 @@ func structScan(d types.Document, ref reflect.Value) error {
 	for i := 0; i < l; i++ {
 		f := sref.Field(i)
 		sf := stp.Field(i)
+		if sf.Anonymous {
+			err := structScan(d, f)
+			if err != nil {
+				return err
+			}
+			continue
+		}
 		var name string
 		if gtag, ok := sf.Tag.Lookup("genji"); ok {
 			if gtag == "-" {

@@ -111,7 +111,15 @@ func TestScan(t *testing.T) {
 			types.NewIntegerValue(3),
 			types.NewIntegerValue(4),
 		))).
-		Add("x", types.NewBlobValue([]byte{1, 2, 3, 4}))
+		Add("x", types.NewBlobValue([]byte{1, 2, 3, 4})).
+		Add("y", types.NewDocumentValue(
+			document.NewFieldBuffer().
+				Add("foo", types.NewTextValue("foo")).
+				Add("bar", types.NewTextValue("bar")).
+				Add("baz", types.NewTextValue("baz")).
+				Add("bat", types.NewTextValue("bat")).
+				Add("-", types.NewTextValue("bat")),
+		))
 
 	type foo struct {
 		Foo string
@@ -141,8 +149,13 @@ func TestScan(t *testing.T) {
 	var v []*foo
 	var w [4]int
 	var x [4]uint8
+	var y struct {
+		foo
+		Pub string `genji:"bar"`
+		Bat string
+	}
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x)
+	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x, &y)
 	assert.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -190,14 +203,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		assert.NoError(t, err)
-		require.Len(t, m, 22)
+		require.Len(t, m, 23)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		assert.NoError(t, err)
-		require.Len(t, m, 22)
+		require.Len(t, m, 23)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {
@@ -251,6 +264,16 @@ func TestScan(t *testing.T) {
 		err := document.StructScan(d, &b)
 		assert.NoError(t, err)
 		require.Equal(t, bar{}, b)
+	})
+
+	t.Run("Incompatible type", func(t *testing.T) {
+		var a struct {
+			A int
+		}
+
+		d := document.NewFieldBuffer().Add("a", types.NewDocumentValue(doc))
+		err := document.StructScan(d, &a)
+		assert.Error(t, err)
 	})
 }
 
