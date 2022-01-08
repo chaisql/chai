@@ -560,3 +560,35 @@ func (p Paths) IsEqual(other Paths) bool {
 
 	return true
 }
+
+// MaskFields returns a new document that masks the given fields.
+func MaskFields(d types.Document, fields ...string) types.Document {
+	return &maskDocument{d, fields}
+}
+
+type maskDocument struct {
+	d    types.Document
+	mask []string
+}
+
+func (m *maskDocument) Iterate(fn func(field string, value types.Value) error) error {
+	return m.d.Iterate(func(field string, value types.Value) error {
+		if !stringutil.Contains(m.mask, field) {
+			return fn(field, value)
+		}
+
+		return nil
+	})
+}
+
+func (m *maskDocument) GetByField(field string) (types.Value, error) {
+	if !stringutil.Contains(m.mask, field) {
+		return m.d.GetByField(field)
+	}
+
+	return nil, types.ErrFieldNotFound
+}
+
+func (m *maskDocument) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(m)
+}

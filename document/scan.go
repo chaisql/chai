@@ -450,3 +450,23 @@ func (it *iteratorArray) GetByIndex(i int) (types.Value, error) {
 func (it *iteratorArray) MarshalJSON() ([]byte, error) {
 	return MarshalJSONArray(it)
 }
+
+// ScanField scans a single field into dest.
+func ScanField(d types.Document, field string, dest interface{}) error {
+	v, err := d.GetByField(field)
+	if err != nil {
+		return err
+	}
+
+	return ScanValue(v, dest)
+}
+
+// ScanPath scans a single path into dest.
+func ScanPath(d types.Document, path Path, dest interface{}) error {
+	v, err := path.GetValueFromDocument(d)
+	if err != nil {
+		return err
+	}
+
+	return ScanValue(v, dest)
+}
