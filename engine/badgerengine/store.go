@@ -3,6 +3,7 @@ package badgerengine
 import (
 	"bytes"
 	"context"
+	"os"
 
 	"github.com/genjidb/genji/internal/errors"
 
@@ -156,12 +157,21 @@ func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 
 type iterator struct {
 	ctx         context.Context
+	transient   bool
 	prefix      []byte
 	storePrefix []byte
 	it          *badger.Iterator
 	reverse     bool
 	item        badgerItem
 	err         error
+}
+
+func (it *iterator) buildKey(pivot []byte) []byte {
+	if it.transient {
+		return pivot
+	}
+
+	return buildKey(it.storePrefix, pivot)
 }
 
 func (it *iterator) Seek(pivot []byte) {
@@ -175,16 +185,20 @@ func (it *iterator) Seek(pivot []byte) {
 	var seek []byte
 
 	if !it.reverse {
-		seek = buildKey(it.storePrefix, pivot)
+		seek = it.buildKey(pivot)
 	} else {
 		// if pivot is nil and reverse is true,
 		// seek the largest key by replacing 0
 		// by anything bigger, here 255
 		if len(pivot) == 0 {
-			seek = buildKey(it.storePrefix, pivot)
-			seek[len(seek)-1] = 255
+			seek = it.buildKey(pivot)
+			if len(seek) == 0 {
+				seek = []byte{255}
+			} else {
+				seek[len(seek)-1] = 255
+			}
 		} else {
-			seek = buildKey(it.storePrefix, append(pivot, 0xFF))
+			seek = it.buildKey(append(pivot, 0xFF))
 		}
 	}
 
@@ -225,4 +239,103 @@ func (i *badgerItem) Key() []byte {
 
 func (i *badgerItem) ValueCopy(buf []byte) ([]byte, error) {
 	return i.item.ValueCopy(buf)
+}
+
+// A TransientStore is an implementation of the engine.Store interface.
+type TransientStore struct {
+	DB *badger.DB
+	tx *badger.Txn
+
+	hasCommitted bool
+}
+
+// Put stores a key value pair. If it already exists, it overrides it.
+func (s *TransientStore) Put(k, v []byte) error {
+	if len(k) == 0 {
+		return errors.New("cannot store empty key")
+	}
+
+	if len(v) == 0 {
+		return errors.New("cannot store empty value")
+	}
+
+	err := s.tx.Set(k, v)
+	if err != badger.ErrTxnTooBig {
+		return err
+	}
+
+	// commit the transaction and start a new one
+	err = s.tx.Commit()
+	if err != nil {
+		return err
+	}
+	s.hasCommitted = true
+
+	s.tx = s.DB.NewTransaction(true)
+	return s.tx.Set(k, v)
+}
+
+// Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
+func (s *TransientStore) Get(k []byte) ([]byte, error) {
+	panic("not implemented")
+}
+
+// Delete a record by key. If not found, returns engine.ErrKeyNotFound.
+func (s *TransientStore) Delete(k []byte) error {
+	panic("not implemented")
+}
+
+// Truncate deletes all the records of the store.
+func (s *TransientStore) Truncate() error {
+	panic("not implemented")
+}
+
+// Iterator uses a Badger iterator with default options.
+// Only one iterator is allowed per read-write transaction.
+func (s *TransientStore) Iterator(opts engine.IteratorOptions) engine.Iterator {
+	opt := badger.DefaultIteratorOptions
+	opt.Reverse = opts.Reverse
+
+	it := s.tx.NewIterator(opt)
+
+	return &iterator{
+		transient: true,
+		ctx:       context.TODO(),
+		it:        it,
+		reverse:   opts.Reverse,
+		item:      badgerItem{},
+	}
+}
+
+// Drop releases any resource (files, memory, etc.) used by a transient store.
+func (s *TransientStore) Drop(ctx context.Context) error {
+	_ = s.DB.Close()
+
+	err := os.RemoveAll(s.DB.Opts().Dir)
+	if err != nil {
+		return err
+	}
+
+	s.tx = nil
+	s.DB = nil
+	return nil
+}
+
+// Reset resets the transient store to be reused.
+func (s *TransientStore) Reset() error {
+	if s.tx != nil {
+		s.tx.Discard()
+		if s.hasCommitted {
+			s.tx.Discard()
+			err := s.DB.DropAll()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	s.hasCommitted = false
+	s.tx = s.DB.NewTransaction(true)
+
+	return nil
 }

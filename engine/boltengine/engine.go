@@ -23,8 +23,6 @@ const (
 // Engine represents a BoltDB engine. Each store is stored in a dedicated bucket.
 type Engine struct {
 	DB *bolt.DB
-
-	transient bool
 }
 
 // NewEngine creates a BoltDB engine. It takes the same argument as Bolt's Open function.
@@ -59,9 +57,9 @@ func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Trans
 	}, nil
 }
 
-func (e *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) {
+func (e *Engine) NewTransientStore(ctx context.Context) (engine.TransientStore, error) {
 	// build engine with fast options
-	ng, err := NewEngine(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d.db", time.Now().UnixNano()+rand.Int63())), 0600, &bolt.Options{
+	db, err := bolt.Open(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d.db", time.Now().UnixNano()+rand.Int63())), 0600, &bolt.Options{
 		NoFreelistSync: true,
 		FreelistType:   bolt.FreelistMapType,
 		NoSync:         true,
@@ -70,20 +68,14 @@ func (e *Engine) NewTransientEngine(ctx context.Context) (engine.Engine, error) 
 		return nil, err
 	}
 
-	ng.transient = true
-	return ng, nil
-}
-
-func (e *Engine) Drop(ctx context.Context) error {
-	if !e.transient {
-		return errors.New("cannot drop persistent engine")
+	ts := TransientStore{
+		DB: db,
 	}
-
-	p := e.DB.Path()
-
-	_ = e.Close()
-
-	return os.Remove(p)
+	err = ts.Reset()
+	if err != nil {
+		return nil, err
+	}
+	return &ts, nil
 }
 
 // Close the engine and underlying Bolt database.

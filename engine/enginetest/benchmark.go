@@ -2,6 +2,7 @@ package enginetest
 
 import (
 	"bytes"
+	"context"
 	"testing"
 
 	"github.com/genjidb/genji/engine"
@@ -9,22 +10,78 @@ import (
 	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
+var benchmarkEngine engine.Engine
+
 // BenchmarkStorePut benchmarks the Put method with 1, 10, 1000 and 10000 successive insertions.
 func BenchmarkStorePut(b *testing.B, builder Builder) {
 	v := bytes.Repeat([]byte("v"), 512)
 
-	for size := 1; size <= 10000; size *= 10 {
+	ng := benchmarkEngine
+	if ng == nil {
+		ng, _ = builder()
+	}
+
+	getStore := func() (engine.Store, func()) {
+		tx, err := ng.Begin(context.Background(), engine.TxOptions{
+			Writable: true,
+		})
+		assert.NoError(b, err)
+		err = tx.CreateStore([]byte("test"))
+		assert.NoError(b, err)
+		s, err := tx.GetStore([]byte("test"))
+		assert.NoError(b, err)
+
+		return s, func() {
+			tx.Rollback()
+		}
+	}
+
+	for size := 10; size <= 10000; size *= 10 {
 		b.Run(stringutil.Sprintf("%.05d", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				st, cleanup := storeBuilder(b, builder)
-				defer cleanup()
+				b.StopTimer()
+				s, cleanup := getStore()
 
-				b.ResetTimer()
+				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := []byte(stringutil.Sprintf("k%d", j))
-					_ = st.Put(k, v)
+					_ = s.Put(k, v)
 				}
 				b.StopTimer()
+				cleanup()
+			}
+		})
+	}
+}
+
+var benchmarkTransientEngine engine.TransientStore
+
+// BenchmarkTransientStorePut benchmarks the Put method of a transient store with 1, 10, 1000 and 10000 successive insertions.
+func BenchmarkTransientStorePut(b *testing.B, builder Builder) {
+	v := bytes.Repeat([]byte("v"), 512)
+
+	ts := benchmarkTransientEngine
+	if ts == nil {
+		e, _ := builder()
+
+		var err error
+		ts, err = e.NewTransientStore(context.Background())
+		assert.NoError(b, err)
+		benchmarkTransientEngine = ts
+	}
+
+	for size := 10; size <= 10000; size *= 10 {
+		b.Run(stringutil.Sprintf("%.05d", size), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				b.StartTimer()
+				for j := 0; j < size; j++ {
+					k := []byte(stringutil.Sprintf("k%d", j))
+					_ = ts.Put(k, v)
+				}
+				b.StopTimer()
+
+				err := ts.Reset()
+				assert.NoError(b, err)
 			}
 		})
 	}

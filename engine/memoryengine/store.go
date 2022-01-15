@@ -196,7 +196,6 @@ func (s *storeTx) Truncate() error {
 func (s *storeTx) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	return &iterator{
 		ctx:     s.tx.ctx,
-		tx:      s.tx,
 		tr:      s.tr,
 		buf:     make([]*item, 0, itBufSize),
 		reverse: opts.Reverse,
@@ -209,7 +208,6 @@ const itBufSize = 64
 
 type iterator struct {
 	ctx     context.Context
-	tx      *transaction
 	reverse bool
 	tr      *btree.BTree
 
@@ -326,5 +324,67 @@ func (it *iterator) Item() engine.Item {
 
 // Close the inner goroutine.
 func (it *iterator) Close() error {
+	return nil
+}
+
+// transientStore implements an engine.TransientStore.
+type transientStore struct {
+	tr *btree.BTree
+}
+
+func (s *transientStore) Put(k, v []byte) error {
+	if len(k) == 0 {
+		return errors.New("empty keys are forbidden")
+	}
+
+	if len(v) == 0 {
+		return errors.New("empty values are forbidden")
+	}
+
+	it := &item{k: k}
+	// if there is an existing value, fetch it
+	// and overwrite it directly using the pointer.
+	if i := s.tr.Get(it); i != nil {
+		cur := i.(*item)
+		cur.v = v
+		return nil
+	}
+
+	it.v = v
+	s.tr.ReplaceOrInsert(it)
+
+	return nil
+}
+
+func (s *transientStore) Get(k []byte) ([]byte, error) {
+	panic("not implemented")
+}
+
+func (s *transientStore) Delete(k []byte) error {
+	panic("not implemented")
+}
+
+func (s *transientStore) Truncate() error {
+	panic("not implemented")
+}
+
+// Iterator creates an iterator with the given options.
+func (s *transientStore) Iterator(opts engine.IteratorOptions) engine.Iterator {
+	return &iterator{
+		ctx:     context.TODO(),
+		tr:      s.tr,
+		buf:     make([]*item, 0, itBufSize),
+		reverse: opts.Reverse,
+	}
+}
+
+func (s *transientStore) Drop(ctx context.Context) error {
+	s.tr = nil
+
+	return nil
+}
+
+func (s *transientStore) Reset() error {
+	s.tr = btree.New(btreeDegree)
 	return nil
 }

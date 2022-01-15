@@ -3,11 +3,14 @@ package boltengine
 import (
 	"bytes"
 	"context"
+	"os"
 
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
 	bolt "go.etcd.io/bbolt"
 )
+
+const transientBucketName = "__transient"
 
 // A Store is an implementation of the engine.Store interface using a bucket.
 type Store struct {
@@ -202,4 +205,83 @@ func (i *boltItem) Key() []byte {
 
 func (i *boltItem) ValueCopy(buf []byte) ([]byte, error) {
 	return append(buf[:0], i.v...), nil
+}
+
+// A TransientStore is an implementation of the engine.TransientStore interface using a bucket.
+type TransientStore struct {
+	DB     *bolt.DB
+	bucket *bolt.Bucket
+	tx     *bolt.Tx
+}
+
+// Put stores a key value pair. If it already exists, it overrides it.
+func (s *TransientStore) Put(k, v []byte) error {
+	if len(k) == 0 || len(v) == 0 {
+		return errors.New("empty key or value")
+	}
+
+	return s.bucket.Put(k, v)
+}
+
+// Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
+func (s *TransientStore) Get(k []byte) ([]byte, error) {
+	panic("not implemented")
+}
+
+// Delete a record by key. If not found, returns table.ErrDocumentNotFound.
+// It hides the key without deleting the actual node from the tree, to tree rebalancing during iterations.
+// It then adds it to a sub bucket containing the list of keys to delete when the transaction
+// is committed.
+func (s *TransientStore) Delete(k []byte) error {
+	panic("not implemented")
+}
+
+// Truncate deletes all the records of the store.
+func (s *TransientStore) Truncate() error {
+	panic("not implemented")
+}
+
+// Iterator uses the Bolt bucket cursor.
+func (s *TransientStore) Iterator(opts engine.IteratorOptions) engine.Iterator {
+	return &iterator{
+		c:       s.bucket.Cursor(),
+		reverse: opts.Reverse,
+		ctx:     context.TODO(),
+	}
+}
+
+func (s *TransientStore) Drop(ctx context.Context) error {
+	if s.tx != nil {
+		_ = s.tx.Rollback()
+	}
+
+	p := s.DB.Path()
+
+	_ = s.DB.Close()
+
+	return os.Remove(p)
+}
+
+func (s *TransientStore) Reset() error {
+	var err error
+
+	if s.tx != nil {
+		err = s.tx.Rollback()
+		if err != nil {
+			return err
+		}
+	}
+
+	s.tx, err = s.DB.Begin(true)
+	if err != nil {
+		return err
+	}
+
+	s.bucket, err = s.tx.CreateBucketIfNotExists([]byte(transientBucketName))
+	if err != nil {
+		s.tx.Rollback()
+		return err
+	}
+
+	return nil
 }

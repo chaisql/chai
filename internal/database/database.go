@@ -28,7 +28,7 @@ type Database struct {
 	txmu *sync.RWMutex
 
 	// Pool of reusable transient engines to use for temporary indices.
-	TransientDatabasePool *TransientDatabasePool
+	TransientStorePool *TransientStorePool
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -47,7 +47,7 @@ func New(ctx context.Context, ng engine.Engine) (*Database, error) {
 		ng:      ng,
 		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
-		TransientDatabasePool: &TransientDatabasePool{
+		TransientStorePool: &TransientStorePool{
 			ng: ng,
 		},
 	}
@@ -71,15 +71,15 @@ func New(ctx context.Context, ng engine.Engine) (*Database, error) {
 	return &db, nil
 }
 
-// NewTransientDB creates a temporary database to be used for creating temporary indices.
-func (db *Database) NewTransientDB(ctx context.Context) (*Database, func() error, error) {
-	tdb, err := db.TransientDatabasePool.Get(context.Background())
+// NewTransientStore creates a temporary store to be used for creating temporary indices.
+func (db *Database) NewTransientStore(ctx context.Context) (engine.TransientStore, func() error, error) {
+	tdb, err := db.TransientStorePool.Get(context.Background())
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return tdb, func() error {
-		return db.TransientDatabasePool.Release(context.Background(), tdb)
+		return db.TransientStorePool.Release(context.Background(), tdb)
 	}, nil
 }
 

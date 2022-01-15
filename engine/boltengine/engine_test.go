@@ -47,17 +47,21 @@ func tempDir(t testing.TB) (string, func()) {
 func TestTransient(t *testing.T) {
 	var ng boltengine.Engine
 
-	tng, err := ng.NewTransientEngine(context.Background())
+	ts, err := ng.NewTransientStore(context.Background())
 	assert.NoError(t, err)
 
-	path := tng.(*boltengine.Engine).DB.Path()
+	path := ts.(*boltengine.TransientStore).DB.Path()
 
-	tx, err := tng.Begin(context.Background(), engine.TxOptions{Writable: true})
-	assert.NoError(t, err)
-	err = tx.Rollback()
+	err = ts.Put([]byte("foo"), []byte("bar"))
 	assert.NoError(t, err)
 
-	err = tng.Drop(context.Background())
+	it := ts.Iterator(engine.IteratorOptions{})
+	defer it.Close()
+
+	it.Seek([]byte("foo"))
+	require.True(t, it.Valid())
+
+	err = ts.Drop(context.Background())
 	assert.NoError(t, err)
 
 	_, err = os.Stat(path)

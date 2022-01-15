@@ -35,20 +35,17 @@ type Engine interface {
 	// or true, respectively.
 	// The behaviour of opening a transaction when another one is already opened depends on the implementation.
 	Begin(ctx context.Context, opts TxOptions) (Transaction, error)
-	// A transient engine is a database
-	// used to create temporary indices.
+	// A transient store is a store used to create temporary indices.
 	// It should ideally be optimized for writes,
 	// and not reside solely in memory as it will be
 	// used to index entire tables.
-	// This database is not expected to be crash safe
-	// or support any recovery mechanism, as the Commit
-	// method will never be used.
-	// However, it might be reused across multiple transactions.
-	NewTransientEngine(ctx context.Context) (Engine, error)
-	// Drop releases any resource (files, memory, etc.) used by a transient database.
-	// It must return an error if the engine has not been created
-	// with NewTransientEngine.
-	Drop(ctx context.Context) error
+	// This store is not expected to be crash safe
+	// or support any recovery mechanism.
+	// However, it might be reused multiple times.
+	// The implementation must ensure that the store will not impact
+	// the behaviour or performance of non-transient stores. This can
+	// be done by creating a separate database for each transient store for example.
+	NewTransientStore(ctx context.Context) (TransientStore, error)
 	// Close the engine after ensuring all the transactions have completed.
 	Close() error
 }
@@ -93,6 +90,18 @@ type Store interface {
 	// Iterator creates an iterator with the given options.
 	// The initial position depends on the implementation.
 	Iterator(opts IteratorOptions) Iterator
+}
+
+// A TransientStore is a store used to create temporary indices.
+// It can be reused multiple times.
+type TransientStore interface {
+	Store
+
+	// Drop releases any resource (files, memory, etc.) used by a transient store.
+	Drop(ctx context.Context) error
+
+	// Reset resets the transient store to be reused.
+	Reset() error
 }
 
 // IteratorOptions is used to configure an iterator upon creation.

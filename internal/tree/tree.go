@@ -19,12 +19,19 @@ import (
 // of the types package operators.
 // A Tree doesn't support duplicate keys.
 type Tree struct {
-	Store engine.Store
+	Store          engine.Store
+	TransientStore engine.TransientStore
 }
 
 func New(store engine.Store) *Tree {
 	return &Tree{
 		Store: store,
+	}
+}
+
+func NewTransient(store engine.TransientStore) *Tree {
+	return &Tree{
+		TransientStore: store,
 	}
 }
 
@@ -47,12 +54,20 @@ func (t *Tree) Put(key Key, value types.Value) error {
 
 	enc = buf.Bytes()
 
+	if t.TransientStore != nil {
+		return t.TransientStore.Put(key, enc)
+	}
+
 	return t.Store.Put(key, enc)
 }
 
 // Get a key from the tree. If the key doesn't exist,
 // it returns engine.ErrKeyNotFound.
 func (t *Tree) Get(key Key) (value types.Value, err error) {
+	if t.TransientStore != nil {
+		panic("Get not implemented on transient tree")
+	}
+
 	empty := true
 
 	err = t.Iterate(key, false, func(k Key, v types.Value) error {
@@ -78,11 +93,19 @@ func (t *Tree) Get(key Key) (value types.Value, err error) {
 // Delete a key from the tree. If the key doesn't exist,
 // it returns engine.ErrKeyNotFound.
 func (t *Tree) Delete(key Key) error {
+	if t.TransientStore != nil {
+		panic("Delete not implemented on transient tree")
+	}
+
 	return t.Store.Delete(key)
 }
 
 // Truncate the tree.
 func (t *Tree) Truncate() error {
+	if t.TransientStore != nil {
+		panic("Truncate not implemented on transient tree")
+	}
+
 	return t.Store.Truncate()
 }
 
@@ -105,7 +128,13 @@ func (t *Tree) Iterate(pivot Key, reverse bool, fn func(Key, types.Value) error)
 }
 
 func (t *Tree) iterateRaw(seek []byte, reverse bool, fn func(Key, types.Value) error) error {
-	it := t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
+	var it engine.Iterator
+
+	if t.TransientStore != nil {
+		it = t.TransientStore.Iterator(engine.IteratorOptions{Reverse: reverse})
+	} else {
+		it = t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
+	}
 	defer it.Close()
 
 	var value Value
