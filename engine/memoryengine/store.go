@@ -91,7 +91,7 @@ func (s *storeTx) Put(k, v []byte) error {
 	return nil
 }
 
-func (s *storeTx) Get(k []byte) ([]byte, error) {
+func (s *storeTx) Get(k []byte) (engine.Item, error) {
 	select {
 	case <-s.tx.ctx.Done():
 		return nil, s.tx.ctx.Err()
@@ -111,7 +111,7 @@ func (s *storeTx) Get(k []byte) ([]byte, error) {
 		return nil, errors.Wrap(engine.ErrKeyNotFound)
 	}
 
-	return it.(*item).v, nil
+	return it.(*item), nil
 }
 
 // Delete marks k for deletion. The item will be actually
@@ -356,7 +356,7 @@ func (s *transientStore) Put(k, v []byte) error {
 	return nil
 }
 
-func (s *transientStore) Get(k []byte) ([]byte, error) {
+func (s *transientStore) Get(k []byte) (engine.Item, error) {
 	panic("not implemented")
 }
 

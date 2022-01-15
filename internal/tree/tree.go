@@ -63,31 +63,20 @@ func (t *Tree) Put(key Key, value types.Value) error {
 
 // Get a key from the tree. If the key doesn't exist,
 // it returns engine.ErrKeyNotFound.
-func (t *Tree) Get(key Key) (value types.Value, err error) {
+func (t *Tree) Get(key Key) (types.Value, error) {
 	if t.TransientStore != nil {
 		panic("Get not implemented on transient tree")
 	}
 
-	empty := true
-
-	err = t.Iterate(key, false, func(k Key, v types.Value) error {
-		empty = false
-		if !bytes.Equal(k, key) {
-			return engine.ErrKeyNotFound
-		}
-
-		value = v
-		return errStop
-	})
-	if err == errStop {
-		err = nil
+	var v Value
+	item, err := t.Store.Get(key)
+	if err != nil {
+		return nil, err
 	}
 
-	if empty {
-		return nil, engine.ErrKeyNotFound
-	}
+	v.item = item
 
-	return
+	return &v, nil
 }
 
 // Delete a key from the tree. If the key doesn't exist,

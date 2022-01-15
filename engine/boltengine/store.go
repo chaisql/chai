@@ -41,7 +41,7 @@ func (s *Store) Put(k, v []byte) error {
 }
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
-func (s *Store) Get(k []byte) ([]byte, error) {
+func (s *Store) Get(k []byte) (engine.Item, error) {
 	select {
 	case <-s.ctx.Done():
 		return nil, errors.Wrap(s.ctx.Err())
@@ -53,7 +53,7 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 		return nil, errors.Wrap(engine.ErrKeyNotFound)
 	}
 
-	return v, nil
+	return &boltItem{k: k, v: v}, nil
 }
 
 // Delete a record by key. If not found, returns table.ErrDocumentNotFound.
@@ -224,7 +224,7 @@ func (s *TransientStore) Put(k, v []byte) error {
 }
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
-func (s *TransientStore) Get(k []byte) ([]byte, error) {
+func (s *TransientStore) Get(k []byte) (engine.Item, error) {
 	panic("not implemented")
 }
 

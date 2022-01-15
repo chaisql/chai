@@ -63,6 +63,14 @@ func TestEngine(t *testing.T, builder Builder) {
 	})
 }
 
+func getValue(t *testing.T, st engine.Store, key []byte) []byte {
+	v, err := st.Get([]byte(key))
+	assert.NoError(t, err)
+	buf, err := v.ValueCopy(nil)
+	assert.NoError(t, err)
+	return buf
+}
+
 // TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback
 // behaviour of transactions created from the given engine.
 func TestTransactionCommitRollback(t *testing.T, builder Builder) {
@@ -507,8 +515,7 @@ func TestTransactionGetStore(t *testing.T, builder Builder) {
 		assert.NoError(t, err)
 
 		// use sta to fetch data and verify if it's present
-		v, err := sta.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, sta, []byte("foo"))
 		require.Equal(t, v, []byte("FOO"))
 
 		// use stb to fetch data and verify it's not present
@@ -893,8 +900,7 @@ func TestStorePut(t *testing.T, builder Builder) {
 		err := st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("FOO"), v)
 	})
 
@@ -908,8 +914,7 @@ func TestStorePut(t *testing.T, builder Builder) {
 		err = st.Put([]byte("foo"), []byte("BAR"))
 		assert.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("BAR"), v)
 	})
 
@@ -968,12 +973,10 @@ func TestStoreGet(t *testing.T, builder Builder) {
 		err = st.Put([]byte("bar"), []byte("BAR"))
 		assert.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("FOO"), v)
 
-		v, err = st.Get([]byte("bar"))
-		assert.NoError(t, err)
+		v = getValue(t, st, []byte("bar"))
 		require.Equal(t, []byte("BAR"), v)
 	})
 
@@ -1012,8 +1015,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		err = st.Put([]byte("bar"), []byte("BAR"))
 		assert.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
@@ -1025,8 +1027,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 
 		// make sure it didn't also delete the other one
-		v, err = st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v = getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
@@ -1064,8 +1065,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		err = st.Put([]byte("foo"), []byte("bar"))
 		assert.NoError(t, err)
 
-		v, err := st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v := getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("bar"), v)
 
 		// commit and reopen a transaction
@@ -1079,8 +1079,7 @@ func TestStoreDelete(t *testing.T, builder Builder) {
 		st, err = tx.GetStore([]byte("test"))
 		assert.NoError(t, err)
 
-		v, err = st.Get([]byte("foo"))
-		assert.NoError(t, err)
+		v = getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("bar"), v)
 	})
 
