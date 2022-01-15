@@ -186,22 +186,18 @@ func (it *iterator) Seek(pivot []byte) {
 
 	var seek []byte
 
-	if !it.reverse {
+	// if pivot is nil and reverse is true,
+	// seek the largest key by replacing 0
+	// by anything bigger, here 255
+	if len(pivot) == 0 && it.reverse {
 		seek = it.buildKey(pivot)
-	} else {
-		// if pivot is nil and reverse is true,
-		// seek the largest key by replacing 0
-		// by anything bigger, here 255
-		if len(pivot) == 0 {
-			seek = it.buildKey(pivot)
-			if len(seek) == 0 {
-				seek = []byte{255}
-			} else {
-				seek[len(seek)-1] = 255
-			}
+		if len(seek) == 0 {
+			seek = []byte{255}
 		} else {
-			seek = it.buildKey(append(pivot, 0xFF))
+			seek[len(seek)-1] = 255
 		}
+	} else {
+		seek = it.buildKey(pivot)
 	}
 
 	it.it.Seek(seek)

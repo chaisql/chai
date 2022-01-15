@@ -32,11 +32,10 @@ $ genji bench -n 200 -s 5 "SELECT 1"
 ...
 
 
-By default, queries are run in-memory. To choose a different engine, use the -e/--engine and -p/--path options.
+By default, queries are run in-memory. To write them on disk, use the -p/--path options.
 The database will be created if it doesn't exist.
 
-$ genji bench -e bolt -p my.db "SELECT 1"
-$ genji bench -e badger -p mydb/ "SELECT 1"
+$ genji bench -p mydb/ "SELECT 1"
 
 To prepare the database before running a query, use the -i/--init option
 
@@ -46,15 +45,9 @@ By default, each query is run in a separate transaction. To run everything, incl
 in the same transaction, use -t`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "engine",
-				Aliases: []string{"e"},
-				Usage:   "name of the engine to use, options are 'bolt', 'badger' or 'memory'. Default to 'memory'",
-				Value:   "memory",
-			},
-			&cli.StringFlag{
 				Name:    "path",
 				Aliases: []string{"p"},
-				Usage:   "Path of the database to open or create. Only valid if for bolt or badger engines",
+				Usage:   "Path of the database to open or create. If not specified, the database will be in-memory",
 			},
 			&cli.StringFlag{
 				Name:    "init",
@@ -101,7 +94,7 @@ in the same transaction, use -t`,
 			return errors.New(cmd.UsageText)
 		}
 
-		db, err := dbutil.OpenDB(c.Context, path, engine, dbutil.DBOptions{})
+		db, err := dbutil.OpenDB(c.Context, path, dbutil.DBOptions{})
 		if err != nil {
 			return err
 		}

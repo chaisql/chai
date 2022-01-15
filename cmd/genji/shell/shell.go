@@ -59,34 +59,11 @@ type Shell struct {
 
 // Options of the shell.
 type Options struct {
-	// Name of the engine to use when opening the database.
-	// Must be either "memory", "bolt" or "badger"
-	// If empty, "memory" will be used, unless DBPath is non empty.
-	// In that case "bolt" will be used.
-	Engine string
-	// Path of the database file or directory that will be created.
+	// Path of the database directory that will be created.
+	// If empty, the database will be in-memory.
 	DBPath string
 
-	// Badger only:
 	EncryptionKey string
-}
-
-func (o *Options) validate() error {
-	if o.Engine == "" {
-		if o.DBPath == "" {
-			o.Engine = "memory"
-		} else {
-			o.Engine = "bolt"
-		}
-	}
-
-	switch o.Engine {
-	case "bolt", "badger", "memory":
-	default:
-		return fmt.Errorf("unsupported engine %q", o.Engine)
-	}
-
-	return nil
 }
 
 // Run a shell.
@@ -95,16 +72,11 @@ func Run(ctx context.Context, opts *Options) error {
 		opts = new(Options)
 	}
 
-	err := opts.validate()
-	if err != nil {
-		return err
-	}
-
 	var sh Shell
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, sh.opts.Engine, dbutil.DBOptions{EncryptionKey: opts.EncryptionKey})
+	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, dbutil.DBOptions{EncryptionKey: opts.EncryptionKey})
 	if err != nil {
 		return err
 	}
@@ -116,15 +88,11 @@ func Run(ctx context.Context, opts *Options) error {
 		}
 	}()
 
-	switch opts.Engine {
-	case "memory":
+	if opts.DBPath == "" {
 		fmt.Println("Opened an in-memory database.")
-	case "bolt":
-		fmt.Printf("On-disk database using BoltDB engine at path %s.\n", opts.DBPath)
-	case "badger":
+	} else {
 		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
 	}
-	fmt.Println("Enter \".help\" for usage hints.")
 
 	defer func() {
 		dumpErr := sh.dumpHistory()
@@ -472,18 +440,14 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	case ".dump":
 		return dbutil.Dump(ctx, sh.db, os.Stdout, cmd[1:]...)
 	case ".save":
-		var engine, path string
-		if len(cmd) > 2 {
-			engine = cmd[1]
-			path = cmd[2]
-		} else if len(cmd) == 2 {
-			engine = "bolt"
+		var path string
+		if len(cmd) == 2 {
 			path = cmd[1]
 		} else {
 			return fmt.Errorf("can't save without output path")
 		}
 
-		return runSaveCmd(ctx, sh.db, engine, path)
+		return runSaveCmd(ctx, sh.db, path)
 	case ".schema":
 		return dbutil.DumpSchema(ctx, sh.db, os.Stdout, cmd[1:]...)
 	case ".import":

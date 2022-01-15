@@ -1,3 +1,4 @@
+//go:build !wasm
 // +build !wasm
 
 package genji
@@ -5,24 +6,24 @@ package genji
 import (
 	"context"
 
-	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/boltengine"
-	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/dgraph-io/badger/v3"
+	"github.com/genjidb/genji/engine/badgerengine"
 )
 
 // Open creates a Genji database at the given path.
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
 func Open(path string) (*DB, error) {
-	var ng engine.Engine
-	var err error
+	var inMemory bool
 
-	switch path {
-	case ":memory:":
-		ng = memoryengine.NewEngine()
-	default:
-		ng, err = boltengine.NewEngine(path, 0660, nil)
+	if path == ":memory:" {
+		inMemory = true
+		path = ""
 	}
+
+	opts := badger.DefaultOptions(path).WithLogger(nil).WithInMemory(inMemory)
+
+	ng, err := badgerengine.NewEngine(opts)
 	if err != nil {
 		return nil, err
 	}

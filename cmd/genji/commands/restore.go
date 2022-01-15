@@ -16,14 +16,8 @@ func NewRestoreCommand() (cmd *cli.Command) {
 		UsageText: `genji restore dumpFile dbPath`,
 		Description: `The restore command can restore a database from a text file.
 
-	$ genji restore dump.sql my.db`,
+	$ genji restore dump.sql mydb`,
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "engine",
-				Aliases: []string{"e"},
-				Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
-				Value:   "bolt",
-			},
 			&cli.StringFlag{
 				Name:    "encryption-key",
 				Aliases: []string{"k"},
@@ -31,11 +25,7 @@ func NewRestoreCommand() (cmd *cli.Command) {
 			},
 		},
 		Action: func(c *cli.Context) error {
-			engine := c.String("engine")
 			k := c.String("encryption-key")
-			if k != "" && engine != "badger" {
-				return cli.Exit("encryption key is only supported by the badger engine", 2)
-			}
 
 			if c.Args().Len() != 2 {
 				return errors.New(cmd.UsageText)
@@ -56,7 +46,7 @@ func NewRestoreCommand() (cmd *cli.Command) {
 			}
 			defer file.Close()
 
-			db, err := dbutil.OpenDB(c.Context, dbPath, engine, dbutil.DBOptions{EncryptionKey: k})
+			db, err := dbutil.OpenDB(c.Context, dbPath, dbutil.DBOptions{EncryptionKey: k})
 			if err != nil {
 				return err
 			}

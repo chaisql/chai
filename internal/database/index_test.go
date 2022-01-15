@@ -8,7 +8,6 @@ import (
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
@@ -24,7 +23,7 @@ func values(vs ...types.Value) []types.Value {
 }
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
-	ng := memoryengine.NewEngine()
+	ng := testutil.NewEngine(t)
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{
 		Writable: true,
 	})

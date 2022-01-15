@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/engine/memoryengine"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
 func newTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
-	db, err := database.New(context.Background(), memoryengine.NewEngine())
+	db, err := database.New(context.Background(), testutil.NewEngine(t))
 	assert.NoError(t, err)
 
 	return db, func() {

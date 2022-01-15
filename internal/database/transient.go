@@ -16,7 +16,7 @@ type TransientStorePool struct {
 	ng engine.Engine
 
 	mu   sync.Mutex
-	pool []engine.TransientStore
+	Pool []engine.TransientStore
 }
 
 // Get returns a free engine from the pool, if any. Otherwise it creates a new engine
@@ -25,14 +25,14 @@ func (t *TransientStorePool) Get(ctx context.Context) (engine.TransientStore, er
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if len(t.pool) > 0 {
-		ng := t.pool[len(t.pool)-1]
+	if len(t.Pool) > 0 {
+		ng := t.Pool[len(t.Pool)-1]
 		err := ng.Reset()
 		if err != nil {
 			return nil, err
 		}
 
-		t.pool = t.pool[:len(t.pool)-1]
+		t.Pool = t.Pool[:len(t.Pool)-1]
 		return ng, nil
 	}
 
@@ -44,11 +44,11 @@ func (t *TransientStorePool) Release(ctx context.Context, ts engine.TransientSto
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	if len(t.pool) >= maxTransientPoolSize {
+	if len(t.Pool) >= maxTransientPoolSize {
 		return ts.Drop(ctx)
 	}
 
-	t.pool = append(t.pool, ts)
+	t.Pool = append(t.Pool, ts)
 	return nil
 }
 

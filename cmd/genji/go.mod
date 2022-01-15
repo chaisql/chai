@@ -7,10 +7,8 @@ require (
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/dgraph-io/badger/v3 v3.2103.2
 	github.com/genjidb/genji v0.15.0
-	github.com/genjidb/genji/engine/badgerengine v0.15.0
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
-	go.etcd.io/bbolt v1.3.6
 	go.uber.org/multierr v1.7.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 )
@@ -28,7 +26,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/btree v1.0.1 // indirect
 	github.com/google/flatbuffers v2.0.5+incompatible // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
@@ -50,5 +47,3 @@ require (
 )
 
 replace github.com/genjidb/genji v0.15.0 => ../..
-
-replace github.com/genjidb/genji/engine/badgerengine v0.15.0 => ../../engine/badgerengine

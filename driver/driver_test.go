@@ -279,6 +279,6 @@ func TestDriverWithTimeValues(t *testing.T) {
 
 	var tt time.Time
 	err = tx.QueryRow(`SELECT a FROM test`).Scan(Scanner(&tt))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, now, tt)
 }

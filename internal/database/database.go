@@ -29,6 +29,8 @@ type Database struct {
 
 	// Pool of reusable transient engines to use for temporary indices.
 	TransientStorePool *TransientStorePool
+
+	closeOnce sync.Once
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -85,12 +87,18 @@ func (db *Database) NewTransientStore(ctx context.Context) (engine.TransientStor
 
 // Close the database and the underlying engine.
 func (db *Database) Close() error {
-	err := db.closeDatabase()
-	if err != nil {
-		return err
-	}
+	var err error
 
-	return db.ng.Close()
+	db.closeOnce.Do(func() {
+		err = db.closeDatabase()
+		if err != nil {
+			return
+		}
+
+		err = db.ng.Close()
+	})
+
+	return err
 }
 
 func (db *Database) closeDatabase() error {

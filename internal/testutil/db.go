@@ -4,8 +4,9 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/memoryengine"
+	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
@@ -17,10 +18,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func NewEngine(t testing.TB) engine.Engine {
+	t.Helper()
+
+	opts := badger.DefaultOptions("").WithLogger(nil).WithInMemory(true)
+
+	ng, err := badgerengine.NewEngine(opts)
+	assert.NoError(t, err)
+
+	t.Cleanup(func() {
+		ng.Close()
+	})
+	return ng
+}
+
 func NewTestStore(t testing.TB, name string) engine.Store {
 	t.Helper()
 
-	ng := memoryengine.NewEngine()
+	ng := NewEngine(t)
 
 	tx, err := ng.Begin(context.Background(), engine.TxOptions{Writable: true})
 	require.NoError(t, err)
@@ -42,7 +57,7 @@ func NewTestStore(t testing.TB, name string) engine.Store {
 func NewTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
-	return NewTestDBWithEngine(t, memoryengine.NewEngine())
+	return NewTestDBWithEngine(t, NewEngine(t))
 }
 
 func NewTestDBWithEngine(t testing.TB, ng engine.Engine) (*database.Database, func()) {

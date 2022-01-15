@@ -103,7 +103,6 @@ func TestSaveCommand(t *testing.T) {
 		engine string
 		path   string
 	}{
-		{"bolt", filepath.Join(dir, "/test.db")},
 		{"badger", filepath.Join(dir, "/badger")},
 	}
 
@@ -130,7 +129,7 @@ func TestSaveCommand(t *testing.T) {
 			assert.NoError(t, err)
 
 			// save the dummy database
-			err = runSaveCmd(context.Background(), db, tt.engine, tt.path)
+			err = runSaveCmd(context.Background(), db, tt.path)
 			assert.NoError(t, err)
 
 			if tt.engine == "badger" {

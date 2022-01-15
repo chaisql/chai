@@ -15,7 +15,7 @@
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/genjidb/genji)
 [![Slack channel](https://img.shields.io/badge/slack-join%20chat-green.svg)](https://gophers.slack.com/messages/CKPCYQFE0)
 
-Genji is a schemaless database that allows running SQL queries on documents.
+Genji is a database that allows running SQL queries on documents.
 
 Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc](https://pkg.go.dev/github.com/genjidb/genji) and the [usage example](#usage) in the README to get started quickly.
 
@@ -23,12 +23,12 @@ Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc]
 
 ## Features
 
-- **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
-- **Multiple Storage Engines**: It is possible to store data on disk or in ram, but also to choose between B-Trees and LSM trees. Genji relies on [BoltDB](https://github.com/etcd-io/bbolt) and [Badger](https://github.com/dgraph-io/badger) to manage data.
-- **Transaction support**: Read-only and read/write transactions are supported by default.
-- **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON.
-- **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
-- **Compatible** with the `database/sql` package
+-   **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
+-   **On-disk or in memory**: It is possible to store data on disk or in ram. Genji relies on [Badger](https://github.com/dgraph-io/badger) to manage data.
+-   **Transaction support**: Read-only and read/write transactions are supported by default.
+-   **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON.
+-   **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
+-   **Compatible** with the `database/sql` package
 
 ## Installation
 
@@ -57,8 +57,8 @@ import (
 )
 
 func main() {
-    // Create a database instance, here we'll store everything on-disk using the BoltDB engine
-    db, err := genji.Open("my.db")
+    // Create a database instance, here we'll store everything on-disk
+    db, err := genji.Open("mydb")
     if err != nil {
         log.Fatal(err)
     }
@@ -170,6 +170,14 @@ func main() {
 
 ```
 
+### In-memory database
+
+To store data in memory, use `:memory:` instead of a database path:
+
+```go
+db, err := genji.Open(":memory:")
+```
+
 ### Using database/sql
 
 ```go
@@ -177,7 +185,7 @@ func main() {
 import _ "github.com/genjidb/genji/driver"
 
 // Create a sql/database DB instance
-db, err := sql.Open("genji", "my.db")
+db, err := sql.Open("genji", "mydb")
 if err != nil {
     log.Fatal(err)
 }
@@ -187,77 +195,6 @@ defer db.Close()
 res, err := db.ExecContext(...)
 res, err := db.Query(...)
 res, err := db.QueryRow(...)
-```
-
-## Engines
-
-Genji currently supports storing data in [BoltDB](https://github.com/etcd-io/bbolt), [Badger](https://github.com/dgraph-io/badger) and in-memory.
-
-### Using the BoltDB engine
-
-```go
-import (
-    "log"
-
-    "github.com/genjidb/genji"
-)
-
-func main() {
-    db, err := genji.Open("my.db")
-    defer db.Close()
-}
-```
-
-### Using the memory engine
-
-```go
-import (
-    "log"
-
-    "github.com/genjidb/genji"
-)
-
-func main() {
-    db, err := genji.Open(":memory:")
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
-}
-```
-
-### Using the Badger engine
-
-First install the module
-
-```bash
-go get github.com/genjidb/genji/engine/badgerengine
-```
-
-```go
-import (
-    "context"
-    "log"
-
-    "github.com/genjidb/genji"
-    "github.com/genjidb/genji/engine/badgerengine"
-    "github.com/dgraph-io/badger/v2"
-)
-
-func main() {
-    // Create a badger engine
-    ng, err := badgerengine.NewEngine(badger.DefaultOptions("mydb"))
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Pass it to genji
-    db, err := genji.New(context.Background(), ng)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer db.Close()
-}
 ```
 
 ## Genji shell
@@ -276,18 +213,13 @@ Example:
 # Opening an in-memory database:
 genji
 
-# Opening a BoltDB database:
-genji my.db
-
-# Opening a Badger database:
-genji --badger pathToData
+# Opening a database on disk:
+genji dirName
 ```
 
 ## Contributing
 
 Contributions are welcome!
-
-See [ARCHITECTURE.md](./ARCHITECTURE.md) and [CONTRIBUTING.md](.github/CONTRIBUTING.md).
 
 Thank you, [contributors](https://github.com/genjidb/genji/graphs/contributors)!
 

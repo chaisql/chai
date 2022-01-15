@@ -328,6 +328,7 @@ func (rs *documentStream) Columns() []string {
 // Close closes the rows iterator.
 func (rs *documentStream) Close() error {
 	rs.cancelFn()
+	rs.wg.Wait()
 	return rs.res.Close()
 }
 

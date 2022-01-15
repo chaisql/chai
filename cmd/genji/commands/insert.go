@@ -23,33 +23,27 @@ The insert command inserts documents into an existing table.
 
 Insert can take JSON documents as separate arguments:
 
-$ genji insert --db my.db -t foo '{"a": 1}' '{"a": 2}'
+$ genji insert --db mydb -t foo '{"a": 1}' '{"a": 2}'
 
 It is also possible to pass an array of objects:
 
-$ genji insert --db my.db -t foo '[{"a": 1}, {"a": 2}]'
+$ genji insert --db mydb -t foo '[{"a": 1}, {"a": 2}]'
 
 Also you can use -a flag to create database automatically.
-This example will create BoltDB-based database with name 'data_${current unix timestamp}.db'
+This example will create a database with name 'data_${current unix timestamp}'
 It can be combined with --db to select an existing database but automatically create the table.
 
 $ genji insert -a -e bolt '[{"a": 1}, {"a": 2}]'
 
 Insert can also insert a stream of objects or an array of objects from standard input:
 
-$ echo '{"a": 1} {"a": 2}' | genji insert --db my.db -t foo
-$ echo '[{"a": 1},{"a": 2}]' | genji insert --db my.db -t foo
-$ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.db -t foo`,
+$ echo '{"a": 1} {"a": 2}' | genji insert --db mydb -t foo
+$ echo '[{"a": 1},{"a": 2}]' | genji insert --db mydb -t foo
+$ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db mydb -t foo`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:    "engine",
-				Aliases: []string{"e"},
-				Usage:   "name of the engine to use, options are 'bolt' or 'badger'",
-				Value:   "bolt",
-			},
-			&cli.StringFlag{
 				Name:     "db",
-				Usage:    "path of the database file",
+				Usage:    "path of the database",
 				Required: false,
 			},
 			&cli.StringFlag{
@@ -74,20 +68,16 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db my.
 		Action: func(c *cli.Context) error {
 			dbPath := c.String("db")
 			table := c.String("table")
-			engine := c.String("engine")
 			args := c.Args().Slice()
 
 			k := c.String("encryption-key")
-			if k != "" && engine != "badger" {
-				return cli.Exit("encryption key is only supported by the badger engine", 2)
-			}
 
-			return runInsertCommand(c.Context, engine, dbPath, table, c.Bool("auto"), k, args)
+			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), k, args)
 		},
 	}
 }
 
-func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, eKey string, args []string) error {
+func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, eKey string, args []string) error {
 	generatedName := "data_" + strconv.FormatInt(time.Now().Unix(), 10)
 	createTable := false
 	if table == "" && auto {
@@ -95,18 +85,11 @@ func runInsertCommand(ctx context.Context, e, dbPath, table string, auto bool, e
 		createTable = true
 	}
 
-	switch e {
-	case "bolt":
-		if dbPath == "" && auto {
-			dbPath = generatedName + ".db"
-		}
-	case "badger":
-		if dbPath == "" && auto {
-			dbPath = generatedName
-		}
+	if dbPath == "" && auto {
+		dbPath = generatedName
 	}
 
-	db, err := dbutil.OpenDB(ctx, dbPath, e, dbutil.DBOptions{EncryptionKey: eKey})
+	db, err := dbutil.OpenDB(ctx, dbPath, dbutil.DBOptions{EncryptionKey: eKey})
 	if err != nil {
 		return err
 	}
