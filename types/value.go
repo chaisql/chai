@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
@@ -273,7 +274,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		dst.WriteRune('}')
 		return nil
 	default:
-		return stringutil.Errorf("unexpected type: %d", v.Type())
+		return fmt.Errorf("unexpected type: %d", v.Type())
 	}
 }
 
@@ -317,7 +318,7 @@ func (v *value) MarshalJSON() ([]byte, error) {
 	case DocumentValue:
 		return jsonDocument{Document: v.V().(Document)}.MarshalJSON()
 	default:
-		return nil, stringutil.Errorf("unexpected type: %d", v.Type())
+		return nil, fmt.Errorf("unexpected type: %d", v.Type())
 	}
 }
 

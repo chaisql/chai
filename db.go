@@ -1,10 +1,18 @@
+/*
+Package genji implements a document-oriented, embedded SQL database.
+*/
 package genji
 
 import (
 	"context"
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
 
+	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
@@ -14,7 +22,6 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -50,6 +57,28 @@ func New(ctx context.Context, ng engine.Engine) (*DB, error) {
 		DB:  db,
 		ctx: ctx,
 	}, nil
+}
+
+// Open creates a Genji database at the given path.
+// If path is equal to ":memory:" it will open an in-memory database,
+// otherwise it will create an on-disk database using the BoltDB engine.
+func Open(path string) (*DB, error) {
+	var inMemory bool
+
+	if path == ":memory:" {
+		inMemory = true
+		path = ""
+	}
+
+	opts := badger.DefaultOptions(path).WithLogger(nil).WithInMemory(inMemory)
+
+	ng, err := badgerengine.NewEngine(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	return New(ctx, ng)
 }
 
 // WithContext creates a new database handle using the given context for every operation.
@@ -251,6 +280,34 @@ func (s *Statement) Query(args ...interface{}) (*Result, error) {
 	return &Result{result: r}, nil
 }
 
+func argsToParams(args []interface{}) []environment.Param {
+	nv := make([]environment.Param, len(args))
+	for i := range args {
+		switch t := args[i].(type) {
+		case sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case *sql.NamedArg:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case driver.NamedValue:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case *driver.NamedValue:
+			nv[i].Name = t.Name
+			nv[i].Value = t.Value
+		case *environment.Param:
+			nv[i] = *t
+		case environment.Param:
+			nv[i] = t
+		default:
+			nv[i].Value = args[i]
+		}
+	}
+
+	return nv
+}
+
 // QueryDocument runs the query and returns the first document.
 // If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
 func (s *Statement) QueryDocument(args ...interface{}) (d types.Document, err error) {
@@ -334,7 +391,7 @@ func (r *Result) Fields() []string {
 
 			fields := make([]string, len(po.Exprs))
 			for i := range po.Exprs {
-				fields[i] = stringutil.Sprintf("%s", po.Exprs[i])
+				fields[i] = fmt.Sprintf("%s", po.Exprs[i])
 			}
 
 			return fields

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"math"
 	"strings"
 
@@ -100,7 +101,7 @@ func (ti *TableInfo) GetFieldConstraintForPath(p document.Path) *FieldConstraint
 func (ti *TableInfo) String() string {
 	var s strings.Builder
 
-	stringutil.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
+	fmt.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
 	if len(ti.FieldConstraints) > 0 || len(ti.TableConstraints) > 0 {
 		s.WriteString(" (")
 	}
@@ -194,7 +195,7 @@ func pathsToIndexName(paths []document.Path) string {
 }
 
 func (i *IndexInfo) GenerateBaseName() string {
-	return stringutil.Sprintf("%s_%s_idx", i.TableName, pathsToIndexName(i.Paths))
+	return fmt.Sprintf("%s_%s_idx", i.TableName, pathsToIndexName(i.Paths))
 }
 
 // String returns a SQL representation.
@@ -206,7 +207,7 @@ func (i *IndexInfo) String() string {
 		s.WriteString("UNIQUE ")
 	}
 
-	stringutil.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.TableName, '`'))
+	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.TableName, '`'))
 
 	for i, p := range i.Paths {
 		if i > 0 {
@@ -255,23 +256,23 @@ func (s *SequenceInfo) String() string {
 	asc := s.IncrementBy > 0
 
 	if s.IncrementBy != 1 {
-		stringutil.Fprintf(&b, " INCREMENT BY %d", s.IncrementBy)
+		fmt.Fprintf(&b, " INCREMENT BY %d", s.IncrementBy)
 	}
 
 	if (asc && s.Min != 1) || (!asc && s.Min != math.MinInt64) {
-		stringutil.Fprintf(&b, " MINVALUE %d", s.Min)
+		fmt.Fprintf(&b, " MINVALUE %d", s.Min)
 	}
 
 	if (asc && s.Max != math.MaxInt64) || (!asc && s.Max != -1) {
-		stringutil.Fprintf(&b, " MAXVALUE %d", s.Max)
+		fmt.Fprintf(&b, " MAXVALUE %d", s.Max)
 	}
 
 	if (asc && s.Start != s.Min) || (!asc && s.Start != s.Max) {
-		stringutil.Fprintf(&b, " START WITH %d", s.Start)
+		fmt.Fprintf(&b, " START WITH %d", s.Start)
 	}
 
 	if s.Cache != 1 {
-		stringutil.Fprintf(&b, " CACHE %d", s.Cache)
+		fmt.Fprintf(&b, " CACHE %d", s.Cache)
 	}
 
 	if s.Cycle {

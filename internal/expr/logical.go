@@ -1,9 +1,10 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -109,7 +110,7 @@ func (op *NotOp) Eval(env *environment.Environment) (types.Value, error) {
 	return TrueLiteral, nil
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (op *NotOp) String() string {
-	return stringutil.Sprintf("NOT %v", op.a)
+	return fmt.Sprintf("NOT %v", op.a)
 }

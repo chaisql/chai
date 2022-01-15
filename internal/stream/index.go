@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -194,7 +194,7 @@ func (op *IndexValidateOperator) Iterate(in *environment.Environment, fn func(ou
 }
 
 func (op *IndexValidateOperator) String() string {
-	return stringutil.Sprintf("index.Validate(%q)", op.indexName)
+	return fmt.Sprintf("index.Validate(%q)", op.indexName)
 }
 
 // IndexInsertOperator reads the input stream and indexes each document.
@@ -246,7 +246,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 
 		err = idx.Set(vs, key.V().([]byte))
 		if err != nil {
-			return stringutil.Errorf("error while inserting index value: %w", err)
+			return fmt.Errorf("error while inserting index value: %w", err)
 		}
 
 		return fn(out)
@@ -254,7 +254,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 }
 
 func (op *IndexInsertOperator) String() string {
-	return stringutil.Sprintf("index.Insert(%q)", op.indexName)
+	return fmt.Sprintf("index.Insert(%q)", op.indexName)
 }
 
 // IndexDeleteOperator reads the input stream and deletes the document from the specified index.
@@ -326,7 +326,7 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 }
 
 func (op *IndexDeleteOperator) String() string {
-	return stringutil.Sprintf("index.Delete(%q)", op.indexName)
+	return fmt.Sprintf("index.Delete(%q)", op.indexName)
 }
 
 // DocumentPointer holds a document key and lazily loads the document on demand when the Iterate or GetByField method is called.

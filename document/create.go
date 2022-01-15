@@ -1,9 +1,7 @@
-//go:build !wasm
-// +build !wasm
-
 package document
 
 import (
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -11,7 +9,6 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -204,7 +201,7 @@ func NewValue(x interface{}) (types.Value, error) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		x := v.Uint()
 		if x > math.MaxInt64 {
-			return nil, stringutil.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
+			return nil, fmt.Errorf("cannot convert unsigned integer struct field to int64: %d out of range", x)
 		}
 		return types.NewIntegerValue(int64(x)), nil
 	case reflect.Float32, reflect.Float64:

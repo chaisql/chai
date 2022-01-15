@@ -3,10 +3,10 @@ package enginetest
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 )
 
@@ -37,14 +37,14 @@ func BenchmarkStorePut(b *testing.B, builder Builder) {
 	}
 
 	for size := 10; size <= 10000; size *= 10 {
-		b.Run(stringutil.Sprintf("%.05d", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
 				s, cleanup := getStore()
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
-					k := []byte(stringutil.Sprintf("k%d", j))
+					k := []byte(fmt.Sprintf("k%d", j))
 					_ = s.Put(k, v)
 				}
 				b.StopTimer()
@@ -71,11 +71,11 @@ func BenchmarkTransientStorePut(b *testing.B, builder Builder) {
 	}
 
 	for size := 10; size <= 10000; size *= 10 {
-		b.Run(stringutil.Sprintf("%.05d", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StartTimer()
 				for j := 0; j < size; j++ {
-					k := []byte(stringutil.Sprintf("k%d", j))
+					k := []byte(fmt.Sprintf("k%d", j))
 					_ = ts.Put(k, v)
 				}
 				b.StopTimer()
@@ -90,14 +90,14 @@ func BenchmarkTransientStorePut(b *testing.B, builder Builder) {
 // BenchmarkStoreScan benchmarks the AscendGreaterOrEqual method with 1, 10, 1000 and 10000 successive insertions.
 func BenchmarkStoreScan(b *testing.B, builder Builder) {
 	for size := 1; size <= 10000; size *= 10 {
-		b.Run(stringutil.Sprintf("%.05d", size), func(b *testing.B) {
+		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			st, cleanup := storeBuilder(b, builder)
 			defer cleanup()
 
 			v := bytes.Repeat([]byte("v"), 512)
 
 			for i := 0; i < size; i++ {
-				k := []byte(stringutil.Sprintf("k%d", i))
+				k := []byte(fmt.Sprintf("k%d", i))
 				err := st.Put(k, v)
 				assert.NoError(b, err)
 			}

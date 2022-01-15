@@ -1,10 +1,11 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -51,7 +52,7 @@ func (op *cmpOp) compare(l, r types.Value) (bool, error) {
 	case scanner.LTE:
 		return types.IsLesserThanOrEqual(l, r)
 	default:
-		panic(stringutil.Sprintf("unknown token %v", op.Tok))
+		panic(fmt.Sprintf("unknown token %v", op.Tok))
 	}
 }
 
@@ -124,7 +125,7 @@ func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, erro
 }
 
 func (op *BetweenOperator) String() string {
-	return stringutil.Sprintf("%v BETWEEN %v AND %v", op.X, op.a, op.b)
+	return fmt.Sprintf("%v BETWEEN %v AND %v", op.X, op.a, op.b)
 }
 
 // IsComparisonOperator returns true if e is one of
@@ -183,7 +184,7 @@ func (op *NotInOperator) Eval(env *environment.Environment) (types.Value, error)
 }
 
 func (op *NotInOperator) String() string {
-	return stringutil.Sprintf("%v NOT IN %v", op.a, op.b)
+	return fmt.Sprintf("%v NOT IN %v", op.a, op.b)
 }
 
 type IsOperator struct {
@@ -233,5 +234,5 @@ func (op *IsNotOperator) Eval(env *environment.Environment) (types.Value, error)
 }
 
 func (op *IsNotOperator) String() string {
-	return stringutil.Sprintf("%v IS NOT %v", op.a, op.b)
+	return fmt.Sprintf("%v IS NOT %v", op.a, op.b)
 }

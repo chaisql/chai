@@ -1,6 +1,7 @@
 package expr
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -25,7 +26,7 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 	return ok && err == nil
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (v LiteralValue) String() string {
 	return v.Value.String()
 }
@@ -58,7 +59,7 @@ func (l LiteralExprList) IsEqual(other Expr) bool {
 	return true
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (l LiteralExprList) String() string {
 	var b strings.Builder
 
@@ -97,12 +98,12 @@ type KVPair struct {
 	V Expr
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (p KVPair) String() string {
 	if stringutil.NeedsQuotes(p.K) {
-		return stringutil.Sprintf("%q: %v", p.K, p.V)
+		return fmt.Sprintf("%q: %v", p.K, p.V)
 	}
-	return stringutil.Sprintf("%s: %v", p.K, p.V)
+	return fmt.Sprintf("%s: %v", p.K, p.V)
 }
 
 // KVPairs is a list of KVPair.
@@ -159,7 +160,7 @@ func (kvp *KVPairs) Eval(env *environment.Environment) (types.Value, error) {
 	return types.NewDocumentValue(&fb), nil
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (kvp *KVPairs) String() string {
 	var b strings.Builder
 
@@ -168,7 +169,7 @@ func (kvp *KVPairs) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(stringutil.Sprintf("%s", p))
+		b.WriteString(fmt.Sprintf("%s", p))
 	}
 	b.WriteRune('}')
 

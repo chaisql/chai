@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"sort"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -161,7 +161,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 
 	err = tx.Tx.CreateStore(info.StoreName)
 	if err != nil {
-		return stringutil.Errorf("failed to create table %q: %w", tableName, err)
+		return fmt.Errorf("failed to create table %q: %w", tableName, err)
 	}
 
 	return c.Cache.Add(tx, info)
@@ -231,7 +231,7 @@ func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
 
 	err = tx.Tx.CreateStore(info.StoreName)
 	if err != nil {
-		return stringutil.Errorf("failed to create index %q: %w", info.IndexName, err)
+		return fmt.Errorf("failed to create index %q: %w", info.IndexName, err)
 	}
 
 	return nil
@@ -290,7 +290,7 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 
 	// check if the index has been created by a table constraint
 	if len(info.Owner.Paths) > 0 {
-		return stringutil.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Paths)
+		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Paths)
 	}
 
 	_, err = c.Cache.Delete(tx, RelationIndexType, name)
@@ -566,7 +566,7 @@ func (c *catalogCache) generateUnusedName(baseName string) string {
 		}
 
 		i++
-		name = stringutil.Sprintf("%s%d", baseName, i)
+		name = fmt.Sprintf("%s%d", baseName, i)
 	}
 
 	return name
@@ -582,7 +582,7 @@ func (c *catalogCache) getMapByType(tp string) map[string]Relation {
 		return c.sequences
 	}
 
-	panic(stringutil.Sprintf("unknown catalog object type %q", tp))
+	panic(fmt.Sprintf("unknown catalog object type %q", tp))
 }
 
 func (c *catalogCache) Add(tx *Transaction, o Relation) error {
@@ -760,7 +760,7 @@ func (s *CatalogStore) Info() *TableInfo {
 func (s *CatalogStore) Table(tx *Transaction) *Table {
 	st, err := tx.Tx.GetStore([]byte(TableName))
 	if err != nil {
-		panic(stringutil.Sprintf("database incorrectly setup: missing %q table: %v", TableName, err))
+		panic(fmt.Sprintf("database incorrectly setup: missing %q table: %v", TableName, err))
 	}
 
 	return &Table{
@@ -816,7 +816,7 @@ func relationToDocument(r Relation) types.Document {
 		return sequenceInfoToDocument(t.Info)
 	}
 
-	panic(stringutil.Sprintf("objectToDocument: unknown type %q", r.Type()))
+	panic(fmt.Sprintf("objectToDocument: unknown type %q", r.Type()))
 }
 
 func tableInfoToDocument(ti *TableInfo) types.Document {

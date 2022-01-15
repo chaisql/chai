@@ -8,8 +8,7 @@ package errors
 
 import (
 	baseErrors "errors"
-
-	"github.com/genjidb/genji/internal/stringutil"
+	"fmt"
 )
 
 // New takes a string and returns a standard error.
@@ -21,7 +20,7 @@ func New(s string) error {
 // only wrap it by concatenation, the wrapped error won't be accessible directly and
 // thus cannot be accessed through the Is or As functions from the standard error package.
 func Errorf(format string, a ...interface{}) error {
-	return stringutil.Errorf(format, a...)
+	return fmt.Errorf(format, a...)
 }
 
 // Is performs a simple value comparison between err and original (==).

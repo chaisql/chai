@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -248,7 +248,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			blob, err := hex.DecodeString(lit[2:])
 			if err != nil {
 				if bt, ok := err.(hex.InvalidByteError); ok {
-					return nil, stringutil.Errorf("invalid hexadecimal digit: %c", bt)
+					return nil, fmt.Errorf("invalid hexadecimal digit: %c", bt)
 				}
 
 				return nil, err

@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
@@ -8,7 +9,6 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -55,7 +55,7 @@ func (op *DocsEmitOperator) String() string {
 		if i > 0 {
 			sb.WriteString(", ")
 		}
-		sb.WriteString(e.(stringutil.Stringer).String())
+		sb.WriteString(e.(fmt.Stringer).String())
 	}
 	sb.WriteByte(')')
 
@@ -100,7 +100,7 @@ func (op *DocsProjectOperator) String() string {
 
 	b.WriteString("docs.Project(")
 	for i, e := range op.Exprs {
-		b.WriteString(e.(stringutil.Stringer).String())
+		b.WriteString(e.(fmt.Stringer).String())
 		if i+1 < len(op.Exprs) {
 			b.WriteString(", ")
 		}
@@ -133,7 +133,7 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 			return e.Eval(d.Env)
 		}
 
-		if e.(stringutil.Stringer).String() == field {
+		if e.(fmt.Stringer).String() == field {
 			return e.Eval(d.Env)
 		}
 	}
@@ -162,7 +162,7 @@ func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) e
 		if ne, ok := e.(*expr.NamedExpr); ok {
 			field = ne.Name()
 		} else {
-			field = e.(stringutil.Stringer).String()
+			field = e.(fmt.Stringer).String()
 		}
 
 		v, err := e.Eval(d.Env)
@@ -217,7 +217,7 @@ func (op *DocsFilterOperator) Iterate(in *environment.Environment, f func(out *e
 }
 
 func (op *DocsFilterOperator) String() string {
-	return stringutil.Sprintf("docs.Filter(%s)", op.Expr)
+	return fmt.Sprintf("docs.Filter(%s)", op.Expr)
 }
 
 // A DocsTakeOperator closes the stream after a certain number of values.
@@ -245,7 +245,7 @@ func (op *DocsTakeOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *DocsTakeOperator) String() string {
-	return stringutil.Sprintf("docs.Take(%d)", op.N)
+	return fmt.Sprintf("docs.Take(%d)", op.N)
 }
 
 // A DocsSkipOperator skips the n first values of the stream.
@@ -274,7 +274,7 @@ func (op *DocsSkipOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *DocsSkipOperator) String() string {
-	return stringutil.Sprintf("docs.Skip(%d)", op.N)
+	return fmt.Sprintf("docs.Skip(%d)", op.N)
 }
 
 type DocsGroupAggregateOperator struct {
@@ -295,7 +295,7 @@ func (op *DocsGroupAggregateOperator) Iterate(in *environment.Environment, f fun
 
 	var groupExpr string
 	if op.E != nil {
-		groupExpr = stringutil.Sprintf("%s", op.E)
+		groupExpr = fmt.Sprintf("%s", op.E)
 	}
 
 	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
@@ -380,7 +380,7 @@ func (op *DocsGroupAggregateOperator) String() string {
 
 	for _, agg := range op.Builders {
 		sb.WriteString(", ")
-		sb.WriteString(agg.(stringutil.Stringer).String())
+		sb.WriteString(agg.(fmt.Stringer).String())
 	}
 
 	sb.WriteString(")")
@@ -433,7 +433,7 @@ func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Envi
 		if err != nil {
 			return nil, err
 		}
-		fb.Add(stringutil.Sprintf("%s", agg), v)
+		fb.Add(fmt.Sprintf("%s", agg), v)
 	}
 
 	var newEnv environment.Environment
@@ -530,8 +530,8 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 func (op *DocsTempTreeSortOperator) String() string {
 	if op.Desc {
-		return stringutil.Sprintf("docs.TempTreeSortReverse(%s)", op.Expr)
+		return fmt.Sprintf("docs.TempTreeSortReverse(%s)", op.Expr)
 	}
 
-	return stringutil.Sprintf("docs.TempTreeSort(%s)", op.Expr)
+	return fmt.Sprintf("docs.TempTreeSort(%s)", op.Expr)
 }

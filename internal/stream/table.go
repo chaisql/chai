@@ -1,13 +1,13 @@
 package stream
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -143,7 +143,7 @@ func (op *TableValidateOperator) Iterate(in *environment.Environment, fn func(ou
 }
 
 func (op *TableValidateOperator) String() string {
-	return stringutil.Sprintf("table.Validate(%q)", op.tableName)
+	return fmt.Sprintf("table.Validate(%q)", op.tableName)
 }
 
 // A TableInsertOperator inserts incoming documents to the table.
@@ -192,7 +192,7 @@ func (op *TableInsertOperator) Iterate(in *environment.Environment, f func(out *
 }
 
 func (op *TableInsertOperator) String() string {
-	return stringutil.Sprintf("table.Insert(%q)", op.Name)
+	return fmt.Sprintf("table.Insert(%q)", op.Name)
 }
 
 // A TableReplaceOperator replaces documents in the table
@@ -245,7 +245,7 @@ func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out 
 }
 
 func (op *TableReplaceOperator) String() string {
-	return stringutil.Sprintf("table.Replace(%q)", op.Name)
+	return fmt.Sprintf("table.Replace(%q)", op.Name)
 }
 
 // A TableDeleteOperator replaces documents in the table
@@ -287,5 +287,5 @@ func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *
 }
 
 func (op *TableDeleteOperator) String() string {
-	return stringutil.Sprintf("table.Delete('%s')", op.Name)
+	return fmt.Sprintf("table.Delete('%s')", op.Name)
 }

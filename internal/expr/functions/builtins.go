@@ -1,11 +1,12 @@
 package functions
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -98,7 +99,7 @@ func (t *TypeOf) IsEqual(other expr.Expr) bool {
 func (t *TypeOf) Params() []expr.Expr { return []expr.Expr{t.Expr} }
 
 func (t *TypeOf) String() string {
-	return stringutil.Sprintf("typeof(%v)", t.Expr)
+	return fmt.Sprintf("typeof(%v)", t.Expr)
 }
 
 // PK represents the pk() function.
@@ -206,7 +207,7 @@ func (c *Count) String() string {
 		return "COUNT(*)"
 	}
 
-	return stringutil.Sprintf("COUNT(%v)", c.Expr)
+	return fmt.Sprintf("COUNT(%v)", c.Expr)
 }
 
 // Aggregator returns a CountAggregator. It implements the AggregatorBuilder interface.
@@ -284,7 +285,7 @@ func (m *Min) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *Min) String() string {
-	return stringutil.Sprintf("MIN(%v)", m.Expr)
+	return fmt.Sprintf("MIN(%v)", m.Expr)
 }
 
 // Aggregator returns a MinAggregator. It implements the AggregatorBuilder interface.
@@ -388,7 +389,7 @@ func (m *Max) Params() []expr.Expr { return []expr.Expr{m.Expr} }
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (m *Max) String() string {
-	return stringutil.Sprintf("MAX(%v)", m.Expr)
+	return fmt.Sprintf("MAX(%v)", m.Expr)
 }
 
 // Aggregator returns a MaxAggregator. It implements the AggregatorBuilder interface.
@@ -493,7 +494,7 @@ func (s *Sum) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the count expression.
 func (s *Sum) String() string {
-	return stringutil.Sprintf("SUM(%v)", s.Expr)
+	return fmt.Sprintf("SUM(%v)", s.Expr)
 }
 
 // Aggregator returns a Sum. It implements the AggregatorBuilder interface.
@@ -603,7 +604,7 @@ func (s *Avg) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 // String returns the alias if non-zero, otherwise it returns a string representation
 // of the average expression.
 func (s *Avg) String() string {
-	return stringutil.Sprintf("AVG(%v)", s.Expr)
+	return fmt.Sprintf("AVG(%v)", s.Expr)
 }
 
 // Aggregator returns a Avg. It implements the AggregatorBuilder interface.

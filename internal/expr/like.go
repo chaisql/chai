@@ -1,10 +1,11 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr/glob"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -49,5 +50,5 @@ func (op *NotLikeOperator) Eval(env *environment.Environment) (types.Value, erro
 }
 
 func (op *NotLikeOperator) String() string {
-	return stringutil.Sprintf("%v NOT LIKE %v", op.a, op.b)
+	return fmt.Sprintf("%v NOT LIKE %v", op.a, op.b)
 }

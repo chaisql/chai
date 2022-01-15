@@ -1,13 +1,13 @@
 package stream
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -64,7 +64,7 @@ func (op *PathsSetOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *PathsSetOperator) String() string {
-	return stringutil.Sprintf("paths.Set(%s, %s)", op.Path, op.Expr)
+	return fmt.Sprintf("paths.Set(%s, %s)", op.Path, op.Expr)
 }
 
 // A PathsUnsetOperator filters duplicate documents.
@@ -120,7 +120,7 @@ func (op *PathsUnsetOperator) Iterate(in *environment.Environment, f func(out *e
 }
 
 func (op *PathsUnsetOperator) String() string {
-	return stringutil.Sprintf("paths.Unset(%s)", op.Field)
+	return fmt.Sprintf("paths.Unset(%s)", op.Field)
 }
 
 // An PathsRenameOperator iterates over all fields of the incoming document in order and renames them.
@@ -159,7 +159,7 @@ func (op *PathsRenameOperator) Iterate(in *environment.Environment, f func(out *
 				if err != nil {
 					return err
 				}
-				return stringutil.Errorf("%d values for %d fields", n, len(op.FieldNames))
+				return fmt.Errorf("%d values for %d fields", n, len(op.FieldNames))
 			}
 
 			fb.Add(op.FieldNames[i], value)
@@ -176,7 +176,7 @@ func (op *PathsRenameOperator) Iterate(in *environment.Environment, f func(out *
 			if err != nil {
 				return err
 			}
-			return stringutil.Errorf("%d values for %d fields", n, len(op.FieldNames))
+			return fmt.Errorf("%d values for %d fields", n, len(op.FieldNames))
 		}
 
 		newEnv.SetOuter(out)
@@ -187,5 +187,5 @@ func (op *PathsRenameOperator) Iterate(in *environment.Environment, f func(out *
 }
 
 func (op *PathsRenameOperator) String() string {
-	return stringutil.Sprintf("paths.Rename(%s)", strings.Join(op.FieldNames, ", "))
+	return fmt.Sprintf("paths.Rename(%s)", strings.Join(op.FieldNames, ", "))
 }

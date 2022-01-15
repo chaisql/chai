@@ -2,10 +2,10 @@ package database
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -56,7 +56,7 @@ func (idx *Index) Set(vs []types.Value, key tree.Key) error {
 	}
 
 	if len(vs) != idx.Arity {
-		return stringutil.Errorf("cannot index %d values on an index of arity %d", len(vs), idx.Arity)
+		return fmt.Errorf("cannot index %d values on an index of arity %d", len(vs), idx.Arity)
 	}
 
 	// append the key to the values
@@ -74,7 +74,7 @@ func (idx *Index) Set(vs []types.Value, key tree.Key) error {
 // Exists iterates over the index and check if the value exists
 func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
 	if len(vs) != idx.Arity {
-		return false, nil, stringutil.Errorf("required arity of %d", idx.Arity)
+		return false, nil, fmt.Errorf("required arity of %d", idx.Arity)
 	}
 
 	seek, err := tree.NewKey(vs...)

@@ -1,16 +1,17 @@
+//go:build debug
 // +build debug
 
 package errors
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -92,8 +93,8 @@ func TestIs(t *testing.T) {
 	if !Is(Wrap(io.EOF), Wrap(io.EOF)) {
 		t.Errorf("New(io.EOF) is not New(io.EOF)")
 	}
-	if Is(io.EOF, stringutil.Errorf("io.EOF")) {
-		t.Errorf("io.EOF is stringutil.Errorf")
+	if Is(io.EOF, fmt.Errorf("io.EOF")) {
+		t.Errorf("io.EOF is fmt.Errorf")
 	}
 }
 
@@ -108,7 +109,7 @@ func TestWrapError(t *testing.T) {
 	if e.Error() != "hi" {
 		t.Errorf("Constructor with a string failed")
 	}
-	if wrap(stringutil.Errorf("yo"), 0).Error() != "yo" {
+	if wrap(fmt.Errorf("yo"), 0).Error() != "yo" {
 		t.Errorf("Constructor with an error failed")
 	}
 	if wrap(e, 0) != e {
@@ -144,14 +145,14 @@ func compareStacks(actual, expected []uintptr) error {
 	}
 	for i, pc := range actual {
 		if i != 0 && pc != expected[i] {
-			return stackCompareError(stringutil.Sprintf("Stacks does not match entry %d (and maybe others)", i), actual, expected)
+			return stackCompareError(fmt.Sprintf("Stacks does not match entry %d (and maybe others)", i), actual, expected)
 		}
 	}
 	return nil
 }
 
 func stackCompareError(msg string, actual, expected []uintptr) error {
-	return stringutil.Errorf("%s\nActual stack trace:\n%s\nExpected stack trace:\n%s", msg, readableStackTrace(actual), readableStackTrace(expected))
+	return fmt.Errorf("%s\nActual stack trace:\n%s\nExpected stack trace:\n%s", msg, readableStackTrace(actual), readableStackTrace(expected))
 }
 
 func callers() []uintptr {
@@ -168,7 +169,7 @@ func readableStackTrace(callers []uintptr) string {
 	var result bytes.Buffer
 	frames := callersToFrames(callers)
 	for _, frame := range frames {
-		result.WriteString(stringutil.Sprintf("%s:%d (%#x)\n\t%s\n", frame.File, frame.Line, frame.PC, frame.Function))
+		result.WriteString(fmt.Sprintf("%s:%d (%#x)\n\t%s\n", frame.File, frame.Line, frame.PC, frame.Function))
 	}
 	return result.String()
 }

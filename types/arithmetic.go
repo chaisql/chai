@@ -1,9 +1,8 @@
 package types
 
 import (
+	"fmt"
 	"math"
-
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // Add u to v and return the result.
@@ -136,7 +135,7 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 	case '^':
 		return NewIntegerValue(xa ^ xb), nil
 	default:
-		panic(stringutil.Sprintf("unknown operator %c", operator))
+		panic(fmt.Sprintf("unknown operator %c", operator))
 	}
 }
 
@@ -180,7 +179,7 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 		ia, ib := int64(xa), int64(xb)
 		return NewIntegerValue(ia ^ ib), nil
 	default:
-		panic(stringutil.Sprintf("unknown operator %c", operator))
+		panic(fmt.Sprintf("unknown operator %c", operator))
 	}
 }
 

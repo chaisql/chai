@@ -1,15 +1,12 @@
-//go:build !wasm
-// +build !wasm
-
 package document
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -32,7 +29,7 @@ func Scan(d types.Document, targets ...interface{}) error {
 
 		ref := reflect.ValueOf(target)
 		if !ref.IsValid() {
-			return &ErrUnsupportedType{target, stringutil.Sprintf("Parameter %d is not valid", i)}
+			return &ErrUnsupportedType{target, fmt.Sprintf("Parameter %d is not valid", i)}
 		}
 
 		return scanValue(v, ref)
@@ -294,7 +291,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		}
 		x := v.V().(int64)
 		if x < 0 {
-			return stringutil.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
+			return fmt.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
 		}
 		ref.SetUint(uint64(x))
 		return nil
@@ -359,7 +356,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
-				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
+				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
 			if v.Type() == types.TextValue {
 				ref.SetBytes([]byte(v.V().(string)))
@@ -377,7 +374,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
-				return stringutil.Errorf("cannot scan value of type %s to byte slice", v.Type())
+				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
 			reflect.Copy(ref, reflect.ValueOf(v.V()))
 			return nil

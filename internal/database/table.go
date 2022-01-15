@@ -1,11 +1,12 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -151,7 +152,7 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 		if errors.Is(err, engine.ErrKeyNotFound) {
 			return nil, errors.Wrap(errs.ErrDocumentNotFound)
 		}
-		return nil, stringutil.Errorf("failed to fetch document %q: %w", key, err)
+		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
 	return &lazilyDecodedDocument{v}, nil
@@ -169,7 +170,7 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error)
 		for _, p := range pk.Paths {
 			v, err := p.GetValueFromDocument(d)
 			if errors.Is(err, types.ErrFieldNotFound) {
-				return nil, stringutil.Errorf("missing primary key at path %q", p)
+				return nil, fmt.Errorf("missing primary key at path %q", p)
 			}
 			if err != nil {
 				return nil, err

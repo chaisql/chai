@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/genjidb/genji/document"
@@ -8,7 +9,6 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -565,7 +565,7 @@ func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, 
 
 	// check if min > max
 	if stmt.Info.Min > stmt.Info.Max {
-		return nil, &ParseError{Message: stringutil.Sprintf("MINVALUE (%d) must be less than MAXVALUE (%d)", stmt.Info.Min, stmt.Info.Max)}
+		return nil, &ParseError{Message: fmt.Sprintf("MINVALUE (%d) must be less than MAXVALUE (%d)", stmt.Info.Min, stmt.Info.Max)}
 	}
 
 	// default value for start is min if ascending
@@ -580,10 +580,10 @@ func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, 
 
 	// check if min < start < max
 	if stmt.Info.Start < stmt.Info.Min {
-		return nil, &ParseError{Message: stringutil.Sprintf("START value (%d) cannot be less than MINVALUE (%d)", stmt.Info.Start, stmt.Info.Min)}
+		return nil, &ParseError{Message: fmt.Sprintf("START value (%d) cannot be less than MINVALUE (%d)", stmt.Info.Start, stmt.Info.Min)}
 	}
 	if stmt.Info.Start > stmt.Info.Max {
-		return nil, &ParseError{Message: stringutil.Sprintf("START value (%d) cannot be greater than MAXVALUE (%d)", stmt.Info.Start, stmt.Info.Max)}
+		return nil, &ParseError{Message: fmt.Sprintf("START value (%d) cannot be greater than MAXVALUE (%d)", stmt.Info.Start, stmt.Info.Max)}
 	}
 
 	// default for cache is 1

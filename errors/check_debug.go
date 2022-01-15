@@ -1,5 +1,5 @@
-//go:build debug && !wasm
-// +build debug,!wasm
+//go:build debug
+// +build debug
 
 package errors
 

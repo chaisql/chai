@@ -1,13 +1,13 @@
 package stream
 
 import (
+	"fmt"
 	"strings"
 
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -288,8 +288,8 @@ func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *
 
 func (op *OnConflictOperator) String() string {
 	if op.OnConflict == nil {
-		return stringutil.Sprintf("stream.OnConflict(NULL)")
+		return fmt.Sprintf("stream.OnConflict(NULL)")
 	}
 
-	return stringutil.Sprintf("stream.OnConflict(%s)", op.OnConflict)
+	return fmt.Sprintf("stream.OnConflict(%s)", op.OnConflict)
 }

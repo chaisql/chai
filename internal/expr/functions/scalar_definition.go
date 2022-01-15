@@ -1,11 +1,11 @@
 package functions
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -33,15 +33,15 @@ func (fd *ScalarDefinition) Name() string {
 func (fd *ScalarDefinition) String() string {
 	args := make([]string, 0, fd.arity)
 	for i := 0; i < fd.arity; i++ {
-		args = append(args, stringutil.Sprintf("arg%d", i+1))
+		args = append(args, fmt.Sprintf("arg%d", i+1))
 	}
-	return stringutil.Sprintf("%s(%s)", fd.name, strings.Join(args, ", "))
+	return fmt.Sprintf("%s(%s)", fd.name, strings.Join(args, ", "))
 }
 
 // Function returns a Function expr node.
 func (fd *ScalarDefinition) Function(args ...expr.Expr) (expr.Function, error) {
 	if len(args) != fd.arity {
-		return nil, stringutil.Errorf("%s takes %d argument(s), not %d", fd.String(), fd.arity, len(args))
+		return nil, fmt.Errorf("%s takes %d argument(s), not %d", fd.String(), fd.arity, len(args))
 	}
 	return &ScalarFunction{
 		params: args,
@@ -86,7 +86,7 @@ func (sf *ScalarFunction) evalParams(env *environment.Environment) ([]types.Valu
 
 // String returns a string represention of the function expression and its arguments.
 func (sf *ScalarFunction) String() string {
-	return stringutil.Sprintf("%s(%v)", sf.def.name, sf.params)
+	return fmt.Sprintf("%s(%v)", sf.def.name, sf.params)
 }
 
 // Params return the function arguments.

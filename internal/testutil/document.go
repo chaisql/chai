@@ -3,12 +3,12 @@ package testutil
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
@@ -85,7 +85,7 @@ type Docs []types.Document
 func (docs Docs) RequireEqual(t testing.TB, others Docs) {
 	t.Helper()
 
-	require.Equal(t, len(docs), len(others), stringutil.Sprintf("expected len %d, got %d", len(docs), len(others)))
+	require.Equal(t, len(docs), len(others), fmt.Sprintf("expected len %d, got %d", len(docs), len(others)))
 
 	for i, d := range docs {
 		RequireDocEqual(t, d, others[i])

@@ -1,8 +1,9 @@
 package expr
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -22,9 +23,9 @@ func (p NamedParam) IsEqual(other Expr) bool {
 	return ok && p == o
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (p NamedParam) String() string {
-	return stringutil.Sprintf("$%s", string(p))
+	return fmt.Sprintf("$%s", string(p))
 }
 
 // PositionalParam is an expression which represents the position of a parameter.
@@ -43,7 +44,7 @@ func (p PositionalParam) IsEqual(other Expr) bool {
 	return ok && p == o
 }
 
-// String implements the stringutil.Stringer interface.
+// String implements the fmt.Stringer interface.
 func (p PositionalParam) String() string {
 	return "?"
 }

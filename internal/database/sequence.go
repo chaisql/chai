@@ -1,12 +1,12 @@
 package database
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -125,14 +125,14 @@ func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
 
 	if newValue < s.Info.Min {
 		if !s.Info.Cycle {
-			return 0, stringutil.Errorf("reached minimum value of sequence %s", s.Info.Name)
+			return 0, fmt.Errorf("reached minimum value of sequence %s", s.Info.Name)
 		}
 
 		newValue = s.Info.Max
 	}
 	if newValue > s.Info.Max {
 		if !s.Info.Cycle {
-			return 0, stringutil.Errorf("reached maximum value of sequence %s", s.Info.Name)
+			return 0, fmt.Errorf("reached maximum value of sequence %s", s.Info.Name)
 		}
 
 		newValue = s.Info.Min

@@ -1,5 +1,5 @@
-//go:build debug && !wasm
-// +build debug,!wasm
+//go:build debug
+// +build debug
 
 // Package errors provides a simple API to create and compare errors.
 // It captures the stacktrace when an error is created or wrapped, which can be then be inspected for debugging purposes.
@@ -8,9 +8,8 @@ package errors
 
 import (
 	baseErrors "errors"
+	"fmt"
 	"runtime"
-
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // New takes a string and returns a wrapped error that allows to inspect the stracktrace
@@ -78,7 +77,7 @@ func _new(s string) *Error {
 
 // wrap makes an Error from the given value. If that value is already an
 // error then it will be used directly, if not, it will be passed to
-// stringutil.Errorf("%v"). The skip parameter indicates how far up the stack
+// fmt.Errorf("%v"). The skip parameter indicates how far up the stack
 // to start the stacktrace. 0 is from the current call, 1 from its caller, etc.
 func wrap(e interface{}, skip int) *Error {
 	if e == nil {
@@ -91,7 +90,7 @@ func wrap(e interface{}, skip int) *Error {
 	case error:
 		err = e
 	default:
-		err = stringutil.Errorf("%v", e)
+		err = fmt.Errorf("%v", e)
 	}
 	stack := make([]uintptr, MaxStackDepth)
 	length := runtime.Callers(2+skip, stack[:])
@@ -102,5 +101,5 @@ func wrap(e interface{}, skip int) *Error {
 }
 
 func errorf(format string, a ...interface{}) *Error {
-	return wrap(stringutil.Errorf(format, a...), 1)
+	return wrap(fmt.Errorf(format, a...), 1)
 }

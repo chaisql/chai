@@ -1,9 +1,10 @@
 package environment
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -107,7 +108,7 @@ func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 		}
 	}
 
-	return nil, stringutil.Errorf("param %s not found", name)
+	return nil, fmt.Errorf("param %s not found", name)
 }
 
 func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
@@ -119,7 +120,7 @@ func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
 
 	idx := int(pos - 1)
 	if idx >= len(e.Params) {
-		return nil, stringutil.Errorf("cannot find param number %d", pos)
+		return nil, fmt.Errorf("cannot find param number %d", pos)
 	}
 
 	return document.NewValue(e.Params[idx].Value)

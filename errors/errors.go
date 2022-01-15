@@ -1,9 +1,10 @@
 package errors
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
 )
 
@@ -23,7 +24,7 @@ type AlreadyExistsError struct {
 }
 
 func (a AlreadyExistsError) Error() string {
-	return stringutil.Sprintf("%q already exists", a.Name)
+	return fmt.Sprintf("%q already exists", a.Name)
 }
 
 // NotFoundError is returned when the requested table, index or sequence
@@ -33,7 +34,7 @@ type NotFoundError struct {
 }
 
 func (a NotFoundError) Error() string {
-	return stringutil.Sprintf("%q not found", a.Name)
+	return fmt.Sprintf("%q not found", a.Name)
 }
 
 type ConstraintViolationError struct {
@@ -43,7 +44,7 @@ type ConstraintViolationError struct {
 }
 
 func (c *ConstraintViolationError) Error() string {
-	return stringutil.Sprintf("%s constraint error: %s", c.Constraint, c.Paths)
+	return fmt.Sprintf("%s constraint error: %s", c.Constraint, c.Paths)
 }
 
 func IsConstraintViolationError(err error) bool {

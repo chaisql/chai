@@ -1,13 +1,14 @@
 package statement
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 type SelectCoreStmt struct {
@@ -66,7 +67,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 		}
 
 		if invalidProjectedField != nil {
-			return nil, stringutil.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
+			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 		// add Aggregation node
 		s = s.Pipe(stream.DocsTempTreeSort(stmt.GroupByExpr))
@@ -224,7 +225,7 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 		}
 
 		if !v.Type().IsNumber() {
-			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type())
+			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 		}
 
 		v, err = document.CastAsInteger(v)
@@ -242,7 +243,7 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 		}
 
 		if !v.Type().IsNumber() {
-			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type())
+			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 		}
 
 		v, err = document.CastAsInteger(v)

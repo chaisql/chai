@@ -2,6 +2,7 @@
 package document
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -19,7 +20,7 @@ type ErrUnsupportedType struct {
 }
 
 func (e *ErrUnsupportedType) Error() string {
-	return stringutil.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
+	return fmt.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
 // An Iterator can iterate over documents.

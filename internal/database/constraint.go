@@ -1,13 +1,13 @@
 package database
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -185,7 +185,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		if c.Path.IsEqual(newFc.Path) {
 			// if both non inferred, they are duplicate
 			if !newFc.IsInferred && !c.IsInferred {
-				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
 			// determine which one is inferred
@@ -201,7 +201,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 			// detect if constraints are different
 			if !c.IsEqual(newFc) {
-				return stringutil.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
+				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
 			}
 
 			// validate default value
@@ -243,7 +243,7 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 		for _, frag := range newFc.Path {
 			// an empty fieldname means this is an array index
 			if frag.FieldName == "" {
-				return stringutil.Errorf("default value is not allowed on array indexes and their child nodes (%q)", newFc.Path)
+				return fmt.Errorf("default value is not allowed on array indexes and their child nodes (%q)", newFc.Path)
 			}
 		}
 	}
@@ -256,7 +256,7 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 		if err == nil {
 			_, err = document.CastAs(v, newFc.Type)
 			if err != nil {
-				return stringutil.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
+				return fmt.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
 			}
 		} else {
 			// if there is an error, we know we are using a function that returns an integer (NEXT VALUE FOR)
@@ -265,7 +265,7 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 			switch newFc.Type {
 			case types.IntegerValue, types.DoubleValue, types.TextValue, types.BoolValue:
 			default:
-				return stringutil.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
+				return fmt.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
 			}
 		}
 	}
@@ -460,7 +460,7 @@ func (t *inferredTableExpression) IsEqual(other TableExpression) bool {
 }
 
 func (t *inferredTableExpression) String() string {
-	return stringutil.Sprintf("%s", t.v)
+	return fmt.Sprintf("%s", t.v)
 }
 
 // A TableConstraint represent a constraint specific to a table
@@ -475,15 +475,15 @@ type TableConstraint struct {
 
 func (t *TableConstraint) String() string {
 	if t.Check != nil {
-		return stringutil.Sprintf("CHECK (%s)", t.Check)
+		return fmt.Sprintf("CHECK (%s)", t.Check)
 	}
 
 	if t.PrimaryKey {
-		return stringutil.Sprintf("PRIMARY KEY (%s)", t.Paths)
+		return fmt.Sprintf("PRIMARY KEY (%s)", t.Paths)
 	}
 
 	if t.Unique {
-		return stringutil.Sprintf("UNIQUE (%s)", t.Paths)
+		return fmt.Sprintf("UNIQUE (%s)", t.Paths)
 	}
 
 	return ""
@@ -516,7 +516,7 @@ func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldB
 		}
 
 		if !ok {
-			return stringutil.Errorf("document violates check constraint %q", tc.Name)
+			return fmt.Errorf("document violates check constraint %q", tc.Name)
 		}
 	}
 
@@ -545,7 +545,7 @@ func (t *TableConstraints) AddCheck(tableName string, e TableExpression) {
 func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Paths) error {
 	for _, tc := range *t {
 		if tc.PrimaryKey {
-			return stringutil.Errorf("multiple primary keys for table %q are not allowed", tableName)
+			return fmt.Errorf("multiple primary keys for table %q are not allowed", tableName)
 		}
 	}
 

@@ -1,12 +1,13 @@
 package statement
 
 import (
+	"fmt"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // DeleteConfig holds DELETE configuration.
@@ -54,7 +55,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 		}
 
 		if !v.Type().IsNumber() {
-			return nil, stringutil.Errorf("offset expression must evaluate to a number, got %q", v.Type())
+			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 		}
 
 		v, err = document.CastAsInteger(v)
@@ -72,7 +73,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 		}
 
 		if !v.Type().IsNumber() {
-			return nil, stringutil.Errorf("limit expression must evaluate to a number, got %q", v.Type())
+			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 		}
 
 		v, err = document.CastAsInteger(v)

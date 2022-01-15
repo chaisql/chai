@@ -2,10 +2,10 @@ package encoding_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -15,7 +15,7 @@ func BenchmarkEncodeDocument(b *testing.B) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
+		fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	d := types.NewDocumentValue(&fb)
@@ -31,7 +31,7 @@ func BenchmarkDocumentGetByField(b *testing.B) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
+		fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	d := types.NewDocumentValue(&fb)
@@ -52,7 +52,7 @@ func BenchmarkDocumentIterate(b *testing.B) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("name-%d", i), types.NewIntegerValue(i))
+		fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
 	}
 
 	d := types.NewDocumentValue(&fb)
@@ -76,17 +76,17 @@ func BenchmarkDecodeDocument(b *testing.B) {
 	var fb document.FieldBuffer
 
 	for i := int64(0); i < 100; i++ {
-		fb.Add(stringutil.Sprintf("bool-%d", i), types.NewBoolValue(true))
-		fb.Add(stringutil.Sprintf("int-%d", i), types.NewIntegerValue(i))
-		fb.Add(stringutil.Sprintf("double-%d", i), types.NewDoubleValue(float64(i)))
-		fb.Add(stringutil.Sprintf("text-%d", i), types.NewTextValue(stringutil.Sprintf("name-%d", i)))
-		fb.Add(stringutil.Sprintf("blob-%d", i), types.NewBlobValue([]byte(stringutil.Sprintf("blob-%d", i))))
-		fb.Add(stringutil.Sprintf("array-%d", i), types.NewArrayValue(document.NewValueBuffer(
+		fb.Add(fmt.Sprintf("bool-%d", i), types.NewBoolValue(true))
+		fb.Add(fmt.Sprintf("int-%d", i), types.NewIntegerValue(i))
+		fb.Add(fmt.Sprintf("double-%d", i), types.NewDoubleValue(float64(i)))
+		fb.Add(fmt.Sprintf("text-%d", i), types.NewTextValue(fmt.Sprintf("name-%d", i)))
+		fb.Add(fmt.Sprintf("blob-%d", i), types.NewBlobValue([]byte(fmt.Sprintf("blob-%d", i))))
+		fb.Add(fmt.Sprintf("array-%d", i), types.NewArrayValue(document.NewValueBuffer(
 			types.NewBoolValue(true),
 			types.NewIntegerValue(i),
 			types.NewDoubleValue(float64(i)),
 		)))
-		fb.Add(stringutil.Sprintf("document-%d", i), types.NewDocumentValue(document.NewFieldBuffer().
+		fb.Add(fmt.Sprintf("document-%d", i), types.NewDocumentValue(document.NewFieldBuffer().
 			Add("bool", types.NewBoolValue(true)).
 			Add("int", types.NewIntegerValue(i)).
 			Add("double", types.NewDoubleValue(float64(i))),

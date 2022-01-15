@@ -1,10 +1,10 @@
 package functions
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
@@ -34,7 +34,7 @@ var floor = &ScalarDefinition{
 		case types.IntegerValue:
 			return args[0], nil
 		default:
-			return nil, stringutil.Errorf("floor(arg1) expects arg1 to be a number")
+			return nil, fmt.Errorf("floor(arg1) expects arg1 to be a number")
 		}
 	},
 }
@@ -71,7 +71,7 @@ var acos = &ScalarDefinition{
 		}
 		vv := v.V().(float64)
 		if vv > 1.0 || vv < -1.0 {
-			return nil, stringutil.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
+			return nil, fmt.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Acos(vv)
 		return types.NewDoubleValue(res), nil
@@ -91,7 +91,7 @@ var acosh = &ScalarDefinition{
 		}
 		vv := v.V().(float64)
 		if vv < 1.0 {
-			return nil, stringutil.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
+			return nil, fmt.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
 		}
 		res := math.Acosh(vv)
 		return types.NewDoubleValue(res), nil
@@ -111,7 +111,7 @@ var asin = &ScalarDefinition{
 		}
 		vv := v.V().(float64)
 		if vv > 1.0 || vv < -1.0 {
-			return nil, stringutil.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
+			return nil, fmt.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Asin(vv)
 		return types.NewDoubleValue(res), nil

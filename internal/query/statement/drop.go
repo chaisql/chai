@@ -1,9 +1,10 @@
 package statement
 
 import (
+	"fmt"
+
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 )
 
 // DropTableStmt is a DSL that allows creating a DROP TABLE query.
@@ -108,7 +109,7 @@ func (stmt DropSequenceStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	if seq.Info.Owner.TableName != "" {
-		return res, stringutil.Errorf("cannot drop sequence %s because constraint of table %s requires it", seq.Info.Name, seq.Info.Owner.TableName)
+		return res, fmt.Errorf("cannot drop sequence %s because constraint of table %s requires it", seq.Info.Name, seq.Info.Owner.TableName)
 	}
 
 	err = ctx.Catalog.DropSequence(ctx.Tx, stmt.SequenceName)
