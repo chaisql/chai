@@ -3,7 +3,7 @@ package tree
 import (
 	"bytes"
 
-	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -19,17 +19,17 @@ import (
 // of the types package operators.
 // A Tree doesn't support duplicate keys.
 type Tree struct {
-	Store          engine.Store
-	TransientStore engine.TransientStore
+	Store          *badgerengine.Store
+	TransientStore *badgerengine.TransientStore
 }
 
-func New(store engine.Store) *Tree {
+func New(store *badgerengine.Store) *Tree {
 	return &Tree{
 		Store: store,
 	}
 }
 
-func NewTransient(store engine.TransientStore) *Tree {
+func NewTransient(store *badgerengine.TransientStore) *Tree {
 	return &Tree{
 		TransientStore: store,
 	}
@@ -117,12 +117,12 @@ func (t *Tree) Iterate(pivot Key, reverse bool, fn func(Key, types.Value) error)
 }
 
 func (t *Tree) iterateRaw(seek []byte, reverse bool, fn func(Key, types.Value) error) error {
-	var it engine.Iterator
+	var it *badgerengine.Iterator
 
 	if t.TransientStore != nil {
-		it = t.TransientStore.Iterator(engine.IteratorOptions{Reverse: reverse})
+		it = t.TransientStore.Iterator(badgerengine.IteratorOptions{Reverse: reverse})
 	} else {
-		it = t.Store.Iterator(engine.IteratorOptions{Reverse: reverse})
+		it = t.Store.Iterator(badgerengine.IteratorOptions{Reverse: reverse})
 	}
 	defer it.Close()
 
@@ -219,7 +219,7 @@ var errStop = errors.New("stop")
 // Value is an implementation of the types.Value interface returned by Tree.
 // It is used to lazily decode values from the underlying store.
 type Value struct {
-	item engine.Item
+	item *badgerengine.Item
 	v    types.Value
 	buf  []byte
 }

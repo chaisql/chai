@@ -11,7 +11,7 @@ import (
 	"github.com/genjidb/genji/engine"
 )
 
-// A Store is an implementation of the engine.Store interface.
+// A Store is an implementation of the *badgerengine.Store interface.
 type Store struct {
 	ctx      context.Context
 	ng       *Engine
@@ -60,7 +60,7 @@ func (s *Store) Put(k, v []byte) error {
 }
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
-func (s *Store) Get(k []byte) (engine.Item, error) {
+func (s *Store) Get(k []byte) (*Item, error) {
 	select {
 	case <-s.ctx.Done():
 		return nil, s.ctx.Err()
@@ -76,7 +76,7 @@ func (s *Store) Get(k []byte) (engine.Item, error) {
 		return nil, err
 	}
 
-	return &badgerItem{
+	return &Item{
 		item: it,
 	}, nil
 }
@@ -137,9 +137,14 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
+// IteratorOptions is used to configure an iterator upon creation.
+type IteratorOptions struct {
+	Reverse bool
+}
+
 // Iterator uses a Badger iterator with default options.
 // Only one iterator is allowed per read-write transaction.
-func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
+func (s *Store) Iterator(opts IteratorOptions) *Iterator {
 	prefix := buildKey(s.prefix, nil)
 
 	opt := badger.DefaultIteratorOptions
@@ -147,28 +152,28 @@ func (s *Store) Iterator(opts engine.IteratorOptions) engine.Iterator {
 	opt.Reverse = opts.Reverse
 	it := s.tx.NewIterator(opt)
 
-	return &iterator{
+	return &Iterator{
 		ctx:         s.ctx,
 		storePrefix: s.prefix,
 		prefix:      prefix,
 		it:          it,
 		reverse:     opts.Reverse,
-		item:        badgerItem{prefix: prefix},
+		item:        Item{prefix: prefix},
 	}
 }
 
-type iterator struct {
+type Iterator struct {
 	ctx         context.Context
 	transient   bool
 	prefix      []byte
 	storePrefix []byte
 	it          *badger.Iterator
 	reverse     bool
-	item        badgerItem
+	item        Item
 	err         error
 }
 
-func (it *iterator) buildKey(pivot []byte) []byte {
+func (it *Iterator) buildKey(pivot []byte) []byte {
 	if it.transient {
 		return pivot
 	}
@@ -176,7 +181,7 @@ func (it *iterator) buildKey(pivot []byte) []byte {
 	return buildKey(it.storePrefix, pivot)
 }
 
-func (it *iterator) Seek(pivot []byte) {
+func (it *Iterator) Seek(pivot []byte) {
 	select {
 	case <-it.ctx.Done():
 		it.err = it.ctx.Err()
@@ -203,43 +208,43 @@ func (it *iterator) Seek(pivot []byte) {
 	it.it.Seek(seek)
 }
 
-func (it *iterator) Valid() bool {
+func (it *Iterator) Valid() bool {
 	return it.it.ValidForPrefix(it.prefix) && it.err == nil
 }
 
-func (it *iterator) Next() {
+func (it *Iterator) Next() {
 	it.it.Next()
 }
 
-func (it *iterator) Err() error {
+func (it *Iterator) Err() error {
 	return it.err
 }
 
-func (it *iterator) Item() engine.Item {
+func (it *Iterator) Item() *Item {
 	it.item.item = it.it.Item()
 
 	return &it.item
 }
 
-func (it *iterator) Close() error {
+func (it *Iterator) Close() error {
 	it.it.Close()
 	return nil
 }
 
-type badgerItem struct {
+type Item struct {
 	item   *badger.Item
 	prefix []byte
 }
 
-func (i *badgerItem) Key() []byte {
+func (i *Item) Key() []byte {
 	return bytes.TrimPrefix(i.item.Key(), i.prefix)
 }
 
-func (i *badgerItem) ValueCopy(buf []byte) ([]byte, error) {
+func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
 	return i.item.ValueCopy(buf)
 }
 
-// A TransientStore is an implementation of the engine.Store interface.
+// A TransientStore is an implementation of the *badgerengine.Store interface.
 type TransientStore struct {
 	DB *badger.DB
 	tx *badger.Txn
@@ -274,7 +279,7 @@ func (s *TransientStore) Put(k, v []byte) error {
 }
 
 // Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
-func (s *TransientStore) Get(k []byte) (engine.Item, error) {
+func (s *TransientStore) Get(k []byte) (*Item, error) {
 	panic("not implemented")
 }
 
@@ -290,18 +295,18 @@ func (s *TransientStore) Truncate() error {
 
 // Iterator uses a Badger iterator with default options.
 // Only one iterator is allowed per read-write transaction.
-func (s *TransientStore) Iterator(opts engine.IteratorOptions) engine.Iterator {
+func (s *TransientStore) Iterator(opts IteratorOptions) *Iterator {
 	opt := badger.DefaultIteratorOptions
 	opt.Reverse = opts.Reverse
 
 	it := s.tx.NewIterator(opt)
 
-	return &iterator{
+	return &Iterator{
 		transient: true,
 		ctx:       context.TODO(),
 		it:        it,
 		reverse:   opts.Reverse,
-		item:      badgerItem{},
+		item:      Item{},
 	}
 }
 

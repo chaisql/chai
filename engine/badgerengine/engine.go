@@ -38,8 +38,13 @@ func NewEngine(opt badger.Options) (*Engine, error) {
 	}, nil
 }
 
+// TxOptions is used to configure a transaction upon creation.
+type TxOptions struct {
+	Writable bool
+}
+
 // Begin creates a transaction using Badger's transaction API.
-func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Transaction, error) {
+func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -56,7 +61,7 @@ func (e *Engine) Begin(ctx context.Context, opts engine.TxOptions) (engine.Trans
 	}, nil
 }
 
-func (e *Engine) NewTransientStore(ctx context.Context) (engine.TransientStore, error) {
+func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error) {
 	// build engine with fast options
 	opt := badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
 
@@ -151,7 +156,7 @@ func buildStorePrefixKey(name []byte) []byte {
 }
 
 // GetStore returns a store by name.
-func (t *Transaction) GetStore(name []byte) (engine.Store, error) {
+func (t *Transaction) GetStore(name []byte) (*Store, error) {
 	select {
 	case <-t.ctx.Done():
 		return nil, t.ctx.Err()

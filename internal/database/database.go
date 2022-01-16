@@ -5,7 +5,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/errors"
 )
 
@@ -14,7 +14,7 @@ const (
 )
 
 type Database struct {
-	ng      engine.Engine
+	ng      *badgerengine.Engine
 	Catalog *Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
@@ -44,7 +44,7 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ctx context.Context, ng engine.Engine) (*Database, error) {
+func New(ctx context.Context, ng *badgerengine.Engine) (*Database, error) {
 	db := Database{
 		ng:      ng,
 		Catalog: NewCatalog(),
@@ -74,7 +74,7 @@ func New(ctx context.Context, ng engine.Engine) (*Database, error) {
 }
 
 // NewTransientStore creates a temporary store to be used for creating temporary indices.
-func (db *Database) NewTransientStore(ctx context.Context) (engine.TransientStore, func() error, error) {
+func (db *Database) NewTransientStore(ctx context.Context) (*badgerengine.TransientStore, func() error, error) {
 	tdb, err := db.TransientStorePool.Get(context.Background())
 	if err != nil {
 		return nil, nil, err
@@ -85,17 +85,12 @@ func (db *Database) NewTransientStore(ctx context.Context) (engine.TransientStor
 	}, nil
 }
 
-// Close the database and the underlying engine.
+// Close the database.
 func (db *Database) Close() error {
 	var err error
 
 	db.closeOnce.Do(func() {
 		err = db.closeDatabase()
-		if err != nil {
-			return
-		}
-
-		err = db.ng.Close()
 	})
 
 	return err
@@ -183,7 +178,7 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		opts = &TxOptions{}
 	}
 
-	ntx, err := db.ng.Begin(ctx, engine.TxOptions{
+	ntx, err := db.ng.Begin(ctx, badgerengine.TxOptions{
 		Writable: !opts.ReadOnly,
 	})
 	if err != nil {

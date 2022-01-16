@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/errors"
@@ -119,14 +118,6 @@ func TestTableGetDocument(t *testing.T) {
 	})
 }
 
-type unclosableEngine struct {
-	engine.Engine
-}
-
-func (e *unclosableEngine) Close() error {
-	return nil
-}
-
 // TestTableInsert verifies Insert behaviour.
 func TestTableInsert(t *testing.T) {
 	t.Run("Should generate a key by default", func(t *testing.T) {
@@ -146,9 +137,9 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
-		ng := unclosableEngine{testutil.NewEngine(t)}
+		ng := testutil.NewEngine(t)
 
-		db, cleanup := testutil.NewTestDBWithEngine(t, &ng)
+		db, cleanup := testutil.NewTestDBWithEngine(t, ng)
 		defer cleanup()
 
 		insertDoc := func(db *database.Database) (rawKey tree.Key) {
@@ -172,10 +163,8 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// create a new database object
-		db, cleanup = testutil.NewTestDBWithEngine(t, &ng)
+		db, cleanup = testutil.NewTestDBWithEngine(t, ng)
 		defer cleanup()
-
-		assert.NoError(t, err)
 
 		key2 := insertDoc(db)
 

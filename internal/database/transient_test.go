@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/engine"
+	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ func TestTransientStorePool(t *testing.T) {
 	ctx := context.Background()
 
 	// ask for more than the pool size (3)
-	var tempStores []engine.TransientStore
+	var tempStores []*badgerengine.TransientStore
 	for i := 0; i < 4; i++ {
 		ts, err := db.TransientStorePool.Get(ctx)
 		require.NoError(t, err)

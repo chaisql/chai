@@ -6,7 +6,6 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/errors"
 )
@@ -18,7 +17,7 @@ type DBOptions struct {
 // OpenDB opens a database at the given path.
 func OpenDB(ctx context.Context, dbPath string, opts DBOptions) (*genji.DB, error) {
 	var (
-		ng  engine.Engine
+		ng  *badgerengine.Engine
 		err error
 	)
 

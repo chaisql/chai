@@ -460,7 +460,7 @@ func (t *inferredTableExpression) IsEqual(other TableExpression) bool {
 }
 
 func (t *inferredTableExpression) String() string {
-	return fmt.Sprintf("%s", t.v)
+	return t.v.String()
 }
 
 // A TableConstraint represent a constraint specific to a table

@@ -11,7 +11,6 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/engine/badgerengine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
@@ -29,9 +28,10 @@ import (
 type DB struct {
 	DB  *database.Database
 	ctx context.Context
+	ng  *badgerengine.Engine
 }
 
-func New(ctx context.Context, ng engine.Engine) (*DB, error) {
+func New(ctx context.Context, ng *badgerengine.Engine) (*DB, error) {
 	db, err := database.New(ctx, ng)
 	if err != nil {
 		return nil, err
@@ -54,6 +54,7 @@ func New(ctx context.Context, ng engine.Engine) (*DB, error) {
 	}
 
 	return &DB{
+		ng:  ng,
 		DB:  db,
 		ctx: ctx,
 	}, nil
@@ -89,7 +90,14 @@ func (db DB) WithContext(ctx context.Context) *DB {
 
 // Close the database.
 func (db *DB) Close() error {
-	return db.DB.Close()
+	err := db.DB.Close()
+	if err != nil {
+		_ = db.ng.Close()
+
+		return err
+	}
+
+	return db.ng.Close()
 }
 
 // Begin starts a new transaction.
