@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
@@ -24,7 +24,7 @@ func values(vs ...types.Value) []types.Value {
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	ng := testutil.NewEngine(t)
-	tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+	tx, err := ng.Begin(context.Background(), kv.TxOptions{
 		Writable: true,
 	})
 	assert.NoError(t, err)

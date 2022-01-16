@@ -1,5 +1,5 @@
-// Package badgerengine implements a Badger engine.
-package badgerengine
+// package kv implements a Badger kv.
+package kv
 
 import (
 	"bytes"
@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
 )
 
@@ -21,12 +20,31 @@ const (
 	storePrefix      = 's'
 )
 
-// Engine represents a Badger engine.
+// Common errors returned by the engine implementations.
+var (
+	// ErrTransactionReadOnly is returned when attempting to call write methods on a read-only transaction.
+	ErrTransactionReadOnly = errors.New("transaction is read-only")
+
+	// ErrTransactionDiscarded is returned when calling Rollback or Commit after a transaction is no longer valid.
+	ErrTransactionDiscarded = errors.New("transaction has been discarded")
+
+	// ErrStoreNotFound is returned when the targeted store doesn't exist.
+	ErrStoreNotFound = errors.New("store not found")
+
+	// ErrStoreAlreadyExists must be returned when attempting to create a store with the
+	// same name as an existing one.
+	ErrStoreAlreadyExists = errors.New("store already exists")
+
+	// ErrKeyNotFound is returned when the targeted key doesn't exist.
+	ErrKeyNotFound = errors.New("key not found")
+)
+
+// Engine represents a Badger kv.
 type Engine struct {
 	DB *badger.DB
 }
 
-// NewEngine creates a Badger engine. It takes the same argument as Badger's Open function.
+// NewEngine creates a Badger kv. It takes the same argument as Badger's Open function.
 func NewEngine(opt badger.Options) (*Engine, error) {
 	db, err := badger.Open(opt)
 	if err != nil {
@@ -101,7 +119,7 @@ func (t *Transaction) Rollback() error {
 	t.tx.Discard()
 
 	if t.discarded {
-		return engine.ErrTransactionDiscarded
+		return ErrTransactionDiscarded
 	}
 
 	t.discarded = true
@@ -124,11 +142,11 @@ func (t *Transaction) Commit() error {
 	}
 
 	if t.discarded {
-		return engine.ErrTransactionDiscarded
+		return ErrTransactionDiscarded
 	}
 
 	if !t.writable {
-		return engine.ErrTransactionReadOnly
+		return ErrTransactionReadOnly
 	}
 
 	t.discarded = true
@@ -168,7 +186,7 @@ func (t *Transaction) GetStore(name []byte) (*Store, error) {
 	_, err := t.tx.Get(key)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil, errors.Wrap(engine.ErrStoreNotFound)
+			return nil, errors.Wrap(ErrStoreNotFound)
 		}
 
 		return nil, err
@@ -187,7 +205,7 @@ func (t *Transaction) GetStore(name []byte) (*Store, error) {
 }
 
 // CreateStore creates a store.
-// If the store already exists, returns engine.ErrStoreAlreadyExists.
+// If the store already exists, returns ErrStoreAlreadyExists.
 func (t *Transaction) CreateStore(name []byte) error {
 	select {
 	case <-t.ctx.Done():
@@ -196,13 +214,13 @@ func (t *Transaction) CreateStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return errors.Wrap(engine.ErrTransactionReadOnly)
+		return errors.Wrap(ErrTransactionReadOnly)
 	}
 
 	key := buildStoreKey(name)
 	_, err := t.tx.Get(key)
 	if err == nil {
-		return errors.Wrap(engine.ErrStoreAlreadyExists)
+		return errors.Wrap(ErrStoreAlreadyExists)
 	}
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
@@ -220,7 +238,7 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return errors.Wrap(engine.ErrTransactionReadOnly)
+		return errors.Wrap(ErrTransactionReadOnly)
 	}
 
 	s, err := t.GetStore(name)
@@ -235,7 +253,7 @@ func (t *Transaction) DropStore(name []byte) error {
 
 	err = t.tx.Delete(buildStoreKey([]byte(name)))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return errors.Wrap(engine.ErrStoreNotFound)
+		return errors.Wrap(ErrStoreNotFound)
 	}
 
 	return err

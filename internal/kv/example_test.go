@@ -1,4 +1,4 @@
-package badgerengine_test
+package kv_test
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/internal/kv"
 )
 
 func Example() {
@@ -19,7 +19,7 @@ func Example() {
 	}
 	defer os.RemoveAll(dir)
 
-	ng, err := badgerengine.NewEngine(badger.DefaultOptions(filepath.Join(dir, "badger")))
+	ng, err := kv.NewEngine(badger.DefaultOptions(filepath.Join(dir, "badger")))
 	if err != nil {
 		log.Fatal(err)
 	}

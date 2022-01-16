@@ -6,8 +6,8 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/engine/badgerengine"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 )
 
 type DBOptions struct {
@@ -17,7 +17,7 @@ type DBOptions struct {
 // OpenDB opens a database at the given path.
 func OpenDB(ctx context.Context, dbPath string, opts DBOptions) (*genji.DB, error) {
 	var (
-		ng  *badgerengine.Engine
+		ng  *kv.Engine
 		err error
 	)
 
@@ -31,7 +31,7 @@ func OpenDB(ctx context.Context, dbPath string, opts DBOptions) (*genji.DB, erro
 		opt.IndexCacheSize = 100 << 20
 	}
 
-	ng, err = badgerengine.NewEngine(opt)
+	ng, err = kv.NewEngine(opt)
 	if err != nil && strings.HasPrefix(err.Error(), "Cannot acquire directory lock") {
 		return nil, errors.New("database is locked")
 	}

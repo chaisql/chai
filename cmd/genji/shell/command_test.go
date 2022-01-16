@@ -12,7 +12,7 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -133,7 +133,7 @@ func TestSaveCommand(t *testing.T) {
 			assert.NoError(t, err)
 
 			if tt.engine == "badger" {
-				ng, err := badgerengine.NewEngine(badger.DefaultOptions(tt.path).WithLogger(nil))
+				ng, err := kv.NewEngine(badger.DefaultOptions(tt.path).WithLogger(nil))
 				assert.NoError(t, err)
 				db, err = genji.New(context.Background(), ng)
 				assert.NoError(t, err)

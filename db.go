@@ -11,12 +11,12 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine/badgerengine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -28,10 +28,10 @@ import (
 type DB struct {
 	DB  *database.Database
 	ctx context.Context
-	ng  *badgerengine.Engine
+	ng  *kv.Engine
 }
 
-func New(ctx context.Context, ng *badgerengine.Engine) (*DB, error) {
+func New(ctx context.Context, ng *kv.Engine) (*DB, error) {
 	db, err := database.New(ctx, ng)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func Open(path string) (*DB, error) {
 
 	opts := badger.DefaultOptions(path).WithLogger(nil).WithInMemory(inMemory)
 
-	ng, err := badgerengine.NewEngine(opts)
+	ng, err := kv.NewEngine(opts)
 	if err != nil {
 		return nil, err
 	}

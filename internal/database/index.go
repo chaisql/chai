@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/genjidb/genji/engine"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -140,7 +140,7 @@ func (idx *Index) Delete(vs []types.Value, key tree.Key) error {
 		return err
 	}
 
-	return engine.ErrKeyNotFound
+	return kv.ErrKeyNotFound
 }
 
 // IterateOnRange seeks for the pivot and then goes through all the subsequent key value pairs in increasing or decreasing order and calls the given function for each pair.

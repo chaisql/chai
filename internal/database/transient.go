@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 )
 
@@ -13,15 +13,15 @@ const maxTransientPoolSize = 3
 // TransientStorePool manages a pool of transient stores.
 // It keeps a pool of maxTransientPoolSize stores.
 type TransientStorePool struct {
-	ng *badgerengine.Engine
+	ng *kv.Engine
 
 	mu   sync.Mutex
-	Pool []*badgerengine.TransientStore
+	Pool []*kv.TransientStore
 }
 
 // Get returns a free engine from the pool, if any. Otherwise it creates a new engine
 // and returns it.
-func (t *TransientStorePool) Get(ctx context.Context) (*badgerengine.TransientStore, error) {
+func (t *TransientStorePool) Get(ctx context.Context) (*kv.TransientStore, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -40,7 +40,7 @@ func (t *TransientStorePool) Get(ctx context.Context) (*badgerengine.TransientSt
 }
 
 // Release sets the store for reuse. If the pool is full, it drops the given store.
-func (t *TransientStorePool) Release(ctx context.Context, ts *badgerengine.TransientStore) error {
+func (t *TransientStorePool) Release(ctx context.Context, ts *kv.TransientStore) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 

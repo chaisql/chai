@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -69,7 +69,7 @@ func (t *Table) Delete(key tree.Key) error {
 	}
 
 	err := t.Tree.Delete(key)
-	if errors.Is(err, engine.ErrKeyNotFound) {
+	if errors.Is(err, kv.ErrKeyNotFound) {
 		return errs.ErrDocumentNotFound
 	}
 
@@ -87,7 +87,7 @@ func (t *Table) Replace(key tree.Key, d types.Document) (types.Document, error) 
 	// make sure key exists
 	_, err := t.Tree.Get(key)
 	if err != nil {
-		if errors.Is(err, engine.ErrKeyNotFound) {
+		if errors.Is(err, kv.ErrKeyNotFound) {
 			return nil, errs.ErrDocumentNotFound
 		}
 
@@ -149,7 +149,7 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d
 func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 	v, err := t.Tree.Get(key)
 	if err != nil {
-		if errors.Is(err, engine.ErrKeyNotFound) {
+		if errors.Is(err, kv.ErrKeyNotFound) {
 			return nil, errors.Wrap(errs.ErrDocumentNotFound)
 		}
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)

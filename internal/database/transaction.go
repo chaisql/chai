@@ -3,7 +3,7 @@ package database
 import (
 	"sync"
 
-	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/internal/kv"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the
@@ -11,7 +11,7 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	Tx       *badgerengine.Transaction
+	Tx       *kv.Transaction
 	Writable bool
 	DBMu     *sync.RWMutex
 

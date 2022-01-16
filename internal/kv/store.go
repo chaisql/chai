@@ -1,4 +1,4 @@
-package badgerengine
+package kv
 
 import (
 	"bytes"
@@ -8,10 +8,8 @@ import (
 	"github.com/genjidb/genji/internal/errors"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/genjidb/genji/engine"
 )
 
-// A Store is an implementation of the *badgerengine.Store interface.
 type Store struct {
 	ctx      context.Context
 	ng       *Engine
@@ -45,7 +43,7 @@ func (s *Store) Put(k, v []byte) error {
 	}
 
 	if !s.writable {
-		return engine.ErrTransactionReadOnly
+		return ErrTransactionReadOnly
 	}
 
 	if len(k) == 0 {
@@ -59,7 +57,7 @@ func (s *Store) Put(k, v []byte) error {
 	return s.tx.Set(buildKey(s.prefix, k), v)
 }
 
-// Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
+// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *Store) Get(k []byte) (*Item, error) {
 	select {
 	case <-s.ctx.Done():
@@ -70,7 +68,7 @@ func (s *Store) Get(k []byte) (*Item, error) {
 	it, err := s.tx.Get(buildKey(s.prefix, k))
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil, errors.Wrap(engine.ErrKeyNotFound)
+			return nil, errors.Wrap(ErrKeyNotFound)
 		}
 
 		return nil, err
@@ -81,7 +79,7 @@ func (s *Store) Get(k []byte) (*Item, error) {
 	}, nil
 }
 
-// Delete a record by key. If not found, returns engine.ErrKeyNotFound.
+// Delete a record by key. If not found, returns ErrKeyNotFound.
 func (s *Store) Delete(k []byte) error {
 	select {
 	case <-s.ctx.Done():
@@ -90,14 +88,14 @@ func (s *Store) Delete(k []byte) error {
 	}
 
 	if !s.writable {
-		return engine.ErrTransactionReadOnly
+		return ErrTransactionReadOnly
 	}
 
 	key := buildKey(s.prefix, k)
 	_, err := s.tx.Get(key)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return errors.Wrap(engine.ErrKeyNotFound)
+			return errors.Wrap(ErrKeyNotFound)
 		}
 
 		return err
@@ -115,12 +113,12 @@ func (s *Store) Truncate() error {
 	}
 
 	if !s.writable {
-		return engine.ErrTransactionReadOnly
+		return ErrTransactionReadOnly
 	}
 
 	_, err := s.tx.Get(buildStoreKey(s.name))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return errors.Wrap(engine.ErrStoreNotFound)
+		return errors.Wrap(ErrStoreNotFound)
 	}
 
 	it := s.tx.NewIterator(badger.DefaultIteratorOptions)
@@ -244,7 +242,7 @@ func (i *Item) ValueCopy(buf []byte) ([]byte, error) {
 	return i.item.ValueCopy(buf)
 }
 
-// A TransientStore is an implementation of the *badgerengine.Store interface.
+// A TransientStore is an implementation of the *kv.Store interface.
 type TransientStore struct {
 	DB *badger.DB
 	tx *badger.Txn
@@ -278,12 +276,12 @@ func (s *TransientStore) Put(k, v []byte) error {
 	return s.tx.Set(k, v)
 }
 
-// Get returns a value associated with the given key. If not found, returns engine.ErrKeyNotFound.
+// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *TransientStore) Get(k []byte) (*Item, error) {
 	panic("not implemented")
 }
 
-// Delete a record by key. If not found, returns engine.ErrKeyNotFound.
+// Delete a record by key. If not found, returns ErrKeyNotFound.
 func (s *TransientStore) Delete(k []byte) error {
 	panic("not implemented")
 }

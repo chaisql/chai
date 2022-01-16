@@ -7,9 +7,9 @@ import (
 	"sort"
 
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -746,7 +746,7 @@ func newCatalogStore() *CatalogStore {
 func (s *CatalogStore) Init(tx *Transaction, ctg *Catalog) error {
 	s.Catalog = ctg
 	_, err := tx.Tx.GetStore([]byte(TableName))
-	if errors.Is(err, engine.ErrStoreNotFound) {
+	if errors.Is(err, kv.ErrStoreNotFound) {
 		err = tx.Tx.CreateStore([]byte(TableName))
 	}
 

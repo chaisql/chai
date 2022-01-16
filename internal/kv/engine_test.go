@@ -1,4 +1,4 @@
-package badgerengine_test
+package kv_test
 
 import (
 	"bytes"
@@ -11,20 +11,19 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/engine"
-	"github.com/genjidb/genji/engine/badgerengine"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-func builder(t testing.TB) *badgerengine.Engine {
+func builder(t testing.TB) *kv.Engine {
 	dir, cleanup := tempDir(t)
 	opts := badger.DefaultOptions(filepath.Join(dir, "badger"))
 	opts.Logger = nil
 
-	ng, err := badgerengine.NewEngine(opts)
+	ng, err := kv.NewEngine(opts)
 	assert.NoError(t, err)
 
 	t.Cleanup(cleanup)
@@ -32,7 +31,7 @@ func builder(t testing.TB) *badgerengine.Engine {
 	return ng
 }
 
-// TestEngine runs a list of tests against the provided engine.
+// TestEngine runs a list of tests against the provided kv.
 func TestEngine(t *testing.T) {
 	t.Run("Close", func(t *testing.T) {
 		ng := builder(t)
@@ -41,7 +40,7 @@ func TestEngine(t *testing.T) {
 	})
 }
 
-func getValue(t *testing.T, st *badgerengine.Store, key []byte) []byte {
+func getValue(t *testing.T, st *kv.Store, key []byte) []byte {
 	v, err := st.Get([]byte(key))
 	assert.NoError(t, err)
 	buf, err := v.ValueCopy(nil)
@@ -50,7 +49,7 @@ func getValue(t *testing.T, st *badgerengine.Store, key []byte) []byte {
 }
 
 // TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback
-// behaviour of transactions created from the given engine.
+// behaviour of transactions created from the given kv.
 func TestTransactionCommitRollback(t *testing.T) {
 	ng := builder(t)
 	defer func() {
@@ -58,7 +57,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	}()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -69,7 +68,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -84,7 +83,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 
 	t.Run("Commit after context canceled should fail", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+		tx, err := ng.Begin(ctx, kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -101,7 +100,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.Error(t, err)
 
 		// ensure data has not been persisted
-		tx, err = ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err = ng.Begin(context.Background(), kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -112,7 +111,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Rollback after commit should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -122,11 +121,11 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = tx.Rollback()
-		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
+		assert.ErrorIs(t, err, kv.ErrTransactionDiscarded)
 	})
 
 	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -136,11 +135,11 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = tx.Commit()
-		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
+		assert.ErrorIs(t, err, kv.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -150,12 +149,12 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = tx.Rollback()
-		assert.ErrorIs(t, err, engine.ErrTransactionDiscarded)
+		assert.ErrorIs(t, err, kv.ErrTransactionDiscarded)
 	})
 
 	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+		tx, err := ng.Begin(ctx, kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -167,7 +166,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -180,7 +179,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.NoError(t, err)
 
 		// create a new read-only transaction
-		tx, err = ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err = ng.Begin(context.Background(), kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -195,11 +194,11 @@ func TestTransactionCommitRollback(t *testing.T) {
 			err  error
 			fn   func(*error)
 		}{
-			{"CreateStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateStore([]byte("store")) }},
-			{"DropStore", engine.ErrTransactionReadOnly, func(err *error) { *err = tx.DropStore([]byte("store")) }},
-			{"StorePut", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Put([]byte("id"), nil) }},
-			{"StoreDelete", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Delete([]byte("id")) }},
-			{"StoreTruncate", engine.ErrTransactionReadOnly, func(err *error) { *err = st.Truncate() }},
+			{"CreateStore", kv.ErrTransactionReadOnly, func(err *error) { *err = tx.CreateStore([]byte("store")) }},
+			{"DropStore", kv.ErrTransactionReadOnly, func(err *error) { *err = tx.DropStore([]byte("store")) }},
+			{"StorePut", kv.ErrTransactionReadOnly, func(err *error) { *err = st.Put([]byte("id"), nil) }},
+			{"StoreDelete", kv.ErrTransactionReadOnly, func(err *error) { *err = st.Delete([]byte("id")) }},
+			{"StoreTruncate", kv.ErrTransactionReadOnly, func(err *error) { *err = st.Truncate() }},
 		}
 
 		for _, test := range tests {
@@ -216,31 +215,31 @@ func TestTransactionCommitRollback(t *testing.T) {
 		// this test checks if rollback undoes data changes correctly and if commit keeps data correctly
 		tests := []struct {
 			name    string
-			initFn  func(*badgerengine.Transaction) error
-			writeFn func(*badgerengine.Transaction, *error)
-			readFn  func(*badgerengine.Transaction, *error)
+			initFn  func(*kv.Transaction) error
+			writeFn func(*kv.Transaction, *error)
+			readFn  func(*kv.Transaction, *error)
 		}{
 			{
 				"CreateStore",
 				nil,
-				func(tx *badgerengine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx *badgerengine.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
 			},
 			{
 				"DropStore",
-				func(tx *badgerengine.Transaction) error { return tx.CreateStore([]byte("store")) },
-				func(tx *badgerengine.Transaction, err *error) { *err = tx.DropStore([]byte("store")) },
-				func(tx *badgerengine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
+				func(tx *kv.Transaction) error { return tx.CreateStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { *err = tx.DropStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
 			},
 			{
 				"StorePut",
-				func(tx *badgerengine.Transaction) error { return tx.CreateStore([]byte("store")) },
-				func(tx *badgerengine.Transaction, err *error) {
+				func(tx *kv.Transaction) error { return tx.CreateStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) {
 					st, er := tx.GetStore([]byte("store"))
 					assert.NoError(t, er)
 					assert.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
 				},
-				func(tx *badgerengine.Transaction, err *error) {
+				func(tx *kv.Transaction, err *error) {
 					st, er := tx.GetStore([]byte("store"))
 					assert.NoError(t, er)
 					_, *err = st.Get([]byte("foo"))
@@ -257,7 +256,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+						tx, err := ng.Begin(context.Background(), kv.TxOptions{
 							Writable: true,
 						})
 						assert.NoError(t, err)
@@ -270,7 +269,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 					}()
 				}
 
-				tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+				tx, err := ng.Begin(context.Background(), kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -282,7 +281,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 				err = tx.Rollback()
 				assert.NoError(t, err)
 
-				tx, err = ng.Begin(context.Background(), badgerengine.TxOptions{
+				tx, err = ng.Begin(context.Background(), kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -302,7 +301,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+						tx, err := ng.Begin(context.Background(), kv.TxOptions{
 							Writable: true,
 						})
 						assert.NoError(t, err)
@@ -315,7 +314,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 					}()
 				}
 
-				tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+				tx, err := ng.Begin(context.Background(), kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -327,7 +326,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 				err = tx.Commit()
 				assert.NoError(t, err)
 
-				tx, err = ng.Begin(context.Background(), badgerengine.TxOptions{
+				tx, err = ng.Begin(context.Background(), kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -342,13 +341,13 @@ func TestTransactionCommitRollback(t *testing.T) {
 	t.Run("Data should be visible within the same transaction", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			writeFn func(*badgerengine.Transaction, *error)
-			readFn  func(*badgerengine.Transaction, *error)
+			writeFn func(*kv.Transaction, *error)
+			readFn  func(*kv.Transaction, *error)
 		}{
 			{
 				"CreateStore",
-				func(tx *badgerengine.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx *badgerengine.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
+				func(tx *kv.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
 			},
 		}
 
@@ -359,7 +358,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 					assert.NoError(t, ng.Close())
 				}()
 
-				tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+				tx, err := ng.Begin(context.Background(), kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -383,7 +382,7 @@ func TestTransactionCreateStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -403,7 +402,7 @@ func TestTransactionCreateStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -412,7 +411,7 @@ func TestTransactionCreateStore(t *testing.T) {
 		err = tx.CreateStore([]byte("store"))
 		assert.NoError(t, err)
 		err = tx.CreateStore([]byte("store"))
-		assert.ErrorIs(t, err, engine.ErrStoreAlreadyExists)
+		assert.ErrorIs(t, err, kv.ErrStoreAlreadyExists)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -422,7 +421,7 @@ func TestTransactionCreateStore(t *testing.T) {
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+		tx, err := ng.Begin(ctx, kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -442,14 +441,14 @@ func TestTransactionGetStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		_, err = tx.GetStore([]byte("store"))
-		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
+		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
 	})
 
 	t.Run("Should return the right store", func(t *testing.T) {
@@ -458,7 +457,7 @@ func TestTransactionGetStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -489,7 +488,7 @@ func TestTransactionGetStore(t *testing.T) {
 
 		// use stb to fetch data and verify it's not present
 		_, err = stb.Get([]byte("foo"))
-		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
+		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -499,7 +498,7 @@ func TestTransactionGetStore(t *testing.T) {
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+		tx, err := ng.Begin(ctx, kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -524,7 +523,7 @@ func TestTransactionDropStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -537,7 +536,7 @@ func TestTransactionDropStore(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = tx.GetStore([]byte("store"))
-		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
+		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if store not found", func(t *testing.T) {
@@ -546,14 +545,14 @@ func TestTransactionDropStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.DropStore([]byte("store"))
-		assert.ErrorIs(t, err, engine.ErrStoreNotFound)
+		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
 	})
 
 	t.Run("Should fail if context canceled", func(t *testing.T) {
@@ -563,7 +562,7 @@ func TestTransactionDropStore(t *testing.T) {
 		}()
 
 		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+		tx, err := ng.Begin(ctx, kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -580,13 +579,13 @@ func TestTransactionDropStore(t *testing.T) {
 	})
 }
 
-func storeBuilder(t testing.TB) (*badgerengine.Store, func()) {
+func storeBuilder(t testing.TB) (*kv.Store, func()) {
 	return storeBuilderWithContext(context.Background(), t)
 }
 
-func storeBuilderWithContext(ctx context.Context, t testing.TB) (*badgerengine.Store, func()) {
+func storeBuilderWithContext(ctx context.Context, t testing.TB) (*kv.Store, func()) {
 	ng := builder(t)
-	tx, err := ng.Begin(ctx, badgerengine.TxOptions{
+	tx, err := ng.Begin(ctx, kv.TxOptions{
 		Writable: true,
 	})
 	assert.NoError(t, err)
@@ -609,7 +608,7 @@ func TestStoreIterator(t *testing.T) {
 			st, cleanup := storeBuilder(t)
 			defer cleanup()
 
-			it := st.Iterator(badgerengine.IteratorOptions{Reverse: reverse})
+			it := st.Iterator(kv.IteratorOptions{Reverse: reverse})
 			defer it.Close()
 			i := 0
 
@@ -639,7 +638,7 @@ func TestStoreIterator(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 
 		cancel()
@@ -663,7 +662,7 @@ func TestStoreIterator(t *testing.T) {
 
 		var i uint8 = 1
 		var count int
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
@@ -691,7 +690,7 @@ func TestStoreIterator(t *testing.T) {
 
 		var i uint8 = 10
 		var count int
-		it := st.Iterator(badgerengine.IteratorOptions{Reverse: true})
+		it := st.Iterator(kv.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek(nil); it.Valid(); it.Next() {
@@ -718,7 +717,7 @@ func TestStoreIterator(t *testing.T) {
 
 		var i uint8 = 4
 		var count int
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek([]byte{i}); it.Valid(); it.Next() {
@@ -745,7 +744,7 @@ func TestStoreIterator(t *testing.T) {
 
 		var i uint8 = 4
 		var count int
-		it := st.Iterator(badgerengine.IteratorOptions{Reverse: true})
+		it := st.Iterator(kv.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek([]byte{i}); it.Valid(); it.Next() {
@@ -772,7 +771,7 @@ func TestStoreIterator(t *testing.T) {
 		assert.NoError(t, err)
 
 		called := false
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek([]byte{2}); it.Valid(); it.Next() {
@@ -799,7 +798,7 @@ func TestStoreIterator(t *testing.T) {
 		assert.NoError(t, err)
 
 		called := false
-		it := st.Iterator(badgerengine.IteratorOptions{Reverse: true})
+		it := st.Iterator(kv.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		for it.Seek([]byte{2}); it.Valid(); it.Next() {
@@ -822,7 +821,7 @@ func TestStoreIterator(t *testing.T) {
 		err := st.Put(k, []byte{1})
 		assert.NoError(t, err)
 
-		it := st.Iterator(badgerengine.IteratorOptions{Reverse: true})
+		it := st.Iterator(kv.IteratorOptions{Reverse: true})
 		defer it.Close()
 
 		it.Seek(nil)
@@ -842,7 +841,7 @@ func TestStoreIterator(t *testing.T) {
 		}
 
 		i := 0
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 
 		for it.Seek(nil); it.Valid() && i < 50; it.Next() {
@@ -924,7 +923,7 @@ func TestStoreGet(t *testing.T) {
 		defer cleanup()
 
 		r, err := st.Get([]byte("id"))
-		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
+		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
 
@@ -967,7 +966,7 @@ func TestStoreDelete(t *testing.T) {
 		defer cleanup()
 
 		err := st.Delete([]byte("id"))
-		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
+		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -988,14 +987,14 @@ func TestStoreDelete(t *testing.T) {
 
 		// try again, should fail
 		err = st.Delete([]byte("bar"))
-		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
+		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 
 		// make sure it didn't also delete the other one
 		v = getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 		i := 0
 		for it.Seek(nil); it.Valid(); it.Next() {
@@ -1008,7 +1007,7 @@ func TestStoreDelete(t *testing.T) {
 	t.Run("Should not rollback document if deleted then put", func(t *testing.T) {
 		ng := builder(t)
 
-		tx, err := ng.Begin(context.Background(), badgerengine.TxOptions{Writable: true})
+		tx, err := ng.Begin(context.Background(), kv.TxOptions{Writable: true})
 		assert.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
 		assert.NoError(t, err)
@@ -1023,7 +1022,7 @@ func TestStoreDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		_, err = st.Get([]byte("foo"))
-		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
+		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 
 		err = st.Put([]byte("foo"), []byte("bar"))
 		assert.NoError(t, err)
@@ -1035,7 +1034,7 @@ func TestStoreDelete(t *testing.T) {
 		err = tx.Commit()
 		assert.NoError(t, err)
 
-		tx, err = ng.Begin(context.Background(), badgerengine.TxOptions{Writable: false})
+		tx, err = ng.Begin(context.Background(), kv.TxOptions{Writable: false})
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
@@ -1084,7 +1083,7 @@ func TestStoreTruncate(t *testing.T) {
 		err = st.Truncate()
 		assert.NoError(t, err)
 
-		it := st.Iterator(badgerengine.IteratorOptions{})
+		it := st.Iterator(kv.IteratorOptions{})
 		defer it.Close()
 		it.Seek(nil)
 		assert.NoError(t, it.Err())
@@ -1107,7 +1106,7 @@ func TestStoreTruncate(t *testing.T) {
 	})
 }
 
-// TestQueries test simple queries against the engine.
+// TestQueries test simple queries against the kv.
 func TestQueries(t *testing.T) {
 	t.Run("SELECT", func(t *testing.T) {
 		ng := builder(t)
@@ -1321,7 +1320,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 }
 
 func TestTransient(t *testing.T) {
-	var ng badgerengine.Engine
+	var ng kv.Engine
 
 	ts, err := ng.NewTransientStore(context.Background())
 	assert.NoError(t, err)
@@ -1331,7 +1330,7 @@ func TestTransient(t *testing.T) {
 	err = ts.Put([]byte("foo"), []byte("bar"))
 	assert.NoError(t, err)
 
-	it := ts.Iterator(badgerengine.IteratorOptions{})
+	it := ts.Iterator(kv.IteratorOptions{})
 	defer it.Close()
 
 	it.Seek([]byte("foo"))
