@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v3/options"
 	"github.com/genjidb/genji/internal/errors"
 )
 
@@ -82,8 +83,12 @@ func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error
 func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error) {
 	// build engine with fast options
 	opt := badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
+	opt.Compression = options.None
+	opt.MetricsEnabled = false
+	opt.Logger = nil
+	opt.DetectConflicts = false
 
-	db, err := badger.Open(opt)
+	db, err := badger.OpenManaged(opt)
 	if err != nil {
 		return nil, err
 	}

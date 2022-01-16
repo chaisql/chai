@@ -2,6 +2,11 @@
 CREATE TABLE test;
 INSERT INTO test (a) VALUES (1), (2), (3);
 
+-- suite: no index
+
+-- suite: with index
+CREATE INDEX ON test(a);
+
 -- test: asc
 SELECT *, a FROM test ORDER BY a;
 /* result:

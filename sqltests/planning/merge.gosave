@@ -1,0 +1,146 @@
+// // MergeFilterNodes merges any two filter nodes that are related to
+// // the same path and can constitute a single filter node or a BETWEEN operation.
+// // It also detects invalid sequences of filter nodes that can never return any result.
+// // Example:
+// //		docs.Filter(a > 2) | docs.Filter(a < 5)
+// //	->	docs.Filter(a BETWEEN 2 AND 5)
+// //		docs.Filter(a > 2) | docs.Filter(a < 5) | docs.Filter(a = 3)
+// //	->	docs.Filter(a = 3)
+// //		docs.Filter(a > 2) | docs.Filter(a >= 5)
+// //	->	docs.Filter(a >= 5)
+// func MergeFilterNodes(sctx *StreamContext) error {
+// 	type selected struct {
+// 		path      document.Path
+// 		op        scanner.Token
+// 		operand   types.Value
+// 		exclusive bool
+// 		f         *stream.DocsFilterOperator
+// 	}
+
+// 	m := make(map[string][]selected)
+
+// 	// build a map grouping the filters by their path
+// 	for _, f := range sctx.Filters {
+// 		switch t := f.Expr.(type) {
+// 		case expr.Operator:
+// 			if !operatorIsIndexCompatible(t) {
+// 				continue
+// 			}
+
+// 			// check if the filter expression is in the form:
+// 			// 'path OP value' OR 'value OP path'
+// 			path, operand := getPathAndOperandFromOp(t)
+// 			if path == nil {
+// 				continue
+// 			}
+
+// 			// check if the operand is a literal value
+// 			lv, ok := operand.(expr.LiteralValue)
+// 			if !ok {
+// 				continue
+// 			}
+
+// 			m[path.String()] = append(m[path.String()], selected{
+// 				path:      path,
+// 				op:        t.Token(),
+// 				operand:   lv.Value,
+// 				exclusive: t.Token() == scanner.GT || t.Token() == scanner.LT,
+// 				f:         f,
+// 			})
+// 		}
+// 	}
+
+// 	// merge the filters that are related to the same path
+// 	for _, v := range m {
+// 		if len(v) == 1 {
+// 			continue
+// 		}
+
+// 		// ensure the operands are all the same type.
+// 		// the only exception is if the operands are both numbers
+// 		for i := 1; i < len(v); i++ {
+// 			if v[i].operand.Type() != v[0].operand.Type() && !(v[i].operand.Type().IsNumber() && v[i].operand.Type().IsNumber()) {
+// 				// return an empty stream if the operands are not the same type
+// 				sctx.Stream = new(stream.Stream)
+// 				return nil
+// 			}
+// 		}
+
+// 		// analyse the filters to determine the lower and upper bounds
+// 		var lower, upper types.Value
+// 		var exclusiveLower, exclusiveUpper bool
+// 		for i, s := range v {
+// 			switch s.op {
+// 			case scanner.GT, scanner.GTE:
+// 				if lower == nil {
+// 					lower = &v[i]
+// 					continue
+// 				}
+
+// 				// keep the highest lower bound
+// 				ok, err := types.IsGreaterThan(s.operand, lower.operand)
+// 				if err != nil {
+// 					return err
+// 				}
+// 				if ok {
+// 					// remove the previous lower bound
+// 					sctx.removeFilterNode(lower.f)
+// 					lower = &v[i]
+// 					continue
+// 				}
+
+// 				// in case they are equal, and one of them is exclusive, keep that one
+// 				ok, err := types.IsEqual(s.operand, lower.operand)
+// 				if err != nil {
+// 					return err
+// 				}
+
+// 				if s.op == scanner.GT && (lower.op == scanner.GTE || lower.op == scanner.BETWEEN) {
+// 					// if they are equal and the operator is GT and the previous lower bound is a GTE or a BETWEEN,
+// 					// we keep the GT
+// 					ok, err := types.IsEqual(s.operand, lower.operand)
+// 					if err != nil {
+// 						return err
+// 					}
+
+// 					if ok {
+// 						// remove the previous lower bound
+// 						sctx.removeFilterNode(lower.f)
+// 						lower = &v[i]
+// 					}
+
+// 					// remove the filter node
+// 					sctx.removeFilterNode(s.f)
+// 				} else {
+// 				}
+// 				// remove the filter node
+// 				sctx.removeFilterNode(s.f)
+// 			}
+// 		}
+// 	}
+
+// 	return nil
+// }
+
+// func getPathAndOperandFromOp(op expr.Operator) (document.Path, expr.Expr) {
+// 	if op.Token() == scanner.BETWEEN {
+// 		xf, xIsPath := op.(*expr.BetweenOperator).X.(expr.Path)
+// 		if !xIsPath {
+// 			return nil, nil
+// 		}
+
+// 		return document.Path(xf), expr.LiteralExprList{op.LeftHand(), op.RightHand()}
+// 	}
+
+// 	lf, leftIsPath := op.LeftHand().(expr.Path)
+// 	rf, rightIsPath := op.RightHand().(expr.Path)
+
+// 	if !leftIsPath && !rightIsPath {
+// 		return nil, nil
+// 	}
+
+// 	if leftIsPath {
+// 		return document.Path(lf), op.RightHand()
+// 	}
+// 	return document.Path(rf), op.LeftHand()
+// }

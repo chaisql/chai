@@ -78,7 +78,7 @@ func SelectIndex(sctx *StreamContext) error {
 	}
 
 	// ensure the list of filter nodes is not empty
-	if len(sctx.Filters) == 0 {
+	if len(sctx.Filters) == 0 && len(sctx.TempTreeSorts) == 0 {
 		return nil
 	}
 
@@ -100,8 +100,11 @@ type indexSelector struct {
 
 func (i *indexSelector) selectIndex() error {
 	// generate a list of candidates from all the filter nodes that
-	// can benefit from reading from an index or the table pk
-	nodes := make(filterNodes, 0, len(i.sctx.Filters))
+	// can benefit from reading from an index or the table pk,
+	// plus potentially ORDER BY nodes (1 max)
+	nodes := make(indexableNodes, 0, len(i.sctx.Filters)+1)
+
+	// get all contiguous filter nodes that can be indexed
 	for _, f := range i.sctx.Filters {
 		filter := i.isFilterIndexable(f)
 		if filter == nil {
@@ -109,6 +112,19 @@ func (i *indexSelector) selectIndex() error {
 		}
 
 		nodes = append(nodes, filter)
+	}
+
+	// The RemoveUnnecessaryTempSortNodesRule made sure
+	// that if there are multiple TempSort nodes, they are
+	// using different paths.
+	// In this case, we can only associate the first TempSort node
+	// with an index, as the second one will be used to sort the
+	// results downstream.
+	if len(i.sctx.TempTreeSorts) > 0 {
+		node := i.isTempTreeSortIndexable(i.sctx.TempTreeSorts[0])
+		if node != nil {
+			nodes = append(nodes, node)
+		}
 	}
 
 	// select the cheapest plan
@@ -162,7 +178,15 @@ func (i *indexSelector) selectIndex() error {
 
 	// remove the filter nodes from the tree
 	for _, f := range selected.nodes {
-		i.sctx.removeFilterNode(f.node.(*stream.DocsFilterOperator))
+		switch tp := f.node.(type) {
+		case *stream.DocsFilterOperator:
+			i.sctx.removeFilterNode(tp)
+			if f.orderBy != nil {
+				i.sctx.removeTempTreeNodeNode(f.orderBy.node.(*stream.DocsTempTreeSortOperator))
+			}
+		case *stream.DocsTempTreeSortOperator:
+			i.sctx.removeTempTreeNodeNode(tp)
+		}
 	}
 
 	// we replace the seq scan node by the selected root
@@ -180,7 +204,7 @@ func (i *indexSelector) selectIndex() error {
 	return nil
 }
 
-func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterNode {
+func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *indexableNode {
 	// only operators can associate this node to an index
 	op, ok := f.Expr.(expr.Operator)
 	if !ok {
@@ -198,7 +222,7 @@ func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterN
 		return nil
 	}
 
-	node := filterNode{
+	node := indexableNode{
 		node:     f,
 		path:     path,
 		operator: op.Token(),
@@ -206,6 +230,21 @@ func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterN
 	}
 
 	return &node
+}
+
+func (i *indexSelector) isTempTreeSortIndexable(n *stream.DocsTempTreeSortOperator) *indexableNode {
+	// only paths can be associated with an index
+	path, ok := n.Expr.(expr.Path)
+	if !ok {
+		return nil
+	}
+
+	return &indexableNode{
+		node:     n,
+		path:     document.Path(path),
+		desc:     n.Desc,
+		operator: scanner.ORDER,
+	}
 }
 
 // for a given index, select all filter nodes that match according to the following rules:
@@ -222,35 +261,104 @@ func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *filterN
 //   -> range = {min: [3], exact: true}
 //  docs.Filter(a IN (1, 2))
 //   -> ranges = [1], [2]
-func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, nodes filterNodes) *candidate {
-	found := make([]*filterNode, 0, len(paths))
+func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, nodes indexableNodes) *candidate {
+	found := make([]*indexableNode, 0, len(paths))
+	var desc bool
 
 	var hasIn bool
+	var sorter *indexableNode
 	for _, p := range paths {
-		n := nodes.getByPath(p)
-		if n == nil {
+		ns := nodes.getByPath(p)
+		if len(ns) == 0 {
 			break
 		}
 
-		if n.operator == scanner.IN {
+		// get the filter node and the TempSort node if any
+		var filter *indexableNode
+		for i, n := range ns {
+			if n.operator == scanner.ORDER && sorter == nil {
+				sorter = ns[i]
+				desc = sorter.desc
+				continue
+			}
+			if filter == nil {
+				filter = ns[i]
+			}
+
+			if filter != nil && sorter != nil {
+				break
+			}
+		}
+
+		if filter == nil {
+			break
+		}
+
+		// if we have both a filter and a TempSort node, we can merge them
+		if filter != nil && sorter != nil {
+			filter.orderBy = sorter
+			sorter = nil
+		}
+
+		if filter.operator == scanner.IN {
 			hasIn = true
 		}
 
 		// in the case there is an IN operator somewhere
 		// we only select additional IN or = operators.
 		// Otherwise, any operator is accepted
-		if !hasIn || (n.operator == scanner.EQ || n.operator == scanner.IN) {
-			found = append(found, n)
+		if !hasIn || (filter.operator == scanner.EQ || filter.operator == scanner.IN) {
+			found = append(found, filter)
 		}
 
 		// we must stop at the first operator that is not a IN or a =
-		if n.operator != scanner.EQ && n.operator != scanner.IN {
+		if filter.operator != scanner.EQ && filter.operator != scanner.IN {
 			break
 		}
 	}
 
-	if len(found) == 0 {
+	if len(found) == 0 && sorter == nil {
 		return nil
+	}
+
+	// if we only have a TempSort node, we use a scan with no range
+	if len(found) == 0 {
+		c := candidate{
+			nodes:      []*indexableNode{sorter},
+			rangesCost: 10_000,
+			isIndex:    isIndex,
+			isUnique:   isUnique,
+		}
+
+		if !isIndex {
+			if !desc {
+				c.replaceRootBy = []stream.Operator{
+					stream.TableScan(treeName),
+				}
+			} else {
+				c.replaceRootBy = []stream.Operator{
+					stream.TableScanReverse(treeName),
+				}
+			}
+		} else {
+			if !desc {
+				c.replaceRootBy = []stream.Operator{
+					stream.IndexScan(treeName),
+				}
+			} else {
+				c.replaceRootBy = []stream.Operator{
+					stream.IndexScanReverse(treeName),
+				}
+			}
+		}
+
+		return &c
+	}
+
+	// in case we found an orphan sorter node and we need to assign it to the first filter node
+	// for deletion
+	if sorter != nil {
+		found[0].orderBy = sorter
 	}
 
 	// in case there is an IN operator in the list, we need to generate multiple ranges.
@@ -271,19 +379,31 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 	}
 
 	if !isIndex {
-		c.replaceRootBy = []stream.Operator{
-			stream.TableScan(treeName, ranges...),
+		if !desc {
+			c.replaceRootBy = []stream.Operator{
+				stream.TableScan(treeName, ranges...),
+			}
+		} else {
+			c.replaceRootBy = []stream.Operator{
+				stream.TableScanReverse(treeName, ranges...),
+			}
 		}
 	} else {
-		c.replaceRootBy = []stream.Operator{
-			stream.IndexScan(treeName, ranges...),
+		if !desc {
+			c.replaceRootBy = []stream.Operator{
+				stream.IndexScan(treeName, ranges...),
+			}
+		} else {
+			c.replaceRootBy = []stream.Operator{
+				stream.IndexScanReverse(treeName, ranges...),
+			}
 		}
 	}
 
 	return &c
 }
 
-func (i *indexSelector) buildRangesFromFilterNodes(paths []document.Path, filters []*filterNode) stream.Ranges {
+func (i *indexSelector) buildRangesFromFilterNodes(paths []document.Path, filters []*indexableNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
 	// so that: docs.Filter(a IN (10, 11)) | docs.Filter(b = 20) | docs.Filter(c IN (30, 31))
 	// becomes:
@@ -342,7 +462,7 @@ func (i *indexSelector) walkExpr(l [][]expr.Expr, fn func(row []expr.Expr)) {
 	}
 }
 
-func (i *indexSelector) buildRangeFromFilterNodes(filters ...*filterNode) stream.Range {
+func (i *indexSelector) buildRangeFromFilterNodes(filters ...*indexableNode) stream.Range {
 	// first, generate a list of paths and a list of expressions
 	paths := make([]document.Path, 0, len(filters))
 	el := make(expr.LiteralExprList, 0, len(filters))
@@ -405,42 +525,61 @@ func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []doc
 	return rng
 }
 
-type filterNode struct {
-	// associated stream node
+// an indexableNode is a node that can be used to
+// read from an index instead of a table.
+// It can be used to filter the results of a query or
+// to order the results.
+type indexableNode struct {
+	// associated stream node (either a DocsFilterNode or a DocsTempTreeSortNote)
 	node stream.Operator
 
+	// For filter nodes
 	// the expression of the node
 	// has been broken into
 	// <path> <operator> <operand>
-	// Ex:    a.b[0] > 5 + 5
+	// Ex:   WHERE a.b[0] > 5 + 5
 	// Gives:
 	// - path: a.b[0]
 	// - operator: scanner.GT
 	// - operand: 5 + 5
+	// For TempTreeSort nodes
+	// the expression of the node
+	// has been broken into
+	// <path> <direction>
+	// Ex:  ORDER BY a.b[0] ASC
+	// Gives:
+	// - path: a.b[0]
+	// - desc: false
 	path     document.Path
 	operator scanner.Token
 	operand  expr.Expr
+	desc     bool
+
+	// merged TempTreeSort node to remove
+	// from the stream
+	orderBy *indexableNode
 }
 
-type filterNodes []*filterNode
+type indexableNodes []*indexableNode
 
-// getByPath returns the first filter for the given path.
-// TODO(asdine): add a rule that merges filter nodes that point to the
+// getByPath returns all indexable nodes for the given path.
+// TODO(asdine): add a rule that merges nodes that point to the
 // same path.
-func (f filterNodes) getByPath(p document.Path) *filterNode {
-	for _, fn := range f {
+func (n indexableNodes) getByPath(p document.Path) []*indexableNode {
+	var nodes []*indexableNode
+	for _, fn := range n {
 		if fn.path.IsEqual(p) {
-			return fn
+			nodes = append(nodes, fn)
 		}
 	}
 
-	return nil
+	return nodes
 }
 
 type candidate struct {
 	// filter operators to remove and replace by either an index.Scan
 	// or pkScan operators.
-	nodes filterNodes
+	nodes indexableNodes
 
 	// replace the table.Scan by these nodes
 	replaceRootBy []stream.Operator

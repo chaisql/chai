@@ -15,6 +15,7 @@ var optimizerRules = []func(sctx *StreamContext) error{
 	PrecalculateExprRule,
 	RemoveUnnecessaryProjection,
 	RemoveUnnecessaryFilterNodesRule,
+	RemoveUnnecessaryTempSortNodesRule,
 	SelectIndex,
 }
 
@@ -53,10 +54,11 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 }
 
 type StreamContext struct {
-	Catalog     *database.Catalog
-	Stream      *stream.Stream
-	Filters     []*stream.DocsFilterOperator
-	Projections []*stream.DocsProjectOperator
+	Catalog       *database.Catalog
+	Stream        *stream.Stream
+	Filters       []*stream.DocsFilterOperator
+	Projections   []*stream.DocsProjectOperator
+	TempTreeSorts []*stream.DocsTempTreeSortOperator
 }
 
 func NewStreamContext(s *stream.Stream) *StreamContext {
@@ -78,6 +80,9 @@ func NewStreamContext(s *stream.Stream) *StreamContext {
 		case *stream.DocsProjectOperator:
 			sctx.Projections = append(sctx.Projections, t)
 			prevIsFilter = false
+		case *stream.DocsTempTreeSortOperator:
+			sctx.TempTreeSorts = append(sctx.TempTreeSorts, t)
+			prevIsFilter = false
 		}
 
 		n = n.GetNext()
@@ -96,6 +101,21 @@ func (sctx *StreamContext) removeFilterNode(f *stream.DocsFilterOperator) {
 	for i, flt := range sctx.Filters {
 		if flt == f {
 			sctx.removeFilterNodeByIndex(i)
+			return
+		}
+	}
+}
+
+func (sctx *StreamContext) removeTempTreeNodeByIndex(index int) {
+	f := sctx.TempTreeSorts[index]
+	sctx.Stream.Remove(f)
+	sctx.TempTreeSorts = append(sctx.TempTreeSorts[:index], sctx.TempTreeSorts[index+1:]...)
+}
+
+func (sctx *StreamContext) removeTempTreeNodeNode(f *stream.DocsTempTreeSortOperator) {
+	for i, flt := range sctx.TempTreeSorts {
+		if flt == f {
+			sctx.removeTempTreeNodeByIndex(i)
 			return
 		}
 	}
@@ -393,6 +413,43 @@ func RemoveUnnecessaryProjection(sctx *StreamContext) error {
 			}
 		}
 	}
+
+	return nil
+}
+
+// RemoveUnnecessaryTempSortNodesRule removes any duplicate TempSort node.
+// For each stream, there can be at most two TempSort nodes.
+// In the following case, we can remove the second TempSort node.
+// 		SELECT * FROM foo GROUP BY a ORDER BY a
+//		table.Scan('foo') | docs.TempSort(a) | docs.GroupBy(a) | docs.TempSort(a)
+// This only works if both temp sort nodes use the same path
+func RemoveUnnecessaryTempSortNodesRule(sctx *StreamContext) error {
+	if len(sctx.TempTreeSorts) > 2 {
+		panic("unexpected number of TempSort nodes")
+	}
+
+	if len(sctx.TempTreeSorts) <= 1 {
+		return nil
+	}
+
+	lpath, ok := sctx.TempTreeSorts[0].Expr.(expr.Path)
+	if !ok {
+		return nil
+	}
+
+	rpath, ok := sctx.TempTreeSorts[1].Expr.(expr.Path)
+	if !ok {
+		return nil
+	}
+
+	if !lpath.IsEqual(rpath) {
+		return nil
+	}
+
+	// we remove the rightmost one
+	// and we override the direction of the first one
+	sctx.TempTreeSorts[0].Desc = sctx.TempTreeSorts[1].Desc
+	sctx.removeTempTreeNodeNode(sctx.TempTreeSorts[1])
 
 	return nil
 }

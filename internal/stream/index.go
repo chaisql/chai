@@ -28,9 +28,6 @@ type IndexScanOperator struct {
 
 // IndexScan creates an iterator that iterates over each document of the given table.
 func IndexScan(name string, ranges ...Range) *IndexScanOperator {
-	if len(ranges) == 0 {
-		panic("IndexScan: no ranges specified")
-	}
 	return &IndexScanOperator{IndexName: name, Ranges: ranges}
 }
 
@@ -86,15 +83,25 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	newEnv.SetOuter(in)
 	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.Name()))
 
-	ranges, err := it.Ranges.Eval(in)
-	if err != nil || len(ranges) != len(it.Ranges) {
-		return err
-	}
-
 	ptr := DocumentPointer{
 		Table: table,
 	}
 	newEnv.SetDocument(&ptr)
+
+	if len(it.Ranges) == 0 {
+		return index.Iterate(it.Reverse, func(key tree.Key) error {
+			ptr.key = key
+			ptr.Doc = nil
+			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+
+			return fn(&newEnv)
+		})
+	}
+
+	ranges, err := it.Ranges.Eval(in)
+	if err != nil || len(ranges) != len(it.Ranges) {
+		return err
+	}
 
 	for _, rng := range ranges {
 		r, err := rng.ToTreeRange(&table.Info.FieldConstraints, info.Paths)

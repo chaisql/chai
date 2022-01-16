@@ -88,11 +88,7 @@ in the same transaction, use -t`,
 			return errors.New(cmd.UsageText)
 		}
 
-		engine := c.String("engine")
 		path := c.String("path")
-		if engine == "" {
-			return errors.New(cmd.UsageText)
-		}
 
 		db, err := dbutil.OpenDB(c.Context, path, dbutil.DBOptions{})
 		if err != nil {

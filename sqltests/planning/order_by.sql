@@ -15,30 +15,33 @@ VALUES
     (5, 5, 5);
 
 -- test: non-indexed field path, ASC
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-ORDER BY
-    c;
-
+EXPLAIN SELECT * FROM test ORDER BY c;
 /* result:
- {
- "plan": 'table.Scan("test") | docs.TempTreeSort(c)'
- }
- */
+{
+    "plan": 'table.Scan("test") | docs.TempTreeSort(c)'
+}
+*/
+
 -- test: non-indexed field path, DESC
-EXPLAIN
-SELECT
-    *
-FROM
-    test
-ORDER BY
-    c DESC;
-
+EXPLAIN SELECT * FROM test ORDER BY c DESC;
 /* result:
- {
- "plan": 'table.Scan("test") | docs.TempTreeSortReverse(c)'
- }
- */
+{
+    "plan": 'table.Scan("test") | docs.TempTreeSortReverse(c)'
+}
+*/
+
+-- test: indexed field path, ASC
+EXPLAIN SELECT * FROM test ORDER BY a;
+/* result:
+{
+    "plan": 'index.Scan("test_a")'
+}
+*/
+
+-- test: indexed field path, DESC
+EXPLAIN SELECT * FROM test ORDER BY a DESC;
+/* result:
+{
+    "plan": 'index.ScanReverse("test_a")'
+}
+*/

@@ -163,7 +163,7 @@ func TestTreeIterate(t *testing.T) {
 			var keys []tree.Key
 
 			err := tt.Iterate(test.pivot, test.reverse, func(k tree.Key, v types.Value) error {
-				keys = append(keys, k)
+				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})
 			assert.NoError(t, err)
@@ -175,6 +175,7 @@ func TestTreeIterate(t *testing.T) {
 				sort.Sort(sort.Reverse(rev))
 				want = rev
 			}
+
 			require.Equal(t, want, keys)
 		})
 	}
@@ -277,7 +278,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 			var keys []tree.Key
 
 			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, v types.Value) error {
-				keys = append(keys, k)
+				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})
 			assert.NoError(t, err)

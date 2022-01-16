@@ -177,8 +177,18 @@ func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key tree
 	})
 }
 
+func (idx *Index) Iterate(reverse bool, fn func(key tree.Key) error) error {
+	return idx.Tree.Iterate(nil, reverse, idx.iterator(func(itmKey tree.Key, key tree.Key) error {
+		return fn(key)
+	}))
+}
+
 func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey tree.Key, key tree.Key) error) error {
-	return idx.Tree.IterateOnRange(rng, reverse, func(k tree.Key, v types.Value) error {
+	return idx.Tree.IterateOnRange(rng, reverse, idx.iterator(fn))
+}
+
+func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k tree.Key, v types.Value) error {
+	return func(k tree.Key, v types.Value) error {
 		// we don't care about the value, we just want to extract the key
 		// which is the last element of the encoded array
 		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})
@@ -187,7 +197,7 @@ func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey t
 		pk := tree.Key(enc.V().([]byte))
 
 		return fn(k, pk)
-	})
+	}
 }
 
 // Truncate deletes all the index data.

@@ -148,6 +148,9 @@ func (s *Store) Iterator(opts IteratorOptions) *Iterator {
 	opt := badger.DefaultIteratorOptions
 	opt.Prefix = prefix
 	opt.Reverse = opts.Reverse
+	// by default we iterate over the keys only
+	// and lazily load the values
+	opt.PrefetchValues = false
 	it := s.tx.NewIterator(opt)
 
 	return &Iterator{
@@ -248,6 +251,7 @@ type TransientStore struct {
 	tx *badger.Txn
 
 	hasCommitted bool
+	commitCount  uint64
 }
 
 // Put stores a key value pair. If it already exists, it overrides it.
@@ -266,13 +270,15 @@ func (s *TransientStore) Put(k, v []byte) error {
 	}
 
 	// commit the transaction and start a new one
-	err = s.tx.Commit()
+	err = s.tx.CommitAt(s.commitCount, func(e error) {})
 	if err != nil {
 		return err
 	}
 	s.hasCommitted = true
 
-	s.tx = s.DB.NewTransaction(true)
+	s.commitCount++
+
+	s.tx = s.DB.NewTransactionAt(s.commitCount, true)
 	return s.tx.Set(k, v)
 }
 
@@ -296,6 +302,7 @@ func (s *TransientStore) Truncate() error {
 func (s *TransientStore) Iterator(opts IteratorOptions) *Iterator {
 	opt := badger.DefaultIteratorOptions
 	opt.Reverse = opts.Reverse
+	opt.PrefetchValues = false
 
 	it := s.tx.NewIterator(opt)
 
@@ -326,17 +333,11 @@ func (s *TransientStore) Drop(ctx context.Context) error {
 func (s *TransientStore) Reset() error {
 	if s.tx != nil {
 		s.tx.Discard()
-		if s.hasCommitted {
-			s.tx.Discard()
-			err := s.DB.DropAll()
-			if err != nil {
-				return err
-			}
-		}
 	}
 
+	s.commitCount = 1
 	s.hasCommitted = false
-	s.tx = s.DB.NewTransaction(true)
+	s.tx = s.DB.NewTransactionAt(1, true)
 
 	return nil
 }
