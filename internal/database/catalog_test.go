@@ -5,11 +5,11 @@ import (
 	"math"
 	"testing"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"

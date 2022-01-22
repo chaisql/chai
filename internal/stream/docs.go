@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
@@ -34,7 +34,7 @@ func (op *DocsEmitOperator) Iterate(in *environment.Environment, fn func(out *en
 			return err
 		}
 		if v.Type() != types.DocumentValue {
-			return errors.Wrap(ErrInvalidResult)
+			return errors.WithStack(ErrInvalidResult)
 		}
 
 		newEnv.SetDocument(v.V().(types.Document))
@@ -240,7 +240,7 @@ func (op *DocsTakeOperator) Iterate(in *environment.Environment, f func(out *env
 			return f(out)
 		}
 
-		return errors.Wrap(ErrStreamClosed)
+		return errors.WithStack(ErrStreamClosed)
 	})
 }
 

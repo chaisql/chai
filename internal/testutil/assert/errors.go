@@ -3,7 +3,7 @@ package assert
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 )
 
 func Error(t testing.TB, err error) {
@@ -27,7 +27,7 @@ func Errorf(t testing.TB, err error, str string, args ...interface{}) {
 
 func ErrorIs(t testing.TB, err error, target error) {
 	t.Helper()
-	ErrorIsf(t, err, target, "Expected error to be %v but got %v instead", target, err)
+	ErrorIsf(t, err, target, "Expected error to be %+v but got %+v instead", target, err)
 }
 
 func ErrorIsf(t testing.TB, err error, target error, str string, args ...interface{}) {
@@ -37,9 +37,6 @@ func ErrorIsf(t testing.TB, err error, target error, str string, args ...interfa
 		return
 	}
 	t.Logf(str, args...)
-	if e, ok := err.(*errors.Error); ok {
-		t.Logf("Stacktrace:\n%s", string(e.Stack()))
-	}
 	t.FailNow()
 }
 
@@ -50,9 +47,6 @@ func NoErrorf(t testing.TB, err error, str string, args ...interface{}) {
 		return
 	}
 	t.Logf(str, args...)
-	if e, ok := err.(*errors.Error); ok {
-		t.Logf("Stacktrace:\n%s", string(e.Stack()))
-	}
 	t.FailNow()
 }
 

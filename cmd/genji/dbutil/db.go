@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/kv"
 )
 

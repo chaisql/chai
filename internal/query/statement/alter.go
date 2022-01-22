@@ -1,9 +1,9 @@
 package statement
 
 import (
+	"github.com/cockroachdb/errors"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/errors"
 )
 
 // AlterStmt is a DSL that allows creating a full ALTER TABLE query.

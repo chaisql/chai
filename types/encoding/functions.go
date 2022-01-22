@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"math"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // Default Base64 encoder string doesn't preserve lexicographic order. This alternative

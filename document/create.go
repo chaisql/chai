@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
 )
 

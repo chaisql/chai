@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
 )
 

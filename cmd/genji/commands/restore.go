@@ -3,8 +3,8 @@ package commands
 import (
 	"os"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/urfave/cli/v2"
 )
 

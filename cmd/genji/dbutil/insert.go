@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/errors"
 )
 
 // InsertJSON reads json documents from r and inserts them into the selected table.

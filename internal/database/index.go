@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"

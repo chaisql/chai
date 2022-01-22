@@ -13,10 +13,10 @@ import (
 
 	"github.com/agnivade/levenshtein"
 	"github.com/c-bata/go-prompt"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/types"
 	"go.uber.org/multierr"

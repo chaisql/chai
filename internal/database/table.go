@@ -3,9 +3,9 @@ package database
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
@@ -150,7 +150,7 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 	v, err := t.Tree.Get(key)
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyNotFound) {
-			return nil, errors.Wrap(errs.ErrDocumentNotFound)
+			return nil, errors.WithStack(errs.ErrDocumentNotFound)
 		}
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}

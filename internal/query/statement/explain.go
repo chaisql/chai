@@ -1,7 +1,7 @@
 package statement
 
 import (
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/types"

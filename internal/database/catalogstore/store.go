@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/tree"

@@ -3,8 +3,8 @@ package query
 import (
 	"context"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 )
 

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 )
 
@@ -137,7 +137,7 @@ func IsZeroValue(v Value) (bool, error) {
 	case DocumentValue:
 		err := v.V().(Document).Iterate(func(_ string, _ Value) error {
 			// We return an error in the first iteration to stop it.
-			return errors.Wrap(errStop)
+			return errors.WithStack(errStop)
 		})
 		if err == nil {
 			// If err is nil, it means that we didn't iterate,

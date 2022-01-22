@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/dgraph-io/badger/v3/options"
-	"github.com/genjidb/genji/internal/errors"
 )
 
 const (
@@ -131,7 +131,7 @@ func (t *Transaction) Rollback() error {
 	t.tx.Discard()
 
 	if t.discarded {
-		return ErrTransactionDiscarded
+		return errors.WithStack(ErrTransactionDiscarded)
 	}
 
 	t.discarded = true
@@ -154,7 +154,7 @@ func (t *Transaction) Commit() error {
 	}
 
 	if t.discarded {
-		return ErrTransactionDiscarded
+		return errors.WithStack(ErrTransactionDiscarded)
 	}
 
 	if !t.writable {
@@ -198,7 +198,7 @@ func (t *Transaction) GetStore(name []byte) (*Store, error) {
 	_, err := t.tx.Get(key)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil, errors.Wrap(ErrStoreNotFound)
+			return nil, errors.WithStack(ErrStoreNotFound)
 		}
 
 		return nil, err
@@ -226,13 +226,13 @@ func (t *Transaction) CreateStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return errors.Wrap(ErrTransactionReadOnly)
+		return errors.WithStack(ErrTransactionReadOnly)
 	}
 
 	key := buildStoreKey(name)
 	_, err := t.tx.Get(key)
 	if err == nil {
-		return errors.Wrap(ErrStoreAlreadyExists)
+		return errors.WithStack(ErrStoreAlreadyExists)
 	}
 	if !errors.Is(err, badger.ErrKeyNotFound) {
 		return err
@@ -250,7 +250,7 @@ func (t *Transaction) DropStore(name []byte) error {
 	}
 
 	if !t.writable {
-		return errors.Wrap(ErrTransactionReadOnly)
+		return errors.WithStack(ErrTransactionReadOnly)
 	}
 
 	s, err := t.GetStore(name)
@@ -265,7 +265,7 @@ func (t *Transaction) DropStore(name []byte) error {
 
 	err = t.tx.Delete(buildStoreKey([]byte(name)))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return errors.Wrap(ErrStoreNotFound)
+		return errors.WithStack(ErrStoreNotFound)
 	}
 
 	return err

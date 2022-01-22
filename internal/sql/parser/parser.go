@@ -5,8 +5,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query"
@@ -238,7 +238,7 @@ type ParseError struct {
 
 // newParseError returns a new instance of ParseError.
 func newParseError(found string, expected []string, pos scanner.Pos) error {
-	return errors.Wrap(&ParseError{Found: found, Expected: expected, Pos: pos})
+	return errors.WithStack(&ParseError{Found: found, Expected: expected, Pos: pos})
 }
 
 // Error returns the string representation of the error.

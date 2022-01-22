@@ -1,8 +1,8 @@
 package stream
 
 import (
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/errors"
 )
 
 // ErrInvalidResult is returned when an expression supposed to evaluate to a document

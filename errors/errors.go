@@ -3,8 +3,8 @@ package errors
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/tree"
 )
 
@@ -27,6 +27,16 @@ func (a AlreadyExistsError) Error() string {
 	return fmt.Sprintf("%q already exists", a.Name)
 }
 
+func IsAlreadyExistsError(err error) bool {
+	err = errors.UnwrapAll(err)
+	switch err.(type) {
+	case AlreadyExistsError, *AlreadyExistsError:
+		return true
+	default:
+		return false
+	}
+}
+
 // NotFoundError is returned when the requested table, index or sequence
 // doesn't exist.
 type NotFoundError struct {
@@ -35,6 +45,16 @@ type NotFoundError struct {
 
 func (a NotFoundError) Error() string {
 	return fmt.Sprintf("%q not found", a.Name)
+}
+
+func IsNotFoundError(err error) bool {
+	err = errors.UnwrapAll(err)
+	switch err.(type) {
+	case NotFoundError, *NotFoundError:
+		return true
+	default:
+		return false
+	}
 }
 
 type ConstraintViolationError struct {

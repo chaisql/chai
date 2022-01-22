@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 )
 
 var (

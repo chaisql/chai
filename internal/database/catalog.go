@@ -6,9 +6,9 @@ import (
 	"math"
 	"sort"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
@@ -129,7 +129,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return err
 	}
 	if err == nil {
-		return errors.Wrap(errs.AlreadyExistsError{Name: tableName})
+		return errors.WithStack(errs.AlreadyExistsError{Name: tableName})
 	}
 
 	// replace user-defined constraints by inferred list of constraints
@@ -351,7 +351,7 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 	// Delete the old table info.
 	err := c.CatalogTable.Delete(tx, oldName)
 	if errors.Is(err, errs.ErrDocumentNotFound) {
-		return errors.Wrap(errs.NotFoundError{Name: oldName})
+		return errors.WithStack(errs.NotFoundError{Name: oldName})
 	}
 	if err != nil {
 		return err
@@ -591,7 +591,7 @@ func (c *catalogCache) Add(tx *Transaction, o Relation) error {
 	// if name is provided, ensure it's not duplicated
 	if name != "" {
 		if c.objectExists(name) {
-			return errors.Wrap(errs.AlreadyExistsError{Name: name})
+			return errors.WithStack(errs.AlreadyExistsError{Name: name})
 		}
 	} else {
 		name = o.GenerateBaseName()
@@ -614,7 +614,7 @@ func (c *catalogCache) Replace(tx *Transaction, o Relation) error {
 
 	old, ok := m[o.Name()]
 	if !ok {
-		return errors.Wrap(errs.NotFoundError{Name: o.Name()})
+		return errors.WithStack(errs.NotFoundError{Name: o.Name()})
 	}
 
 	m[o.Name()] = o
@@ -631,7 +631,7 @@ func (c *catalogCache) Delete(tx *Transaction, tp, name string) (Relation, error
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errors.Wrap(errs.NotFoundError{Name: name})
+		return nil, errors.WithStack(errs.NotFoundError{Name: name})
 	}
 
 	delete(m, name)
@@ -648,7 +648,7 @@ func (c *catalogCache) Get(tp, name string) (Relation, error) {
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errors.Wrap(errs.NotFoundError{Name: name})
+		return nil, errors.WithStack(errs.NotFoundError{Name: name})
 	}
 
 	return o, nil
@@ -777,7 +777,7 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 
 	_, _, err := tb.Insert(relationToDocument(r))
 	if errors.Is(err, errs.ErrDuplicateDocument) {
-		return errors.Wrap(errs.AlreadyExistsError{Name: r.Name()})
+		return errors.WithStack(errs.AlreadyExistsError{Name: r.Name()})
 	}
 
 	return err

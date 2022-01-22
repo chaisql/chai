@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -472,10 +472,10 @@ func (p Path) IsEqual(other Path) bool {
 // GetValueFromDocument returns the value at path p from d.
 func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, errors.Wrap(types.ErrFieldNotFound)
+		return nil, errors.WithStack(types.ErrFieldNotFound)
 	}
 	if p[0].FieldName == "" {
-		return nil, errors.Wrap(types.ErrFieldNotFound)
+		return nil, errors.WithStack(types.ErrFieldNotFound)
 	}
 
 	v, err := d.GetByField(p[0].FieldName)
@@ -493,16 +493,16 @@ func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
 // GetValueFromArray returns the value at path p from a.
 func (p Path) GetValueFromArray(a types.Array) (types.Value, error) {
 	if len(p) == 0 {
-		return nil, errors.Wrap(types.ErrFieldNotFound)
+		return nil, errors.WithStack(types.ErrFieldNotFound)
 	}
 	if p[0].FieldName != "" {
-		return nil, errors.Wrap(types.ErrFieldNotFound)
+		return nil, errors.WithStack(types.ErrFieldNotFound)
 	}
 
 	v, err := a.GetByIndex(p[0].ArrayIndex)
 	if err != nil {
 		if errors.Is(err, types.ErrValueNotFound) {
-			return nil, errors.Wrap(types.ErrFieldNotFound)
+			return nil, errors.WithStack(types.ErrFieldNotFound)
 		}
 
 		return nil, err

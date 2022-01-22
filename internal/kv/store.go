@@ -5,7 +5,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -68,7 +68,7 @@ func (s *Store) Get(k []byte) (*Item, error) {
 	it, err := s.tx.Get(buildKey(s.prefix, k))
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil, errors.Wrap(ErrKeyNotFound)
+			return nil, errors.WithStack(ErrKeyNotFound)
 		}
 
 		return nil, err
@@ -95,7 +95,7 @@ func (s *Store) Delete(k []byte) error {
 	_, err := s.tx.Get(key)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
-			return errors.Wrap(ErrKeyNotFound)
+			return errors.WithStack(ErrKeyNotFound)
 		}
 
 		return err
@@ -118,7 +118,7 @@ func (s *Store) Truncate() error {
 
 	_, err := s.tx.Get(buildStoreKey(s.name))
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return errors.Wrap(ErrStoreNotFound)
+		return errors.WithStack(ErrStoreNotFound)
 	}
 
 	it := s.tx.NewIterator(badger.DefaultIteratorOptions)

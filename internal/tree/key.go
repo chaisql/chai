@@ -3,8 +3,8 @@ package tree
 import (
 	"bytes"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
 )

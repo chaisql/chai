@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 

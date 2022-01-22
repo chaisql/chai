@@ -9,13 +9,13 @@ import (
 	"database/sql/driver"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -344,7 +344,7 @@ func scanDocument(iter document.Iterator) (types.Document, error) {
 	}
 
 	if d == nil {
-		return nil, errors.Wrap(errs.ErrDocumentNotFound)
+		return nil, errors.WithStack(errs.ErrDocumentNotFound)
 	}
 
 	fb := document.NewFieldBuffer()

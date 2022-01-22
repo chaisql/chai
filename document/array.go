@@ -2,7 +2,7 @@ package document
 
 import (
 	"github.com/buger/jsonparser"
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
 )

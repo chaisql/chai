@@ -7,7 +7,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/genjidb/genji/internal/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // Code heavily inspired by the influxdata/influxql repository
