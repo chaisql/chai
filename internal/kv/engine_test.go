@@ -1320,7 +1320,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 }
 
 func TestTransient(t *testing.T) {
-	var ng kv.Engine
+	ng := testutil.NewEngine(t)
 
 	ts, err := ng.NewTransientStore(context.Background())
 	assert.NoError(t, err)

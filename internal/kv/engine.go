@@ -82,7 +82,14 @@ func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error
 
 func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error) {
 	// build engine with fast options
-	opt := badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
+
+	inMemory := e.DB.Opts().InMemory
+	var opt badger.Options
+	if inMemory {
+		opt = badger.DefaultOptions("").WithInMemory(true)
+	} else {
+		opt = badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
+	}
 	opt.Compression = options.None
 	opt.MetricsEnabled = false
 	opt.Logger = nil
