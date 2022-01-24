@@ -2,7 +2,6 @@ package stream_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -356,14 +355,12 @@ func TestTempTreeSort(t *testing.T) {
 			err := s.Iterate(&env, func(env *environment.Environment) error {
 				d, ok := env.GetDocument()
 				require.True(t, ok)
-				fmt.Printf("%v\n", types.NewDocumentValue(d))
 
 				fb := document.NewFieldBuffer()
 				fb.Copy(d)
 				got = append(got, fb)
 				return nil
 			})
-			fmt.Println("-----")
 
 			if test.fails {
 				assert.Error(t, err)

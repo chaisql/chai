@@ -5,14 +5,11 @@ import (
 	"context"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -99,69 +96,47 @@ func TestSaveCommand(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	tests := []struct {
-		engine string
-		path   string
-	}{
-		{"badger", filepath.Join(dir, "/badger")},
+	db, err := genji.Open(":memory:")
+	assert.NoError(t, err)
+	defer db.Close()
+
+	err = db.Exec(`
+		CREATE TABLE test (a DOUBLE);
+		CREATE INDEX idx_a_b ON test (a, b);
+	`)
+	assert.NoError(t, err)
+	err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 1, 2)
+	assert.NoError(t, err)
+	err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 2, 2)
+	assert.NoError(t, err)
+	err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 3, 2)
+	assert.NoError(t, err)
+
+	// save the dummy database
+	err = runSaveCmd(context.Background(), db, dir)
+	assert.NoError(t, err)
+
+	db, err = genji.Open(dir)
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// ensure that the data is present
+	doc, err := db.QueryDocument("SELECT * FROM test")
+	assert.NoError(t, err)
+
+	var res struct {
+		A int
+		B int
 	}
+	err = document.StructScan(doc, &res)
+	assert.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Cleanup(func() {
-			os.RemoveAll(tt.path)
-		})
+	require.Equal(t, 1, res.A)
+	require.Equal(t, 2, res.B)
 
-		t.Run(tt.engine+"/OK", func(t *testing.T) {
-			db, err := genji.Open(":memory:")
-			assert.NoError(t, err)
-			defer db.Close()
-
-			err = db.Exec(`
-				CREATE TABLE test (a DOUBLE);
-				CREATE INDEX idx_a_b ON test (a, b);
-			`)
-			assert.NoError(t, err)
-			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 1, 2)
-			assert.NoError(t, err)
-			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 2, 2)
-			assert.NoError(t, err)
-			err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 3, 2)
-			assert.NoError(t, err)
-
-			// save the dummy database
-			err = runSaveCmd(context.Background(), db, tt.path)
-			assert.NoError(t, err)
-
-			if tt.engine == "badger" {
-				ng, err := kv.NewEngine(badger.DefaultOptions(tt.path).WithLogger(nil))
-				assert.NoError(t, err)
-				db, err = genji.New(context.Background(), ng)
-				assert.NoError(t, err)
-			} else {
-				db, err = genji.Open(tt.path)
-				assert.NoError(t, err)
-			}
-			defer db.Close()
-
-			// ensure that the data is present
-			doc, err := db.QueryDocument("SELECT * FROM test")
-			assert.NoError(t, err)
-
-			var res struct {
-				A int
-				B int
-			}
-			err = document.StructScan(doc, &res)
-			assert.NoError(t, err)
-
-			require.Equal(t, 1, res.A)
-			require.Equal(t, 2, res.B)
-
-			// ensure that the index has been created
-			indexes, err := dbutil.ListIndexes(context.Background(), db, "")
-			assert.NoError(t, err)
-			require.Len(t, indexes, 1)
-			require.Equal(t, "idx_a_b", indexes[0])
-		})
-	}
+	// ensure that the index has been created
+	indexes, err := dbutil.ListIndexes(context.Background(), db, "")
+	assert.NoError(t, err)
+	require.Len(t, indexes, 1)
+	require.Equal(t, "idx_a_b", indexes[0])
 }

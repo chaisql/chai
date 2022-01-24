@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -22,7 +23,7 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.UnwrapAll(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return nil, pErr
 	}

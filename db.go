@@ -10,7 +10,8 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/dgraph-io/badger/v3"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
@@ -64,16 +65,14 @@ func New(ctx context.Context, ng *kv.Engine) (*DB, error) {
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
 func Open(path string) (*DB, error) {
-	var inMemory bool
+	var opts pebble.Options
 
 	if path == ":memory:" {
-		inMemory = true
+		opts.FS = vfs.NewMem()
 		path = ""
 	}
 
-	opts := badger.DefaultOptions(path).WithLogger(nil).WithInMemory(inMemory)
-
-	ng, err := kv.NewEngine(opts)
+	ng, err := kv.NewEngine(path, &opts)
 	if err != nil {
 		return nil, err
 	}

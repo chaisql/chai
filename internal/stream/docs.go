@@ -504,7 +504,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	return tr.Iterate(nil, op.Desc, func(k tree.Key, v types.Value) error {
+	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, v types.Value) error {
 		kv, err := k.Decode()
 		if err != nil {
 			return err

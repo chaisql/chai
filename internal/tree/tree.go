@@ -3,7 +3,7 @@ package tree
 import (
 	"bytes"
 
-	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -69,12 +69,12 @@ func (t *Tree) Get(key Key) (types.Value, error) {
 	}
 
 	var v Value
-	item, err := t.Store.Get(key)
+	vv, err := t.Store.Get(key)
 	if err != nil {
 		return nil, err
 	}
 
-	v.item = item
+	v.encoded = vv
 
 	return &v, nil
 }
@@ -98,50 +98,6 @@ func (t *Tree) Truncate() error {
 	return t.Store.Truncate()
 }
 
-// Iterate over the tree.
-// If the pivot is nil and reverse is false, it iterates from the lowest key onwards.
-// If the pivot is nil and reverse if true, it iterates from the highest key downwards.
-// If the pivot is not nil, it seeks that key in the tree before iterating over
-// anything equal, and higher or lower depending on if reverse is false or true.
-func (t *Tree) Iterate(pivot Key, reverse bool, fn func(Key, types.Value) error) error {
-	var seek []byte
-
-	if pivot != nil {
-		seek = pivot
-		if reverse {
-			seek = append(seek, encoding.ArrayValueDelim, 0xFF)
-		}
-	}
-
-	return t.iterateRaw(seek, reverse, fn)
-}
-
-func (t *Tree) iterateRaw(seek []byte, reverse bool, fn func(Key, types.Value) error) error {
-	var it *kv.Iterator
-
-	if t.TransientStore != nil {
-		it = t.TransientStore.Iterator(kv.IteratorOptions{Reverse: reverse})
-	} else {
-		it = t.Store.Iterator(kv.IteratorOptions{Reverse: reverse})
-	}
-	defer it.Close()
-
-	var value Value
-
-	for it.Seek(seek); it.Valid(); it.Next() {
-		i := it.Item()
-		value.item = i
-		value.v = nil
-
-		err := fn(i.Key(), &value)
-		if err != nil {
-			return err
-		}
-	}
-
-	return it.Err()
-}
-
 // IterateOnRange iterates on all keys that are in the given range.
 // Depending on the direction, the range is translated to the following table:
 // | SQL   | Range            | Direction | Seek    | End     |
@@ -157,71 +113,120 @@ func (t *Tree) iterateRaw(seek []byte, reverse bool, fn func(Key, types.Value) e
 // | < 10  | Max: 10, Excl    | DESC      | 10      | nil     |
 // | <= 10 | Max: 10          | DESC      | 10+0xFF | nil     |
 func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value) error) error {
-	var err error
-
 	var start, end []byte
 
-	if rng != nil {
+	if rng == nil {
+		rng = &Range{}
+	}
+
+	if !rng.Exclusive {
+		if rng.Min == nil {
+			start = t.buildFirstKey()
+		} else {
+			start = t.buildStartKeyInclusive(rng.Min)
+		}
+		if rng.Max == nil {
+			end = t.buildLastKey()
+		} else {
+			end = t.buildEndKeyInclusive(rng.Max)
+		}
+	} else {
+		if rng.Min == nil {
+			start = t.buildFirstKey()
+		} else {
+			start = t.buildStartKeyExclusive(rng.Min)
+		}
+		if rng.Max == nil {
+			end = t.buildLastKey()
+		} else {
+			end = t.buildEndKeyExclusive(rng.Max)
+		}
+	}
+
+	var it *pebble.Iterator
+	opts := pebble.IterOptions{
+		LowerBound: start,
+		UpperBound: end,
+	}
+	if t.TransientStore != nil {
+		it = t.TransientStore.Iterator(&opts)
+	} else {
+		it = t.Store.Iterator(&opts)
+	}
+	defer it.Close()
+
+	if !reverse {
+		it.First()
+	} else {
+		it.Last()
+	}
+
+	var value Value
+
+	for it.Valid() {
+		value.encoded = it.Value()
+		value.v = nil
+
+		err := fn(bytes.TrimPrefix(it.Key(), t.buildKey(nil)), &value)
+		if err != nil {
+			return err
+		}
+
 		if !reverse {
-			start = rng.Min
-			if start != nil && rng.Exclusive {
-				start = append(start, encoding.ArrayValueDelim, 0xFF)
-			}
-			end = rng.Max
+			it.Next()
 		} else {
-			start = rng.Max
-			if start != nil && !rng.Exclusive {
-				start = append(start, encoding.ArrayValueDelim, 0xFF)
-			}
-			end = rng.Min
+			it.Prev()
 		}
 	}
 
-	if end == nil {
-		return t.iterateRaw(start, reverse, fn)
-	}
-
-	err = t.iterateRaw(start, reverse, func(k Key, v types.Value) error {
-		cmpWith := k
-
-		if len(cmpWith) > len(end) {
-			cmpWith = cmpWith[:len(end)]
-		}
-
-		cmp := bytes.Compare(cmpWith, end)
-		if rng.Exclusive {
-			if !reverse && cmp >= 0 {
-				return errStop
-			}
-			if reverse && cmp <= 0 {
-				return errStop
-			}
-		} else {
-			if !reverse && cmp > 0 {
-				return errStop
-			}
-			if reverse && cmp < 0 {
-				return errStop
-			}
-		}
-
-		return fn(k, v)
-	})
-	if err == errStop {
-		err = nil
-	}
-
-	return err
+	return it.Error()
 }
 
-var errStop = errors.New("stop")
+func (t *Tree) buildKey(key Key) []byte {
+	if t.Store != nil {
+		return kv.BuildKey(t.Store.Prefix, key)
+	}
+
+	return key
+}
+
+func (t *Tree) buildFirstKey() []byte {
+	return t.buildKey(nil)
+}
+
+func (t *Tree) buildLastKey() []byte {
+	k := t.buildKey(nil)
+	if len(k) == 0 {
+		return []byte{0xFF}
+	}
+
+	k[len(k)-1] = 0xff
+	return k
+}
+
+func (t *Tree) buildStartKeyInclusive(key []byte) []byte {
+	return t.buildKey(key)
+}
+
+func (t *Tree) buildStartKeyExclusive(key []byte) []byte {
+	return append(t.buildKey(key), encoding.ArrayValueDelim, 0xFF)
+}
+
+func (t *Tree) buildEndKeyInclusive(key []byte) []byte {
+	k := t.buildKey(key)
+	k = append(k, encoding.ArrayValueDelim, 0xFF)
+	return k
+}
+
+func (t *Tree) buildEndKeyExclusive(key []byte) []byte {
+	return t.buildKey(key)
+}
 
 // Value is an implementation of the types.Value interface returned by Tree.
 // It is used to lazily decode values from the underlying store.
 type Value struct {
-	item *kv.Item
-	v    types.Value
-	buf  []byte
+	encoded []byte
+	v       types.Value
 }
 
 func (v *Value) decode() {
@@ -230,12 +235,7 @@ func (v *Value) decode() {
 	}
 
 	var err error
-	v.buf, err = v.item.ValueCopy(v.buf)
-	if err != nil {
-		panic(err)
-	}
-
-	v.v, err = encoding.DecodeValue(v.buf)
+	v.v, err = encoding.DecodeValue(v.encoded)
 	if err != nil {
 		panic(err)
 	}

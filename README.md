@@ -24,7 +24,7 @@ Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc]
 ## Features
 
 -   **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
--   **On-disk or in memory**: It is possible to store data on disk or in ram. Genji relies on [Badger](https://github.com/dgraph-io/badger) to manage data.
+-   **On-disk or in memory**: It is possible to store data on disk or in ram. Genji relies on [Pebble](https://github.com/cockroachdb/pebble) to manage data.
 -   **Transaction support**: Read-only and read/write transactions are supported by default.
 -   **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON.
 -   **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.

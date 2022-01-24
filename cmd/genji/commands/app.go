@@ -14,13 +14,6 @@ func NewApp() *cli.App {
 	app.Name = "Genji"
 	app.Usage = "Shell for the Genji database"
 	app.EnableBashCompletion = true
-	app.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:    "encryption-key",
-			Aliases: []string{"k"},
-			Usage:   "encryption key, badger only",
-		},
-	}
 
 	app.Commands = []*cli.Command{
 		NewInsertCommand(),
@@ -32,17 +25,10 @@ func NewApp() *cli.App {
 
 	// Root command
 	app.Action = func(c *cli.Context) error {
-		var opts dbutil.DBOptions
-
 		dbpath := c.Args().First()
 
-		k := c.String("encryption-key")
-		if k != "" {
-			opts.EncryptionKey = k
-		}
-
 		if dbutil.CanReadFromStandardInput() {
-			db, err := dbutil.OpenDB(c.Context, dbpath, opts)
+			db, err := dbutil.OpenDB(c.Context, dbpath)
 			if err != nil {
 				return err
 			}
@@ -52,8 +38,7 @@ func NewApp() *cli.App {
 		}
 
 		return shell.Run(c.Context, &shell.Options{
-			DBPath:        dbpath,
-			EncryptionKey: k,
+			DBPath: dbpath,
 		})
 	}
 

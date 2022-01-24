@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
@@ -74,4 +75,17 @@ func (a Keys) Len() int      { return len(a) }
 func (a Keys) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a Keys) Less(i, j int) bool {
 	return bytes.Compare(a[i], a[j]) < 0
+}
+
+func (a Keys) String() string {
+	var buf strings.Builder
+
+	for i, k := range a {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		buf.WriteString(k.String())
+	}
+
+	return buf.String()
 }

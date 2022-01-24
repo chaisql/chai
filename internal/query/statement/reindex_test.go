@@ -73,7 +73,7 @@ func TestReIndex(t *testing.T) {
 				}
 
 				i := 0
-				err = idx.Tree.Iterate(nil, false, func(tree.Key, types.Value) error {
+				err = idx.Tree.IterateOnRange(nil, false, func(tree.Key, types.Value) error {
 					i++
 					return nil
 				})

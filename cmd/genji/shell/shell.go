@@ -62,8 +62,6 @@ type Options struct {
 	// Path of the database directory that will be created.
 	// If empty, the database will be in-memory.
 	DBPath string
-
-	EncryptionKey string
 }
 
 // Run a shell.
@@ -76,7 +74,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, dbutil.DBOptions{EncryptionKey: opts.EncryptionKey})
+	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath)
 	if err != nil {
 		return err
 	}
@@ -91,7 +89,12 @@ func Run(ctx context.Context, opts *Options) error {
 	if opts.DBPath == "" {
 		fmt.Println("Opened an in-memory database.")
 	} else {
-		fmt.Printf("On-disk database using Badger engine at path %s.\n", opts.DBPath)
+		// check if the directory exists
+		if _, err := os.Stat(opts.DBPath); os.IsNotExist(err) {
+			fmt.Printf("Creating an on-disk database at path %s.\n", opts.DBPath)
+		} else {
+			fmt.Printf("Opened an on-disk database using at path %s.\n", opts.DBPath)
+		}
 	}
 
 	defer func() {

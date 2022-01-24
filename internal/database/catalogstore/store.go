@@ -1,7 +1,6 @@
 package catalogstore
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -15,7 +14,6 @@ import (
 func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 	tables, indexes, sequences, err := loadCatalogStore(tx, c.CatalogTable)
 	if err != nil {
-		fmt.Println(1, err)
 		return err
 	}
 
@@ -44,8 +42,6 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 		var seqList []database.Sequence
 		seqList, err = loadSequences(tx, c, sequences)
 		if err != nil {
-			fmt.Println(2, err)
-
 			return err
 		}
 
@@ -81,7 +77,6 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 		if err == nil {
 			v := v.V().(int64)
 			currentValue = &v
-
 		}
 
 		sequences[i] = database.NewSequence(&info[i], currentValue)

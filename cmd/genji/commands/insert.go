@@ -59,25 +59,18 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db myd
 				Required: false,
 				Value:    false,
 			},
-			&cli.StringFlag{
-				Name:    "encryption-key",
-				Aliases: []string{"k"},
-				Usage:   "encryption key, badger only",
-			},
 		},
 		Action: func(c *cli.Context) error {
 			dbPath := c.String("db")
 			table := c.String("table")
 			args := c.Args().Slice()
 
-			k := c.String("encryption-key")
-
-			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), k, args)
+			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), args)
 		},
 	}
 }
 
-func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, eKey string, args []string) error {
+func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, args []string) error {
 	generatedName := "data_" + strconv.FormatInt(time.Now().Unix(), 10)
 	createTable := false
 	if table == "" && auto {
@@ -89,7 +82,7 @@ func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, eKey
 		dbPath = generatedName
 	}
 
-	db, err := dbutil.OpenDB(ctx, dbPath, dbutil.DBOptions{EncryptionKey: eKey})
+	db, err := dbutil.OpenDB(ctx, dbPath)
 	if err != nil {
 		return err
 	}

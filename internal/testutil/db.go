@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
@@ -20,14 +21,9 @@ import (
 func NewEngine(t testing.TB) *kv.Engine {
 	t.Helper()
 
-	opts := badger.DefaultOptions("").WithLogger(nil).WithInMemory(true)
-
-	ng, err := kv.NewEngine(opts)
+	ng, err := kv.NewEngine("", &pebble.Options{FS: vfs.NewMem()})
 	assert.NoError(t, err)
 
-	t.Cleanup(func() {
-		ng.Close()
-	})
 	return ng
 }
 

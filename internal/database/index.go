@@ -85,7 +85,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
 	var found bool
 	var dKey tree.Key
 
-	err = idx.Tree.Iterate(seek, false, func(k tree.Key, v types.Value) error {
+	err = idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k tree.Key, v types.Value) error {
 		if len(seek) > len(k) {
 			return errStop
 		}
@@ -178,7 +178,7 @@ func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key tree
 }
 
 func (idx *Index) Iterate(reverse bool, fn func(key tree.Key) error) error {
-	return idx.Tree.Iterate(nil, reverse, idx.iterator(func(itmKey tree.Key, key tree.Key) error {
+	return idx.Tree.IterateOnRange(nil, reverse, idx.iterator(func(itmKey tree.Key, key tree.Key) error {
 		return fn(key)
 	}))
 }

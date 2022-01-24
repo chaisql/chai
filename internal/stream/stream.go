@@ -188,7 +188,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	// iterate over the temporary index
-	return temp.Iterate(nil, false, func(key tree.Key, _ types.Value) error {
+	return temp.IterateOnRange(nil, false, func(key tree.Key, _ types.Value) error {
 		kv, err := key.Decode()
 		if err != nil {
 			return err

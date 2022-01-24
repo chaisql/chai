@@ -41,11 +41,6 @@ $ genji dump -f dump.sql my.db`,
 				Aliases: []string{"t"},
 				Usage:   "name of the table, it must already exist. Defaults to all tables.",
 			},
-			&cli.StringFlag{
-				Name:    "encryption-key",
-				Aliases: []string{"k"},
-				Usage:   "encryption key, badger only",
-			},
 		},
 	}
 
@@ -57,9 +52,7 @@ $ genji dump -f dump.sql my.db`,
 			return errors.New(cmd.UsageText)
 		}
 
-		k := c.String("encryption-key")
-
-		db, err := dbutil.OpenDB(c.Context, dbPath, dbutil.DBOptions{EncryptionKey: k})
+		db, err := dbutil.OpenDB(c.Context, dbPath)
 		if err != nil {
 			return err
 		}

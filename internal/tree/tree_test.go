@@ -162,7 +162,13 @@ func TestTreeIterate(t *testing.T) {
 
 			var keys []tree.Key
 
-			err := tt.Iterate(test.pivot, test.reverse, func(k tree.Key, v types.Value) error {
+			var rng tree.Range
+			if !test.reverse {
+				rng.Min = test.pivot
+			} else {
+				rng.Max = test.pivot
+			}
+			err := tt.IterateOnRange(&rng, test.reverse, func(k tree.Key, v types.Value) error {
 				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})
@@ -220,7 +226,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 		name    string
 		rng     *tree.Range
 		reverse bool
-		keys    []tree.Key
+		keys    tree.Keys
 	}{
 		{"asc/nil-range", nil, false, keys},
 		{"asc/empty-range", &tree.Range{}, false, keys},
@@ -275,7 +281,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			tt := buildTree()
 
-			var keys []tree.Key
+			var keys tree.Keys
 
 			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, v types.Value) error {
 				keys = append(keys, append([]byte{}, k...))

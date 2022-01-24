@@ -1,18 +1,19 @@
-// package kv implements a Badger kv.
+// package kv implements a Pebble kv.
 package kv
 
 import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/dgraph-io/badger/v3"
-	"github.com/dgraph-io/badger/v3/options"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 )
 
 const (
@@ -40,20 +41,22 @@ var (
 	ErrKeyNotFound = errors.New("key not found")
 )
 
-// Engine represents a Badger kv.
+// Engine represents a Pebble kv.
 type Engine struct {
-	DB *badger.DB
+	DB   *pebble.DB
+	opts *pebble.Options
 }
 
-// NewEngine creates a Badger kv. It takes the same argument as Badger's Open function.
-func NewEngine(opt badger.Options) (*Engine, error) {
-	db, err := badger.Open(opt)
+// NewEngine creates a Pebble kv engine. It takes the same argument as Pebble's Open function.
+func NewEngine(path string, opts *pebble.Options) (*Engine, error) {
+	db, err := pebble.Open(path, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Engine{
-		DB: db,
+		DB:   db,
+		opts: opts,
 	}, nil
 }
 
@@ -62,7 +65,7 @@ type TxOptions struct {
 	Writable bool
 }
 
-// Begin creates a transaction using Badger's transaction API.
+// Begin creates a transaction using Pebble's batch API.
 func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error) {
 	select {
 	case <-ctx.Done():
@@ -70,12 +73,16 @@ func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error
 	default:
 	}
 
-	tx := e.DB.NewTransaction(opts.Writable)
+	var batch *pebble.Batch
+
+	if opts.Writable {
+		batch = e.DB.NewIndexedBatch()
+	}
 
 	return &Transaction{
 		ctx:      ctx,
 		ng:       e,
-		tx:       tx,
+		batch:    batch,
 		writable: opts.Writable,
 	}, nil
 }
@@ -83,25 +90,33 @@ func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error
 func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error) {
 	// build engine with fast options
 
-	inMemory := e.DB.Opts().InMemory
-	var opt badger.Options
-	if inMemory {
-		opt = badger.DefaultOptions("").WithInMemory(true)
-	} else {
-		opt = badger.DefaultOptions(filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63())))
+	var inMemory bool
+	if e.opts != nil {
+		_, inMemory = e.opts.FS.(*vfs.MemFS)
 	}
-	opt.Compression = options.None
-	opt.MetricsEnabled = false
-	opt.Logger = nil
-	opt.DetectConflicts = false
 
-	db, err := badger.OpenManaged(opt)
+	opt := pebble.Options{
+		DisableWAL: true,
+	}
+
+	var path string
+	if inMemory {
+		opt.FS = vfs.NewMem()
+	} else {
+		path = filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63()))
+
+	}
+	opt.Logger = nil
+
+	db, err := pebble.Open(path, &opt)
 	if err != nil {
 		return nil, err
 	}
 
 	s := TransientStore{
-		DB: db,
+		DB:    db,
+		Path:  path,
+		batch: db.NewIndexedBatch(),
 	}
 
 	err = s.Reset()
@@ -112,23 +127,25 @@ func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error)
 	return &s, nil
 }
 
-// Close the engine and underlying Badger database.
+// Close the engine and underlying Pebble database.
 func (e *Engine) Close() error {
 	return e.DB.Close()
 }
 
-// A Transaction uses Badger's transactions.
+// A Transaction uses Pebble's batches.
 type Transaction struct {
 	ctx       context.Context
 	ng        *Engine
-	tx        *badger.Txn
+	batch     *pebble.Batch
 	writable  bool
 	discarded bool
 }
 
 // Rollback the transaction. Can be used safely after commit.
 func (t *Transaction) Rollback() error {
-	t.tx.Discard()
+	if t.writable {
+		_ = t.batch.Close()
+	}
 
 	if t.discarded {
 		return errors.WithStack(ErrTransactionDiscarded)
@@ -163,7 +180,9 @@ func (t *Transaction) Commit() error {
 
 	t.discarded = true
 
-	return t.tx.Commit()
+	defer t.batch.Close()
+
+	return t.batch.Commit(&pebble.WriteOptions{Sync: true})
 }
 
 func buildStoreKey(name []byte) []byte {
@@ -195,12 +214,22 @@ func (t *Transaction) GetStore(name []byte) (*Store, error) {
 
 	key := buildStoreKey(name)
 
-	_, err := t.tx.Get(key)
+	var closer io.Closer
+	var err error
+	if t.writable {
+		_, closer, err = t.batch.Get(key)
+	} else {
+		_, closer, err = t.ng.DB.Get(key)
+	}
 	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
+		if errors.Is(err, pebble.ErrNotFound) {
 			return nil, errors.WithStack(ErrStoreNotFound)
 		}
 
+		return nil, err
+	}
+	err = closer.Close()
+	if err != nil {
 		return nil, err
 	}
 
@@ -209,8 +238,8 @@ func (t *Transaction) GetStore(name []byte) (*Store, error) {
 	return &Store{
 		ctx:      t.ctx,
 		ng:       t.ng,
-		tx:       t.tx,
-		prefix:   pkey,
+		tx:       t,
+		Prefix:   pkey,
 		writable: t.writable,
 		name:     name,
 	}, nil
@@ -230,15 +259,16 @@ func (t *Transaction) CreateStore(name []byte) error {
 	}
 
 	key := buildStoreKey(name)
-	_, err := t.tx.Get(key)
+	_, closer, err := t.batch.Get(key)
 	if err == nil {
+		_ = closer.Close()
 		return errors.WithStack(ErrStoreAlreadyExists)
 	}
-	if !errors.Is(err, badger.ErrKeyNotFound) {
+	if !errors.Is(err, pebble.ErrNotFound) {
 		return err
 	}
 
-	return t.tx.Set(key, nil)
+	return t.batch.Set(key, nil, nil)
 }
 
 // DropStore deletes the store and all its keys.
@@ -263,8 +293,8 @@ func (t *Transaction) DropStore(name []byte) error {
 		return err
 	}
 
-	err = t.tx.Delete(buildStoreKey([]byte(name)))
-	if errors.Is(err, badger.ErrKeyNotFound) {
+	err = t.batch.Delete(buildStoreKey([]byte(name)), nil)
+	if errors.Is(err, pebble.ErrNotFound) {
 		return errors.WithStack(ErrStoreNotFound)
 	}
 

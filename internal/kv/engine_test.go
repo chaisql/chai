@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dgraph-io/badger/v3"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/kv"
@@ -19,14 +18,10 @@ import (
 )
 
 func builder(t testing.TB) *kv.Engine {
-	dir, cleanup := tempDir(t)
-	opts := badger.DefaultOptions(filepath.Join(dir, "badger"))
-	opts.Logger = nil
+	dir := tempDir(t)
 
-	ng, err := kv.NewEngine(opts)
+	ng, err := kv.NewEngine(filepath.Join(dir, "pebble"), nil)
 	assert.NoError(t, err)
-
-	t.Cleanup(cleanup)
 
 	return ng
 }
@@ -43,9 +38,7 @@ func TestEngine(t *testing.T) {
 func getValue(t *testing.T, st *kv.Store, key []byte) []byte {
 	v, err := st.Get([]byte(key))
 	assert.NoError(t, err)
-	buf, err := v.ValueCopy(nil)
-	assert.NoError(t, err)
-	return buf
+	return v
 }
 
 // TestTransactionCommitRollback runs a list of tests to verify Commit and Rollback
@@ -601,259 +594,6 @@ func storeBuilderWithContext(ctx context.Context, t testing.TB) (*kv.Store, func
 	}
 }
 
-// TestStoreIterator verifies Iterator behaviour.
-func TestStoreIterator(t *testing.T) {
-	t.Run("Should not fail with no documents", func(t *testing.T) {
-		fn := func(t *testing.T, reverse bool) {
-			st, cleanup := storeBuilder(t)
-			defer cleanup()
-
-			it := st.Iterator(kv.IteratorOptions{Reverse: reverse})
-			defer it.Close()
-			i := 0
-
-			for it.Seek(nil); it.Valid(); it.Next() {
-				i++
-			}
-			assert.NoError(t, it.Err())
-			require.Zero(t, i)
-		}
-		t.Run("Reverse: false", func(t *testing.T) {
-			fn(t, false)
-		})
-		t.Run("Reverse: true", func(t *testing.T) {
-			fn(t, true)
-		})
-	})
-
-	t.Run("Should stop the iteration if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			assert.NoError(t, err)
-		}
-
-		it := st.Iterator(kv.IteratorOptions{})
-		defer it.Close()
-
-		cancel()
-
-		var i int
-		for it.Seek(nil); it.Valid(); it.Next() {
-			i++
-		}
-		assert.ErrorIs(t, it.Err(), context.Canceled)
-		require.Zero(t, i)
-	})
-
-	t.Run("With no pivot, should iterate over all documents in order", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			assert.NoError(t, err)
-		}
-
-		var i uint8 = 1
-		var count int
-		it := st.Iterator(kv.IteratorOptions{})
-		defer it.Close()
-
-		for it.Seek(nil); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{i}, k)
-			require.Equal(t, []byte{i + 20}, v)
-			i++
-			count++
-		}
-		assert.NoError(t, it.Err())
-
-		require.Equal(t, count, 10)
-	})
-
-	t.Run("With no pivot, should iterate over all documents in reverse order", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			assert.NoError(t, err)
-		}
-
-		var i uint8 = 10
-		var count int
-		it := st.Iterator(kv.IteratorOptions{Reverse: true})
-		defer it.Close()
-
-		for it.Seek(nil); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{i}, k)
-			require.Equal(t, []byte{i + 20}, v)
-			i--
-			count++
-		}
-		assert.NoError(t, it.Err())
-		require.Equal(t, 10, count)
-	})
-
-	t.Run("With pivot, should iterate over some documents in order", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			assert.NoError(t, err)
-		}
-
-		var i uint8 = 4
-		var count int
-		it := st.Iterator(kv.IteratorOptions{})
-		defer it.Close()
-
-		for it.Seek([]byte{i}); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{i}, k)
-			require.Equal(t, []byte{i + 20}, v)
-			i++
-			count++
-		}
-		assert.NoError(t, it.Err())
-		require.Equal(t, 7, count)
-	})
-
-	t.Run("With pivot, should iterate over some documents in reverse order", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		for i := 1; i <= 10; i++ {
-			err := st.Put([]byte{uint8(i)}, []byte{uint8(i + 20)})
-			assert.NoError(t, err)
-		}
-
-		var i uint8 = 4
-		var count int
-		it := st.Iterator(kv.IteratorOptions{Reverse: true})
-		defer it.Close()
-
-		for it.Seek([]byte{i}); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{i}, k)
-			require.Equal(t, []byte{i + 20}, v)
-			i--
-			count++
-		}
-		assert.NoError(t, it.Err())
-		require.Equal(t, 4, count)
-	})
-
-	t.Run("If pivot not found, should start from the next item", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		err := st.Put([]byte{1}, []byte{1})
-		assert.NoError(t, err)
-
-		err = st.Put([]byte{3}, []byte{3})
-		assert.NoError(t, err)
-
-		called := false
-		it := st.Iterator(kv.IteratorOptions{})
-		defer it.Close()
-
-		for it.Seek([]byte{2}); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{3}, k)
-			require.Equal(t, []byte{3}, v)
-			called = true
-		}
-		assert.NoError(t, it.Err())
-
-		require.True(t, called)
-	})
-
-	t.Run("With reverse true, if pivot not found, should start from the previous item", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		err := st.Put([]byte{1}, []byte{1})
-		assert.NoError(t, err)
-
-		err = st.Put([]byte{3}, []byte{3})
-		assert.NoError(t, err)
-
-		called := false
-		it := st.Iterator(kv.IteratorOptions{Reverse: true})
-		defer it.Close()
-
-		for it.Seek([]byte{2}); it.Valid(); it.Next() {
-			item := it.Item()
-			k := item.Key()
-			v, _ := item.ValueCopy(nil)
-			require.Equal(t, []byte{1}, k)
-			require.Equal(t, []byte{1}, v)
-			called = true
-		}
-		assert.NoError(t, it.Err())
-		require.True(t, called)
-	})
-
-	t.Run("With reverse true, one key in the store, and no pivot, should return that key", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		k := []byte{0xFF, 0xFF, 0xFF, 0xFF}
-		err := st.Put(k, []byte{1})
-		assert.NoError(t, err)
-
-		it := st.Iterator(kv.IteratorOptions{Reverse: true})
-		defer it.Close()
-
-		it.Seek(nil)
-
-		assert.NoError(t, it.Err())
-		require.True(t, it.Valid())
-		require.Equal(t, it.Item().Key(), k)
-	})
-
-	t.Run("Iterating while deleting current key should work", func(t *testing.T) {
-		st, cleanup := storeBuilder(t)
-		defer cleanup()
-
-		for i := 0; i < 50; i++ {
-			err := st.Put([]byte{byte(i)}, []byte{byte(i)})
-			assert.NoError(t, err)
-		}
-
-		i := 0
-		it := st.Iterator(kv.IteratorOptions{})
-		defer it.Close()
-
-		for it.Seek(nil); it.Valid() && i < 50; it.Next() {
-			require.Equal(t, []byte{byte(i)}, it.Item().Key())
-
-			err := st.Delete([]byte{byte(i)})
-			assert.NoError(t, err)
-			i++
-		}
-	})
-}
-
 // TestStorePut verifies Put behaviour.
 func TestStorePut(t *testing.T) {
 	t.Run("Should insert data", func(t *testing.T) {
@@ -994,11 +734,11 @@ func TestStoreDelete(t *testing.T) {
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
-		it := st.Iterator(kv.IteratorOptions{})
+		it := st.Iterator(nil)
 		defer it.Close()
 		i := 0
-		for it.Seek(nil); it.Valid(); it.Next() {
-			require.Equal(t, []byte("foo"), it.Item().Key())
+		for it.First(); it.Valid(); it.Next() {
+			require.Equal(t, []byte("foo"), kv.TrimPrefix(it.Key(), st.Prefix))
 			i++
 		}
 		require.Equal(t, 1, i)
@@ -1083,10 +823,10 @@ func TestStoreTruncate(t *testing.T) {
 		err = st.Truncate()
 		assert.NoError(t, err)
 
-		it := st.Iterator(kv.IteratorOptions{})
+		it := st.Iterator(nil)
 		defer it.Close()
-		it.Seek(nil)
-		assert.NoError(t, it.Err())
+		it.First()
+		assert.NoError(t, it.Error())
 		require.False(t, it.Valid())
 	})
 
@@ -1325,15 +1065,15 @@ func TestTransient(t *testing.T) {
 	ts, err := ng.NewTransientStore(context.Background())
 	assert.NoError(t, err)
 
-	dir := ts.DB.Opts().Dir
+	dir := ts.Path
 
 	err = ts.Put([]byte("foo"), []byte("bar"))
 	assert.NoError(t, err)
 
-	it := ts.Iterator(kv.IteratorOptions{})
+	it := ts.Iterator(nil)
 	defer it.Close()
 
-	it.Seek([]byte("foo"))
+	it.SeekGE([]byte("foo"))
 	require.True(t, it.Valid())
 
 	err = ts.Drop(context.Background())
@@ -1343,11 +1083,12 @@ func TestTransient(t *testing.T) {
 	require.True(t, os.IsNotExist(err))
 }
 
-func tempDir(t testing.TB) (string, func()) {
+func tempDir(t testing.TB) string {
 	dir, err := ioutil.TempDir("", "genji")
 	assert.NoError(t, err)
 
-	return dir, func() {
+	t.Cleanup(func() {
 		os.RemoveAll(dir)
-	}
+	})
+	return dir
 }
