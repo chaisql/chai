@@ -604,6 +604,10 @@ func scanString(r io.RuneReader) (string, error) {
 			ch1, _, _ := r.ReadRune()
 			if ch1 == 'n' {
 				_, _ = buf.WriteRune('\n')
+			} else if ch1 == 'r' {
+				_, _ = buf.WriteRune('\r')
+			} else if ch1 == 't' {
+				_, _ = buf.WriteRune('\t')
 			} else if ch1 == '\\' {
 				_, _ = buf.WriteRune('\\')
 			} else if ch1 == '"' {
