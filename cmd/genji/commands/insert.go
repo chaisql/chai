@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/urfave/cli/v2"
+
+	"github.com/genjidb/genji/cmd/genji/dbutil"
 )
 
 // NewInsertCommand returns a cli.Command for "genji insert".
@@ -33,7 +34,7 @@ Also you can use -a flag to create database automatically.
 This example will create a database with name 'data_${current unix timestamp}'
 It can be combined with --db to select an existing database but automatically create the table.
 
-$ genji insert -a -e bolt '[{"a": 1}, {"a": 2}]'
+$ genji insert -a '[{"a": 1}, {"a": 2}]'
 
 Insert can also insert a stream of objects or an array of objects from standard input:
 
@@ -64,7 +65,6 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db myd
 			dbPath := c.String("db")
 			table := c.String("table")
 			args := c.Args().Slice()
-
 			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), args)
 		},
 	}
