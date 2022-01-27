@@ -4,6 +4,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
 )
 
@@ -119,8 +120,17 @@ func appendArray(buf []byte, a types.Array) ([]byte, error) {
 func appendDocument(buf []byte, d types.Document) ([]byte, error) {
 	l := len(buf)
 
+	// prevent duplicate field names
+	fieldNames := make(map[string]bool)
+
 	err := d.Iterate(func(field string, value types.Value) error {
 		var err error
+
+		if fieldNames[field] {
+			return errors.New("duplicate field name: " + field)
+		}
+
+		fieldNames[field] = true
 
 		// encode the field as text
 		buf = append(buf, byte(types.TextValue))

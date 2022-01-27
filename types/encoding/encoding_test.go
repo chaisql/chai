@@ -38,11 +38,13 @@ func TestEncodeDecode(t *testing.T) {
 		name     string
 		d        types.Document
 		expected string
+		fails    bool
 	}{
 		{
 			"empty doc",
 			document.NewFieldBuffer(),
 			`{}`,
+			false,
 		},
 		{
 			"document.FieldBuffer",
@@ -50,11 +52,21 @@ func TestEncodeDecode(t *testing.T) {
 				Add("age", types.NewIntegerValue(10)).
 				Add("name", types.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
+			false,
 		},
 		{
 			"Map",
 			userMapDoc,
 			`{"age": 10, "name": "john"}`,
+			false,
+		},
+		{
+			"duplicate field name",
+			document.NewFieldBuffer().
+				Add("age", types.NewIntegerValue(10)).
+				Add("age", types.NewIntegerValue(10)),
+			``,
+			true,
 		},
 		{
 			"Nested types.Document",
@@ -64,6 +76,7 @@ func TestEncodeDecode(t *testing.T) {
 				Add("address", types.NewDocumentValue(addressMapDoc)).
 				Add("array", types.NewArrayValue(complexArray)),
 			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, 3, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
+			false,
 		},
 	}
 
@@ -72,6 +85,10 @@ func TestEncodeDecode(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			buf.Reset()
 			err := encoding.EncodeValue(&buf, types.NewDocumentValue(test.d))
+			if test.fails {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			v, err := encoding.DecodeValue(buf.Bytes())
 			assert.NoError(t, err)

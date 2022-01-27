@@ -422,3 +422,13 @@ SELECT * FROM test_df;
 CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");
 INSERT INTO test_df VALUES {};
 -- error:
+
+-- test: duplicate field names: root
+CREATE TABLE test_df ;
+INSERT INTO test_df(a, a) VALUES (1, 10);
+-- error:
+
+-- test: duplicate field names: nested
+CREATE TABLE test_df;
+insert into test_df(a) values ({b: 1, b: 10});
+-- error:
