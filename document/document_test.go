@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/stretchr/testify/require"
+
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 var _ types.Document = new(document.FieldBuffer)
@@ -211,6 +212,18 @@ func TestFieldBuffer(t *testing.T) {
 		got, err := json.Marshal(buf)
 		assert.NoError(t, err)
 		require.JSONEq(t, `{"a": 1, "c": [1, 1], "f": {"g": 1}}`, string(got))
+	})
+
+	t.Run("CloneValue", func(t *testing.T) {
+		d := testutil.MakeDocument(t, `{
+			"a": "b",
+			"c": ["d", "e"],
+			"f": {"g": "h"}
+		}`)
+
+		got, err := document.CloneValue(types.NewDocumentValue(d))
+		require.NoError(t, err)
+		testutil.RequireDocEqual(t, d, got.V().(types.Document))
 	})
 
 	t.Run("UnmarshalJSON", func(t *testing.T) {

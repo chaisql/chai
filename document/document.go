@@ -8,6 +8,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 	"github.com/genjidb/genji/types/encoding"
@@ -319,20 +320,14 @@ func CloneValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
 	case types.ArrayValue:
 		vb := NewValueBuffer()
-		err := v.V().(types.Array).Iterate(func(i int, value types.Value) error {
-			vb.Append(value)
-			return nil
-		})
+		err := vb.Copy(v.V().(types.Array))
 		if err != nil {
 			return nil, err
 		}
 		return types.NewArrayValue(vb), nil
 	case types.DocumentValue:
 		fb := NewFieldBuffer()
-		err := v.V().(types.Document).Iterate(func(field string, value types.Value) error {
-			fb.Add(field, value)
-			return nil
-		})
+		err := fb.Copy(v.V().(types.Document))
 		if err != nil {
 			return nil, err
 		}
