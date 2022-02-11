@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/doc"
@@ -83,6 +84,12 @@ var commands = []command{
 		Options:     "TYPE FILE table",
 		DisplayName: ".import",
 		Description: "Import data from a file. Only supported type is 'csv'",
+	},
+	{
+		Name:        ".timer",
+		Options:     "[on|off]",
+		DisplayName: ".timer",
+		Description: "Display the execution time after each query or hide it.",
 	},
 }
 
