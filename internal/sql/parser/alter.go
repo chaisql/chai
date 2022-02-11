@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
@@ -66,7 +68,7 @@ func (p *Parser) parseAlterStatement() (statement.Statement, error) {
 	// Parse table name.
 	tableName, err := p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return nil, pErr
 	}

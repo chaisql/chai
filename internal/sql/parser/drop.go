@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
@@ -39,7 +41,7 @@ func (p *Parser) parseDropTableStatement() (statement.DropTableStmt, error) {
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return stmt, pErr
 	}
@@ -61,7 +63,7 @@ func (p *Parser) parseDropIndexStatement() (statement.DropIndexStmt, error) {
 	// Parse index name
 	stmt.IndexName, err = p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"index_name"}
 		return stmt, pErr
 	}
@@ -83,7 +85,7 @@ func (p *Parser) parseDropSequenceStatement() (statement.DropSequenceStmt, error
 	// Parse sequence name
 	stmt.SequenceName, err = p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"sequence_name"}
 		return stmt, pErr
 	}
