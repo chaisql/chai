@@ -7,6 +7,7 @@ import (
 	"io"
 
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 )
@@ -14,15 +15,19 @@ import (
 // InsertJSON reads json documents from r and inserts them into the selected table.
 // The reader can be either a stream of json objects or an array of objects.
 func InsertJSON(db *genji.DB, table string, r io.Reader) error {
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	q := fmt.Sprintf("INSERT INTO %s VALUES ?", table)
 	rd := bufio.NewReader(r)
-	var c byte
-	var err error
 
-	// read first non white space byte to determine
+	// read first non-white space byte to determine
 	// whether we are reading from a json stream or
 	// an array of json objects.
-	c, err = readByteIgnoreWhitespace(rd)
+	c, err := readByteIgnoreWhitespace(rd)
 	if err != nil {
 		return err
 	}
@@ -43,7 +48,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 				return err
 			}
 
-			if err := db.Exec(q, &fb); err != nil {
+			if err := tx.Exec(q, &fb); err != nil {
 				return err
 			}
 		}
@@ -66,7 +71,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 				return err
 			}
 
-			if err := db.Exec(q, &fb); err != nil {
+			if err := tx.Exec(q, &fb); err != nil {
 				return err
 			}
 		}
@@ -84,7 +89,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		return fmt.Errorf("found %q, but expected '{' or '['", c)
 	}
 
-	return nil
+	return tx.Commit()
 }
 
 func readByteIgnoreWhitespace(r *bufio.Reader) (byte, error) {
