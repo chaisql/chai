@@ -10,17 +10,19 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/agnivade/levenshtein"
 	"github.com/c-bata/go-prompt"
 	"github.com/cockroachdb/errors"
+	"go.uber.org/multierr"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/types"
-	"go.uber.org/multierr"
-	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -44,6 +46,8 @@ type Shell struct {
 	query      string
 	livePrefix string
 	multiLine  bool
+
+	showTime bool
 
 	history []string
 
@@ -173,6 +177,8 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 		case <-ctx.Done():
 			return ctx.Err()
 		case input := <-promptExecCh:
+			showTime := sh.showTime
+			start := time.Now().UTC()
 			err := sh.executeInput(sh.getExecContext(ctx), input)
 			// if the context has been canceled
 			// there is no way to tell at this point
@@ -189,6 +195,12 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 			}
 			if err != nil {
 				fmt.Println(err)
+				continue
+			}
+
+			// if showtime is true, ensure it's a query, and it was executed.
+			if showTime && !strings.HasPrefix(input, ".") && strings.HasSuffix(input, ";") {
+				fmt.Printf("Time: %s\n", time.Since(start))
 			}
 		case promptExecCh <- "":
 		}
@@ -415,6 +427,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	in = strings.TrimSuffix(in, ";")
 	cmd := strings.Fields(in)
 	switch cmd[0] {
+	case ".timer":
+		if len(cmd) != 2 || (cmd[1] != "on" && cmd[1] != "off") {
+			return fmt.Errorf(getUsage(".timer"))
+		}
+
+		sh.showTime = cmd[1] == "on"
+		return nil
 	case ".help", "help":
 		return runHelpCmd()
 	case ".tables":
