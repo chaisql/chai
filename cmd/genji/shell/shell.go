@@ -200,27 +200,11 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 
 			// if showtime is true, ensure it's a query, and it was executed.
 			if showTime && !strings.HasPrefix(input, ".") && strings.HasSuffix(input, ";") {
-				displayTime(start)
+				fmt.Printf("Time: %s\n", time.Since(start))
 			}
 		case promptExecCh <- "":
 		}
 	}
-}
-
-// displayTime shows execution time of a query.
-func displayTime(start time.Time) {
-	unit := "s"
-	multiplier := 1.0
-	precision := 3
-	completed := time.Since(start)
-	// under a second print in ms unit.
-	if completed.Seconds() < 1 {
-		unit = "ms"
-		multiplier = 1000.
-		precision = 0
-	}
-
-	fmt.Printf("Time: %.*f%s\n", precision, completed.Seconds()*multiplier, unit)
 }
 
 // runPrompt is a stateless function that displays a prompt to the user.
