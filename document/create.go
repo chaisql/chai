@@ -9,6 +9,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/types"
 )
 
@@ -139,10 +140,8 @@ func newFromStruct(ref reflect.Value) (types.Document, error) {
 			if err != nil {
 				return nil, err
 			}
-			err = d.Iterate(func(field string, value types.Value) error {
-				fb.Add(field, value)
-				return nil
-			})
+
+			err = fb.Copy(d)
 			if err != nil {
 				return nil, err
 			}
