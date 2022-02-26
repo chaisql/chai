@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/urfave/cli/v2"
 
+	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 )
 
@@ -88,6 +89,19 @@ func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, args
 	}
 	defer db.Close()
 
+	err = insert(db, table, createTable, args...)
+	if err != nil {
+		if createTable {
+			_ = os.RemoveAll(dbPath)
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func insert(db *genji.DB, table string, createTable bool, args ...string) error {
 	if createTable {
 		err := db.Exec("CREATE TABLE " + table)
 		if err != nil {
