@@ -1,6 +1,6 @@
 module github.com/genjidb/genji
 
-go 1.17
+go 1.18
 
 require (
 	github.com/buger/jsonparser v1.1.1

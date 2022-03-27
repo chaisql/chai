@@ -1,16 +1,21 @@
 package kv
 
 import (
-	"context"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 )
 
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return &[]byte{}
+	},
+}
+
 type Store struct {
-	ctx      context.Context
 	ng       *Engine
 	tx       *Transaction
 	Prefix   []byte
@@ -25,7 +30,11 @@ type Store struct {
 // we can quickly access the latest key of the store
 // by replacing 0 by anything bigger.
 func BuildKey(prefix, k []byte) []byte {
-	key := make([]byte, 0, len(prefix)+2+len(k))
+	buf := bufferPool.Get().(*[]byte)
+	if cap(*buf) < len(prefix)+len(k)+2 {
+		*buf = make([]byte, 0, len(prefix)+len(k)+2)
+	}
+	key := (*buf)[:0]
 	key = append(key, prefix...)
 	key = append(key, separator)
 	key = append(key, 0)
@@ -39,12 +48,6 @@ func TrimPrefix(k []byte, prefix []byte) []byte {
 
 // Put stores a key value pair. If it already exists, it overrides it.
 func (s *Store) Put(k, v []byte) error {
-	select {
-	case <-s.ctx.Done():
-		return s.ctx.Err()
-	default:
-	}
-
 	if !s.writable {
 		return ErrTransactionReadOnly
 	}
@@ -57,25 +60,24 @@ func (s *Store) Put(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
-	return s.tx.batch.Set(BuildKey(s.Prefix, k), v, nil)
+	key := BuildKey(s.Prefix, k)
+	err := s.tx.batch.Set(key, v, nil)
+	bufferPool.Put(&key)
+	return err
 }
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *Store) Get(k []byte) ([]byte, error) {
-	select {
-	case <-s.ctx.Done():
-		return nil, s.ctx.Err()
-	default:
-	}
-
 	var closer io.Closer
 	var err error
 	var value []byte
+	key := BuildKey(s.Prefix, k)
 	if s.tx.writable {
-		value, closer, err = s.tx.batch.Get(BuildKey(s.Prefix, k))
+		value, closer, err = s.tx.batch.Get(key)
 	} else {
-		value, closer, err = s.ng.DB.Get(BuildKey(s.Prefix, k))
+		value, closer, err = s.ng.DB.Get(key)
 	}
+	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
 			return nil, errors.WithStack(ErrKeyNotFound)
@@ -95,20 +97,40 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 	return cp, nil
 }
 
+// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
+func (s *Store) Exists(k []byte) (bool, error) {
+	var closer io.Closer
+	var err error
+	key := BuildKey(s.Prefix, k)
+	if s.tx.writable {
+		_, closer, err = s.tx.batch.Get(key)
+	} else {
+		_, closer, err = s.ng.DB.Get(key)
+	}
+	bufferPool.Put(&key)
+	if err != nil {
+		if errors.Is(err, pebble.ErrNotFound) {
+			return false, nil
+		}
+
+		return false, err
+	}
+	err = closer.Close()
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // Delete a record by key. If not found, returns ErrKeyNotFound.
 func (s *Store) Delete(k []byte) error {
-	select {
-	case <-s.ctx.Done():
-		return s.ctx.Err()
-	default:
-	}
-
 	if !s.writable {
 		return ErrTransactionReadOnly
 	}
 
 	key := BuildKey(s.Prefix, k)
 	_, closer, err := s.tx.batch.Get(key)
+	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
 			return errors.WithStack(ErrKeyNotFound)
@@ -126,12 +148,6 @@ func (s *Store) Delete(k []byte) error {
 
 // Truncate deletes all the records of the store.
 func (s *Store) Truncate() error {
-	select {
-	case <-s.ctx.Done():
-		return s.ctx.Err()
-	default:
-	}
-
 	if !s.writable {
 		return ErrTransactionReadOnly
 	}
@@ -167,7 +183,7 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
-func (s *Store) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
+func (s *Store) Iterator(opts *pebble.IterOptions) *Iterator {
 	if opts == nil {
 		lowerBound := BuildKey(s.Prefix, nil)
 		upperBound := BuildKey(s.Prefix, nil)
@@ -177,11 +193,35 @@ func (s *Store) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
 			UpperBound: upperBound,
 		}
 	}
+	var it *pebble.Iterator
 	if s.tx.writable {
-		return s.tx.batch.NewIter(opts)
+		it = s.tx.batch.NewIter(opts)
 	} else {
-		return s.ng.DB.NewIter(opts)
+		it = s.ng.DB.NewIter(opts)
 	}
+
+	return &Iterator{
+		Iterator:   it,
+		upperBound: opts.UpperBound,
+		lowerBound: opts.LowerBound,
+	}
+}
+
+type Iterator struct {
+	*pebble.Iterator
+
+	lowerBound, upperBound []byte
+}
+
+func (it *Iterator) Close() error {
+	err := it.Iterator.Close()
+	if it.lowerBound != nil {
+		bufferPool.Put(&it.lowerBound)
+	}
+	if it.upperBound != nil {
+		bufferPool.Put(&it.upperBound)
+	}
+	return err
 }
 
 // A TransientStore is an implementation of the *kv.Store interface.
@@ -208,12 +248,16 @@ func (s *TransientStore) Put(k, v []byte) error {
 	return s.batch.Set(k, v, nil)
 }
 
-func (s *TransientStore) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
-	return s.batch.NewIter(opts)
+func (s *TransientStore) Iterator(opts *pebble.IterOptions) *Iterator {
+	it := s.batch.NewIter(opts)
+
+	return &Iterator{
+		Iterator: it,
+	}
 }
 
 // Drop releases any resource (files, memory, etc.) used by a transient store.
-func (s *TransientStore) Drop(ctx context.Context) error {
+func (s *TransientStore) Drop() error {
 	if s.batch != nil {
 		_ = s.batch.Close()
 	}

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
-	"github.com/pkg/errors"
 )
 
 // A Path represents the path to a particular value within a document.

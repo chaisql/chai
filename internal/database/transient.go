@@ -36,7 +36,7 @@ func (t *TransientStorePool) Get(ctx context.Context) (*kv.TransientStore, error
 		return ng, nil
 	}
 
-	return t.ng.NewTransientStore(ctx)
+	return t.ng.NewTransientStore()
 }
 
 // Release sets the store for reuse. If the pool is full, it drops the given store.
@@ -45,7 +45,7 @@ func (t *TransientStorePool) Release(ctx context.Context, ts *kv.TransientStore)
 	defer t.mu.Unlock()
 
 	if len(t.Pool) >= maxTransientPoolSize {
-		return ts.Drop(ctx)
+		return ts.Drop()
 	}
 
 	t.Pool = append(t.Pool, ts)

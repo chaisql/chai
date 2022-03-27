@@ -32,14 +32,13 @@ func NewTestStore(t testing.TB, name string) *kv.Store {
 
 	ng := NewEngine(t)
 
-	tx, err := ng.Begin(context.Background(), kv.TxOptions{Writable: true})
+	tx, err := ng.Begin(kv.TxOptions{Writable: true})
 	require.NoError(t, err)
 
 	err = tx.CreateStore([]byte(name))
 	require.NoError(t, err)
 
-	st, err := tx.GetStore([]byte(name))
-	require.NoError(t, err)
+	st := tx.GetStore([]byte(name))
 
 	t.Cleanup(func() {
 		tx.Rollback()

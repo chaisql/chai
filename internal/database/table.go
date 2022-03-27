@@ -44,8 +44,11 @@ func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
 	}
 
 	// ensure the key is not already present in the table
-	_, err = t.Tree.Get(key)
-	if err == nil {
+	ok, err := t.Tree.Exists(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	if ok {
 		return nil, nil, &errs.ConstraintViolationError{
 			Constraint: "PRIMARY KEY",
 			Paths:      t.Info.GetPrimaryKey().Paths,

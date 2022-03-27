@@ -79,6 +79,15 @@ func (t *Tree) Get(key Key) (types.Value, error) {
 	return &v, nil
 }
 
+// Exists returns true if the key exists in the tree.
+func (t *Tree) Exists(key Key) (bool, error) {
+	if t.TransientStore != nil {
+		panic("Exists not implemented on transient tree")
+	}
+
+	return t.Store.Exists(key)
+}
+
 // Delete a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
 func (t *Tree) Delete(key Key) error {
@@ -143,7 +152,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value
 		}
 	}
 
-	var it *pebble.Iterator
+	var it *kv.Iterator
 	opts := pebble.IterOptions{
 		LowerBound: start,
 		UpperBound: end,

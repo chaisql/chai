@@ -50,7 +50,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	}()
 
 	t.Run("Commit on read-only transaction should fail", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -61,7 +61,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Commit after rollback should fail", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -74,37 +74,8 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("Commit after context canceled should fail", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-
-		assert.NoError(t, tx.CreateStore([]byte("test")))
-		st, err := tx.GetStore([]byte("test"))
-		assert.NoError(t, err)
-		err = st.Put([]byte("a"), []byte("b"))
-		assert.NoError(t, err)
-
-		cancel()
-
-		err = tx.Commit()
-		assert.Error(t, err)
-
-		// ensure data has not been persisted
-		tx, err = ng.Begin(context.Background(), kv.TxOptions{
-			Writable: false,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		_, err = tx.GetStore([]byte("test"))
-		assert.Error(t, err)
-	})
-
 	t.Run("Rollback after commit should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -118,7 +89,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Commit after commit should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -132,7 +103,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 	})
 
 	t.Run("Rollback after rollback should should return ErrTransactionDiscarded", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
@@ -145,21 +116,8 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.ErrorIs(t, err, kv.ErrTransactionDiscarded)
 	})
 
-	t.Run("Rollback after context canceled should return context.Canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-
-		cancel()
-
-		err = tx.Rollback()
-		assert.ErrorIs(t, err, context.Canceled)
-	})
-
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -172,15 +130,14 @@ func TestTransactionCommitRollback(t *testing.T) {
 		assert.NoError(t, err)
 
 		// create a new read-only transaction
-		tx, err = ng.Begin(context.Background(), kv.TxOptions{
+		tx, err = ng.Begin(kv.TxOptions{
 			Writable: false,
 		})
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
 		// fetch the store and the index
-		st, err := tx.GetStore([]byte("store1"))
-		assert.NoError(t, err)
+		st := tx.GetStore([]byte("store1"))
 
 		tests := []struct {
 			name string
@@ -213,12 +170,6 @@ func TestTransactionCommitRollback(t *testing.T) {
 			readFn  func(*kv.Transaction, *error)
 		}{
 			{
-				"CreateStore",
-				nil,
-				func(tx *kv.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx *kv.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
-			},
-			{
 				"DropStore",
 				func(tx *kv.Transaction) error { return tx.CreateStore([]byte("store")) },
 				func(tx *kv.Transaction, err *error) { *err = tx.DropStore([]byte("store")) },
@@ -228,13 +179,11 @@ func TestTransactionCommitRollback(t *testing.T) {
 				"StorePut",
 				func(tx *kv.Transaction) error { return tx.CreateStore([]byte("store")) },
 				func(tx *kv.Transaction, err *error) {
-					st, er := tx.GetStore([]byte("store"))
-					assert.NoError(t, er)
+					st := tx.GetStore([]byte("store"))
 					assert.NoError(t, st.Put([]byte("foo"), []byte("FOO")))
 				},
 				func(tx *kv.Transaction, err *error) {
-					st, er := tx.GetStore([]byte("store"))
-					assert.NoError(t, er)
+					st := tx.GetStore([]byte("store"))
 					_, *err = st.Get([]byte("foo"))
 				},
 			},
@@ -249,7 +198,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(context.Background(), kv.TxOptions{
+						tx, err := ng.Begin(kv.TxOptions{
 							Writable: true,
 						})
 						assert.NoError(t, err)
@@ -262,7 +211,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 					}()
 				}
 
-				tx, err := ng.Begin(context.Background(), kv.TxOptions{
+				tx, err := ng.Begin(kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -274,7 +223,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 				err = tx.Rollback()
 				assert.NoError(t, err)
 
-				tx, err = ng.Begin(context.Background(), kv.TxOptions{
+				tx, err = ng.Begin(kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -294,7 +243,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 			t.Run(test.name+"/commit", func(t *testing.T) {
 				if test.initFn != nil {
 					func() {
-						tx, err := ng.Begin(context.Background(), kv.TxOptions{
+						tx, err := ng.Begin(kv.TxOptions{
 							Writable: true,
 						})
 						assert.NoError(t, err)
@@ -307,7 +256,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 					}()
 				}
 
-				tx, err := ng.Begin(context.Background(), kv.TxOptions{
+				tx, err := ng.Begin(kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -319,7 +268,7 @@ func TestTransactionCommitRollback(t *testing.T) {
 				err = tx.Commit()
 				assert.NoError(t, err)
 
-				tx, err = ng.Begin(context.Background(), kv.TxOptions{
+				tx, err = ng.Begin(kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
@@ -334,13 +283,13 @@ func TestTransactionCommitRollback(t *testing.T) {
 	t.Run("Data should be visible within the same transaction", func(t *testing.T) {
 		tests := []struct {
 			name    string
-			writeFn func(*kv.Transaction, *error)
-			readFn  func(*kv.Transaction, *error)
+			writeFn func(*kv.Store, *error)
+			readFn  func(*kv.Store, *error)
 		}{
 			{
 				"CreateStore",
-				func(tx *kv.Transaction, err *error) { *err = tx.CreateStore([]byte("store")) },
-				func(tx *kv.Transaction, err *error) { _, *err = tx.GetStore([]byte("store")) },
+				func(st *kv.Store, err *error) { *err = st.Put([]byte("a"), []byte("1")) },
+				func(st *kv.Store, err *error) { _, *err = st.Get([]byte("a")) },
 			},
 		}
 
@@ -351,16 +300,19 @@ func TestTransactionCommitRollback(t *testing.T) {
 					assert.NoError(t, ng.Close())
 				}()
 
-				tx, err := ng.Begin(context.Background(), kv.TxOptions{
+				tx, err := ng.Begin(kv.TxOptions{
 					Writable: true,
 				})
 				assert.NoError(t, err)
 				defer tx.Rollback()
 
-				test.writeFn(tx, &err)
+				err = tx.CreateStore([]byte("store"))
+				assert.NoError(t, err)
+				st := tx.GetStore([]byte("store"))
+				test.writeFn(st, &err)
 				assert.NoError(t, err)
 
-				test.readFn(tx, &err)
+				test.readFn(st, &err)
 				assert.NoError(t, err)
 			})
 		}
@@ -375,7 +327,7 @@ func TestTransactionCreateStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -384,8 +336,7 @@ func TestTransactionCreateStore(t *testing.T) {
 		err = tx.CreateStore([]byte("store"))
 		assert.NoError(t, err)
 
-		st, err := tx.GetStore([]byte("store"))
-		assert.NoError(t, err)
+		st := tx.GetStore([]byte("store"))
 		require.NotNil(t, st)
 	})
 
@@ -395,7 +346,7 @@ func TestTransactionCreateStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -406,51 +357,17 @@ func TestTransactionCreateStore(t *testing.T) {
 		err = tx.CreateStore([]byte("store"))
 		assert.ErrorIs(t, err, kv.ErrStoreAlreadyExists)
 	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ng := builder(t)
-		defer func() {
-			assert.NoError(t, ng.Close())
-		}()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		cancel()
-		err = tx.CreateStore([]byte("store"))
-		assert.ErrorIs(t, err, context.Canceled)
-	})
 }
 
 // TestTransactionGetStore verifies GetStore behaviour.
 func TestTransactionGetStore(t *testing.T) {
-	t.Run("Should fail if store not found", func(t *testing.T) {
-		ng := builder(t)
-		defer func() {
-			assert.NoError(t, ng.Close())
-		}()
-
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
-			Writable: false,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		_, err = tx.GetStore([]byte("store"))
-		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
-	})
-
 	t.Run("Should return the right store", func(t *testing.T) {
 		ng := builder(t)
 		defer func() {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -464,12 +381,10 @@ func TestTransactionGetStore(t *testing.T) {
 		assert.NoError(t, err)
 
 		// fetch first store
-		sta, err := tx.GetStore([]byte("storea"))
-		assert.NoError(t, err)
+		sta := tx.GetStore([]byte("storea"))
 
 		// fetch second store
-		stb, err := tx.GetStore([]byte("storeb"))
-		assert.NoError(t, err)
+		stb := tx.GetStore([]byte("storeb"))
 
 		// insert data in first store
 		err = sta.Put([]byte("foo"), []byte("FOO"))
@@ -483,29 +398,6 @@ func TestTransactionGetStore(t *testing.T) {
 		_, err = stb.Get([]byte("foo"))
 		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ng := builder(t)
-		defer func() {
-			assert.NoError(t, ng.Close())
-		}()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		// create two stores
-		err = tx.CreateStore([]byte("store"))
-		assert.NoError(t, err)
-
-		cancel()
-
-		_, err = tx.GetStore([]byte("store"))
-		assert.ErrorIs(t, err, context.Canceled)
-	})
 }
 
 // TestTransactionDropStore verifies DropStore behaviour.
@@ -516,7 +408,7 @@ func TestTransactionDropStore(t *testing.T) {
 			assert.NoError(t, ng.Close())
 		}()
 
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
+		tx, err := ng.Begin(kv.TxOptions{
 			Writable: true,
 		})
 		assert.NoError(t, err)
@@ -528,64 +420,20 @@ func TestTransactionDropStore(t *testing.T) {
 		err = tx.DropStore([]byte("store"))
 		assert.NoError(t, err)
 
-		_, err = tx.GetStore([]byte("store"))
-		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
-	})
-
-	t.Run("Should fail if store not found", func(t *testing.T) {
-		ng := builder(t)
-		defer func() {
-			assert.NoError(t, ng.Close())
-		}()
-
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		err = tx.DropStore([]byte("store"))
-		assert.ErrorIs(t, err, kv.ErrStoreNotFound)
-	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ng := builder(t)
-		defer func() {
-			assert.NoError(t, ng.Close())
-		}()
-
-		ctx, cancel := context.WithCancel(context.Background())
-		tx, err := ng.Begin(ctx, kv.TxOptions{
-			Writable: true,
-		})
-		assert.NoError(t, err)
-		defer tx.Rollback()
-
-		// create two stores
 		err = tx.CreateStore([]byte("store"))
 		assert.NoError(t, err)
-
-		cancel()
-
-		err = tx.DropStore([]byte("store"))
-		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
 func storeBuilder(t testing.TB) (*kv.Store, func()) {
-	return storeBuilderWithContext(context.Background(), t)
-}
-
-func storeBuilderWithContext(ctx context.Context, t testing.TB) (*kv.Store, func()) {
 	ng := builder(t)
-	tx, err := ng.Begin(ctx, kv.TxOptions{
+	tx, err := ng.Begin(kv.TxOptions{
 		Writable: true,
 	})
 	assert.NoError(t, err)
 	err = tx.CreateStore([]byte("test"))
 	assert.NoError(t, err)
-	st, err := tx.GetStore([]byte("test"))
-	assert.NoError(t, err)
+	st := tx.GetStore([]byte("test"))
 	return st, func() {
 		defer func() {
 			assert.NoError(t, ng.Close())
@@ -642,18 +490,6 @@ func TestStorePut(t *testing.T) {
 		err = st.Put([]byte("foo"), []byte(""))
 		assert.Error(t, err)
 	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t)
-		defer cleanup()
-
-		cancel()
-		err := st.Put([]byte("foo"), []byte("FOO"))
-		assert.ErrorIs(t, err, context.Canceled)
-	})
 }
 
 // TestStoreGet verifies Get behaviour.
@@ -681,21 +517,6 @@ func TestStoreGet(t *testing.T) {
 
 		v = getValue(t, st, []byte("bar"))
 		require.Equal(t, []byte("BAR"), v)
-	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t)
-		defer cleanup()
-
-		err := st.Put([]byte("foo"), []byte("FOO"))
-		assert.NoError(t, err)
-
-		cancel()
-		_, err = st.Get([]byte("foo"))
-		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -747,12 +568,11 @@ func TestStoreDelete(t *testing.T) {
 	t.Run("Should not rollback document if deleted then put", func(t *testing.T) {
 		ng := builder(t)
 
-		tx, err := ng.Begin(context.Background(), kv.TxOptions{Writable: true})
+		tx, err := ng.Begin(kv.TxOptions{Writable: true})
 		assert.NoError(t, err)
 		err = tx.CreateStore([]byte("test"))
 		assert.NoError(t, err)
-		st, err := tx.GetStore([]byte("test"))
-		assert.NoError(t, err)
+		st := tx.GetStore([]byte("test"))
 
 		err = st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
@@ -774,30 +594,14 @@ func TestStoreDelete(t *testing.T) {
 		err = tx.Commit()
 		assert.NoError(t, err)
 
-		tx, err = ng.Begin(context.Background(), kv.TxOptions{Writable: false})
+		tx, err = ng.Begin(kv.TxOptions{Writable: false})
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		st, err = tx.GetStore([]byte("test"))
-		assert.NoError(t, err)
+		st = tx.GetStore([]byte("test"))
 
 		v = getValue(t, st, []byte("foo"))
 		require.Equal(t, []byte("bar"), v)
-	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t)
-		defer cleanup()
-
-		err := st.Put([]byte("foo"), []byte("FOO"))
-		assert.NoError(t, err)
-
-		cancel()
-		err = st.Delete([]byte("foo"))
-		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -828,21 +632,6 @@ func TestStoreTruncate(t *testing.T) {
 		it.First()
 		assert.NoError(t, it.Error())
 		require.False(t, it.Valid())
-	})
-
-	t.Run("Should fail if context canceled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-
-		st, cleanup := storeBuilderWithContext(ctx, t)
-		defer cleanup()
-
-		err := st.Put([]byte("foo"), []byte("FOO"))
-		assert.NoError(t, err)
-
-		cancel()
-		err = st.Truncate()
-		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
 
@@ -1062,7 +851,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 func TestTransient(t *testing.T) {
 	ng := testutil.NewEngine(t)
 
-	ts, err := ng.NewTransientStore(context.Background())
+	ts, err := ng.NewTransientStore()
 	assert.NoError(t, err)
 
 	dir := ts.Path
@@ -1076,7 +865,7 @@ func TestTransient(t *testing.T) {
 	it.SeekGE([]byte("foo"))
 	require.True(t, it.Valid())
 
-	err = ts.Drop(context.Background())
+	err = ts.Drop()
 	assert.NoError(t, err)
 
 	_, err = os.Stat(dir)

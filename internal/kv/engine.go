@@ -3,9 +3,7 @@ package kv
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -66,13 +64,7 @@ type TxOptions struct {
 }
 
 // Begin creates a transaction using Pebble's batch API.
-func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
+func (e *Engine) Begin(opts TxOptions) (*Transaction, error) {
 	var batch *pebble.Batch
 
 	if opts.Writable {
@@ -80,14 +72,13 @@ func (e *Engine) Begin(ctx context.Context, opts TxOptions) (*Transaction, error
 	}
 
 	return &Transaction{
-		ctx:      ctx,
 		ng:       e,
 		batch:    batch,
 		writable: opts.Writable,
 	}, nil
 }
 
-func (e *Engine) NewTransientStore(ctx context.Context) (*TransientStore, error) {
+func (e *Engine) NewTransientStore() (*TransientStore, error) {
 	// build engine with fast options
 
 	var inMemory bool
@@ -134,7 +125,6 @@ func (e *Engine) Close() error {
 
 // A Transaction uses Pebble's batches.
 type Transaction struct {
-	ctx       context.Context
 	ng        *Engine
 	batch     *pebble.Batch
 	writable  bool
@@ -153,23 +143,11 @@ func (t *Transaction) Rollback() error {
 
 	t.discarded = true
 
-	select {
-	case <-t.ctx.Done():
-		return t.ctx.Err()
-	default:
-	}
 	return nil
 }
 
 // Commit the transaction.
 func (t *Transaction) Commit() error {
-	select {
-	case <-t.ctx.Done():
-		_ = t.Rollback()
-		return t.ctx.Err()
-	default:
-	}
-
 	if t.discarded {
 		return errors.WithStack(ErrTransactionDiscarded)
 	}
@@ -196,7 +174,11 @@ func buildStoreKey(name []byte) []byte {
 }
 
 func buildStorePrefixKey(name []byte) []byte {
-	prefix := make([]byte, 0, len(name)+3)
+	buf := bufferPool.Get().(*[]byte)
+	if cap(*buf) < len(name)+3 {
+		*buf = make([]byte, 0, len(name)+3)
+	}
+	prefix := (*buf)[:0]
 	prefix = append(prefix, storePrefix)
 	prefix = append(prefix, separator)
 	prefix = append(prefix, name...)
@@ -205,55 +187,21 @@ func buildStorePrefixKey(name []byte) []byte {
 }
 
 // GetStore returns a store by name.
-func (t *Transaction) GetStore(name []byte) (*Store, error) {
-	select {
-	case <-t.ctx.Done():
-		return nil, t.ctx.Err()
-	default:
-	}
-
-	key := buildStoreKey(name)
-
-	var closer io.Closer
-	var err error
-	if t.writable {
-		_, closer, err = t.batch.Get(key)
-	} else {
-		_, closer, err = t.ng.DB.Get(key)
-	}
-	if err != nil {
-		if errors.Is(err, pebble.ErrNotFound) {
-			return nil, errors.WithStack(ErrStoreNotFound)
-		}
-
-		return nil, err
-	}
-	err = closer.Close()
-	if err != nil {
-		return nil, err
-	}
-
+func (t *Transaction) GetStore(name []byte) *Store {
 	pkey := buildStorePrefixKey(name)
 
 	return &Store{
-		ctx:      t.ctx,
 		ng:       t.ng,
 		tx:       t,
 		Prefix:   pkey,
 		writable: t.writable,
 		name:     name,
-	}, nil
+	}
 }
 
 // CreateStore creates a store.
 // If the store already exists, returns ErrStoreAlreadyExists.
 func (t *Transaction) CreateStore(name []byte) error {
-	select {
-	case <-t.ctx.Done():
-		return t.ctx.Err()
-	default:
-	}
-
 	if !t.writable {
 		return errors.WithStack(ErrTransactionReadOnly)
 	}
@@ -273,22 +221,13 @@ func (t *Transaction) CreateStore(name []byte) error {
 
 // DropStore deletes the store and all its keys.
 func (t *Transaction) DropStore(name []byte) error {
-	select {
-	case <-t.ctx.Done():
-		return t.ctx.Err()
-	default:
-	}
 
 	if !t.writable {
 		return errors.WithStack(ErrTransactionReadOnly)
 	}
 
-	s, err := t.GetStore(name)
-	if err != nil {
-		return err
-	}
-
-	err = s.Truncate()
+	s := t.GetStore(name)
+	err := s.Truncate()
 	if err != nil {
 		return err
 	}

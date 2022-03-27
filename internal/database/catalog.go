@@ -89,10 +89,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	ti := o.(*TableInfo)
 
-	s, err := tx.Tx.GetStore(ti.StoreName)
-	if err != nil {
-		return nil, err
-	}
+	s := tx.Tx.GetStore(ti.StoreName)
 
 	return &Table{
 		Tx:      tx,
@@ -244,10 +241,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	s, err := tx.Tx.GetStore(info.StoreName)
-	if err != nil {
-		return nil, err
-	}
+	s := tx.Tx.GetStore(info.StoreName)
 
 	return NewIndex(tree.New(s), *info), nil
 }
@@ -302,13 +296,10 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 }
 
 func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
-	s, err := tx.Tx.GetStore(info.StoreName)
-	if err != nil {
-		return err
-	}
+	s := tx.Tx.GetStore(info.StoreName)
 
 	idx := Index{Tree: tree.New(s)}
-	err = idx.Truncate()
+	err := idx.Truncate()
 	if err != nil {
 		return err
 	}
@@ -745,9 +736,9 @@ func newCatalogStore() *CatalogStore {
 
 func (s *CatalogStore) Init(tx *Transaction, ctg *Catalog) error {
 	s.Catalog = ctg
-	_, err := tx.Tx.GetStore([]byte(TableName))
-	if errors.Is(err, kv.ErrStoreNotFound) {
-		err = tx.Tx.CreateStore([]byte(TableName))
+	err := tx.Tx.CreateStore([]byte(TableName))
+	if err == nil || errors.Is(err, kv.ErrStoreAlreadyExists) {
+		return nil
 	}
 
 	return err
@@ -758,10 +749,7 @@ func (s *CatalogStore) Info() *TableInfo {
 }
 
 func (s *CatalogStore) Table(tx *Transaction) *Table {
-	st, err := tx.Tx.GetStore([]byte(TableName))
-	if err != nil {
-		panic(fmt.Sprintf("database incorrectly setup: missing %q table: %v", TableName, err))
-	}
+	st := tx.Tx.GetStore([]byte(TableName))
 
 	return &Table{
 		Tx:      tx,

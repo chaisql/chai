@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"testing"
@@ -24,15 +23,14 @@ func values(vs ...types.Value) []types.Value {
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	ng := testutil.NewEngine(t)
-	tx, err := ng.Begin(context.Background(), kv.TxOptions{
+	tx, err := ng.Begin(kv.TxOptions{
 		Writable: true,
 	})
 	assert.NoError(t, err)
 
 	err = tx.CreateStore([]byte("foo"))
 	assert.NoError(t, err)
-	st, err := tx.GetStore([]byte("foo"))
-	assert.NoError(t, err)
+	st := tx.GetStore([]byte("foo"))
 	tr := tree.New(st)
 
 	var paths []document.Path

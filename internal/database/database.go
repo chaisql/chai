@@ -178,7 +178,7 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		opts = &TxOptions{}
 	}
 
-	ntx, err := db.ng.Begin(ctx, kv.TxOptions{
+	ntx, err := db.ng.Begin(kv.TxOptions{
 		Writable: !opts.ReadOnly,
 	})
 	if err != nil {
