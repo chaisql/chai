@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/kv"
@@ -29,6 +30,10 @@ type Database struct {
 
 	// Pool of reusable transient engines to use for temporary indices.
 	TransientStorePool *TransientStorePool
+
+	// Pool of transaction ids.
+	// TODO(asdine): add epochs to avoid overflows
+	txIDPool uint32
 
 	closeOnce sync.Once
 }
@@ -187,6 +192,7 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 
 	tx := Transaction{
 		Tx:       ntx,
+		Id:       atomic.AddUint32(&db.txIDPool, 1),
 		Writable: !opts.ReadOnly,
 		DBMu:     db.txmu,
 	}
