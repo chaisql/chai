@@ -132,6 +132,7 @@ func (t *Transaction) Commit() error {
 	}
 
 	t.discarded = true
+	defer t.tx.Discard()
 
 	return t.tx.Commit()
 }
