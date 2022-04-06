@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/kv"
 )
 
@@ -15,7 +16,7 @@ const (
 )
 
 type Database struct {
-	ng      *kv.Engine
+	DB      *pebble.DB
 	Catalog *Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
@@ -49,13 +50,14 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ctx context.Context, ng *kv.Engine) (*Database, error) {
+func New(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*Database, error) {
 	db := Database{
-		ng:      ng,
+		DB:      pdb,
 		Catalog: NewCatalog(),
 		txmu:    &sync.RWMutex{},
 		TransientStorePool: &TransientStorePool{
-			ng: ng,
+			pdb:  pdb,
+			opts: opts,
 		},
 	}
 
@@ -115,7 +117,7 @@ func (db *Database) closeDatabase() error {
 	if err != nil {
 		return err
 	}
-	defer tx.Tx.Rollback()
+	defer tx.Session.Close()
 
 	for _, seqName := range db.Catalog.ListSequences() {
 		seq, err := db.Catalog.GetSequence(seqName)
@@ -129,7 +131,7 @@ func (db *Database) closeDatabase() error {
 		}
 	}
 
-	return tx.Tx.Commit()
+	return tx.Session.Commit()
 }
 
 // GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
@@ -183,15 +185,15 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		opts = &TxOptions{}
 	}
 
-	ntx, err := db.ng.Begin(kv.TxOptions{
-		Writable: !opts.ReadOnly,
-	})
-	if err != nil {
-		return nil, err
+	var st kv.PebbleStore
+	if opts.ReadOnly {
+		st = db.DB
+	} else {
+		st = db.DB.NewIndexedBatch()
 	}
 
 	tx := Transaction{
-		Tx:       ntx,
+		Session:  kv.NewSession(st, opts.ReadOnly),
 		Id:       atomic.AddUint32(&db.txIDPool, 1),
 		Writable: !opts.ReadOnly,
 		DBMu:     db.txmu,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
@@ -12,7 +14,7 @@ import (
 func newTestDB(t testing.TB) (*database.Database, func()) {
 	t.Helper()
 
-	db, err := database.New(context.Background(), testutil.NewEngine(t))
+	db, err := database.New(context.Background(), testutil.NewMemPebble(t), &pebble.Options{FS: vfs.NewMem()})
 	assert.NoError(t, err)
 
 	return db, func() {

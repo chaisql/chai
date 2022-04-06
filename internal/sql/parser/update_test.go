@@ -76,8 +76,7 @@ func TestParserUpdate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, cleanup := testutil.NewTestDB(t)
-			defer cleanup()
+			db := testutil.NewTestDB(t)
 
 			testutil.MustExec(t, db, nil, "CREATE TABLE test")
 

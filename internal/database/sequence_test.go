@@ -159,8 +159,7 @@ func TestSequence(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, cleanup := testutil.NewTestDB(t)
-			defer cleanup()
+			db := testutil.NewTestDB(t)
 
 			tx, err := db.Begin(true)
 			assert.NoError(t, err)
@@ -196,8 +195,7 @@ func TestSequence(t *testing.T) {
 	}
 
 	t.Run("default cache", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
@@ -234,8 +232,7 @@ func TestSequence(t *testing.T) {
 	})
 
 	t.Run("cache", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
@@ -281,8 +278,7 @@ func TestSequence(t *testing.T) {
 	})
 
 	t.Run("cache desc", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
@@ -329,8 +325,7 @@ func TestSequence(t *testing.T) {
 	})
 
 	t.Run("read-only", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
@@ -360,8 +355,7 @@ func TestSequence(t *testing.T) {
 	})
 
 	t.Run("release", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
@@ -393,7 +387,7 @@ func TestSequence(t *testing.T) {
 		err = c.Init(tx)
 		assert.NoError(t, err)
 
-		err = catalogstore.LoadCatalog(tx, c)
+		err = catalogstore.LoadCatalog(tx.Session.DB, c)
 		assert.NoError(t, err)
 
 		db.Catalog = c

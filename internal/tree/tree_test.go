@@ -52,7 +52,7 @@ func TestTreeGet(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tree := tree.Tree{
-				Store: testutil.NewTestStore(t, "store"),
+				Namespace: testutil.NewTestStore(t),
 			}
 
 			err := tree.Put(key1, val)
@@ -82,7 +82,7 @@ func TestTreeDelete(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			tree := tree.Tree{
-				Store: testutil.NewTestStore(t, "store"),
+				Namespace: testutil.NewTestStore(t),
 			}
 
 			err := tree.Put(key1, val)
@@ -110,7 +110,7 @@ func TestTreeIterate(t *testing.T) {
 		))
 	}
 
-	// keys: [text, double] * 10
+	// keys: [text, text] * 10
 	for i := int64(0); i < 10; i++ {
 		keys = append(keys, MustNewKey(t,
 			types.NewTextValue(fmt.Sprintf("bar%d", i)),
@@ -122,7 +122,7 @@ func TestTreeIterate(t *testing.T) {
 
 	buildTree := func() *tree.Tree {
 		tt := tree.Tree{
-			Store: testutil.NewTestStore(t, "store"),
+			Namespace: testutil.NewTestStore(t),
 		}
 
 		for i, k := range keys {
@@ -211,7 +211,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 
 	buildTree := func() *tree.Tree {
 		tt := tree.Tree{
-			Store: testutil.NewTestStore(t, "store"),
+			Namespace: testutil.NewTestStore(t),
 		}
 
 		for i, k := range keys {

@@ -60,6 +60,8 @@ func createTable(t testing.TB, tx *database.Transaction, catalog *database.Catal
 }
 
 func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
+	t.Helper()
+
 	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
 	res, err := stmt.Run(&statement.Context{
@@ -137,13 +139,16 @@ func TestTableInsert(t *testing.T) {
 	})
 
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
-		ng := testutil.NewEngine(t)
+		ng := testutil.NewMemPebble(t)
 
-		db, cleanup := testutil.NewTestDBWithEngine(t, ng)
-		defer cleanup()
+		db1 := testutil.NewTestDBWithPebble(t, ng)
 
 		insertDoc := func(db *database.Database) (rawKey tree.Key) {
+			t.Helper()
+
 			update(t, db, func(tx *database.Transaction) error {
+				t.Helper()
+
 				// create table if not exists
 				tb := createTableIfNotExists(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
 
@@ -157,16 +162,15 @@ func TestTableInsert(t *testing.T) {
 			return
 		}
 
-		key1 := insertDoc(db)
+		key1 := insertDoc(db1)
 
-		err := db.Close()
+		err := db1.Close()
 		assert.NoError(t, err)
 
 		// create a new database object
-		db, cleanup = testutil.NewTestDBWithEngine(t, ng)
-		defer cleanup()
+		db2 := testutil.NewTestDBWithPebble(t, ng)
 
-		key2 := insertDoc(db)
+		key2 := insertDoc(db2)
 
 		vs, err := key1.Decode()
 		assert.NoError(t, err)

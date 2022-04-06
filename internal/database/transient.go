@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 )
@@ -13,7 +14,8 @@ const maxTransientPoolSize = 3
 // TransientStorePool manages a pool of transient stores.
 // It keeps a pool of maxTransientPoolSize stores.
 type TransientStorePool struct {
-	ng *kv.Engine
+	pdb  *pebble.DB
+	opts *pebble.Options
 
 	mu   sync.Mutex
 	Pool []*kv.TransientStore
@@ -36,7 +38,7 @@ func (t *TransientStorePool) Get(ctx context.Context) (*kv.TransientStore, error
 		return ng, nil
 	}
 
-	return t.ng.NewTransientStore()
+	return kv.NewTransientStore(t.opts)
 }
 
 // Release sets the store for reuse. If the pool is full, it drops the given store.

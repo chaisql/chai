@@ -22,15 +22,11 @@ func values(vs ...types.Value) []types.Value {
 }
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
-	ng := testutil.NewEngine(t)
-	tx, err := ng.Begin(kv.TxOptions{
-		Writable: true,
-	})
-	assert.NoError(t, err)
+	pdb := testutil.NewMemPebble(t)
+	batch := pdb.NewIndexedBatch()
+	ng := kv.NewSession(batch, false)
 
-	err = tx.CreateStore([]byte("foo"))
-	assert.NoError(t, err)
-	st := tx.GetStore([]byte("foo"))
+	st := ng.GetNamespace(10)
 	tr := tree.New(st)
 
 	var paths []document.Path
@@ -40,7 +36,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	idx := database.NewIndex(tr, database.IndexInfo{Paths: paths})
 
 	return idx, func() {
-		tx.Rollback()
+		batch.Close()
 	}
 }
 

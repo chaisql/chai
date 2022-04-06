@@ -53,8 +53,7 @@ func cloneCatalog(c *database.Catalog) *database.Catalog {
 // - AddFieldConstraint
 func TestCatalogTable(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", nil)
@@ -76,8 +75,7 @@ func TestCatalogTable(t *testing.T) {
 	})
 
 	t.Run("Drop", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", nil)
@@ -108,8 +106,7 @@ func TestCatalogTable(t *testing.T) {
 	})
 
 	t.Run("Rename", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		ti := &database.TableInfo{
 			FieldConstraints: []*database.FieldConstraint{
@@ -191,8 +188,7 @@ func TestCatalogTable(t *testing.T) {
 	})
 
 	t.Run("Add field constraint", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		ti := &database.TableInfo{FieldConstraints: []*database.FieldConstraint{
 			{Path: testutil.ParseDocumentPath(t, "name"), Type: types.TextValue, IsNotNull: true},
@@ -254,8 +250,7 @@ func TestCatalogTable(t *testing.T) {
 
 func TestCatalogCreateTable(t *testing.T) {
 	t.Run("Same table name", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		clone := cloneCatalog(db.Catalog)
 
@@ -274,8 +269,7 @@ func TestCatalogCreateTable(t *testing.T) {
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		check := func() {
 			updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
@@ -291,8 +285,7 @@ func TestCatalogCreateTable(t *testing.T) {
 	})
 
 	t.Run("Invalid constraints", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		clone := cloneCatalog(db.Catalog)
 
@@ -313,8 +306,7 @@ func TestCatalogCreateTable(t *testing.T) {
 
 func TestCatalogCreateIndex(t *testing.T) {
 	t.Run("Should create an index, and return it", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
@@ -342,8 +334,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	})
 
 	t.Run("Should fail if it already exists", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", nil)
@@ -364,8 +355,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	})
 
 	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", TableName: "test", Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
@@ -379,8 +369,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	})
 
 	t.Run("Should generate a name if not provided", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", nil)
@@ -410,8 +399,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 func TestTxDropIndex(t *testing.T) {
 	t.Run("Should drop an index", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateTable(tx, "test", nil)
@@ -449,8 +437,7 @@ func TestTxDropIndex(t *testing.T) {
 	})
 
 	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.DropIndex(tx, "idxFoo")
@@ -477,17 +464,19 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d types.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_epoch_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_epoch_seq CACHE 0", "type":"sequence"}`)
 		case 1:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq CACHE 16", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
 		case 2:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE, UNIQUE (b[3].c))", "store_name":"AQ==", "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`)
 		case 3:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "paths":["b[3].c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "store_name":"Ag==", "table_name":"foo", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE, UNIQUE (b[3].c))", "namespace":101, "type":"table"}`)
 		case 4:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "paths":["b[3].c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "namespace":102, "table_name":"foo", "type":"index"}`)
 		case 5:
-			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "store_name":"Aw==", "table_name":"foo", "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
+		case 6:
+			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":103, "table_name":"foo", "type":"index"}`)
 		default:
 			t.Fatalf("count should be 5, got %d", i)
 		}
@@ -500,8 +489,7 @@ func TestReadOnlyTables(t *testing.T) {
 
 func TestCatalogCreateSequence(t *testing.T) {
 	t.Run("Should create a sequence and add it to the schema and sequence tables", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, clog *database.Catalog) error {
 			err := clog.CreateSequence(tx, &database.SequenceInfo{Name: "test1", IncrementBy: 1})
@@ -546,8 +534,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 	})
 
 	t.Run("Should generate a sequence name if not provided", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			for i := 0; i < 10; i++ {
@@ -571,8 +558,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 	})
 
 	t.Run("Should fail if it already exists", func(t *testing.T) {
-		db, cleanup := testutil.NewTestDB(t)
-		defer cleanup()
+		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})

@@ -11,13 +11,9 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-const (
-	SequenceTableName = "__genji_sequence"
-)
-
 var sequenceTableInfo = &TableInfo{
-	TableName: SequenceTableName,
-	StoreName: []byte(SequenceTableName),
+	TableName:      SequenceTableName,
+	StoreNamespace: SequenceTableNamespace,
 	FieldConstraints: []*FieldConstraint{
 		{
 			Path: document.Path{

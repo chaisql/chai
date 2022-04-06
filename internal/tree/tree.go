@@ -19,13 +19,13 @@ import (
 // of the types package operators.
 // A Tree doesn't support duplicate keys.
 type Tree struct {
-	Store          *kv.Store
+	Namespace      *kv.Namespace
 	TransientStore *kv.TransientStore
 }
 
-func New(store *kv.Store) *Tree {
+func New(ns *kv.Namespace) *Tree {
 	return &Tree{
-		Store: store,
+		Namespace: ns,
 	}
 }
 
@@ -58,7 +58,7 @@ func (t *Tree) Put(key Key, value types.Value) error {
 		return t.TransientStore.Put(key, enc)
 	}
 
-	return t.Store.Put(key, enc)
+	return t.Namespace.Put(key, enc)
 }
 
 // Get a key from the tree. If the key doesn't exist,
@@ -69,7 +69,7 @@ func (t *Tree) Get(key Key) (types.Value, error) {
 	}
 
 	var v Value
-	vv, err := t.Store.Get(key)
+	vv, err := t.Namespace.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (t *Tree) Exists(key Key) (bool, error) {
 		panic("Exists not implemented on transient tree")
 	}
 
-	return t.Store.Exists(key)
+	return t.Namespace.Exists(key)
 }
 
 // Delete a key from the tree. If the key doesn't exist,
@@ -95,7 +95,7 @@ func (t *Tree) Delete(key Key) error {
 		panic("Delete not implemented on transient tree")
 	}
 
-	return t.Store.Delete(key)
+	return t.Namespace.Delete(key)
 }
 
 // Truncate the tree.
@@ -104,7 +104,7 @@ func (t *Tree) Truncate() error {
 		panic("Truncate not implemented on transient tree")
 	}
 
-	return t.Store.Truncate()
+	return t.Namespace.Truncate()
 }
 
 // IterateOnRange iterates on all keys that are in the given range.
@@ -160,7 +160,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value
 	if t.TransientStore != nil {
 		it = t.TransientStore.Iterator(&opts)
 	} else {
-		it = t.Store.Iterator(&opts)
+		it = t.Namespace.Iterator(&opts)
 	}
 	defer it.Close()
 
@@ -192,8 +192,8 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value
 }
 
 func (t *Tree) buildKey(key Key) []byte {
-	if t.Store != nil {
-		return kv.BuildKey(t.Store.Prefix, key)
+	if t.Namespace != nil {
+		return kv.BuildKey(t.Namespace.ID, key)
 	}
 
 	return key
@@ -204,13 +204,10 @@ func (t *Tree) buildFirstKey() []byte {
 }
 
 func (t *Tree) buildLastKey() []byte {
-	k := t.buildKey(nil)
-	if len(k) == 0 {
-		return []byte{0xFF}
+	if t.Namespace != nil {
+		return t.Namespace.ID.UpperBound()
 	}
-
-	k[len(k)-1] = 0xff
-	return k
+	return []byte{0xFF}
 }
 
 func (t *Tree) buildStartKeyInclusive(key []byte) []byte {

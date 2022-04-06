@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
@@ -11,7 +13,7 @@ import (
 )
 
 func TestTransientStorePool(t *testing.T) {
-	db, err := database.New(context.Background(), testutil.NewEngine(t))
+	db, err := database.New(context.Background(), testutil.NewMemPebble(t), &pebble.Options{FS: vfs.NewMem()})
 	require.NoError(t, err)
 
 	ctx := context.Background()

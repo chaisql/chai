@@ -3,6 +3,7 @@ package database
 import (
 	"sync"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/kv"
 )
 
@@ -11,7 +12,7 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	Tx       *kv.Transaction
+	Session  *kv.Session
 	Id       uint32
 	Writable bool
 	DBMu     *sync.RWMutex
@@ -24,9 +25,11 @@ type Transaction struct {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
-	err := tx.Tx.Rollback()
-	if err != nil {
-		return err
+	if tx.Writable {
+		err := tx.Session.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	defer func() {
@@ -47,17 +50,17 @@ func (tx *Transaction) Rollback() error {
 // Commit the transaction. Calling this method on read-only transactions
 // will return an error.
 func (tx *Transaction) Commit() error {
-	err := tx.Tx.Commit()
+	if !tx.Writable {
+		return errors.New("cannot commit read-only transaction")
+	}
+
+	err := tx.Session.Commit()
 	if err != nil {
 		return err
 	}
 
 	defer func() {
-		if tx.Writable {
-			tx.DBMu.Unlock()
-		} else {
-			tx.DBMu.RUnlock()
-		}
+		tx.DBMu.Unlock()
 	}()
 
 	for i := len(tx.OnCommitHooks) - 1; i >= 0; i-- {

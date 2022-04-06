@@ -17,7 +17,6 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -29,33 +28,22 @@ import (
 type DB struct {
 	DB  *database.Database
 	ctx context.Context
-	ng  *kv.Engine
+	pdb *pebble.DB
 }
 
-func New(ctx context.Context, ng *kv.Engine) (*DB, error) {
-	db, err := database.New(ctx, ng)
+func newDB(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*DB, error) {
+	db, err := database.New(ctx, pdb, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := db.Begin(true)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
-	err = catalogstore.LoadCatalog(tx, db.Catalog)
-	if err != nil {
-		return nil, err
-	}
-
-	err = tx.Commit()
+	err = catalogstore.LoadCatalog(pdb, db.Catalog)
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{
-		ng:  ng,
+		pdb: pdb,
 		DB:  db,
 		ctx: ctx,
 	}, nil
@@ -72,13 +60,13 @@ func Open(path string) (*DB, error) {
 		path = ""
 	}
 
-	ng, err := kv.NewEngine(path, &opts)
+	pdb, err := pebble.Open(path, &opts)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := context.Background()
-	return New(ctx, ng)
+	return newDB(ctx, pdb, &opts)
 }
 
 // WithContext creates a new database handle using the given context for every operation.
@@ -91,12 +79,12 @@ func (db DB) WithContext(ctx context.Context) *DB {
 func (db *DB) Close() error {
 	err := db.DB.Close()
 	if err != nil {
-		_ = db.ng.Close()
+		_ = db.pdb.Close()
 
 		return err
 	}
 
-	return db.ng.Close()
+	return db.pdb.Close()
 }
 
 // Begin starts a new transaction.

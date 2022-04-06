@@ -1,8 +1,8 @@
 package kv
 
 import (
+	"encoding/binary"
 	"io"
-	"os"
 	"sync"
 
 	"github.com/cockroachdb/errors"
@@ -15,41 +15,106 @@ var bufferPool = sync.Pool{
 	},
 }
 
-type Store struct {
-	ng       *Engine
-	tx       *Transaction
-	Prefix   []byte
-	writable bool
-	name     []byte
-}
+type NamespaceID uint32
 
-// build a long key for each key of a store
-// in the form: storePrefix + <sep> + 0 + key.
-// the 0 is used to separate the actual key
-// from the rest of the prexix and to ensure
-// we can quickly access the latest key of the store
-// by replacing 0 by anything bigger.
-func BuildKey(prefix, k []byte) []byte {
-	buf := bufferPool.Get().(*[]byte)
-	if cap(*buf) < len(prefix)+len(k)+2 {
-		*buf = make([]byte, 0, len(prefix)+len(k)+2)
+func (n NamespaceID) Bytes() []byte {
+	buf := *(bufferPool.Get().(*[]byte))
+	if len(buf) < 4 {
+		// because this buffer is gonna get put back to the buffer pool
+		// and potentially being used to construct other keys, we need to
+		// make sure that the buffer is big enough to hold largest keys.
+		buf = make([]byte, 4, 100)
 	}
-	key := (*buf)[:0]
-	key = append(key, prefix...)
-	key = append(key, separator)
-	key = append(key, 0)
-	key = append(key, k...)
-	return key
+
+	binary.BigEndian.PutUint32(buf, uint32(n))
+	return buf[:4]
 }
 
-func TrimPrefix(k []byte, prefix []byte) []byte {
-	return k[len(prefix)+2:]
+func (n NamespaceID) UpperBound() []byte {
+	n++
+	return n.Bytes()
+}
+
+// PebbleStore is the interface that contains methods
+// that are used by both pebble.DB and pebble.Batch.
+type PebbleStore interface {
+	Get(key []byte) (value []byte, closer io.Closer, err error)
+	Set(key []byte, value []byte, opts *pebble.WriteOptions) error
+	Delete(key []byte, opts *pebble.WriteOptions) error
+	NewIter(o *pebble.IterOptions) *pebble.Iterator
+}
+
+type Session struct {
+	DB       PebbleStore
+	readOnly bool
+	closed   bool
+}
+
+func NewSession(db PebbleStore, readOnly bool) *Session {
+	return &Session{
+		DB:       db,
+		readOnly: readOnly,
+	}
+}
+
+func (s *Session) Commit() error {
+	if s.readOnly {
+		return errors.New("cannot commit in read-only mode")
+	}
+	if s.closed {
+		return errors.New("already closed")
+	}
+
+	s.closed = true
+	return s.DB.(*pebble.Batch).Commit(nil)
+}
+
+func (s *Session) Close() error {
+	if s.readOnly {
+		return errors.New("cannot close in read-only mode")
+	}
+	if s.closed {
+		return errors.New("already closed")
+	}
+	s.closed = true
+
+	return s.DB.(*pebble.Batch).Close()
+}
+
+// GetNamespace returns a store by name.
+func (s *Session) GetNamespace(key NamespaceID) *Namespace {
+	return &Namespace{
+		store:    s.DB,
+		ID:       key,
+		readOnly: s.readOnly,
+	}
+}
+
+type Namespace struct {
+	ID       NamespaceID
+	store    PebbleStore
+	readOnly bool
+}
+
+func BuildKey(nid NamespaceID, k []byte) []byte {
+	buf := *(bufferPool.Get().(*[]byte))
+	if len(buf) < len(k)+4 {
+		if cap(buf) < len(k)+4 {
+			buf = make([]byte, len(k)+4)
+		} else {
+			buf = buf[:len(k)+4]
+		}
+	}
+
+	binary.BigEndian.PutUint32(buf, uint32(nid))
+	copy(buf[4:], k)
+	return buf[:len(k)+4]
 }
 
 // Put stores a key value pair. If it already exists, it overrides it.
-func (s *Store) Put(k, v []byte) error {
-	if !s.writable {
-		return ErrTransactionReadOnly
+func (s *Namespace) Put(k, v []byte) error {
+	if s.readOnly {
+		return errors.New("cannot put in read-only mode")
 	}
 
 	if len(k) == 0 {
@@ -60,23 +125,19 @@ func (s *Store) Put(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
-	key := BuildKey(s.Prefix, k)
-	err := s.tx.batch.Set(key, v, nil)
+	key := BuildKey(s.ID, k)
+	err := s.store.Set(key, v, nil)
 	bufferPool.Put(&key)
 	return err
 }
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
-func (s *Store) Get(k []byte) ([]byte, error) {
+func (s *Namespace) Get(k []byte) ([]byte, error) {
 	var closer io.Closer
 	var err error
 	var value []byte
-	key := BuildKey(s.Prefix, k)
-	if s.tx.writable {
-		value, closer, err = s.tx.batch.Get(key)
-	} else {
-		value, closer, err = s.ng.DB.Get(key)
-	}
+	key := BuildKey(s.ID, k)
+	value, closer, err = s.store.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -98,15 +159,11 @@ func (s *Store) Get(k []byte) ([]byte, error) {
 }
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
-func (s *Store) Exists(k []byte) (bool, error) {
+func (s *Namespace) Exists(k []byte) (bool, error) {
 	var closer io.Closer
 	var err error
-	key := BuildKey(s.Prefix, k)
-	if s.tx.writable {
-		_, closer, err = s.tx.batch.Get(key)
-	} else {
-		_, closer, err = s.ng.DB.Get(key)
-	}
+	key := BuildKey(s.ID, k)
+	_, closer, err = s.store.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -123,13 +180,13 @@ func (s *Store) Exists(k []byte) (bool, error) {
 }
 
 // Delete a record by key. If not found, returns ErrKeyNotFound.
-func (s *Store) Delete(k []byte) error {
-	if !s.writable {
-		return ErrTransactionReadOnly
+func (s *Namespace) Delete(k []byte) error {
+	if s.readOnly {
+		return errors.New("cannot delete in read-only mode")
 	}
 
-	key := BuildKey(s.Prefix, k)
-	_, closer, err := s.tx.batch.Get(key)
+	key := BuildKey(s.ID, k)
+	_, closer, err := s.store.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -143,38 +200,20 @@ func (s *Store) Delete(k []byte) error {
 		return err
 	}
 
-	return s.tx.batch.Delete(key, nil)
+	return s.store.Delete(key, nil)
 }
 
 // Truncate deletes all the records of the store.
-func (s *Store) Truncate() error {
-	if !s.writable {
-		return ErrTransactionReadOnly
+func (s *Namespace) Truncate() error {
+	if s.readOnly {
+		return errors.New("cannot truncate in read-only mode")
 	}
 
-	_, closer, err := s.tx.batch.Get(buildStoreKey(s.name))
-	if err != nil {
-		if errors.Is(err, pebble.ErrNotFound) {
-			return errors.WithStack(ErrKeyNotFound)
-		}
-
-		return err
-	}
-	err = closer.Close()
-	if err != nil {
-		return err
-	}
-
-	prefix := buildStorePrefixKey(s.name)
-
-	it := s.tx.batch.NewIter(&pebble.IterOptions{
-		LowerBound: prefix,
-		UpperBound: append(prefix, 0xff),
-	})
+	it := s.Iterator(nil)
 	defer it.Close()
 
-	for it.SeekGE(prefix); it.Valid(); it.Next() {
-		err = s.tx.batch.Delete(it.Key(), nil)
+	for it.SeekGE(s.ID.Bytes()); it.Valid(); it.Next() {
+		err := s.store.Delete(it.Key(), nil)
 		if err != nil {
 			return err
 		}
@@ -183,28 +222,19 @@ func (s *Store) Truncate() error {
 	return nil
 }
 
-func (s *Store) Iterator(opts *pebble.IterOptions) *Iterator {
+func (s *Namespace) Iterator(opts *pebble.IterOptions) *Iterator {
+	var iterator Iterator
 	if opts == nil {
-		lowerBound := BuildKey(s.Prefix, nil)
-		upperBound := BuildKey(s.Prefix, nil)
-		upperBound[len(s.Prefix)] = 0xff
 		opts = &pebble.IterOptions{
-			LowerBound: lowerBound,
-			UpperBound: upperBound,
+			LowerBound: s.ID.Bytes(),
+			UpperBound: s.ID.UpperBound(),
 		}
-	}
-	var it *pebble.Iterator
-	if s.tx.writable {
-		it = s.tx.batch.NewIter(opts)
-	} else {
-		it = s.ng.DB.NewIter(opts)
+		iterator.lowerBound = opts.LowerBound
+		iterator.upperBound = opts.UpperBound
 	}
 
-	return &Iterator{
-		Iterator:   it,
-		upperBound: opts.UpperBound,
-		lowerBound: opts.LowerBound,
-	}
+	iterator.Iterator = s.store.NewIter(opts)
+	return &iterator
 }
 
 type Iterator struct {
@@ -222,62 +252,4 @@ func (it *Iterator) Close() error {
 		bufferPool.Put(&it.upperBound)
 	}
 	return err
-}
-
-// A TransientStore is an implementation of the *kv.Store interface.
-type TransientStore struct {
-	DB    *pebble.DB
-	Path  string
-	batch *pebble.Batch
-}
-
-// Put stores a key value pair. If it already exists, it overrides it.
-func (s *TransientStore) Put(k, v []byte) error {
-	if len(k) == 0 {
-		return errors.New("cannot store empty key")
-	}
-
-	if len(v) == 0 {
-		return errors.New("cannot store empty value")
-	}
-
-	if s.batch == nil {
-		s.batch = s.DB.NewIndexedBatch()
-	}
-
-	return s.batch.Set(k, v, nil)
-}
-
-func (s *TransientStore) Iterator(opts *pebble.IterOptions) *Iterator {
-	it := s.batch.NewIter(opts)
-
-	return &Iterator{
-		Iterator: it,
-	}
-}
-
-// Drop releases any resource (files, memory, etc.) used by a transient store.
-func (s *TransientStore) Drop() error {
-	if s.batch != nil {
-		_ = s.batch.Close()
-	}
-
-	_ = s.DB.Close()
-
-	err := os.RemoveAll(s.Path)
-	if err != nil {
-		return err
-	}
-
-	s.batch = nil
-	s.DB = nil
-	return nil
-}
-
-// Reset resets the transient store to be reused.
-func (s *TransientStore) Reset() error {
-	if s.batch != nil {
-		s.batch.Reset()
-	}
-	return nil
 }

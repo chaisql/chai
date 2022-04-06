@@ -1,7 +1,6 @@
 package database
 
 import (
-	"encoding/binary"
 	"fmt"
 	"math"
 	"sort"
@@ -14,12 +13,25 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
+// System tables
 const (
-	TableName            = InternalPrefix + "catalog"
+	CatalogTableName                      = InternalPrefix + "catalog"
+	CatalogTableNamespace  kv.NamespaceID = 1
+	SequenceTableName                     = InternalPrefix + "sequence"
+	SequenceTableNamespace kv.NamespaceID = 2
+)
+
+// Relation types
+const (
 	RelationTableType    = "table"
 	RelationIndexType    = "index"
 	RelationSequenceType = "sequence"
-	StoreSequence        = InternalPrefix + "store_seq"
+)
+
+// System sequences
+const (
+	StoreSequence = InternalPrefix + "store_seq"
+	EpochSequence = InternalPrefix + "epoch_seq"
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -38,22 +50,34 @@ func NewCatalog() *Catalog {
 }
 
 func (c *Catalog) Init(tx *Transaction) error {
-	err := c.CatalogTable.Init(tx, c)
+	// ensure the store sequence exists
+	err := c.ensureSequenceExists(tx, &SequenceInfo{
+		Name:        StoreSequence,
+		IncrementBy: 1,
+		Min:         1, Max: math.MaxUint32,
+		Start: 101, // first 100 are reserved for system tables
+		Owner: Owner{
+			TableName: CatalogTableName,
+		},
+	})
 	if err != nil {
 		return err
 	}
 
-	// ensure the store sequence exists
-	err = c.CreateSequence(tx, &SequenceInfo{
-		Name:        StoreSequence,
+	// ensure the transaction epoch sequence exists
+	return c.ensureSequenceExists(tx, &SequenceInfo{
+		Name:        EpochSequence,
 		IncrementBy: 1,
 		Min:         1, Max: math.MaxInt64,
 		Start: 1,
-		Cache: 16,
 		Owner: Owner{
-			TableName: TableName,
+			TableName: CatalogTableName,
 		},
 	})
+}
+
+func (c *Catalog) ensureSequenceExists(tx *Transaction, seq *SequenceInfo) error {
+	err := c.CreateSequence(tx, seq)
 	if err != nil {
 		switch {
 		case errs.IsConstraintViolationError(err) && err.(*errs.ConstraintViolationError).Constraint == "PRIMARY KEY":
@@ -66,19 +90,17 @@ func (c *Catalog) Init(tx *Transaction) error {
 	return nil
 }
 
-func (c *Catalog) generateStoreName(tx *Transaction) ([]byte, error) {
+func (c *Catalog) generateStoreName(tx *Transaction) (kv.NamespaceID, error) {
 	seq, err := c.GetSequence(StoreSequence)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	v, err := seq.Next(tx, c)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	buf := make([]byte, binary.MaxVarintLen64)
-	n := binary.PutUvarint(buf, uint64(v))
-	return buf[:n], nil
+	return kv.NamespaceID(v), nil
 }
 
 func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
@@ -89,7 +111,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	ti := o.(*TableInfo)
 
-	s := tx.Tx.GetStore(ti.StoreName)
+	s := tx.Session.GetNamespace(ti.StoreNamespace)
 
 	return &Table{
 		Tx:      tx,
@@ -135,8 +157,8 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return err
 	}
 
-	if info.StoreName == nil {
-		info.StoreName, err = c.generateStoreName(tx)
+	if info.StoreNamespace == 0 {
+		info.StoreNamespace, err = c.generateStoreName(tx)
 		if err != nil {
 			return err
 		}
@@ -154,11 +176,6 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 	err = c.CatalogTable.Insert(tx, info)
 	if err != nil {
 		return err
-	}
-
-	err = tx.Tx.CreateStore(info.StoreName)
-	if err != nil {
-		return fmt.Errorf("failed to create table %q: %w", tableName, err)
 	}
 
 	return c.Cache.Add(tx, info)
@@ -197,7 +214,7 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 		return err
 	}
 
-	return tx.Tx.DropStore(ti.StoreName)
+	return tx.Session.GetNamespace(ti.StoreNamespace).Truncate()
 }
 
 // CreateIndex creates an index with the given name.
@@ -209,11 +226,9 @@ func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
 		return err
 	}
 
-	if info.StoreName == nil {
-		info.StoreName, err = c.generateStoreName(tx)
-		if err != nil {
-			return err
-		}
+	info.StoreNamespace, err = c.generateStoreName(tx)
+	if err != nil {
+		return err
 	}
 
 	err = c.Cache.Add(tx, info)
@@ -221,17 +236,7 @@ func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
 		return err
 	}
 
-	err = c.CatalogTable.Insert(tx, info)
-	if err != nil {
-		return err
-	}
-
-	err = tx.Tx.CreateStore(info.StoreName)
-	if err != nil {
-		return fmt.Errorf("failed to create index %q: %w", info.IndexName, err)
-	}
-
-	return nil
+	return c.CatalogTable.Insert(tx, info)
 }
 
 // GetIndex returns an index by name.
@@ -241,7 +246,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	s := tx.Tx.GetStore(info.StoreName)
+	s := tx.Session.GetNamespace(info.StoreNamespace)
 
 	return NewIndex(tree.New(s), *info), nil
 }
@@ -296,10 +301,7 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 }
 
 func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
-	s := tx.Tx.GetStore(info.StoreName)
-
-	idx := Index{Tree: tree.New(s)}
-	err := idx.Truncate()
+	err := tx.Session.GetNamespace(info.StoreNamespace).Truncate()
 	if err != nil {
 		return err
 	}
@@ -678,8 +680,8 @@ type CatalogStore struct {
 func newCatalogStore() *CatalogStore {
 	return &CatalogStore{
 		info: &TableInfo{
-			TableName: TableName,
-			StoreName: []byte(TableName),
+			TableName:      CatalogTableName,
+			StoreNamespace: CatalogTableNamespace,
 			TableConstraints: []*TableConstraint{
 				{
 					PrimaryKey: true,
@@ -734,22 +736,12 @@ func newCatalogStore() *CatalogStore {
 	}
 }
 
-func (s *CatalogStore) Init(tx *Transaction, ctg *Catalog) error {
-	s.Catalog = ctg
-	err := tx.Tx.CreateStore([]byte(TableName))
-	if err == nil || errors.Is(err, kv.ErrStoreAlreadyExists) {
-		return nil
-	}
-
-	return err
-}
-
 func (s *CatalogStore) Info() *TableInfo {
 	return s.info
 }
 
 func (s *CatalogStore) Table(tx *Transaction) *Table {
-	st := tx.Tx.GetStore([]byte(TableName))
+	st := tx.Session.GetNamespace(CatalogTableNamespace)
 
 	return &Table{
 		Tx:      tx,
@@ -764,7 +756,7 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
 	_, _, err := tb.Insert(relationToDocument(r))
-	if errors.Is(err, errs.ErrDuplicateDocument) {
+	if cerr, ok := err.(*errs.ConstraintViolationError); ok && cerr.Constraint == "PRIMARY KEY" {
 		return errors.WithStack(errs.AlreadyExistsError{Name: r.Name()})
 	}
 
@@ -811,7 +803,7 @@ func tableInfoToDocument(ti *TableInfo) types.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(ti.TableName))
 	buf.Add("type", types.NewTextValue(RelationTableType))
-	buf.Add("store_name", types.NewBlobValue(ti.StoreName))
+	buf.Add("namespace", types.NewIntegerValue(int64(ti.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(ti.String()))
 	if ti.DocidSequenceName != "" {
 		buf.Add("docid_sequence_name", types.NewTextValue(ti.DocidSequenceName))
@@ -824,7 +816,7 @@ func indexInfoToDocument(i *IndexInfo) types.Document {
 	buf := document.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(i.IndexName))
 	buf.Add("type", types.NewTextValue(RelationIndexType))
-	buf.Add("store_name", types.NewBlobValue(i.StoreName))
+	buf.Add("namespace", types.NewIntegerValue(int64(i.StoreNamespace)))
 	buf.Add("table_name", types.NewTextValue(i.TableName))
 	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {

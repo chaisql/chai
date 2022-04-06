@@ -5,14 +5,18 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
-func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
-	tables, indexes, sequences, err := loadCatalogStore(tx, c.CatalogTable)
+func LoadCatalog(pdb kv.PebbleStore, c *database.Catalog) error {
+	tx := database.Transaction{
+		Session: kv.NewSession(pdb, true),
+	}
+	tables, indexes, sequences, err := loadCatalogStore(&tx, c.CatalogTable)
 	if err != nil {
 		return err
 	}
@@ -40,7 +44,7 @@ func LoadCatalog(tx *database.Transaction, c *database.Catalog) error {
 
 	if len(sequences) > 0 {
 		var seqList []database.Sequence
-		seqList, err = loadSequences(tx, c, sequences)
+		seqList, err = loadSequences(&tx, c, sequences)
 		if err != nil {
 			return err
 		}
@@ -134,11 +138,16 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 
 	ti := stmt.(*statement.CreateTableStmt).Info
 
-	v, err := d.GetByField("store_name")
+	v, err := d.GetByField("namespace")
 	if err != nil {
 		return nil, err
 	}
-	ti.StoreName = v.V().([]byte)
+	storeNamespace := v.V().(int64)
+	if storeNamespace <= 0 {
+		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
+	}
+
+	ti.StoreNamespace = kv.NamespaceID(storeNamespace)
 
 	v, err = d.GetByField("docid_sequence_name")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
@@ -164,11 +173,17 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 
 	i := stmt.(*statement.CreateIndexStmt).Info
 
-	v, err := d.GetByField("store_name")
+	v, err := d.GetByField("namespace")
 	if err != nil {
 		return nil, err
 	}
-	i.StoreName = v.V().([]byte)
+
+	storeNamespace := v.V().(int64)
+	if storeNamespace <= 0 {
+		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
+	}
+
+	i.StoreNamespace = kv.NamespaceID(storeNamespace)
 
 	v, err = d.GetByField("owner")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {

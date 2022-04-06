@@ -2,6 +2,9 @@ package testutil
 
 import (
 	"context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/cockroachdb/pebble"
@@ -15,81 +18,91 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
-func NewEngine(t testing.TB) *kv.Engine {
-	t.Helper()
-
-	ng, err := kv.NewEngine("", &pebble.Options{FS: vfs.NewMem()})
+func TempDir(t testing.TB) string {
+	dir, err := ioutil.TempDir("", "genji")
 	assert.NoError(t, err)
 
-	return ng
+	t.Cleanup(func() {
+		os.RemoveAll(dir)
+	})
+	return dir
 }
 
-func NewTestStore(t testing.TB, name string) *kv.Store {
+func NewPebble(t testing.TB) *pebble.DB {
 	t.Helper()
 
-	ng := NewEngine(t)
+	dir := TempDir(t)
 
-	tx, err := ng.Begin(kv.TxOptions{Writable: true})
-	require.NoError(t, err)
-
-	err = tx.CreateStore([]byte(name))
-	require.NoError(t, err)
-
-	st := tx.GetStore([]byte(name))
+	db, err := pebble.Open(filepath.Join(dir, "pebble"), nil)
+	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		tx.Rollback()
-		ng.Close()
+		db.Close()
+	})
+	return db
+}
+
+func NewMemPebble(t testing.TB) *pebble.DB {
+	t.Helper()
+
+	pdb, err := pebble.Open("", &pebble.Options{FS: vfs.NewStrictMem()})
+	assert.NoError(t, err)
+
+	return pdb
+}
+
+func NewTestStore(t testing.TB) *kv.Namespace {
+	t.Helper()
+
+	pdb := NewMemPebble(t)
+
+	batch := pdb.NewIndexedBatch()
+	ng := kv.NewSession(batch, false)
+
+	st := ng.GetNamespace(10)
+
+	t.Cleanup(func() {
+		batch.Close()
+		pdb.Close()
 	})
 
 	return st
 }
 
-func NewTestDB(t testing.TB) (*database.Database, func()) {
+func NewTestDB(t testing.TB) *database.Database {
 	t.Helper()
 
-	return NewTestDBWithEngine(t, NewEngine(t))
+	return NewTestDBWithPebble(t, NewMemPebble(t))
 }
 
-func NewTestDBWithEngine(t testing.TB, ng *kv.Engine) (*database.Database, func()) {
+func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	t.Helper()
 
-	db, err := database.New(context.Background(), ng)
+	db, err := database.New(context.Background(), pdb, &pebble.Options{FS: vfs.NewMem()})
 	assert.NoError(t, err)
 
-	LoadCatalog(t, db)
+	err = catalogstore.LoadCatalog(pdb, db.Catalog)
+	assert.NoError(t, err)
 
-	return db, func() {
+	t.Cleanup(func() {
 		db.Close()
-	}
-}
+	})
 
-func LoadCatalog(t testing.TB, db *database.Database) {
-	tx, err := db.Begin(true)
-	assert.NoError(t, err)
-	defer tx.Rollback()
-
-	err = catalogstore.LoadCatalog(tx, db.Catalog)
-	assert.NoError(t, err)
-
-	err = tx.Commit()
-	assert.NoError(t, err)
+	return db
 }
 
 func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func()) {
 	t.Helper()
 
-	db, cleanup := NewTestDB(t)
+	db := NewTestDB(t)
 
 	tx, err := db.Begin(true)
 	assert.NoError(t, err)
 
 	return db, tx, func() {
 		tx.Rollback()
-		cleanup()
 	}
 }
 

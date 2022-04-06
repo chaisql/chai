@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
@@ -81,7 +80,7 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	db, err := genji.Open(filepath.Join(dir, "test.db"))
+	db, err := genji.Open(filepath.Join(dir, "testdb"))
 	assert.NoError(t, err)
 
 	err = db.Exec(`
@@ -100,7 +99,7 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 
 	// ensure tables are loaded properly
-	db, err = genji.Open(filepath.Join(dir, "test.db"))
+	db, err = genji.Open(filepath.Join(dir, "testdb"))
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -109,54 +108,26 @@ func TestOpen(t *testing.T) {
 	defer res1.Close()
 
 	var count int
+	want := []string{
+		`{"name":"__genji_epoch_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_epoch_seq CACHE 0", "type":"sequence"}`,
+		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
+		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`,
+		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
+		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE, UNIQUE (a), PRIMARY KEY (b.c[0].d))", "namespace":101, "type":"table"}`,
+		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":102, "table_name":"tableA", "type":"index"}`,
+		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", PRIMARY KEY (a))", "namespace":103, "type":"table"}`,
+		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC", "namespace":104, "type":"table"}`,
+		`{"name":"tableC_a_b_idx", "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":105, "table_name":"tableC", "type":"index"}`,
+		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
+	}
 	err = res1.Iterate(func(d types.Document) error {
 		count++
-		if count == 1 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "store_name":"X19nZW5qaV9zZXF1ZW5jZQ==", "type":"table"}`)
-			return nil
+		if count > len(want) {
+			return fmt.Errorf("more than %d relations", len(want))
 		}
 
-		if count == 2 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq CACHE 16", "type":"sequence"}`)
-			return nil
-		}
-
-		if count == 3 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`)
-			return nil
-		}
-
-		if count == 4 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b.c[0].d DOUBLE, UNIQUE (a), PRIMARY KEY (b.c[0].d))", "store_name":"AQ==", "type":"table"}`)
-			return nil
-		}
-
-		if count == 5 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "store_name":"Ag==", "table_name":"tableA", "type":"index"}`)
-			return nil
-		}
-
-		if count == 6 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", PRIMARY KEY (a))", "store_name":"Aw==", "type":"table"}`)
-			return nil
-		}
-
-		if count == 7 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC", "store_name":"BA==", "type":"table"}`)
-			return nil
-		}
-
-		if count == 8 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_a_b_idx", "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "store_name":"BQ==", "table_name":"tableC", "type":"index"}`)
-			return nil
-		}
-
-		if count == 9 {
-			testutil.RequireDocJSONEq(t, d, `{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`)
-			return nil
-		}
-
-		return errors.New("more than 8 relations")
+		testutil.RequireDocJSONEq(t, d, want[count-1])
+		return nil
 	})
 	assert.NoError(t, err)
 
@@ -166,9 +137,13 @@ func TestOpen(t *testing.T) {
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":5}`)
+	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_epoch_seq"}`)
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
+	assert.NoError(t, err)
+	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":105}`)
+
+	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 2")
 	assert.NoError(t, err)
 	testutil.RequireDocJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
@@ -14,9 +15,9 @@ import (
 type TableInfo struct {
 	// name of the table.
 	TableName string
-	// name of the store associated with the table.
-	StoreName []byte
-	ReadOnly  bool
+	// namespace of the store associated with the table.
+	StoreNamespace kv.NamespaceID
+	ReadOnly       bool
 
 	FieldConstraints FieldConstraints
 	TableConstraints TableConstraints
@@ -154,10 +155,10 @@ type PrimaryKey struct {
 // IndexInfo holds the configuration of an index.
 type IndexInfo struct {
 	TableName string
-	// name of the store associated with the index.
-	StoreName []byte
-	IndexName string
-	Paths     []document.Path
+	// namespace of the store associated with the index.
+	StoreNamespace kv.NamespaceID
+	IndexName      string
+	Paths          []document.Path
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
