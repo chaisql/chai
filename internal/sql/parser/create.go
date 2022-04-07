@@ -215,7 +215,7 @@ LOOP:
 				}
 			}
 		case scanner.UNIQUE:
-			info.TableConstraints.AddUnique([]document.Path{fc.Path})
+			info.TableConstraints.AddUnique(info.TableName, []document.Path{fc.Path})
 			addedTc++
 		case scanner.CHECK:
 			// Parse "("
@@ -289,7 +289,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, er
 			return false, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
 
-		stmt.Info.TableConstraints.AddUnique(paths)
+		stmt.Info.TableConstraints.AddUnique(stmt.Info.TableName, paths)
 		return true, nil
 	case scanner.CHECK:
 		// Parse "("

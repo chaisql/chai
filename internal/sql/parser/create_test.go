@@ -33,7 +33,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -78,12 +78,12 @@ func TestParserCreateTable(t *testing.T) {
 		{"With default and no parentheses", "CREATE TABLE test(foo DEFAULT (10)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT a)", nil, true},
 		{"With forbidden tokens", "CREATE TABLE test(foo DEFAULT 1 AND 2)", nil, true},
-		{"With unique", "CREATE TABLE test(foo UNIQUE)",
+		{"With unique", "CREATE TABLE test(foo.bar[0].baz UNIQUE)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
+						{Name: "test_foo.bar[0].baz_unique", Paths: testutil.ParseDocumentPaths(t, "foo.bar[0].baz"), Unique: true},
 					},
 				},
 			}, false},
@@ -93,7 +93,7 @@ func TestParserCreateTable(t *testing.T) {
 			Info: database.TableInfo{
 				TableName: "test",
 				TableConstraints: []*database.TableConstraint{
-					{Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
+					{Name: "test_foo_unique", Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
 				},
 			},
 		}, false},
@@ -130,7 +130,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue, IsNotNull: true},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -142,11 +142,11 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue, IsNotNull: true},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 					},
 				},
 			}, false},
-		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT)",
+		{"With multiple constraints", "CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT UNIQUE)",
 			&statement.CreateTableStmt{
 				Info: database.TableInfo{
 					TableName: "test",
@@ -156,7 +156,8 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "baz[4][1].bat")), Type: types.TextValue},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_baz[4][1].bat_unique", Paths: testutil.ParseDocumentPaths(t, "baz[4][1].bat"), Unique: true},
 					},
 				},
 			}, false},
@@ -169,7 +170,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "bar")), IsNotNull: true},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "foo"), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -181,7 +182,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "bar"), PrimaryKey: true},
+						{Name: "test_pk", Paths: testutil.ParseDocumentPaths(t, "bar"), PrimaryKey: true},
 					},
 				},
 			}, false},
@@ -197,7 +198,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "bar")), IsNotNull: true},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
+						{Name: "test_foo_unique", Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
 					},
 				},
 			}, false},
@@ -209,7 +210,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "bar"), Unique: true},
+						{Name: "test_bar_unique", Paths: testutil.ParseDocumentPaths(t, "bar"), Unique: true},
 					},
 				},
 			}, false},
@@ -221,7 +222,7 @@ func TestParserCreateTable(t *testing.T) {
 						{Path: document.Path(testutil.ParseDocumentPath(t, "foo")), Type: types.IntegerValue},
 					},
 					TableConstraints: []*database.TableConstraint{
-						{Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
+						{Name: "test_foo_unique", Paths: testutil.ParseDocumentPaths(t, "foo"), Unique: true},
 					},
 				},
 			}, false},

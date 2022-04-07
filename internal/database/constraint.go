@@ -550,6 +550,7 @@ func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Paths) err
 	}
 
 	*t = append(*t, &TableConstraint{
+		Name:       tableName + "_" + "pk",
 		Paths:      p,
 		PrimaryKey: true,
 	})
@@ -559,7 +560,7 @@ func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Paths) err
 
 // AddUnique adds a unique constraint to the table.
 // If the constraint is already present, it is ignored.
-func (t *TableConstraints) AddUnique(p document.Paths) {
+func (t *TableConstraints) AddUnique(tableName string, p document.Paths) {
 	for _, tc := range *t {
 		if tc.Unique && tc.Paths.IsEqual(p) {
 			return
@@ -567,6 +568,7 @@ func (t *TableConstraints) AddUnique(p document.Paths) {
 	}
 
 	*t = append(*t, &TableConstraint{
+		Name:   fmt.Sprintf("%s_%s_unique", tableName, p.String()),
 		Paths:  p,
 		Unique: true,
 	})
@@ -579,7 +581,7 @@ func (t *TableConstraints) Merge(other TableConstraints) error {
 				return err
 			}
 		} else if tc.Unique {
-			t.AddUnique(tc.Paths)
+			t.AddUnique(tc.Name, tc.Paths)
 		} else if tc.Check != nil {
 			t.AddCheck(tc.Name, tc.Check)
 		}

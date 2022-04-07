@@ -267,16 +267,19 @@ func TestCreateTable(t *testing.T) {
 			}, tb.Info.FieldConstraints[1])
 
 			require.Equal(t, &database.TableConstraint{
+				Name:   "test_a_unique",
 				Paths:  testutil.ParseDocumentPaths(t, "a"),
 				Unique: true,
 			}, tb.Info.TableConstraints[0])
 
 			require.Equal(t, &database.TableConstraint{
+				Name:   "test_b_unique",
 				Paths:  testutil.ParseDocumentPaths(t, "b"),
 				Unique: true,
 			}, tb.Info.TableConstraints[1])
 
 			require.Equal(t, &database.TableConstraint{
+				Name:   "test_c_unique",
 				Paths:  testutil.ParseDocumentPaths(t, "c"),
 				Unique: true,
 			}, tb.Info.TableConstraints[2])
