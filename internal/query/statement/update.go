@@ -1,6 +1,7 @@
 package statement
 
 import (
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
@@ -42,18 +43,44 @@ type UpdateSetPair struct {
 
 // Prepare implements the Preparer interface.
 func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
+	ti, err := c.Catalog.GetTableInfo(stmt.TableName)
+	if err != nil {
+		return nil, err
+	}
+	pk := ti.GetPrimaryKey()
+
 	s := stream.New(stream.TableScan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
 		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
 	}
 
+	var pkModified bool
 	if stmt.SetPairs != nil {
 		for _, pair := range stmt.SetPairs {
+			// if we modify the primary key,
+			// we must remove the old document and create an new one
+			if pk != nil && !pkModified {
+				for _, p := range pk.Paths {
+					if p.IsEqual(pair.Path) {
+						pkModified = true
+						break
+					}
+				}
+			}
 			s = s.Pipe(stream.PathsSet(pair.Path, pair.E))
 		}
 	} else if stmt.UnsetFields != nil {
 		for _, name := range stmt.UnsetFields {
+			// ensure we do not unset any path the is used in the primary key
+			if pk != nil {
+				path := document.NewPath(name)
+				for _, p := range pk.Paths {
+					if p.IsEqual(path) {
+						return nil, errors.New("cannot unset primary key path")
+					}
+				}
+			}
 			s = s.Pipe(stream.PathsUnset(name))
 		}
 	}
@@ -69,7 +96,12 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 		s = s.Pipe(stream.IndexDelete(indexName))
 	}
 
-	s = s.Pipe(stream.TableReplace(stmt.TableName))
+	if pkModified {
+		s = s.Pipe(stream.TableDelete(stmt.TableName))
+		s = s.Pipe(stream.TableInsert(stmt.TableName))
+	} else {
+		s = s.Pipe(stream.TableReplace(stmt.TableName))
+	}
 
 	for _, indexName := range indexNames {
 		s = s.Pipe(stream.IndexInsert(indexName))

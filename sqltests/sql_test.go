@@ -6,7 +6,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"testing"
 
@@ -89,7 +88,7 @@ func TestSQL(t *testing.T) {
 
 									if test.ErrorMatch != "" {
 										require.NotNilf(t, err, "%s:%d expected error, got nil", absPath, test.Line)
-										require.Regexpf(t, regexp.MustCompile(test.ErrorMatch), err.Error(), "Source %s:%d", absPath, test.Line)
+										require.Equal(t, test.ErrorMatch, err.Error(), "Source %s:%d", absPath, test.Line)
 									} else {
 										assert.Errorf(t, err, "\nSource:%s:%d expected\n%s\nto raise an error but got none", absPath, test.Line, test.Expr)
 									}
