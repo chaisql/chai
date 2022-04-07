@@ -31,7 +31,6 @@ const (
 // System sequences
 const (
 	StoreSequence = InternalPrefix + "store_seq"
-	EpochSequence = InternalPrefix + "epoch_seq"
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -51,25 +50,11 @@ func NewCatalog() *Catalog {
 
 func (c *Catalog) Init(tx *Transaction) error {
 	// ensure the store sequence exists
-	err := c.ensureSequenceExists(tx, &SequenceInfo{
+	return c.ensureSequenceExists(tx, &SequenceInfo{
 		Name:        StoreSequence,
 		IncrementBy: 1,
 		Min:         1, Max: math.MaxUint32,
 		Start: 101, // first 100 are reserved for system tables
-		Owner: Owner{
-			TableName: CatalogTableName,
-		},
-	})
-	if err != nil {
-		return err
-	}
-
-	// ensure the transaction epoch sequence exists
-	return c.ensureSequenceExists(tx, &SequenceInfo{
-		Name:        EpochSequence,
-		IncrementBy: 1,
-		Min:         1, Max: math.MaxInt64,
-		Start: 1,
 		Owner: Owner{
 			TableName: CatalogTableName,
 		},

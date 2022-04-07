@@ -464,18 +464,16 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d types.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_epoch_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_epoch_seq CACHE 0", "type":"sequence"}`)
-		case 1:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
-		case 2:
+		case 1:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`)
-		case 3:
+		case 2:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b[3].c DOUBLE, UNIQUE (b[3].c))", "namespace":101, "type":"table"}`)
-		case 4:
+		case 3:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b[3].c_idx", "owner":{"table_name":"foo", "paths":["b[3].c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b[3].c_idx`"+` ON foo (b[3].c)", "namespace":102, "table_name":"foo", "type":"index"}`)
-		case 5:
+		case 4:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
-		case 6:
+		case 5:
 			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":103, "table_name":"foo", "type":"index"}`)
 		default:
 			t.Fatalf("count should be 5, got %d", i)

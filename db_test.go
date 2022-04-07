@@ -109,7 +109,6 @@ func TestOpen(t *testing.T) {
 
 	var count int
 	want := []string{
-		`{"name":"__genji_epoch_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_epoch_seq CACHE 0", "type":"sequence"}`,
 		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
 		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`,
 		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
@@ -137,13 +136,9 @@ func TestOpen(t *testing.T) {
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_epoch_seq"}`)
-
-	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
-	assert.NoError(t, err)
 	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":105}`)
 
-	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 2")
+	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
 	assert.NoError(t, err)
 	testutil.RequireDocJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }
