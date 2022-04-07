@@ -310,6 +310,9 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		ref.SetFloat(v.V().(float64))
 		return nil
 	case reflect.Interface:
+		if !ref.IsNil() {
+			return scanValue(v, ref.Elem())
+		}
 		switch v.Type() {
 		case types.DocumentValue:
 			m := make(map[string]interface{})

@@ -275,6 +275,24 @@ func TestScan(t *testing.T) {
 		err := document.StructScan(d, &a)
 		assert.Error(t, err)
 	})
+
+	t.Run("Interface member", func(t *testing.T) {
+		type foo struct {
+			A interface{}
+		}
+
+		type bar struct {
+			B int
+		}
+
+		var f foo
+		f.A = &bar{}
+
+		d := document.NewFieldBuffer().Add("a", types.NewDocumentValue(document.NewFieldBuffer().Add("b", types.NewIntegerValue(10))))
+		err := document.StructScan(d, &f)
+		assert.NoError(t, err)
+		require.Equal(t, &foo{A: &bar{B: 10}}, &f)
+	})
 }
 
 type documentScanner struct {
