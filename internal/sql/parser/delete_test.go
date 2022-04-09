@@ -28,27 +28,27 @@ func TestParserDelete(t *testing.T) {
 		{"WithOffset", "DELETE FROM test WHERE age = 10 OFFSET 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.DocsSkip(20)).
+				Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).
 				Pipe(stream.TableDelete("test")),
 		},
 		{"WithLimit", "DELETE FROM test LIMIT 10",
 			stream.New(stream.TableScan("test")).
-				Pipe(stream.DocsTake(10)).
+				Pipe(stream.DocsTake(parser.MustParseExpr("10"))).
 				Pipe(stream.TableDelete("test")),
 		},
 		{"WithOrderByThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age OFFSET 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.DocsTempTreeSort(parser.MustParseExpr("age"))).
-				Pipe(stream.DocsSkip(20)).
+				Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).
 				Pipe(stream.TableDelete("test")),
 		},
 		{"WithOrderByThenLimitThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age LIMIT 10 OFFSET 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
 				Pipe(stream.DocsTempTreeSort(parser.MustParseExpr("age"))).
-				Pipe(stream.DocsSkip(20)).
-				Pipe(stream.DocsTake(10)).
+				Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).
+				Pipe(stream.DocsTake(parser.MustParseExpr("10"))).
 				Pipe(stream.TableDelete("test")),
 		},
 	}

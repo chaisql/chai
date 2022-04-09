@@ -101,7 +101,7 @@ func TestSelectStmt(t *testing.T) {
 		// See issue https://github.com/genjidb/genji/issues/283
 		{"With empty WHERE and IN", "SELECT * FROM test WHERE [] IN [];", false, `[]`, nil},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", true, ``, nil},
-		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET x(*)", true, ``, nil},
+		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET count(*)", true, ``, nil},
 		{"Invalid use of MAX() aggregator", "SELECT * FROM test LIMIT max(0)", true, ``, nil},
 		{"Invalid use of SUM() aggregator", "SELECT * FROM test LIMIT sum(0)", true, ``, nil},
 		{"Invalid use of AVG() aggregator", "SELECT * FROM test LIMIT avg(0)", true, ``, nil},
@@ -337,6 +337,25 @@ func TestSelectStmt(t *testing.T) {
 		err = document.Scan(d, &seq)
 		assert.NoError(t, err)
 		require.Equal(t, 2, seq)
+	})
+
+	t.Run("LIMIT / OFFSET with params", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`
+			CREATE TABLE test;
+			INSERT INTO test (a) VALUES (1), (2), (3);
+		`)
+		assert.NoError(t, err)
+
+		d, err := db.QueryDocument("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
+		assert.NoError(t, err)
+		var a int
+		err = document.Scan(d, &a)
+		assert.NoError(t, err)
+		require.Equal(t, 2, a)
 	})
 }
 

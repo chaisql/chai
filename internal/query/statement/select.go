@@ -5,7 +5,6 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -219,39 +218,11 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 	}
 
 	if stmt.OffsetExpr != nil {
-		v, err := stmt.OffsetExpr.Eval(&environment.Environment{})
-		if err != nil {
-			return nil, err
-		}
-
-		if !v.Type().IsNumber() {
-			return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
-		}
-
-		v, err = document.CastAsInteger(v)
-		if err != nil {
-			return nil, err
-		}
-
-		s = s.Pipe(stream.DocsSkip(v.V().(int64)))
+		s = s.Pipe(stream.DocsSkip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
-		v, err := stmt.LimitExpr.Eval(&environment.Environment{})
-		if err != nil {
-			return nil, err
-		}
-
-		if !v.Type().IsNumber() {
-			return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
-		}
-
-		v, err = document.CastAsInteger(v)
-		if err != nil {
-			return nil, err
-		}
-
-		s = s.Pipe(stream.DocsTake(v.V().(int64)))
+		s = s.Pipe(stream.DocsTake(stmt.LimitExpr))
 	}
 
 	st := StreamStmt{

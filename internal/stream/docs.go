@@ -223,19 +223,34 @@ func (op *DocsFilterOperator) String() string {
 // A DocsTakeOperator closes the stream after a certain number of values.
 type DocsTakeOperator struct {
 	baseOperator
-	N int64
+	E expr.Expr
 }
 
 // DocsTake closes the stream after n values have passed through the operator.
-func DocsTake(n int64) *DocsTakeOperator {
-	return &DocsTakeOperator{N: n}
+func DocsTake(e expr.Expr) *DocsTakeOperator {
+	return &DocsTakeOperator{E: e}
 }
 
 // Iterate implements the Operator interface.
 func (op *DocsTakeOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	v, err := op.E.Eval(in)
+	if err != nil {
+		return err
+	}
+
+	if !v.Type().IsNumber() {
+		return fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
+	}
+
+	v, err = document.CastAsInteger(v)
+	if err != nil {
+		return err
+	}
+
+	n := v.V().(int64)
 	var count int64
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if count < op.N {
+		if count < n {
 			count++
 			return f(out)
 		}
@@ -245,26 +260,41 @@ func (op *DocsTakeOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *DocsTakeOperator) String() string {
-	return fmt.Sprintf("docs.Take(%d)", op.N)
+	return fmt.Sprintf("docs.Take(%s)", op.E)
 }
 
 // A DocsSkipOperator skips the n first values of the stream.
 type DocsSkipOperator struct {
 	baseOperator
-	N int64
+	E expr.Expr
 }
 
 // DocsSkip ignores the first n values of the stream.
-func DocsSkip(n int64) *DocsSkipOperator {
-	return &DocsSkipOperator{N: n}
+func DocsSkip(e expr.Expr) *DocsSkipOperator {
+	return &DocsSkipOperator{E: e}
 }
 
 // Iterate implements the Operator interface.
 func (op *DocsSkipOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+	v, err := op.E.Eval(in)
+	if err != nil {
+		return err
+	}
+
+	if !v.Type().IsNumber() {
+		return fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
+	}
+
+	v, err = document.CastAsInteger(v)
+	if err != nil {
+		return err
+	}
+
+	n := v.V().(int64)
 	var skipped int64
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if skipped < op.N {
+		if skipped < n {
 			skipped++
 			return nil
 		}
@@ -274,7 +304,7 @@ func (op *DocsSkipOperator) Iterate(in *environment.Environment, f func(out *env
 }
 
 func (op *DocsSkipOperator) String() string {
-	return fmt.Sprintf("docs.Skip(%d)", op.N)
+	return fmt.Sprintf("docs.Skip(%s)", op.E)
 }
 
 type DocsGroupAggregateOperator struct {

@@ -78,7 +78,7 @@ func TestFilter(t *testing.T) {
 func TestTake(t *testing.T) {
 	tests := []struct {
 		inNumber int
-		n        int64
+		n        int
 		output   int
 		fails    bool
 	}{
@@ -96,7 +96,7 @@ func TestTake(t *testing.T) {
 			}
 
 			s := stream.New(stream.DocsEmit(docs...))
-			s = s.Pipe(stream.DocsTake(test.n))
+			s = s.Pipe(stream.DocsTake(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -116,14 +116,14 @@ func TestTake(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.DocsTake(1).String(), "docs.Take(1)")
+		require.Equal(t, "docs.Take(1)", stream.DocsTake(parser.MustParseExpr("1")).String())
 	})
 }
 
 func TestSkip(t *testing.T) {
 	tests := []struct {
 		inNumber int
-		n        int64
+		n        int
 		output   int
 		fails    bool
 	}{
@@ -141,7 +141,7 @@ func TestSkip(t *testing.T) {
 			}
 
 			s := stream.New(stream.DocsEmit(docs...))
-			s = s.Pipe(stream.DocsSkip(test.n))
+			s = s.Pipe(stream.DocsSkip(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -158,7 +158,7 @@ func TestSkip(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.DocsSkip(1).String(), "docs.Skip(1)")
+		require.Equal(t, "docs.Skip(1)", stream.DocsSkip(parser.MustParseExpr("1")).String())
 	})
 }
 

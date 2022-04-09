@@ -45,11 +45,11 @@ func TestSplitANDConditionRule(t *testing.T) {
 						testutil.BoolValue(false),
 					),
 				)).
-				Pipe(st.DocsTake(1)),
+				Pipe(st.DocsTake(parser.MustParseExpr("1"))),
 			st.New(st.TableScan("foo")).
 				Pipe(st.DocsFilter(testutil.BoolValue(true))).
 				Pipe(st.DocsFilter(testutil.BoolValue(false))).
-				Pipe(st.DocsTake(1)),
+				Pipe(st.DocsTake(parser.MustParseExpr("1"))),
 		},
 		{
 			"multi and",
@@ -66,13 +66,13 @@ func TestSplitANDConditionRule(t *testing.T) {
 						),
 					),
 				)).
-				Pipe(st.DocsTake(10)),
+				Pipe(st.DocsTake(parser.MustParseExpr("10"))),
 			st.New(st.TableScan("foo")).
 				Pipe(st.DocsFilter(testutil.IntegerValue(1))).
 				Pipe(st.DocsFilter(testutil.IntegerValue(2))).
 				Pipe(st.DocsFilter(testutil.IntegerValue(3))).
 				Pipe(st.DocsFilter(testutil.IntegerValue(4))).
-				Pipe(st.DocsTake(10)),
+				Pipe(st.DocsTake(parser.MustParseExpr("10"))),
 		},
 	}
 

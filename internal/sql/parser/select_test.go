@@ -105,20 +105,20 @@ func TestParserSelect(t *testing.T) {
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.DocsTake(20)),
+				Pipe(stream.DocsTake(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.DocsSkip(20)),
+				Pipe(stream.DocsSkip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			stream.New(stream.TableScan("test")).
 				Pipe(stream.DocsFilter(parser.MustParseExpr("age = 10"))).
-				Pipe(stream.DocsSkip(20)).
-				Pipe(stream.DocsTake(10)),
+				Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).
+				Pipe(stream.DocsTake(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true, true},
@@ -169,21 +169,21 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Concat(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsTake(10)),
+			)).Pipe(stream.DocsTake(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithUnionAllAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 OFFSET 20",
 			stream.New(stream.Concat(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsSkip(20)),
+			)).Pipe(stream.DocsSkip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithUnionAllAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
 			stream.New(stream.Concat(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsTempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.DocsSkip(20)).Pipe(stream.DocsTake(10)),
+			)).Pipe(stream.DocsTempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).Pipe(stream.DocsTake(parser.MustParseExpr("10"))),
 			true, false,
 		},
 
@@ -225,21 +225,21 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Union(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsTake(10)),
+			)).Pipe(stream.DocsTake(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithUnionAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 OFFSET 20",
 			stream.New(stream.Union(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsSkip(20)),
+			)).Pipe(stream.DocsSkip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithUnionAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
 			stream.New(stream.Union(
 				stream.New(stream.TableScan("test1")),
 				stream.New(stream.TableScan("test2")),
-			)).Pipe(stream.DocsTempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.DocsSkip(20)).Pipe(stream.DocsTake(10)),
+			)).Pipe(stream.DocsTempTreeSort(testutil.ParsePath(t, "a"))).Pipe(stream.DocsSkip(parser.MustParseExpr("20"))).Pipe(stream.DocsTake(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithMultipleCompoundOps/1", "SELECT * FROM a UNION ALL SELECT * FROM b UNION ALL SELECT * FROM c",
