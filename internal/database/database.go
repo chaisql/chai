@@ -26,8 +26,8 @@ type Database struct {
 	attachedTransaction *Transaction
 	attachedTxMu        sync.Mutex
 
-	// This controls concurrency on read-only and read/write transactions.
-	txmu *sync.RWMutex
+	// This limits the number of write transactions to 1.
+	writetxmu *sync.Mutex
 
 	// Pool of reusable transient engines to use for temporary indices.
 	TransientStorePool *TransientStorePool
@@ -53,9 +53,9 @@ type TxOptions struct {
 // New initializes the DB using the given engine.
 func New(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*Database, error) {
 	db := Database{
-		DB:      pdb,
-		Catalog: NewCatalog(),
-		txmu:    &sync.RWMutex{},
+		DB:        pdb,
+		Catalog:   NewCatalog(),
+		writetxmu: &sync.Mutex{},
 		TransientStorePool: &TransientStorePool{
 			pdb:  pdb,
 			opts: opts,
@@ -110,8 +110,8 @@ func (db *Database) closeDatabase() error {
 	if tx := db.GetAttachedTx(); tx != nil {
 		_ = tx.Rollback()
 	}
-	db.txmu.Lock()
-	defer db.txmu.Unlock()
+	db.writetxmu.Lock()
+	defer db.writetxmu.Unlock()
 
 	// release all sequences
 	tx, err := db.beginTx(context.Background(), nil)
@@ -165,9 +165,7 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 	}
 
 	if !opts.ReadOnly {
-		db.txmu.Lock()
-	} else {
-		db.txmu.RLock()
+		db.writetxmu.Lock()
 	}
 
 	db.attachedTxMu.Lock()
@@ -196,8 +194,11 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 	tx := Transaction{
 		Session:  sess,
 		Writable: !opts.ReadOnly,
-		DBMu:     db.txmu,
 		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
+	}
+
+	if !opts.ReadOnly {
+		tx.WriteTxMu = db.writetxmu
 	}
 
 	if opts.Attached {

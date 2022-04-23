@@ -35,15 +35,6 @@ func (n NamespaceID) UpperBound() []byte {
 	return n.Bytes()
 }
 
-// PebbleReader is the interface that contains methods
-// that are used by both pebble.DB and pebble.Batch.
-type PebbleReader interface {
-	Get(key []byte) (value []byte, closer io.Closer, err error)
-	Set(key []byte, value []byte, opts *pebble.WriteOptions) error
-	Delete(key []byte, opts *pebble.WriteOptions) error
-	NewIter(o *pebble.IterOptions) *pebble.Iterator
-}
-
 type Session struct {
 	Reader   pebble.Reader
 	Writer   pebble.Writer
@@ -76,19 +67,23 @@ func (s *Session) Commit() error {
 	}
 
 	s.closed = true
-	return s.Reader.(*pebble.Batch).Commit(nil)
+	return s.Writer.(*pebble.Batch).Commit(nil)
 }
 
 func (s *Session) Close() error {
-	if s.readOnly {
-		return errors.New("cannot close in read-only mode")
-	}
 	if s.closed {
 		return errors.New("already closed")
 	}
 	s.closed = true
 
-	return s.Reader.(*pebble.Batch).Close()
+	var err error
+	if !s.readOnly {
+		err = s.Writer.(*pebble.Batch).Close()
+	} else {
+		err = s.Reader.Close()
+	}
+
+	return err
 }
 
 // GetNamespace returns a store by name.

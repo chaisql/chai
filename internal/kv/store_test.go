@@ -27,7 +27,7 @@ func TestReadOnly(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewSession(pdb)
+		sro := kv.NewReadSession(pdb)
 		defer sro.Close()
 
 		// fetch the store and the index

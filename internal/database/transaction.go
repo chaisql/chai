@@ -12,10 +12,10 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	Session  *kv.Session
-	ID       uint64
-	Writable bool
-	DBMu     *sync.RWMutex
+	Session   *kv.Session
+	ID        uint64
+	Writable  bool
+	WriteTxMu *sync.Mutex
 
 	// these functions are run after a successful rollback.
 	OnRollbackHooks []func()
@@ -25,20 +25,16 @@ type Transaction struct {
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
-	if tx.Writable {
-		err := tx.Session.Close()
-		if err != nil {
-			return err
-		}
+	err := tx.Session.Close()
+	if err != nil {
+		return err
 	}
 
-	defer func() {
-		if tx.Writable {
-			tx.DBMu.Unlock()
-		} else {
-			tx.DBMu.RUnlock()
-		}
-	}()
+	if tx.Writable {
+		defer func() {
+			tx.WriteTxMu.Unlock()
+		}()
+	}
 
 	for i := len(tx.OnRollbackHooks) - 1; i >= 0; i-- {
 		tx.OnRollbackHooks[i]()
@@ -60,7 +56,7 @@ func (tx *Transaction) Commit() error {
 	}
 
 	defer func() {
-		tx.DBMu.Unlock()
+		tx.WriteTxMu.Unlock()
 	}()
 
 	for i := len(tx.OnCommitHooks) - 1; i >= 0; i-- {
