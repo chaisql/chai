@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/kv"
+	"github.com/genjidb/genji/internal/lock"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
@@ -39,12 +41,14 @@ const (
 type Catalog struct {
 	Cache        *catalogCache
 	CatalogTable *CatalogStore
+	Locks        *lock.LockManager
 }
 
 func NewCatalog() *Catalog {
 	return &Catalog{
 		Cache:        newCatalogCache(),
 		CatalogTable: newCatalogStore(),
+		Locks:        lock.NewLockManager(),
 	}
 }
 
@@ -88,7 +92,27 @@ func (c *Catalog) generateStoreName(tx *Transaction) (kv.NamespaceID, error) {
 	return kv.NamespaceID(v), nil
 }
 
+func (c *Catalog) LockTable(tx *Transaction, tableName string, mode lock.LockMode) error {
+	obj := lock.NewTableObject(tableName)
+	ok, err := c.Locks.Lock(context.Background(), tx.ID, obj, mode)
+	if !ok || err != nil {
+		return errors.Wrapf(err, "failed to lock table %s", tableName)
+	}
+
+	fn := func() {
+		c.Locks.Unlock(tx.ID, obj)
+	}
+	tx.OnRollbackHooks = append(tx.OnRollbackHooks, fn)
+	tx.OnCommitHooks = append(tx.OnCommitHooks, fn)
+	return nil
+}
+
 func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
+	err := c.LockTable(tx, tableName, lock.S)
+	if err != nil {
+		return nil, err
+	}
+
 	o, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return nil, err
@@ -119,6 +143,11 @@ func (c *Catalog) GetTableInfo(tableName string) (*TableInfo, error) {
 // CreateTable creates a table with the given name.
 // If it already exists, returns ErrTableAlreadyExists.
 func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo) error {
+	err := c.LockTable(tx, tableName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	if info == nil {
 		info = new(TableInfo)
 	}
@@ -128,7 +157,7 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return errors.New("table name required")
 	}
 
-	_, err := c.GetTable(tx, tableName)
+	_, err = c.GetTable(tx, tableName)
 	if err != nil && !errs.IsNotFoundError(err) {
 		return err
 	}
@@ -168,6 +197,11 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 
 // DropTable deletes a table from the catalog
 func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
+	err := c.LockTable(tx, tableName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	ti, err := c.GetTableInfo(tableName)
 	if err != nil {
 		return err
@@ -205,8 +239,13 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
+	err := c.LockTable(tx, info.TableName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	// check if the associated table exists
-	_, err := c.GetTableInfo(info.TableName)
+	_, err = c.GetTableInfo(info.TableName)
 	if err != nil {
 		return err
 	}
@@ -272,6 +311,11 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 		return err
 	}
 
+	err = c.LockTable(tx, info.TableName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	// check if the index has been created by a table constraint
 	if len(info.Owner.Paths) > 0 {
 		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Paths)
@@ -296,6 +340,11 @@ func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
 
 // AddFieldConstraint adds a field constraint to a table.
 func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc *FieldConstraint, tcs TableConstraints) error {
+	err := c.LockTable(tx, tableName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	r, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return err
@@ -326,8 +375,13 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc *Fiel
 // RenameTable renames a table.
 // If it doesn't exist, it returns errs.ErrTableNotFound.
 func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
+	err := c.LockTable(tx, oldName, lock.X)
+	if err != nil {
+		return err
+	}
+
 	// Delete the old table info.
-	err := c.CatalogTable.Delete(tx, oldName)
+	err = c.CatalogTable.Delete(tx, oldName)
 	if errors.Is(err, errs.ErrDocumentNotFound) {
 		return errors.WithStack(errs.NotFoundError{Name: oldName})
 	}

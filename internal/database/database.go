@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
@@ -31,7 +32,12 @@ type Database struct {
 	// Pool of reusable transient engines to use for temporary indices.
 	TransientStorePool *TransientStorePool
 
-	closeOnce sync.Once
+	// TransactionIDs is used to assign transaction an ID at runtime.
+	// Since transaction IDs are not persisted and not used for concurrent
+	// access, we can use 8 bytes ids that will be reset every time
+	// the database restarts.
+	TransactionIDs uint64
+	closeOnce      sync.Once
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -191,6 +197,7 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		Session:  kv.NewSession(st, opts.ReadOnly),
 		Writable: !opts.ReadOnly,
 		DBMu:     db.txmu,
+		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
 	}
 
 	if opts.Attached {

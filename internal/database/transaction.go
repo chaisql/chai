@@ -13,7 +13,7 @@ import (
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
 	Session  *kv.Session
-	Id       uint32
+	ID       uint64
 	Writable bool
 	DBMu     *sync.RWMutex
 

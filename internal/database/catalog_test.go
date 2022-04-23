@@ -40,6 +40,7 @@ func cloneCatalog(c *database.Catalog) *database.Catalog {
 	var clone database.Catalog
 
 	clone.CatalogTable = c.CatalogTable
+	clone.Locks = c.Locks
 	clone.Cache = c.Cache.Clone()
 
 	return &clone
