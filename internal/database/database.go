@@ -186,15 +186,15 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		opts = &TxOptions{}
 	}
 
-	var st kv.PebbleStore
+	var sess *kv.Session
 	if opts.ReadOnly {
-		st = db.DB
+		sess = kv.NewReadSession(db.DB)
 	} else {
-		st = db.DB.NewIndexedBatch()
+		sess = kv.NewSession(db.DB)
 	}
 
 	tx := Transaction{
-		Session:  kv.NewSession(st, opts.ReadOnly),
+		Session:  sess,
 		Writable: !opts.ReadOnly,
 		DBMu:     db.txmu,
 		ID:       atomic.AddUint64(&db.TransactionIDs, 1),

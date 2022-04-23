@@ -58,13 +58,12 @@ func NewTestStore(t testing.TB) *kv.Namespace {
 
 	pdb := NewMemPebble(t)
 
-	batch := pdb.NewIndexedBatch()
-	ng := kv.NewSession(batch, false)
+	ng := kv.NewSession(pdb)
 
 	st := ng.GetNamespace(10)
 
 	t.Cleanup(func() {
-		batch.Close()
+		ng.Close()
 		pdb.Close()
 	})
 
@@ -83,7 +82,9 @@ func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	db, err := database.New(context.Background(), pdb, &pebble.Options{FS: vfs.NewMem()})
 	assert.NoError(t, err)
 
-	err = catalogstore.LoadCatalog(pdb, db.Catalog)
+	sess := kv.NewReadSession(pdb)
+	defer sess.Close()
+	err = catalogstore.LoadCatalog(sess, db.Catalog)
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {

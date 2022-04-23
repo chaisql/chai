@@ -23,8 +23,7 @@ func values(vs ...types.Value) []types.Value {
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	pdb := testutil.NewMemPebble(t)
-	batch := pdb.NewIndexedBatch()
-	ng := kv.NewSession(batch, false)
+	ng := kv.NewSession(pdb)
 
 	st := ng.GetNamespace(10)
 	tr := tree.New(st)
@@ -36,7 +35,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	idx := database.NewIndex(tr, database.IndexInfo{Paths: paths})
 
 	return idx, func() {
-		batch.Close()
+		ng.Close()
 	}
 }
 

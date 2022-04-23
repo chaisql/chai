@@ -35,9 +35,9 @@ func (n NamespaceID) UpperBound() []byte {
 	return n.Bytes()
 }
 
-// PebbleStore is the interface that contains methods
+// PebbleReader is the interface that contains methods
 // that are used by both pebble.DB and pebble.Batch.
-type PebbleStore interface {
+type PebbleReader interface {
 	Get(key []byte) (value []byte, closer io.Closer, err error)
 	Set(key []byte, value []byte, opts *pebble.WriteOptions) error
 	Delete(key []byte, opts *pebble.WriteOptions) error
@@ -45,15 +45,25 @@ type PebbleStore interface {
 }
 
 type Session struct {
-	DB       PebbleStore
+	Reader   pebble.Reader
+	Writer   pebble.Writer
 	readOnly bool
 	closed   bool
 }
 
-func NewSession(db PebbleStore, readOnly bool) *Session {
+func NewReadSession(db *pebble.DB) *Session {
 	return &Session{
-		DB:       db,
-		readOnly: readOnly,
+		Reader:   db.NewSnapshot(),
+		readOnly: true,
+	}
+}
+
+func NewSession(db *pebble.DB) *Session {
+	b := db.NewIndexedBatch()
+
+	return &Session{
+		Reader: b,
+		Writer: b,
 	}
 }
 
@@ -66,7 +76,7 @@ func (s *Session) Commit() error {
 	}
 
 	s.closed = true
-	return s.DB.(*pebble.Batch).Commit(nil)
+	return s.Reader.(*pebble.Batch).Commit(nil)
 }
 
 func (s *Session) Close() error {
@@ -78,13 +88,13 @@ func (s *Session) Close() error {
 	}
 	s.closed = true
 
-	return s.DB.(*pebble.Batch).Close()
+	return s.Reader.(*pebble.Batch).Close()
 }
 
 // GetNamespace returns a store by name.
 func (s *Session) GetNamespace(key NamespaceID) *Namespace {
 	return &Namespace{
-		store:    s.DB,
+		session:  s,
 		ID:       key,
 		readOnly: s.readOnly,
 	}
@@ -92,7 +102,7 @@ func (s *Session) GetNamespace(key NamespaceID) *Namespace {
 
 type Namespace struct {
 	ID       NamespaceID
-	store    PebbleStore
+	session  *Session
 	readOnly bool
 }
 
@@ -126,7 +136,7 @@ func (s *Namespace) Put(k, v []byte) error {
 	}
 
 	key := BuildKey(s.ID, k)
-	err := s.store.Set(key, v, nil)
+	err := s.session.Writer.Set(key, v, nil)
 	bufferPool.Put(&key)
 	return err
 }
@@ -137,7 +147,7 @@ func (s *Namespace) Get(k []byte) ([]byte, error) {
 	var err error
 	var value []byte
 	key := BuildKey(s.ID, k)
-	value, closer, err = s.store.Get(key)
+	value, closer, err = s.session.Reader.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -163,7 +173,7 @@ func (s *Namespace) Exists(k []byte) (bool, error) {
 	var closer io.Closer
 	var err error
 	key := BuildKey(s.ID, k)
-	_, closer, err = s.store.Get(key)
+	_, closer, err = s.session.Reader.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -186,7 +196,7 @@ func (s *Namespace) Delete(k []byte) error {
 	}
 
 	key := BuildKey(s.ID, k)
-	_, closer, err := s.store.Get(key)
+	_, closer, err := s.session.Reader.Get(key)
 	bufferPool.Put(&key)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
@@ -200,7 +210,7 @@ func (s *Namespace) Delete(k []byte) error {
 		return err
 	}
 
-	return s.store.Delete(key, nil)
+	return s.session.Writer.Delete(key, nil)
 }
 
 // Truncate deletes all the records of the store.
@@ -213,7 +223,7 @@ func (s *Namespace) Truncate() error {
 	defer it.Close()
 
 	for it.SeekGE(s.ID.Bytes()); it.Valid(); it.Next() {
-		err := s.store.Delete(it.Key(), nil)
+		err := s.session.Writer.Delete(it.Key(), nil)
 		if err != nil {
 			return err
 		}
@@ -233,7 +243,7 @@ func (s *Namespace) Iterator(opts *pebble.IterOptions) *Iterator {
 		iterator.upperBound = opts.UpperBound
 	}
 
-	iterator.Iterator = s.store.NewIter(opts)
+	iterator.Iterator = s.session.Reader.NewIter(opts)
 	return &iterator
 }
 

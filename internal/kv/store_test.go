@@ -27,7 +27,8 @@ func TestReadOnly(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewSession(pdb, true)
+		sro := kv.NewSession(pdb)
+		defer sro.Close()
 
 		// fetch the store and the index
 		st := sro.GetNamespace(10)
@@ -56,7 +57,8 @@ func TestGetNamespace(t *testing.T) {
 	t.Run("Should return the right store", func(t *testing.T) {
 		pdb := testutil.NewPebble(t)
 
-		s := kv.NewSession(pdb, false)
+		s := kv.NewSession(pdb)
+		defer s.Close()
 
 		// fetch first store
 		sta := s.GetNamespace(10)
@@ -81,7 +83,10 @@ func TestGetNamespace(t *testing.T) {
 func storeBuilder(t testing.TB) *kv.Namespace {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewSession(pdb, false)
+	s := kv.NewSession(pdb)
+	t.Cleanup(func() {
+		s.Close()
+	})
 
 	st := s.GetNamespace(10)
 	return st
@@ -409,7 +414,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 		`)
 			assert.NoError(t, err)
 			var count int
-			document.Scan(d, &count)
+			err = document.Scan(d, &count)
 			assert.NoError(t, err)
 			require.Equal(t, 2, count)
 			return nil

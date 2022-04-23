@@ -12,9 +12,9 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-func LoadCatalog(pdb kv.PebbleStore, c *database.Catalog) error {
+func LoadCatalog(session *kv.Session, c *database.Catalog) error {
 	tx := database.Transaction{
-		Session: kv.NewSession(pdb, true),
+		Session: session,
 	}
 	tables, indexes, sequences, err := loadCatalogStore(&tx, c.CatalogTable)
 	if err != nil {

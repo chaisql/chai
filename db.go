@@ -17,6 +17,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -37,7 +38,10 @@ func newDB(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*DB, erro
 		return nil, err
 	}
 
-	err = catalogstore.LoadCatalog(pdb, db.Catalog)
+	sess := kv.NewReadSession(pdb)
+	defer sess.Close()
+
+	err = catalogstore.LoadCatalog(sess, db.Catalog)
 	if err != nil {
 		return nil, err
 	}
