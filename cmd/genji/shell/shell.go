@@ -501,11 +501,11 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 	return sh.livePrefix, sh.multiLine
 }
 
-// getTables returns all the tables of the database
-func (sh *Shell) getAllTables(ctx context.Context) ([]string, error) {
+// listTables returns all the tables of the database, except the system ones.
+func (sh *Shell) listTables(ctx context.Context) ([]string, error) {
 	var tables []string
 
-	res, err := sh.db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
+	res, err := sh.db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name NOT LIKE '__genji%'")
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +544,7 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		expected := e.Expected
 		switch expected[0] {
 		case "table_name":
-			expected, err = sh.getAllTables(context.Background())
+			expected, err = sh.listTables(context.Background())
 			if err != nil {
 				return suggestions
 			}

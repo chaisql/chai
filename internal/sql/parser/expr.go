@@ -104,9 +104,9 @@ func (p *Parser) parseOperator(minPrecedence int, allowed ...scanner.Token) (fun
 		if tok.Precedence() >= minPrecedence {
 			switch {
 			case tok == scanner.IN && tok.Precedence() >= minPrecedence:
-				return expr.NotIn, op, nil
+				return expr.NotIn, scanner.NIN, nil
 			case tok == scanner.LIKE && tok.Precedence() >= minPrecedence:
-				return expr.NotLike, op, nil
+				return expr.NotLike, scanner.NLIKE, nil
 			}
 		}
 
@@ -155,7 +155,7 @@ func (p *Parser) parseOperator(minPrecedence int, allowed ...scanner.Token) (fun
 		return expr.In, op, nil
 	case scanner.IS:
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.NOT {
-			return expr.IsNot, op, nil
+			return expr.IsNot, scanner.ISN, nil
 		}
 		p.Unscan()
 		return expr.Is, op, nil

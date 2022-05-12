@@ -59,6 +59,7 @@ const (
 	IS       // IS
 	ISN      // IS NOT
 	LIKE     // LIKE
+	NLIKE    // NOT LIKE
 	CONCAT   // ||
 	BETWEEN  // BETWEEN
 	operatorEnd
@@ -334,18 +335,20 @@ func (tok Token) Precedence() int {
 		return 1
 	case AND:
 		return 2
-	case EQ, NEQ, IS, IN, LIKE, EQREGEX, NEQREGEX, BETWEEN:
+	case NOT:
 		return 3
-	case LT, LTE, GT, GTE:
+	case EQ, NEQ, IS, ISN, IN, NIN, LIKE, NLIKE, EQREGEX, NEQREGEX, BETWEEN:
 		return 4
-	case BITWISEOR, BITWISEXOR, BITWISEAND:
+	case LT, LTE, GT, GTE:
 		return 5
-	case ADD, SUB:
+	case BITWISEOR, BITWISEXOR, BITWISEAND:
 		return 6
-	case MUL, DIV, MOD:
+	case ADD, SUB:
 		return 7
-	case CONCAT:
+	case MUL, DIV, MOD:
 		return 8
+	case CONCAT:
+		return 9
 	}
 	return 0
 }

@@ -37,12 +37,12 @@ func (op *LikeOperator) Eval(env *environment.Environment) (types.Value, error) 
 }
 
 type NotLikeOperator struct {
-	LikeOperator
+	*LikeOperator
 }
 
 // NotLike creates an expression that evaluates to the result of a NOT LIKE b.
 func NotLike(a, b Expr) Expr {
-	return &NotLikeOperator{LikeOperator{&simpleOperator{a, b, scanner.LIKE}}}
+	return &NotLikeOperator{&LikeOperator{&simpleOperator{a, b, scanner.NLIKE}}}
 }
 
 func (op *NotLikeOperator) Eval(env *environment.Environment) (types.Value, error) {
