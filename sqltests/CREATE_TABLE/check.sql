@@ -1,15 +1,21 @@
 -- test: as field constraint
 CREATE TABLE test (
-    a CHECK(a > 10) CHECK(b < 10)
+    a CHECK(a > 10 AND a < 20)
 );
 SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (CHECK (a > 10), CHECK (b < 10))"
+  sql: "CREATE TABLE test (a ANY, CONSTRAINT test_check CHECK (a > 10 AND a < 20))"
 }
 */
+
+-- test: as field constraint: undeclared field
+CREATE TABLE test (
+    a CHECK(b > 10)
+);
+-- error:
 
 -- test: as field constraint, with other constraints
 CREATE TABLE test (
@@ -20,7 +26,7 @@ SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a INTEGER NOT NULL DEFAULT 100, CHECK (a > 10), PRIMARY KEY (a))"
+  sql: "CREATE TABLE test (a INTEGER NOT NULL DEFAULT 100, CONSTRAINT test_check CHECK (a > 10), CONSTRAINT test_pk PRIMARY KEY (a))"
 }
 */
 
@@ -39,7 +45,7 @@ SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a INTEGER DEFAULT 0, CHECK (a > 10))"
+  sql: "CREATE TABLE test (a INTEGER DEFAULT 0, CONSTRAINT test_check CHECK (a > 10))"
 }
 */
 
@@ -53,7 +59,7 @@ SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a INTEGER, b INTEGER, CHECK (a > 10 AND b < 10))"
+  sql: "CREATE TABLE test (a INTEGER, b INTEGER, CONSTRAINT test_check CHECK (a > 10 AND b < 10))"
 }
 */
 
@@ -68,6 +74,6 @@ SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a INTEGER, CHECK (a > 10), CHECK (a > 20))"
+  sql: "CREATE TABLE test (a INTEGER, CONSTRAINT test_check CHECK (a > 10), CONSTRAINT test_check1 CHECK (a > 20))"
 }
 */

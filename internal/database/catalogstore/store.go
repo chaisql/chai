@@ -18,12 +18,12 @@ func LoadCatalog(session *kv.Session, c *database.Catalog) error {
 	}
 	tables, indexes, sequences, err := loadCatalogStore(&tx, c.CatalogTable)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to load catalog store")
 	}
 
 	for _, tb := range tables {
 		// bind default values with catalog
-		for _, fc := range tb.FieldConstraints {
+		for _, fc := range tb.FieldConstraints.Ordered {
 			if fc.DefaultValue == nil {
 				continue
 			}
@@ -46,7 +46,7 @@ func LoadCatalog(session *kv.Session, c *database.Catalog) error {
 		var seqList []database.Sequence
 		seqList, err = loadSequences(&tx, c, sequences)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "failed to load sequences")
 		}
 
 		c.Cache.Load(nil, nil, seqList)

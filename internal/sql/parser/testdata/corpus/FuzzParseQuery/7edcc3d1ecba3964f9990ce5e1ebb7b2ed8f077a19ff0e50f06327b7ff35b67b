@@ -1,2 +1,0 @@
-go test fuzz v1
-string("CREATE TABLE test(foo INTEGER PRIMARY KEY, bar INTEGER NOT NULL, baz[4][1].bat TEXT)")

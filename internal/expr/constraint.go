@@ -35,20 +35,6 @@ func (t *ConstraintExpr) Bind(catalog *database.Catalog) {
 	t.Catalog = catalog
 }
 
-func (t *ConstraintExpr) IsEqual(other database.TableExpression) bool {
-	if t == nil {
-		return other == nil
-	}
-	if other == nil {
-		return false
-	}
-	o, ok := other.(*ConstraintExpr)
-	if !ok {
-		return false
-	}
-	return Equal(t.Expr, o.Expr)
-}
-
 func (t *ConstraintExpr) String() string {
 	return t.Expr.String()
 }

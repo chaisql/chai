@@ -46,7 +46,7 @@ func TestCastAs(t *testing.T) {
 	}
 
 	t.Run("bool", func(t *testing.T) {
-		check(t, types.BoolValue, []test{
+		check(t, types.BooleanValue, []test{
 			{boolV, boolV, false},
 			{integerV, boolV, false},
 			{types.NewIntegerValue(0), types.NewBoolValue(false), false},

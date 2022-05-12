@@ -23,11 +23,11 @@ type ValueType uint8
 // new types are introduced we don't need to modify them.
 const (
 	// denote the absence of type
-	AnyType ValueType = 0x0
+	AnyValue ValueType = 0x0
 
 	NullValue ValueType = 0x80
 
-	BoolValue ValueType = 0x81
+	BooleanValue ValueType = 0x81
 
 	// integer family: 0x90 to 0x9F
 	IntegerValue ValueType = 0x90
@@ -52,8 +52,8 @@ func (t ValueType) String() string {
 	switch t {
 	case NullValue:
 		return "null"
-	case BoolValue:
-		return "bool"
+	case BooleanValue:
+		return "boolean"
 	case IntegerValue:
 		return "integer"
 	case DoubleValue:
@@ -68,7 +68,7 @@ func (t ValueType) String() string {
 		return "document"
 	}
 
-	return ""
+	return "any"
 }
 
 // IsNumber returns true if t is either an integer of a float.
@@ -78,7 +78,7 @@ func (t ValueType) IsNumber() bool {
 
 // IsAny returns whether this is type is Any or a real type
 func (t ValueType) IsAny() bool {
-	return t == AnyType
+	return t == AnyValue
 }
 
 type Value interface {

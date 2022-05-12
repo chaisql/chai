@@ -440,12 +440,10 @@ func TestSelectIndex_Simple(t *testing.T) {
 				testutil.MustExec(t, db, tx, `
 					CREATE TABLE foo (
 						k ARRAY PRIMARY KEY,
-						k[0] INT,
 						a ARRAY,
-						a[0] DOUBLE
+						b ARRAY
 					);
 					CREATE INDEX idx_foo_a ON foo(a);
-					CREATE INDEX idx_foo_a0 ON foo(a[0]);
 					INSERT INTO foo (k, a, b) VALUES
 						([1, 1], [1, 1], [1, 1]),
 						([2, 2], [2, 2], [2, 2]),

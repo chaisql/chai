@@ -3,12 +3,10 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
@@ -52,37 +50,37 @@ func TestParserAlterTableAddField(t *testing.T) {
 		{"With type", "ALTER TABLE foo ADD FIELD bar integer", statement.AlterTableAddField{
 			Info: database.TableInfo{
 				TableName: "foo",
-				FieldConstraints: []*database.FieldConstraint{
-					{
-						Path: document.Path(testutil.ParsePath(t, "bar")),
-						Type: types.IntegerValue,
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{
+						Field: "bar",
+						Type:  types.IntegerValue,
 					},
-				},
+				),
 			},
 		}, false},
 		{"With not null", "ALTER TABLE foo ADD FIELD bar NOT NULL", statement.AlterTableAddField{
 			Info: database.TableInfo{
 				TableName: "foo",
-				FieldConstraints: []*database.FieldConstraint{
-					{
-						Path:      document.Path(testutil.ParsePath(t, "bar")),
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{
+						Field:     "bar",
 						IsNotNull: true,
 					},
-				},
+				),
 			},
 		}, false},
 		{"With primary key", "ALTER TABLE foo ADD FIELD bar PRIMARY KEY", nil, true},
 		{"With multiple constraints", "ALTER TABLE foo ADD FIELD bar integer NOT NULL DEFAULT 0", statement.AlterTableAddField{
 			Info: database.TableInfo{
 				TableName: "foo",
-				FieldConstraints: []*database.FieldConstraint{
-					{
-						Path:         document.Path(testutil.ParsePath(t, "bar")),
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{
+						Field:        "bar",
 						Type:         types.IntegerValue,
 						IsNotNull:    true,
 						DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
 					},
-				},
+				),
 			},
 		}, false},
 		{"With error / missing FIELD keyword", "ALTER TABLE foo ADD bar", nil, true},

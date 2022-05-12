@@ -53,19 +53,19 @@ true
 0
 
 ! CAST (true AS DOUBLE)
-'cannot cast bool as double'
+'cannot cast boolean as double'
 
 > CAST (true AS TEXT)
 'true'
 
 ! CAST (true AS BLOB)
-'cannot cast bool as blob'
+'cannot cast boolean as blob'
 
 ! CAST (true AS ARRAY)
-'cannot cast bool as array'
+'cannot cast boolean as array'
 
 ! CAST (true AS DOCUMENT)
-'cannot cast bool as document'
+'cannot cast boolean as document'
 
 -- test: source(TEXT)
 > CAST ('a' AS TEXT)

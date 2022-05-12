@@ -219,9 +219,7 @@ func (t *Tree) buildStartKeyExclusive(key []byte) []byte {
 }
 
 func (t *Tree) buildEndKeyInclusive(key []byte) []byte {
-	k := t.buildKey(key)
-	k = append(k, encoding.ArrayValueDelim, 0xFF)
-	return k
+	return append(t.buildKey(key), encoding.ArrayValueDelim, 0xFF)
 }
 
 func (t *Tree) buildEndKeyExclusive(key []byte) []byte {

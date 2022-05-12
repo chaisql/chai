@@ -15,7 +15,7 @@ func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
 	}
 
 	switch t {
-	case types.BoolValue:
+	case types.BooleanValue:
 		return CastAsBool(v)
 	case types.IntegerValue:
 		return CastAsInteger(v)
@@ -46,7 +46,7 @@ func CastAsBool(v types.Value) (types.Value, error) {
 	}
 
 	switch v.Type() {
-	case types.BoolValue:
+	case types.BooleanValue:
 		return v, nil
 	case types.IntegerValue:
 		return types.NewBoolValue(v.V().(int64) != 0), nil
@@ -78,7 +78,7 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 	switch v.Type() {
 	case types.IntegerValue:
 		return v, nil
-	case types.BoolValue:
+	case types.BooleanValue:
 		if v.V().(bool) {
 			return types.NewIntegerValue(1), nil
 		}

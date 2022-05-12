@@ -2,51 +2,22 @@ package database
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
+	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
-	Path         document.Path
-	Type         types.ValueType
-	IsNotNull    bool
-	DefaultValue TableExpression
-	IsInferred   bool
-	InferredBy   []document.Path
-}
-
-// IsEqual compares f with other member by member.
-// Inference is not compared.
-func (f *FieldConstraint) IsEqual(other *FieldConstraint) bool {
-	if !f.Path.IsEqual(other.Path) {
-		return false
-	}
-
-	if f.Type != other.Type {
-		return false
-	}
-
-	if f.IsNotNull != other.IsNotNull {
-		return false
-	}
-
-	if f.HasDefaultValue() != other.HasDefaultValue() {
-		return false
-	}
-
-	if f.HasDefaultValue() {
-		if !f.DefaultValue.IsEqual(other.DefaultValue) {
-			return false
-		}
-	}
-
-	return true
+	Field         string
+	Type          types.ValueType
+	IsNotNull     bool
+	DefaultValue  TableExpression
+	AnonymousType *AnonymousType
 }
 
 func (f *FieldConstraint) IsEmpty() bool {
@@ -56,9 +27,16 @@ func (f *FieldConstraint) IsEmpty() bool {
 func (f *FieldConstraint) String() string {
 	var s strings.Builder
 
-	s.WriteString(f.Path.String())
-	s.WriteString(" ")
-	s.WriteString(strings.ToUpper(f.Type.String()))
+	s.WriteString(f.Field)
+	if f.Type != types.DocumentValue {
+		s.WriteString(" ")
+		s.WriteString(strings.ToUpper(f.Type.String()))
+	} else if f.AnonymousType != nil {
+		s.WriteString(" ")
+		s.WriteString(f.AnonymousType.String())
+	} else {
+		s.WriteString(" DOCUMENT (...)")
+	}
 
 	if f.IsNotNull {
 		s.WriteString(" NOT NULL")
@@ -72,180 +50,45 @@ func (f *FieldConstraint) String() string {
 	return s.String()
 }
 
-// MergeInferred adds the other.InferredBy to f.InferredBy and ensures there are no duplicates.
-func (f *FieldConstraint) MergeInferred(other *FieldConstraint) {
-	for _, by := range other.InferredBy {
-		duplicate := false
-		for _, fby := range f.InferredBy {
-			if fby.IsEqual(by) {
-				duplicate = true
-				break
-			}
-		}
-
-		if !duplicate {
-			f.InferredBy = append(f.InferredBy, by)
-		}
-	}
-}
-
 // HasDefaultValue returns this field contains a default value constraint.
 func (f *FieldConstraint) HasDefaultValue() bool {
 	return f.DefaultValue != nil
 }
 
 // FieldConstraints is a list of field constraints.
-type FieldConstraints []*FieldConstraint
-
-// NewFieldConstraints takes user-defined field constraints, validates them, infers additional
-// constraints if needed, and returns a valid FieldConstraints type that can be assigned to a table.
-func NewFieldConstraints(userConstraints []*FieldConstraint) (FieldConstraints, error) {
-	return FieldConstraints(userConstraints).Infer()
+type FieldConstraints struct {
+	Ordered          []*FieldConstraint
+	ByField          map[string]*FieldConstraint
+	AllowExtraFields bool
 }
 
-// Get a field constraint by path. Returns nil if not found.
-func (f FieldConstraints) Get(path document.Path) *FieldConstraint {
-	for _, fc := range f {
-		if fc.Path.IsEqual(path) {
-			return fc
+func NewFieldConstraints(constraints ...*FieldConstraint) (FieldConstraints, error) {
+	var fc FieldConstraints
+	for _, c := range constraints {
+		if err := fc.Add(c); err != nil {
+			return FieldConstraints{}, err
 		}
 	}
-
-	return nil
+	return fc, nil
 }
 
-// Infer additional constraints based on user defined ones.
-// For example, given the following table:
-//   CREATE TABLE foo (
-//      a.b[1] TEXT,
-//      c.e DEFAULT 10
-//    )
-// this function will return a TableInfo that behaves as if the table
-// had been created like this:
-//   CREATE TABLE foo(
-//      a DOCUMENT
-//      a.b ARRAY
-//      a.b[0] TEXT
-//      c DOCUMENT DEFAULT {}
-//      c.d DEFAULT 10
-//   )
-func (f FieldConstraints) Infer() (FieldConstraints, error) {
-	newConstraints := make(FieldConstraints, 0, len(f))
-
-	for _, fc := range f {
-		// loop over all the path fragments and
-		// create intermediary inferred constraints.
-		if len(fc.Path) > 1 {
-			for i := range fc.Path {
-				// stop before reaching the last fragment
-				// which will be added outside of this loop
-				if i+1 == len(fc.Path) {
-					break
-				}
-
-				newFc := FieldConstraint{
-					Path:       fc.Path[:i+1],
-					IsInferred: true,
-					InferredBy: []document.Path{fc.Path},
-				}
-				if fc.Path[i+1].FieldName != "" {
-					newFc.Type = types.DocumentValue
-					if fc.HasDefaultValue() {
-						newFc.DefaultValue = &inferredTableExpression{v: types.NewDocumentValue(document.NewFieldBuffer())}
-					}
-				} else {
-					newFc.Type = types.ArrayValue
-				}
-
-				err := newConstraints.Add(&newFc)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-
-		// add the non inferred path to the list
-		// and ensure there are no conflicts with
-		// existing ones.
-		err := newConstraints.Add(fc)
-		if err != nil {
-			return nil, err
-		}
+func MustNewFieldConstraints(constraints ...*FieldConstraint) FieldConstraints {
+	fc, err := NewFieldConstraints(constraints...)
+	if err != nil {
+		panic(err)
 	}
-
-	return newConstraints, nil
+	return fc
 }
 
 // Add a field constraint to the list. If another constraint exists for the same path
-// and they are equal, newFc will be ignored. Otherwise an error will be returned.
-// If newFc has been inferred by another constraint and another constraint exists with the same
-// path, their InferredBy member will be merged.
+// and they are equal, an error is returned.
 func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
-	for i, c := range *f {
-		if c.Path.IsEqual(newFc.Path) {
-			// if both non inferred, they are duplicate
-			if !newFc.IsInferred && !c.IsInferred {
-				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
-			}
-
-			// determine which one is inferred
-			inferredFc, nonInferredFc := c, newFc
-			if newFc.IsInferred {
-				inferredFc, nonInferredFc = nonInferredFc, inferredFc
-			}
-
-			// the inferred one may has less constraints than the user-defined one
-			inferredFc.DefaultValue = nonInferredFc.DefaultValue
-			inferredFc.IsNotNull = nonInferredFc.IsNotNull
-			// inferredFc.IsPrimaryKey = nonInferredFc.IsPrimaryKey
-
-			// detect if constraints are different
-			if !c.IsEqual(newFc) {
-				return fmt.Errorf("conflicting constraints: %q and %q", c.String(), newFc.String())
-			}
-
-			// validate default value
-			err := f.validateDefaultValue(newFc)
-			if err != nil {
-				return err
-			}
-
-			// if both inferred, merge the InferredBy member
-			if newFc.IsInferred && c.IsInferred {
-				c.MergeInferred(newFc)
-				return nil
-			}
-
-			// if existing one is not inferred, ignore newFc
-			if newFc.IsInferred && !c.IsInferred {
-				return nil
-			}
-
-			// if existing one is inferred, and newFc is not,
-			// replace it
-			(*f)[i] = newFc
-			return nil
-		}
+	if f.ByField == nil {
+		f.ByField = make(map[string]*FieldConstraint)
 	}
 
-	err := f.validateDefaultValue(newFc)
-	if err != nil {
-		return err
-	}
-
-	*f = append(*f, newFc)
-	return nil
-}
-
-func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
-	// ensure there is no default value on array indexes and their child nodes
-	if newFc.DefaultValue != nil {
-		for _, frag := range newFc.Path {
-			// an empty fieldname means this is an array index
-			if frag.FieldName == "" {
-				return fmt.Errorf("default value is not allowed on array indexes and their child nodes (%q)", newFc.Path)
-			}
-		}
+	if c, ok := f.ByField[newFc.Field]; ok {
+		return fmt.Errorf("conflicting constraints: %q and %q: %#v", c.String(), newFc.String(), f.ByField)
 	}
 
 	// ensure default value type is compatible
@@ -263,25 +106,27 @@ func (f *FieldConstraints) validateDefaultValue(newFc *FieldConstraint) error {
 			// which is the only one compatible for the moment.
 			// Integers can be converted to other integers, doubles, texts and bools.
 			switch newFc.Type {
-			case types.IntegerValue, types.DoubleValue, types.TextValue, types.BoolValue:
+			case types.IntegerValue, types.DoubleValue, types.TextValue, types.BooleanValue:
 			default:
 				return fmt.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
 			}
 		}
 	}
 
+	f.Ordered = append(f.Ordered, newFc)
+	f.ByField[newFc.Field] = newFc
 	return nil
 }
 
 // ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) (*document.FieldBuffer, error) {
+func (f *FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) (*document.FieldBuffer, error) {
 	// generate default values for all fields
-	for _, fc := range f {
+	for _, fc := range f.Ordered {
 		if fc.DefaultValue == nil {
 			continue
 		}
 
-		_, err := fc.Path.GetValueFromDocument(fb)
+		_, err := fb.GetByField(fc.Field)
 		if err == nil {
 			continue
 		}
@@ -294,7 +139,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 		if err != nil {
 			return nil, err
 		}
-		err = fb.Set(fc.Path, v)
+		err = fb.Set(document.NewPath(fc.Field), v)
 		if err != nil {
 			return nil, err
 		}
@@ -306,28 +151,26 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 	}
 
 	// ensure no field is missing
-	for _, fc := range f {
+	for _, fc := range f.Ordered {
 		if !fc.IsNotNull {
 			continue
 		}
 
-		v, err := fc.Path.GetValueFromDocument(fb)
-		if err == nil {
-			// if field is found, it has already been converted
-			// to the right type above.
-			// check if it is required but null.
-			if v.Type() == types.NullValue {
-				return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{fc.Path}}
+		v, err := fb.GetByField(fc.Field)
+		if err != nil {
+			if !errors.Is(err, types.ErrFieldNotFound) {
+				return nil, err
 			}
 
-			continue
+			return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{document.NewPath(fc.Field)}}
 		}
 
-		if !errors.Is(err, types.ErrFieldNotFound) {
-			return nil, err
+		// if field is found, it has already been converted
+		// to the right type above.
+		// check if it is required but null.
+		if v.Type() == types.NullValue {
+			return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{document.NewPath(fc.Field)}}
 		}
-
-		return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{fc.Path}}
 	}
 
 	return fb, nil
@@ -337,7 +180,7 @@ func (f FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBu
 // It converts any path that has a field constraint on it into the specified type using CAST.
 // If there is no constraint on an integer field or value, it converts it into a double.
 // Default values on missing fields are not applied.
-func (f FieldConstraints) ConvertDocument(d types.Document) (*document.FieldBuffer, error) {
+func (f *FieldConstraints) ConvertDocument(d types.Document) (*document.FieldBuffer, error) {
 	return f.convertDocumentAtPath(nil, d, CastConversion)
 }
 
@@ -368,22 +211,18 @@ func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, 
 // if there is a type constraint on a path, apply it.
 // if a value is an integer and has no constraint, convert it to double.
 func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
-	for _, fc := range f {
-		if !fc.Path.IsEqual(path) {
-			continue
-		}
-
-		// check if the constraint enforce a particular type
+	fc := f.GetFieldConstraintForPath(path)
+	if fc != nil {
+		// check if the constraint enforces a particular type
 		// and if so convert the value to the new type.
 		if fc.Type != 0 {
-			newV, err := conversionFn(v, fc.Path, fc.Type)
+			newV, err := conversionFn(v, path, fc.Type)
 			if err != nil {
 				return v, err
 			}
 
 			return newV, nil
 		}
-		break
 	}
 
 	// no constraint have been found for this path.
@@ -394,6 +233,28 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value,
 	}
 
 	return v, nil
+}
+
+func (f FieldConstraints) GetFieldConstraintForPath(path document.Path) *FieldConstraint {
+	cur := f
+	for i := range path {
+		fc, ok := cur.ByField[path[i].FieldName]
+		if !ok {
+			break
+		}
+
+		if i == len(path)-1 {
+			return fc
+		}
+
+		if fc.AnonymousType == nil {
+			return nil
+		}
+
+		cur = fc.AnonymousType.FieldConstraints
+	}
+
+	return nil
 }
 
 func (f FieldConstraints) convertDocumentAtPath(path document.Path, d types.Document, conversionFn ConversionFunc) (*document.FieldBuffer, error) {
@@ -430,37 +291,7 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a types.Array, 
 type TableExpression interface {
 	Bind(catalog *Catalog)
 	Eval(tx *Transaction, d types.Document) (types.Value, error)
-	IsEqual(other TableExpression) bool
 	String() string
-}
-
-type inferredTableExpression struct {
-	v types.Value
-}
-
-func (t *inferredTableExpression) Eval(tx *Transaction, d types.Document) (types.Value, error) {
-	return t.v, nil
-}
-
-func (t *inferredTableExpression) Bind(catalog *Catalog) {}
-
-func (t *inferredTableExpression) IsEqual(other TableExpression) bool {
-	if t == nil {
-		return other == nil
-	}
-	if other == nil {
-		return false
-	}
-	o, ok := other.(*inferredTableExpression)
-	if !ok {
-		return false
-	}
-	eq, _ := types.IsEqual(t.v, o.v)
-	return eq
-}
-
-func (t *inferredTableExpression) String() string {
-	return t.v.String()
 }
 
 // A TableConstraint represent a constraint specific to a table
@@ -474,19 +305,27 @@ type TableConstraint struct {
 }
 
 func (t *TableConstraint) String() string {
-	if t.Check != nil {
-		return fmt.Sprintf("CHECK (%s)", t.Check)
+	var sb strings.Builder
+
+	sb.WriteString("CONSTRAINT ")
+	sb.WriteString(stringutil.NormalizeIdentifier(t.Name, '"'))
+
+	switch {
+	case t.Check != nil:
+		sb.WriteString(" CHECK (")
+		sb.WriteString(t.Check.String())
+		sb.WriteString(")")
+	case t.PrimaryKey:
+		sb.WriteString(" PRIMARY KEY (")
+		sb.WriteString(t.Paths.String())
+		sb.WriteString(")")
+	case t.Unique:
+		sb.WriteString(" UNIQUE (")
+		sb.WriteString(t.Paths.String())
+		sb.WriteString(")")
 	}
 
-	if t.PrimaryKey {
-		return fmt.Sprintf("PRIMARY KEY (%s)", t.Paths)
-	}
-
-	if t.Unique {
-		return fmt.Sprintf("UNIQUE (%s)", t.Paths)
-	}
-
-	return ""
+	return sb.String()
 }
 
 // TableConstraints holds the list of CHECK constraints.
@@ -505,7 +344,7 @@ func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldB
 		}
 		var ok bool
 		switch v.Type() {
-		case types.BoolValue:
+		case types.BooleanValue:
 			ok = v.V().(bool)
 		case types.IntegerValue:
 			ok = v.V().(int64) != 0
@@ -523,69 +362,41 @@ func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldB
 	return nil
 }
 
-func (t *TableConstraints) AddCheck(tableName string, e TableExpression) {
-	var i int
-	for _, tc := range *t {
-		if tc.Check != nil {
-			i++
-		}
-	}
-
-	name := tableName + "_" + "check"
-	if i > 0 {
-		name += strconv.Itoa(i)
-	}
-
-	*t = append(*t, &TableConstraint{
-		Name:  name,
-		Check: e,
-	})
+type AnonymousType struct {
+	FieldConstraints FieldConstraints
 }
 
-func (t *TableConstraints) AddPrimaryKey(tableName string, p document.Paths) error {
-	for _, tc := range *t {
-		if tc.PrimaryKey {
-			return fmt.Errorf("multiple primary keys for table %q are not allowed", tableName)
-		}
+func (an *AnonymousType) AddFieldConstraint(newFc *FieldConstraint) error {
+	if an.FieldConstraints.ByField == nil {
+		an.FieldConstraints.ByField = make(map[string]*FieldConstraint)
 	}
 
-	*t = append(*t, &TableConstraint{
-		Name:       tableName + "_" + "pk",
-		Paths:      p,
-		PrimaryKey: true,
-	})
-
-	return nil
+	return an.FieldConstraints.Add(newFc)
 }
 
-// AddUnique adds a unique constraint to the table.
-// If the constraint is already present, it is ignored.
-func (t *TableConstraints) AddUnique(tableName string, p document.Paths) {
-	for _, tc := range *t {
-		if tc.Unique && tc.Paths.IsEqual(p) {
-			return
+func (an *AnonymousType) String() string {
+	var sb strings.Builder
+
+	sb.WriteString("(")
+
+	hasConstraints := false
+	for i, fc := range an.FieldConstraints.Ordered {
+		if i > 0 {
+			sb.WriteString(", ")
 		}
+
+		sb.WriteString(fc.String())
+		hasConstraints = true
 	}
 
-	*t = append(*t, &TableConstraint{
-		Name:   fmt.Sprintf("%s_%s_unique", tableName, p.String()),
-		Paths:  p,
-		Unique: true,
-	})
-}
-
-func (t *TableConstraints) Merge(other TableConstraints) error {
-	for _, tc := range other {
-		if tc.PrimaryKey {
-			if err := t.AddPrimaryKey(tc.Name, tc.Paths); err != nil {
-				return err
-			}
-		} else if tc.Unique {
-			t.AddUnique(tc.Name, tc.Paths)
-		} else if tc.Check != nil {
-			t.AddCheck(tc.Name, tc.Check)
+	if an.FieldConstraints.AllowExtraFields {
+		if hasConstraints {
+			sb.WriteString(", ")
 		}
+		sb.WriteString("...")
 	}
 
-	return nil
+	sb.WriteString(")")
+
+	return sb.String()
 }

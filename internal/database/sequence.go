@@ -14,26 +14,19 @@ import (
 var sequenceTableInfo = &TableInfo{
 	TableName:      SequenceTableName,
 	StoreNamespace: SequenceTableNamespace,
-	FieldConstraints: []*FieldConstraint{
-		{
-			Path: document.Path{
-				document.PathFragment{
-					FieldName: "name",
-				},
-			},
-			Type: types.TextValue,
+	FieldConstraints: MustNewFieldConstraints(
+		&FieldConstraint{
+			Field: "name",
+			Type:  types.TextValue,
 		},
-		{
-			Path: document.Path{
-				document.PathFragment{
-					FieldName: "seq",
-				},
-			},
-			Type: types.IntegerValue,
+		&FieldConstraint{
+			Field: "seq",
+			Type:  types.IntegerValue,
 		},
-	},
+	),
 	TableConstraints: []*TableConstraint{
 		{
+			Name: SequenceTableName + "_pk",
 			Paths: []document.Path{
 				document.NewPath("name"),
 			},

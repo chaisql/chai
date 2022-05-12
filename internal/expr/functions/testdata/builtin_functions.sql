@@ -17,7 +17,7 @@
 'double'
 
 > typeof(true)
-'bool'
+'boolean'
 
 > typeof('hello')
 'text'

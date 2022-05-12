@@ -1,2 +1,0 @@
-go test fuzz v1
-string("SELECT a, b FROM test")

@@ -1,7 +1,6 @@
 package expr_test
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/genjidb/genji/internal/testutil"
@@ -25,8 +24,4 @@ func TestConcatExpr(t *testing.T) {
 			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
 		})
 	}
-}
-
-func TestCast(t *testing.T) {
-	testutil.ExprRunner(t, filepath.Join("testdata", "cast.sql"))
 }

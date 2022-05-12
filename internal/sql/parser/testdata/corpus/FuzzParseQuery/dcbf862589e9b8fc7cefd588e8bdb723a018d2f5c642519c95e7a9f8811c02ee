@@ -1,2 +1,0 @@
-go test fuzz v1
-string("CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)")

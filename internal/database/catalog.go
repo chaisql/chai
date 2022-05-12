@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
@@ -118,7 +119,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 		return nil, err
 	}
 
-	ti := o.(*TableInfo)
+	ti := o.(*TableInfoRelation).Info
 
 	s := tx.Session.GetNamespace(ti.StoreNamespace)
 
@@ -137,7 +138,7 @@ func (c *Catalog) GetTableInfo(tableName string) (*TableInfo, error) {
 		return nil, err
 	}
 
-	return r.(*TableInfo), nil
+	return r.(*TableInfoRelation).Info, nil
 }
 
 // CreateTable creates a table with the given name.
@@ -165,12 +166,6 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		return errors.WithStack(errs.AlreadyExistsError{Name: tableName})
 	}
 
-	// replace user-defined constraints by inferred list of constraints
-	info.FieldConstraints, err = info.FieldConstraints.Infer()
-	if err != nil {
-		return err
-	}
-
 	if info.StoreNamespace == 0 {
 		info.StoreNamespace, err = c.generateStoreName(tx)
 		if err != nil {
@@ -178,21 +173,24 @@ func (c *Catalog) CreateTable(tx *Transaction, tableName string, info *TableInfo
 		}
 	}
 
-	// bind default values with catalog
-	for _, fc := range info.FieldConstraints {
-		if fc.DefaultValue == nil {
-			continue
-		}
+	if len(info.FieldConstraints.Ordered) != 0 {
+		// bind default values with catalog
+		for _, fc := range info.FieldConstraints.Ordered {
+			if fc.DefaultValue == nil {
+				continue
+			}
 
-		fc.DefaultValue.Bind(c)
+			fc.DefaultValue.Bind(c)
+		}
 	}
 
-	err = c.CatalogTable.Insert(tx, info)
+	rel := TableInfoRelation{Info: info}
+	err = c.CatalogTable.Insert(tx, &rel)
 	if err != nil {
 		return err
 	}
 
-	return c.Cache.Add(tx, info)
+	return c.Cache.Add(tx, &rel)
 }
 
 // DropTable deletes a table from the catalog
@@ -255,12 +253,13 @@ func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
 		return err
 	}
 
-	err = c.Cache.Add(tx, info)
+	rel := IndexInfoRelation{Info: info}
+	err = c.Cache.Add(tx, &rel)
 	if err != nil {
 		return err
 	}
 
-	return c.CatalogTable.Insert(tx, info)
+	return c.CatalogTable.Insert(tx, &rel)
 }
 
 // GetIndex returns an index by name.
@@ -281,7 +280,7 @@ func (c *Catalog) GetIndexInfo(indexName string) (*IndexInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.(*IndexInfo), nil
+	return r.(*IndexInfoRelation).Info, nil
 }
 
 // ListIndexes returns all indexes for a given table name. If tableName is empty
@@ -349,27 +348,30 @@ func (c *Catalog) AddFieldConstraint(tx *Transaction, tableName string, fc *Fiel
 	if err != nil {
 		return err
 	}
-	ti := r.(*TableInfo)
+	ti := r.(*TableInfoRelation).Info
 
 	clone := ti.Clone()
 	if fc != nil {
-		err = clone.FieldConstraints.Add(fc)
+		err = clone.AddFieldConstraint(fc)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = clone.TableConstraints.Merge(tcs)
+	for _, tc := range tcs {
+		err = clone.AddTableConstraint(tc)
+		if err != nil {
+			return err
+		}
+	}
+
+	cloneRel := &TableInfoRelation{Info: clone}
+	err = c.Cache.Replace(tx, cloneRel)
 	if err != nil {
 		return err
 	}
 
-	err = c.Cache.Replace(tx, clone)
-	if err != nil {
-		return err
-	}
-
-	return c.CatalogTable.Replace(tx, tableName, clone)
+	return c.CatalogTable.Replace(tx, tableName, cloneRel)
 }
 
 // RenameTable renames a table.
@@ -394,17 +396,20 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 		return err
 	}
 
-	ti := o.(*TableInfo)
+	ti := o.(*TableInfoRelation).Info
 
 	clone := ti.Clone()
 	clone.TableName = newName
 
-	err = c.CatalogTable.Insert(tx, clone)
+	cloneRel := &TableInfoRelation{
+		Info: clone,
+	}
+	err = c.CatalogTable.Insert(tx, cloneRel)
 	if err != nil {
 		return err
 	}
 
-	err = c.Cache.Add(tx, clone)
+	err = c.Cache.Add(tx, cloneRel)
 	if err != nil {
 		return err
 	}
@@ -414,17 +419,18 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 		if err != nil {
 			return err
 		}
-		info := r.(*IndexInfo)
+		info := r.(*IndexInfoRelation).Info
 
 		idxClone := info.Clone()
 		idxClone.TableName = clone.TableName
 
-		err = c.Cache.Add(tx, idxClone)
+		cloneRel := &IndexInfoRelation{Info: idxClone}
+		err = c.Cache.Add(tx, cloneRel)
 		if err != nil {
 			return err
 		}
 
-		err = c.CatalogTable.Replace(tx, idx.IndexName, idx)
+		err = c.CatalogTable.Replace(tx, idx.IndexName, cloneRel)
 		if err != nil {
 			return err
 		}
@@ -525,6 +531,60 @@ type Relation interface {
 	GenerateBaseName() string
 }
 
+type TableInfoRelation struct {
+	Info *TableInfo
+}
+
+func (r *TableInfoRelation) Type() string {
+	return "table"
+}
+
+func (r *TableInfoRelation) Name() string {
+	return r.Info.TableName
+}
+
+func (r *TableInfoRelation) SetName(name string) {
+	r.Info.TableName = name
+}
+
+func (r *TableInfoRelation) GenerateBaseName() string {
+	return r.Info.TableName
+}
+
+type IndexInfoRelation struct {
+	Info *IndexInfo
+}
+
+func (r *IndexInfoRelation) Type() string {
+	return "index"
+}
+
+func (r *IndexInfoRelation) Name() string {
+	return r.Info.IndexName
+}
+
+func (r *IndexInfoRelation) SetName(name string) {
+	r.Info.IndexName = name
+}
+
+func (r *IndexInfoRelation) GenerateBaseName() string {
+	return fmt.Sprintf("%s_%s_idx", r.Info.TableName, pathsToIndexName(r.Info.Paths))
+}
+
+func pathsToIndexName(paths []document.Path) string {
+	var s strings.Builder
+
+	for i, p := range paths {
+		if i > 0 {
+			s.WriteRune('_')
+		}
+
+		s.WriteString(p.String())
+	}
+
+	return s.String()
+}
+
 type catalogCache struct {
 	tables    map[string]Relation
 	indexes   map[string]Relation
@@ -541,11 +601,11 @@ func newCatalogCache() *catalogCache {
 
 func (c *catalogCache) Load(tables []TableInfo, indexes []IndexInfo, sequences []Sequence) {
 	for i := range tables {
-		c.tables[tables[i].TableName] = &tables[i]
+		c.tables[tables[i].TableName] = &TableInfoRelation{Info: &tables[i]}
 	}
 
 	for i := range indexes {
-		c.indexes[indexes[i].IndexName] = &indexes[i]
+		c.indexes[indexes[i].IndexName] = &IndexInfoRelation{Info: &indexes[i]}
 	}
 
 	for i := range sequences {
@@ -701,7 +761,7 @@ func (c *catalogCache) ListObjects(tp string) []string {
 func (c *catalogCache) GetTableIndexes(tableName string) []*IndexInfo {
 	var indexes []*IndexInfo
 	for _, o := range c.indexes {
-		idx := o.(*IndexInfo)
+		idx := o.(*IndexInfoRelation).Info
 		if idx.TableName != tableName {
 			continue
 		}
@@ -723,54 +783,35 @@ func newCatalogStore() *CatalogStore {
 			StoreNamespace: CatalogTableNamespace,
 			TableConstraints: []*TableConstraint{
 				{
+					Name:       CatalogTableName + "_pk",
 					PrimaryKey: true,
 					Paths: []document.Path{
 						document.NewPath("name"),
 					},
 				},
 			},
-			FieldConstraints: []*FieldConstraint{
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "name",
-						},
-					},
-					Type: types.TextValue,
+			FieldConstraints: MustNewFieldConstraints(
+				&FieldConstraint{
+					Field: "name",
+					Type:  types.TextValue,
 				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "type",
-						},
-					},
-					Type: types.TextValue,
+				&FieldConstraint{
+					Field: "type",
+					Type:  types.TextValue,
 				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "table_name",
-						},
-					},
-					Type: types.TextValue,
+				&FieldConstraint{
+					Field: "table_name",
+					Type:  types.TextValue,
 				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "sql",
-						},
-					},
-					Type: types.TextValue,
+				&FieldConstraint{
+					Field: "sql",
+					Type:  types.TextValue,
 				},
-				{
-					Path: document.Path{
-						document.PathFragment{
-							FieldName: "store_name",
-						},
-					},
-					Type: types.BlobValue,
+				&FieldConstraint{
+					Field: "store_name",
+					Type:  types.BlobValue,
 				},
-			},
+			),
 		},
 	}
 }
@@ -827,10 +868,10 @@ func (s *CatalogStore) Delete(tx *Transaction, name string) error {
 
 func relationToDocument(r Relation) types.Document {
 	switch t := r.(type) {
-	case *TableInfo:
-		return tableInfoToDocument(t)
-	case *IndexInfo:
-		return indexInfoToDocument(t)
+	case *TableInfoRelation:
+		return tableInfoToDocument(t.Info)
+	case *IndexInfoRelation:
+		return indexInfoToDocument(t.Info)
 	case *Sequence:
 		return sequenceInfoToDocument(t.Info)
 	}

@@ -31,7 +31,7 @@ func NewNullValue() Value {
 // NewBoolValue encodes x and returns a value.
 func NewBoolValue(x bool) Value {
 	return &value{
-		tp: BoolValue,
+		tp: BooleanValue,
 		v:  x,
 	}
 }
@@ -115,7 +115,7 @@ func IsTruthy(v Value) (bool, error) {
 // This function doesn't perform any allocation.
 func IsZeroValue(v Value) (bool, error) {
 	switch v.Type() {
-	case BoolValue:
+	case BooleanValue:
 		return v.V() == false, nil
 	case IntegerValue:
 		return v.V() == int64(0), nil
@@ -186,7 +186,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 	case NullValue:
 		dst.WriteString("NULL")
 		return nil
-	case BoolValue:
+	case BooleanValue:
 		dst.WriteString(strconv.FormatBool(v.V().(bool)))
 		return nil
 	case IntegerValue:
@@ -288,7 +288,7 @@ func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
 // MarshalJSON implements the json.Marshaler interface.
 func (v *value) MarshalJSON() ([]byte, error) {
 	switch v.Type() {
-	case BoolValue, IntegerValue, TextValue:
+	case BooleanValue, IntegerValue, TextValue:
 		return v.MarshalText()
 	case NullValue:
 		return []byte("null"), nil

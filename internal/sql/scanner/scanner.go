@@ -65,10 +65,19 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 		return s.scanString()
 	case '.':
 		ch1, _ := s.r.read()
-		s.r.unread()
 		if isDigit(ch1) {
+			s.r.unread()
 			return s.scanNumber()
 		}
+		if ch1 == '.' {
+			ch2, _ := s.r.read()
+			if ch2 == '.' {
+				return ELLIPSIS, pos, "..."
+			}
+
+			return ILLEGAL, pos, ""
+		}
+		s.r.unread()
 		return DOT, pos, ""
 	case '$':
 		tok, _, lit := s.scanIdent(false)

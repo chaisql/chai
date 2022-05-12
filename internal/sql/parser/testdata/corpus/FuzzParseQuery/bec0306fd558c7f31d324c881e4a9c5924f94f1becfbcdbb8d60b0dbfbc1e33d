@@ -1,2 +1,0 @@
-go test fuzz v1
-string("CREATE TABLE test(v VARCHAR(1 IN [1, 2, 3] AND foo > 4) )")

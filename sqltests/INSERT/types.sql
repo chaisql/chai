@@ -227,3 +227,18 @@ INSERT INTO test_e {};
 CREATE TABLE test_e (a CHARACTER(64) NOT NULL);
 INSERT INTO test_e {};
 -- error:
+
+-- test: Should fail if the fields cannot be converted to specified field constraints
+CREATE TABLE test (a DOUBLE);
+INSERT INTO test VALUES ([1]);
+-- error:
+
+-- test: Conversion
+CREATE TABLE test (a INT);
+INSERT INTO test (a) VALUES (1.5);
+SELECT a FROM test;
+/* result:
+{
+  "a": 1
+}
+*/

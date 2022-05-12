@@ -422,14 +422,14 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 func (p *Parser) parseType() (types.ValueType, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
+	case scanner.TYPEANY:
+		return types.AnyValue, nil
 	case scanner.TYPEARRAY:
 		return types.ArrayValue, nil
-	case scanner.TYPEBLOB:
+	case scanner.TYPEBLOB, scanner.TYPEBYTES:
 		return types.BlobValue, nil
-	case scanner.TYPEBOOL:
-		return types.BoolValue, nil
-	case scanner.TYPEBYTES:
-		return types.BlobValue, nil
+	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
+		return types.BooleanValue, nil
 	case scanner.TYPEDOCUMENT:
 		return types.DocumentValue, nil
 	case scanner.TYPEREAL:

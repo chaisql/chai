@@ -20,9 +20,9 @@ var base64Encoding = base64.NewEncoding(base64encoder).WithPadding(base64.NoPadd
 // AppendBool takes a bool and returns its binary representation.
 func AppendBool(buf []byte, x bool) []byte {
 	if x {
-		return append(buf, 1)
+		return append(buf, 255)
 	}
-	return append(buf, 0)
+	return append(buf, 254)
 }
 
 // DecodeBool takes a byte slice and decodes it into a boolean.
@@ -30,7 +30,7 @@ func DecodeBool(buf []byte) (bool, error) {
 	if len(buf) == 0 {
 		return false, errors.New("cannot decode buffer to bool")
 	}
-	return buf[0] == 1, nil
+	return buf[0] == 255, nil
 }
 
 // AppendUint64 takes an uint64 and returns its binary representation.

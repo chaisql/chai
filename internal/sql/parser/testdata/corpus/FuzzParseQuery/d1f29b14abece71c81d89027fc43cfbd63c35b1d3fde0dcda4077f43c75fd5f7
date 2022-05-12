@@ -1,2 +1,0 @@
-go test fuzz v1
-string("UPDATE test UNSET a, b WHERE age = 10")

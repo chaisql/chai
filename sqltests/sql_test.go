@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,7 +16,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var logger *log.Logger
+
+func logF(format string, v ...any) {
+	if logger != nil {
+		logger.Printf(format, v...)
+	}
+}
+
+func logLn(v ...any) {
+	if logger != nil {
+		logger.Println(v...)
+	}
+}
+
 func TestSQL(t *testing.T) {
+	if testing.Verbose() {
+		logger = log.New(os.Stderr, "[SQL TESTS] ", 0)
+	}
+
 	err := filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -49,14 +68,18 @@ func TestSQL(t *testing.T) {
 		t.Run(ts.Filename, func(t *testing.T) {
 			setup := func(t *testing.T, db *genji.DB) {
 				t.Helper()
-				err := db.Exec(ts.Setup, "\n")
+				err := db.Exec(ts.Setup)
 				assert.NoError(t, err)
 			}
+
+			logF("Testing file %q with %d suites\n", absPath, len(ts.Suites))
 
 			if len(ts.Suites) > 0 {
 				for _, suite := range ts.Suites {
 					t.Run(suite.Name, func(t *testing.T) {
 						var tests []*test
+
+						logLn("- Testing suite:", suite.Name)
 
 						for _, tt := range suite.Tests {
 							if tt.Only {
@@ -69,6 +92,8 @@ func TestSQL(t *testing.T) {
 							tests = suite.Tests
 						}
 
+						logLn("- Running", len(tests), "tests")
+
 						for _, test := range tests {
 							t.Run(test.Name, func(t *testing.T) {
 								db, err := genji.Open(":memory:")
@@ -76,6 +101,8 @@ func TestSQL(t *testing.T) {
 								defer db.Close()
 
 								setup(t, db)
+
+								logLn("-- Running test:", test.Name)
 
 								// post setup
 								if suite.PostSetup != "" {
@@ -198,7 +225,10 @@ func parse(r io.Reader, filename string) *testSuite {
 				})
 			}
 
-			ts.Suites[suiteIndex].Tests = append(ts.Suites[suiteIndex].Tests, curTest)
+			// add test to each suite
+			for i := range ts.Suites {
+				ts.Suites[i].Tests = append(ts.Suites[i].Tests, curTest)
+			}
 		case strings.HasPrefix(line, "/* result:"), strings.HasPrefix(line, "/*result:"):
 			readingResult = true
 		case strings.HasPrefix(line, "/* sorted-result:"):

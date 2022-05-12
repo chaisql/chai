@@ -85,7 +85,7 @@ func encode(buf []byte, v types.Value) ([]byte, error) {
 	case types.TextValue:
 		text := v.V().(string)
 		buf, err = AppendBase64(buf, []byte(text))
-	case types.BoolValue:
+	case types.BooleanValue:
 		buf, err = AppendBool(buf, v.V().(bool)), nil
 	case types.IntegerValue:
 		buf = AppendInt64(buf, v.V().(int64))

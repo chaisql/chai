@@ -223,7 +223,10 @@ func (fb *FieldBuffer) Set(path Path, v types.Value) error {
 		return err
 	}
 
-	fb.setFieldValue(path[0].FieldName, va)
+	err = fb.setFieldValue(path[0].FieldName, va)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

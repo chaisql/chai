@@ -81,7 +81,7 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
-	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.Name()))
+	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.TableName))
 
 	ptr := DocumentPointer{
 		Table: table,

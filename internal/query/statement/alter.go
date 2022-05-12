@@ -53,8 +53,8 @@ func (stmt AlterTableAddField) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	var fc *database.FieldConstraint
-	if stmt.Info.FieldConstraints != nil {
-		fc = stmt.Info.FieldConstraints[0]
+	if len(stmt.Info.FieldConstraints.Ordered) != 0 {
+		fc = stmt.Info.FieldConstraints.Ordered[0]
 	}
 
 	err := ctx.Catalog.AddFieldConstraint(ctx.Tx, stmt.Info.TableName, fc, stmt.Info.TableConstraints)

@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/types"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.
@@ -70,41 +71,52 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 	// expect field definitions, but only table constraints.
 	var parsingTableConstraints bool
 
+	stmt.Info.FieldConstraints, _ = database.NewFieldConstraints()
+
+	var allTableConstraints []*database.TableConstraint
+
 	// Parse constraints.
 	for {
-		// we start by checking if it is a table constraint,
+		// start with the ellipsis token.
+		// if found, stop parsing constraints, as it should be the last one.
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok == scanner.ELLIPSIS {
+			stmt.Info.FieldConstraints.AllowExtraFields = true
+			break
+		}
+		p.Unscan()
+
+		// then we check if it is a table constraint,
 		// as it's easier to determine
-		ok, err := p.parseTableConstraint(stmt)
+		tc, err := p.parseTableConstraint(stmt)
 		if err != nil {
 			return err
 		}
 
 		// no table constraint found
-		if !ok && parsingTableConstraints {
+		if tc == nil && parsingTableConstraints {
 			tok, pos, lit := p.ScanIgnoreWhitespace()
 			return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 		}
 
-		// only PRIMARY KEY(path) is currently supported.
-		if ok {
+		if tc != nil {
 			parsingTableConstraints = true
+			allTableConstraints = append(allTableConstraints, tc)
 		}
 
 		// if set to false, we are still parsing field definitions
 		if !parsingTableConstraints {
-			var fc database.FieldConstraint
-			err := p.parseFieldDefinition(&fc, &stmt.Info)
+			fc, tcs, err := p.parseFieldDefinition(document.Path{})
 			if err != nil {
 				return err
 			}
 
-			// if the field definition is empty, we ignore it
-			if !fc.IsEmpty() {
-				err = stmt.Info.FieldConstraints.Add(&fc)
-				if err != nil {
-					return err
-				}
+			err = stmt.Info.AddFieldConstraint(fc)
+			if err != nil {
+				return err
 			}
+
+			allTableConstraints = append(allTableConstraints, tcs...)
 		}
 
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
@@ -118,15 +130,25 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 		return err
 	}
 
+	// add all table constraints to the table info
+	for _, tc := range allTableConstraints {
+		err := stmt.Info.AddTableConstraint(tc)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint, info *database.TableInfo) error {
+func (p *Parser) parseFieldDefinition(parent document.Path) (*database.FieldConstraint, []*database.TableConstraint, error) {
 	var err error
 
-	fc.Path, err = p.parsePath()
+	var fc database.FieldConstraint
+
+	fc.Field, err = p.parseIdent()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	fc.Type, err = p.parseType()
@@ -134,7 +156,24 @@ func (p *Parser) parseFieldDefinition(fc *database.FieldConstraint, info *databa
 		p.Unscan()
 	}
 
-	var addedTc int
+	path := parent.ExtendField(fc.Field)
+
+	var tcs []*database.TableConstraint
+
+	if fc.Type.IsAny() || fc.Type == types.DocumentValue {
+		anon, nestedTCs, err := p.parseDocumentDefinition(path)
+		if err != nil {
+			return nil, nil, err
+		}
+		if anon != nil {
+			fc.Type = types.DocumentValue
+			fc.AnonymousType = anon
+		}
+
+		if len(nestedTCs) != 0 {
+			tcs = append(tcs, nestedTCs...)
+		}
+	}
 
 LOOP:
 	for {
@@ -143,35 +182,34 @@ LOOP:
 		case scanner.PRIMARY:
 			// Parse "KEY"
 			if err := p.parseTokens(scanner.KEY); err != nil {
-				return err
+				return nil, nil, err
 			}
 
-			err = info.TableConstraints.AddPrimaryKey(info.TableName, []document.Path{fc.Path})
-			if err != nil {
-				return err
-			}
-			addedTc++
+			tcs = append(tcs, &database.TableConstraint{
+				PrimaryKey: true,
+				Paths:      document.Paths{path},
+			})
 		case scanner.NOT:
 			// Parse "NULL"
 			if err := p.parseTokens(scanner.NULL); err != nil {
-				return err
+				return nil, nil, err
 			}
 
 			// if it's already not null we return an error
 			if fc.IsNotNull {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+				return nil, nil, newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}
 
 			fc.IsNotNull = true
 		case scanner.DEFAULT:
 			// if it has already a default value we return an error
 			if fc.HasDefaultValue() {
-				return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
+				return nil, nil, newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}
 
 			withParentheses, err := p.parseOptional(scanner.LPAREN)
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 
 			// Parse default value expression.
@@ -203,7 +241,7 @@ LOOP:
 				scanner.NEXT,
 			)
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 
 			fc.DefaultValue = expr.Constraint(e)
@@ -211,111 +249,144 @@ LOOP:
 			if withParentheses {
 				_, err = p.parseOptional(scanner.RPAREN)
 				if err != nil {
-					return err
+					return nil, nil, err
 				}
 			}
 		case scanner.UNIQUE:
-			info.TableConstraints.AddUnique(info.TableName, []document.Path{fc.Path})
-			addedTc++
+			tcs = append(tcs, &database.TableConstraint{
+				Unique: true,
+				Paths:  document.Paths{path},
+			})
 		case scanner.CHECK:
-			// Parse "("
-			err := p.parseTokens(scanner.LPAREN)
+			e, paths, err := p.parseCheckConstraint()
 			if err != nil {
-				return err
+				return nil, nil, err
 			}
 
-			e, err := p.ParseExpr()
-			if err != nil {
-				return err
-			}
-
-			// Parse ")"
-			err = p.parseTokens(scanner.RPAREN)
-			if err != nil {
-				return err
-			}
-
-			info.TableConstraints.AddCheck(info.TableName, expr.Constraint(e))
-			addedTc++
+			tcs = append(tcs, &database.TableConstraint{
+				Check: expr.Constraint(e),
+				Paths: paths,
+			})
 		default:
 			p.Unscan()
 			break LOOP
 		}
 	}
 
-	// if no constraint was added we return an error. i.e:
-	// CREATE TABLE t (a)
-	if fc.IsEmpty() && addedTc == 0 {
-		tok, pos, lit := p.ScanIgnoreWhitespace()
-		return newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", "TYPE"}, pos)
-	}
-
-	return nil
+	return &fc, tcs, nil
 }
 
-func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (bool, error) {
+func (p *Parser) parseDocumentDefinition(parent document.Path) (*database.AnonymousType, []*database.TableConstraint, error) {
+	err := p.parseTokens(scanner.LPAREN)
+	if err != nil {
+		p.Unscan()
+		return nil, nil, nil
+	}
+
+	var anon database.AnonymousType
+	var nestedTcs []*database.TableConstraint
+
+	for {
+		// start with the ellipsis token.
+		// if found, stop parsing constraints, as it should be the last one.
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok == scanner.ELLIPSIS {
+			anon.FieldConstraints.AllowExtraFields = true
+			break
+		}
+		p.Unscan()
+
+		fc, tcs, err := p.parseFieldDefinition(parent)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		err = anon.AddFieldConstraint(fc)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		nestedTcs = append(nestedTcs, tcs...)
+
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+	}
+
+	err = p.parseTokens(scanner.RPAREN)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &anon, nestedTcs, nil
+}
+
+func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*database.TableConstraint, error) {
 	var err error
 
-	tok, _, _ := p.ScanIgnoreWhitespace()
+	var tc database.TableConstraint
+	var requiresTc bool
+
+	if ok, _ := p.parseOptional(scanner.CONSTRAINT); ok {
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		switch tok {
+		case scanner.IDENT, scanner.STRING:
+			tc.Name = lit
+		default:
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"IDENT", "STRING"}, pos)
+		}
+
+		requiresTc = true
+	}
+
+	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.PRIMARY:
 		// Parse "KEY ("
 		err = p.parseTokens(scanner.KEY)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
-		paths, err := p.parsePathList()
+		tc.PrimaryKey = true
+
+		tc.Paths, err = p.parsePathList()
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		if len(paths) == 0 {
+		if len(tc.Paths) == 0 {
 			tok, pos, lit := p.ScanIgnoreWhitespace()
-			return false, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
-
-		if err := stmt.Info.TableConstraints.AddPrimaryKey(stmt.Info.TableName, paths); err != nil {
-			return false, err
-		}
-
-		return true, nil
 	case scanner.UNIQUE:
-		paths, err := p.parsePathList()
+		tc.Unique = true
+		tc.Paths, err = p.parsePathList()
 		if err != nil {
-			return false, err
+			return nil, err
 		}
-		if len(paths) == 0 {
+		if len(tc.Paths) == 0 {
 			tok, pos, lit := p.ScanIgnoreWhitespace()
-			return false, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
-
-		stmt.Info.TableConstraints.AddUnique(stmt.Info.TableName, paths)
-		return true, nil
 	case scanner.CHECK:
-		// Parse "("
-		err = p.parseTokens(scanner.LPAREN)
+		e, paths, err := p.parseCheckConstraint()
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
-		e, err := p.ParseExpr()
-		if err != nil {
-			return false, err
-		}
-
-		// Parse ")"
-		err = p.parseTokens(scanner.RPAREN)
-		if err != nil {
-			return false, err
-		}
-
-		stmt.Info.TableConstraints.AddCheck(stmt.Info.TableName, expr.Constraint(e))
-
-		return true, nil
+		tc.Check = expr.Constraint(e)
+		tc.Paths = paths
 	default:
+		if requiresTc {
+			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"PRIMARY", "UNIQUE", "CHECK"}, pos)
+		}
+
 		p.Unscan()
-		return false, nil
+		return nil, nil
 	}
+
+	return &tc, nil
 }
 
 // parseCreateIndexStatement parses a create index string and returns a Statement AST object.
@@ -593,4 +664,49 @@ func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, 
 		stmt.Info.Cache = 1
 	}
 	return &stmt, err
+}
+
+// parseCheckConstraint parses a check constraint.
+// it assumes the CHECK token has already been parsed.
+func (p *Parser) parseCheckConstraint() (expr.Expr, []document.Path, error) {
+	// Parse "("
+	err := p.parseTokens(scanner.LPAREN)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	e, err := p.ParseExpr()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var paths []document.Path
+	// extract all the paths from the expression
+	expr.Walk(e, func(e expr.Expr) bool {
+		switch t := e.(type) {
+		case expr.Path:
+			pt := document.Path(t)
+			// ensure that the path is not already in the list
+			found := false
+			for _, p := range paths {
+				if p.IsEqual(pt) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				paths = append(paths, document.Path(t))
+			}
+		}
+
+		return true
+	})
+
+	// Parse ")"
+	err = p.parseTokens(scanner.RPAREN)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return e, paths, nil
 }

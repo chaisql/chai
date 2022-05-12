@@ -9,11 +9,11 @@ CREATE TABLE test(
     id int primary key,
     a int,
     b double,
-    c bool,
+    c boolean,
     d text,
     e blob,
-    f.a int, -- f document
-    g[0] int -- e array
+    f (a int), -- f document
+    g ARRAY -- g array
 );
 
 INSERT INTO test VALUES
@@ -25,7 +25,7 @@ INSERT INTO test VALUES
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     },
     {
         id: 2,
@@ -35,7 +35,7 @@ INSERT INTO test VALUES
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     },
     {
         id: 3,
@@ -45,7 +45,7 @@ INSERT INTO test VALUES
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     },
     {
         id: 4,
@@ -55,7 +55,7 @@ INSERT INTO test VALUES
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     };
 
 -- suite: no index
@@ -92,7 +92,7 @@ SELECT * FROM test WHERE id = 1;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -107,7 +107,7 @@ SELECT * FROM test WHERE id != 1;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -117,7 +117,7 @@ SELECT * FROM test WHERE id != 1;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -127,7 +127,7 @@ SELECT * FROM test WHERE id != 1;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -142,7 +142,7 @@ SELECT * FROM test WHERE id > 1;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -152,7 +152,7 @@ SELECT * FROM test WHERE id > 1;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -162,7 +162,7 @@ SELECT * FROM test WHERE id > 1;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -177,7 +177,7 @@ SELECT * FROM test WHERE id >= 1;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -187,7 +187,7 @@ SELECT * FROM test WHERE id >= 1;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -197,7 +197,7 @@ SELECT * FROM test WHERE id >= 1;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -207,7 +207,7 @@ SELECT * FROM test WHERE id >= 1;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -222,7 +222,7 @@ SELECT * FROM test WHERE id < 3;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -232,7 +232,7 @@ SELECT * FROM test WHERE id < 3;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -247,7 +247,7 @@ SELECT * FROM test WHERE id <= 3;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -257,7 +257,7 @@ SELECT * FROM test WHERE id <= 3;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -267,7 +267,7 @@ SELECT * FROM test WHERE id <= 3;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -282,7 +282,7 @@ SELECT * FROM test WHERE id IN (1, 3);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -292,7 +292,7 @@ SELECT * FROM test WHERE id IN (1, 3);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -307,7 +307,7 @@ SELECT * FROM test WHERE id NOT IN (1, 3);
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -317,7 +317,7 @@ SELECT * FROM test WHERE id NOT IN (1, 3);
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -332,7 +332,7 @@ SELECT * FROM test WHERE a = 10;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -347,7 +347,7 @@ SELECT * FROM test WHERE a != 10;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -357,7 +357,7 @@ SELECT * FROM test WHERE a != 10;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -367,7 +367,7 @@ SELECT * FROM test WHERE a != 10;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -382,7 +382,7 @@ SELECT * FROM test WHERE a > 10;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -392,7 +392,7 @@ SELECT * FROM test WHERE a > 10;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -402,7 +402,7 @@ SELECT * FROM test WHERE a > 10;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -417,7 +417,7 @@ SELECT * FROM test WHERE a >= 10;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -427,7 +427,7 @@ SELECT * FROM test WHERE a >= 10;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -437,7 +437,7 @@ SELECT * FROM test WHERE a >= 10;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -447,7 +447,7 @@ SELECT * FROM test WHERE a >= 10;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -462,7 +462,7 @@ SELECT * FROM test WHERE a < 30;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -472,7 +472,7 @@ SELECT * FROM test WHERE a < 30;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -487,7 +487,7 @@ SELECT * FROM test WHERE a <= 30;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -497,7 +497,7 @@ SELECT * FROM test WHERE a <= 30;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -507,7 +507,7 @@ SELECT * FROM test WHERE a <= 30;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -522,7 +522,7 @@ SELECT * FROM test WHERE a IN (10, 30);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -532,7 +532,7 @@ SELECT * FROM test WHERE a IN (10, 30);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -547,7 +547,7 @@ SELECT * FROM test WHERE a NOT IN (10, 30);
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -557,7 +557,7 @@ SELECT * FROM test WHERE a NOT IN (10, 30);
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -572,7 +572,7 @@ SELECT * FROM test WHERE b = 1.0;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -587,7 +587,7 @@ SELECT * FROM test WHERE b != 1.0;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -597,7 +597,7 @@ SELECT * FROM test WHERE b != 1.0;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -607,7 +607,7 @@ SELECT * FROM test WHERE b != 1.0;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -622,7 +622,7 @@ SELECT * FROM test WHERE b > 1.0;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -632,7 +632,7 @@ SELECT * FROM test WHERE b > 1.0;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -642,7 +642,7 @@ SELECT * FROM test WHERE b > 1.0;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -657,7 +657,7 @@ SELECT * FROM test WHERE b >= 1.0;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -667,7 +667,7 @@ SELECT * FROM test WHERE b >= 1.0;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -677,7 +677,7 @@ SELECT * FROM test WHERE b >= 1.0;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -687,7 +687,7 @@ SELECT * FROM test WHERE b >= 1.0;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -702,7 +702,7 @@ SELECT * FROM test WHERE b < 3.0;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -712,7 +712,7 @@ SELECT * FROM test WHERE b < 3.0;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -727,7 +727,7 @@ SELECT * FROM test WHERE b <= 3.0;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -737,7 +737,7 @@ SELECT * FROM test WHERE b <= 3.0;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -747,7 +747,7 @@ SELECT * FROM test WHERE b <= 3.0;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -762,7 +762,7 @@ SELECT * FROM test WHERE b IN (1.0, 3.0);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -772,7 +772,7 @@ SELECT * FROM test WHERE b IN (1.0, 3.0);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -787,7 +787,7 @@ SELECT * FROM test WHERE b NOT IN (1.0, 3.0);
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -797,7 +797,7 @@ SELECT * FROM test WHERE b NOT IN (1.0, 3.0);
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -812,7 +812,7 @@ SELECT * FROM test WHERE c = true;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -822,7 +822,7 @@ SELECT * FROM test WHERE c = true;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -837,7 +837,7 @@ SELECT * FROM test WHERE c != true;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -847,7 +847,7 @@ SELECT * FROM test WHERE c != true;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -862,7 +862,7 @@ SELECT * FROM test WHERE c > false;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -872,7 +872,7 @@ SELECT * FROM test WHERE c > false;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -887,7 +887,7 @@ SELECT * FROM test WHERE c >= false;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -897,7 +897,7 @@ SELECT * FROM test WHERE c >= false;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -907,7 +907,7 @@ SELECT * FROM test WHERE c >= false;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -917,7 +917,7 @@ SELECT * FROM test WHERE c >= false;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -932,7 +932,7 @@ SELECT * FROM test WHERE c < true;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -942,7 +942,7 @@ SELECT * FROM test WHERE c < true;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -957,7 +957,7 @@ SELECT * FROM test WHERE c <= true;
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -967,7 +967,7 @@ SELECT * FROM test WHERE c <= true;
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -977,7 +977,7 @@ SELECT * FROM test WHERE c <= true;
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -987,7 +987,7 @@ SELECT * FROM test WHERE c <= true;
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1002,7 +1002,7 @@ SELECT * FROM test WHERE c IN (true, false);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1012,7 +1012,7 @@ SELECT * FROM test WHERE c IN (true, false);
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1022,7 +1022,7 @@ SELECT * FROM test WHERE c IN (true, false);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1032,7 +1032,7 @@ SELECT * FROM test WHERE c IN (true, false);
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1047,7 +1047,7 @@ SELECT * FROM test WHERE c NOT IN (true, 3);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -1057,7 +1057,7 @@ SELECT * FROM test WHERE c NOT IN (true, 3);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1072,7 +1072,7 @@ SELECT * FROM test WHERE d = "a";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -1087,7 +1087,7 @@ SELECT * FROM test WHERE d != "a";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1097,7 +1097,7 @@ SELECT * FROM test WHERE d != "a";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1107,7 +1107,7 @@ SELECT * FROM test WHERE d != "a";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1122,7 +1122,7 @@ SELECT * FROM test WHERE d > "a";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1132,7 +1132,7 @@ SELECT * FROM test WHERE d > "a";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1142,7 +1142,7 @@ SELECT * FROM test WHERE d > "a";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1157,7 +1157,7 @@ SELECT * FROM test WHERE d >= "a";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1167,7 +1167,7 @@ SELECT * FROM test WHERE d >= "a";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1177,7 +1177,7 @@ SELECT * FROM test WHERE d >= "a";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1187,7 +1187,7 @@ SELECT * FROM test WHERE d >= "a";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1202,7 +1202,7 @@ SELECT * FROM test WHERE d < "c";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1212,7 +1212,7 @@ SELECT * FROM test WHERE d < "c";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -1227,7 +1227,7 @@ SELECT * FROM test WHERE d <= "c";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1237,7 +1237,7 @@ SELECT * FROM test WHERE d <= "c";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1247,7 +1247,7 @@ SELECT * FROM test WHERE d <= "c";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1262,7 +1262,7 @@ SELECT * FROM test WHERE d IN ("a", "c");
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -1272,7 +1272,7 @@ SELECT * FROM test WHERE d IN ("a", "c");
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1287,7 +1287,7 @@ SELECT * FROM test WHERE d NOT IN ("a", "c");
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -1297,7 +1297,7 @@ SELECT * FROM test WHERE d NOT IN ("a", "c");
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1312,7 +1312,7 @@ SELECT * FROM test WHERE e = "\xaa";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -1327,7 +1327,7 @@ SELECT * FROM test WHERE e != "\xaa";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1337,7 +1337,7 @@ SELECT * FROM test WHERE e != "\xaa";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1347,7 +1347,7 @@ SELECT * FROM test WHERE e != "\xaa";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1362,7 +1362,7 @@ SELECT * FROM test WHERE e > "\xaa";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1372,7 +1372,7 @@ SELECT * FROM test WHERE e > "\xaa";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1382,7 +1382,7 @@ SELECT * FROM test WHERE e > "\xaa";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1397,7 +1397,7 @@ SELECT * FROM test WHERE e >= "\xaa";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1407,7 +1407,7 @@ SELECT * FROM test WHERE e >= "\xaa";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1417,7 +1417,7 @@ SELECT * FROM test WHERE e >= "\xaa";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1427,7 +1427,7 @@ SELECT * FROM test WHERE e >= "\xaa";
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1442,7 +1442,7 @@ SELECT * FROM test WHERE e < "\xac";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1452,7 +1452,7 @@ SELECT * FROM test WHERE e < "\xac";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -1467,7 +1467,7 @@ SELECT * FROM test WHERE e <= "\xac";
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1477,7 +1477,7 @@ SELECT * FROM test WHERE e <= "\xac";
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1487,7 +1487,7 @@ SELECT * FROM test WHERE e <= "\xac";
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1502,7 +1502,7 @@ SELECT * FROM test WHERE e IN ("\xaa", "\xac");
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -1512,7 +1512,7 @@ SELECT * FROM test WHERE e IN ("\xaa", "\xac");
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1527,7 +1527,7 @@ SELECT * FROM test WHERE e NOT IN ("\xaa", "\xac");
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -1537,7 +1537,7 @@ SELECT * FROM test WHERE e NOT IN ("\xaa", "\xac");
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1552,7 +1552,7 @@ SELECT * FROM test WHERE f = {a: 1};
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -1567,7 +1567,7 @@ SELECT * FROM test WHERE f != {a: 1};
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1577,7 +1577,7 @@ SELECT * FROM test WHERE f != {a: 1};
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1587,7 +1587,7 @@ SELECT * FROM test WHERE f != {a: 1};
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1602,7 +1602,7 @@ SELECT * FROM test WHERE f > {a: 1};
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1612,7 +1612,7 @@ SELECT * FROM test WHERE f > {a: 1};
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1622,7 +1622,7 @@ SELECT * FROM test WHERE f > {a: 1};
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1637,7 +1637,7 @@ SELECT * FROM test WHERE f >= {a: 1};
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1647,7 +1647,7 @@ SELECT * FROM test WHERE f >= {a: 1};
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1657,7 +1657,7 @@ SELECT * FROM test WHERE f >= {a: 1};
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1667,7 +1667,7 @@ SELECT * FROM test WHERE f >= {a: 1};
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1682,7 +1682,7 @@ SELECT * FROM test WHERE f < {a: 3};
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1692,7 +1692,7 @@ SELECT * FROM test WHERE f < {a: 3};
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -1707,7 +1707,7 @@ SELECT * FROM test WHERE f <= {a: 3};
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1717,7 +1717,7 @@ SELECT * FROM test WHERE f <= {a: 3};
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1727,7 +1727,7 @@ SELECT * FROM test WHERE f <= {a: 3};
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1742,7 +1742,7 @@ SELECT * FROM test WHERE f IN ({a: 1}, {a: 3});
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -1752,7 +1752,7 @@ SELECT * FROM test WHERE f IN ({a: 1}, {a: 3});
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1767,7 +1767,7 @@ SELECT * FROM test WHERE f NOT IN ({a: 1}, {a: 3});
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -1777,7 +1777,7 @@ SELECT * FROM test WHERE f NOT IN ({a: 1}, {a: 3});
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1792,7 +1792,7 @@ SELECT * FROM test WHERE g = [1];
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
 */
 
@@ -1807,7 +1807,7 @@ SELECT * FROM test WHERE g != [1];
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1817,7 +1817,7 @@ SELECT * FROM test WHERE g != [1];
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1827,7 +1827,7 @@ SELECT * FROM test WHERE g != [1];
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1842,7 +1842,7 @@ SELECT * FROM test WHERE g > [1];
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1852,7 +1852,7 @@ SELECT * FROM test WHERE g > [1];
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1862,7 +1862,7 @@ SELECT * FROM test WHERE g > [1];
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1877,7 +1877,7 @@ SELECT * FROM test WHERE g >= [1];
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1887,7 +1887,7 @@ SELECT * FROM test WHERE g >= [1];
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1897,7 +1897,7 @@ SELECT * FROM test WHERE g >= [1];
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
     {
         id: 4,
@@ -1907,7 +1907,7 @@ SELECT * FROM test WHERE g >= [1];
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */
 
@@ -1922,7 +1922,7 @@ SELECT * FROM test WHERE g < [3];
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1932,7 +1932,7 @@ SELECT * FROM test WHERE g < [3];
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
 */
 
@@ -1947,7 +1947,7 @@ SELECT * FROM test WHERE g <= [3];
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 2,
@@ -1957,7 +1957,7 @@ SELECT * FROM test WHERE g <= [3];
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 3,
@@ -1967,7 +1967,7 @@ SELECT * FROM test WHERE g <= [3];
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -1982,7 +1982,7 @@ SELECT * FROM test WHERE g IN ([1], [3]);
         d: "a",
         e: "\xaa",
         f: {a: 1},
-        g: [1]
+        g: [1.0]
     }
     {
         id: 3,
@@ -1992,7 +1992,7 @@ SELECT * FROM test WHERE g IN ([1], [3]);
         d: "c",
         e: "\xac",
         f: {a: 3},
-        g: [3]
+        g: [3.0]
     }
 */
 
@@ -2007,7 +2007,7 @@ SELECT * FROM test WHERE g NOT IN ([1], [3]);
         d: "b",
         e: "\xab",
         f: {a: 2},
-        g: [2]
+        g: [2.0]
     }
     {
         id: 4,
@@ -2017,6 +2017,6 @@ SELECT * FROM test WHERE g NOT IN ([1], [3]);
         d: "d",
         e: "\xad",
         f: {a: 4},
-        g: [4]
+        g: [4.0]
     }
 */

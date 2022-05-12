@@ -121,10 +121,12 @@ func (p Path) Clone() Path {
 }
 
 // Extend clones the path and appends the fragment to it.
-func (p Path) Extend(f PathFragment) Path {
-	c := make(Path, len(p)+1)
+func (p Path) Extend(f ...PathFragment) Path {
+	c := make(Path, len(p)+len(f))
 	copy(c, p)
-	c[len(p)] = f
+	for i := range f {
+		c[len(p)+i] = f[i]
+	}
 	return c
 }
 

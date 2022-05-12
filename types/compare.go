@@ -75,7 +75,7 @@ func compare(op operator, l, r Value) (bool, error) {
 		return compareWithNull(op, l, r), nil
 
 	// compare booleans together
-	case l.Type() == BoolValue && r.Type() == BoolValue:
+	case l.Type() == BooleanValue && r.Type() == BooleanValue:
 		return compareBooleans(op, l.V().(bool), r.V().(bool)), nil
 
 	// compare texts together

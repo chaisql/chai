@@ -26,6 +26,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "\n\r", tok: WS, lit: "\n\n"},
 		{s: " \n\t \r\n\t", tok: WS, lit: " \n\t \n\t"},
 		{s: " foo", tok: WS, lit: " "},
+		{s: "...", tok: ELLIPSIS, lit: "..."},
 
 		// Numeric operators
 		{s: `+`, tok: ADD},
@@ -131,6 +132,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `CHECK`, tok: CHECK},
 		{s: `COMMIT`, tok: COMMIT},
 		{s: `CONFLICT`, tok: CONFLICT},
+		{s: `CONSTRAINT`, tok: CONSTRAINT},
 		{s: `CREATE`, tok: CREATE},
 		{s: `CYCLE`, tok: CYCLE},
 		{s: `DEFAULT`, tok: DEFAULT},
@@ -184,8 +186,10 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `seLECT`, tok: SELECT}, // case insensitive
 
 		// types
+		{s: "ANY", tok: TYPEANY},
 		{s: "BYTES", tok: TYPEBYTES},
 		{s: "BOOL", tok: TYPEBOOL},
+		{s: "BOOLEAN", tok: TYPEBOOLEAN},
 		{s: "DOUBLE", tok: TYPEDOUBLE},
 		{s: "INTEGER", tok: TYPEINTEGER},
 		{s: "TEXT", tok: TYPETEXT},

@@ -39,7 +39,7 @@ func (e *EncodedValue) V() interface{} {
 		}
 		putBuffer(buf)
 		return string(buf)
-	case types.BoolValue:
+	case types.BooleanValue:
 		b, err := DecodeBool(data[1:])
 		if err != nil {
 			panic(err)
@@ -267,7 +267,7 @@ func skipValueUntil(data []byte, delim, end byte) int {
 	switch tp {
 	case types.NullValue:
 		return i
-	case types.BoolValue:
+	case types.BooleanValue:
 		return i + 1
 	case types.BlobValue, types.TextValue:
 		for i < len(data) && data[i] != delim && data[i] != end {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 )
 
 // A LockManager is used to acquire locks on database objects.

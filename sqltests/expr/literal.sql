@@ -43,7 +43,7 @@
 true
 
 > typeof(true)
-'bool'
+'boolean'
 
 > tRue
 true

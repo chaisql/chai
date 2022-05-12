@@ -63,7 +63,7 @@ func calculateValues(a, b Value, operator byte) (res Value, err error) {
 		return NewNullValue(), nil
 	}
 
-	if a.Type() == BoolValue || b.Type() == BoolValue {
+	if a.Type() == BooleanValue || b.Type() == BooleanValue {
 		return NewNullValue(), nil
 	}
 

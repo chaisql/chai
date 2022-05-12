@@ -1,2 +1,0 @@
-go test fuzz v1
-string("age >= 10 AND age > $age OR age < 10.4")

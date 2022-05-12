@@ -29,6 +29,7 @@ const (
 	NULL            // NULL
 	REGEX           // Regular expressions
 	BADREGEX        // `.*
+	ELLIPSIS        // ...
 	literalEnd
 
 	operatorBeg
@@ -88,6 +89,7 @@ const (
 	CHECK
 	COMMIT
 	CONFLICT
+	CONSTRAINT
 	CREATE
 	CYCLE
 	DEFAULT
@@ -145,11 +147,13 @@ const (
 	WHERE
 	WRITE
 
-	// Aliases
+	// Types
+	TYPEANY
 	TYPEARRAY
 	TYPEBIGINT
 	TYPEBLOB
 	TYPEBOOL
+	TYPEBOOLEAN
 	TYPEBYTES
 	TYPECHARACTER
 	TYPEDOCUMENT
@@ -233,6 +237,7 @@ var tokens = [...]string{
 	CHECK:       "CHECK",
 	COMMIT:      "COMMIT",
 	CONFLICT:    "CONFLICT",
+	CONSTRAINT:  "CONSTRAINT",
 	CREATE:      "CREATE",
 	CYCLE:       "CYCLE",
 	DO:          "DO",
@@ -290,10 +295,12 @@ var tokens = [...]string{
 	WHERE:       "WHERE",
 	WRITE:       "WRITE",
 
+	TYPEANY:       "ANY",
 	TYPEARRAY:     "ARRAY",
 	TYPEBIGINT:    "BIGINT",
 	TYPEBLOB:      "BLOB",
 	TYPEBOOL:      "BOOL",
+	TYPEBOOLEAN:   "BOOLEAN",
 	TYPEBYTES:     "BYTES",
 	TYPECHARACTER: "CHARACTER",
 	TYPEDOCUMENT:  "DOCUMENT",

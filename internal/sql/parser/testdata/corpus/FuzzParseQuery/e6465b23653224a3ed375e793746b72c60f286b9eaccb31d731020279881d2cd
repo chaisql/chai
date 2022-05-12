@@ -1,2 +1,0 @@
-go test fuzz v1
-string("CREATE TABLE test(v VARCHAR(255), c CHARACTER(64), t TEXT)")

@@ -409,19 +409,13 @@ SELECT * FROM test_oc;
 */
 
 -- test: default on nested fields 
-CREATE TABLE test_df (a.b TEXT DEFAULT "foo");
+CREATE TABLE test_df (a (b TEXT DEFAULT "foo"));
 INSERT INTO test_df VALUES {};
 SELECT * FROM test_df;
 /* result:
 {
-  a: {b: "foo"}
 }
 */
-
--- test: default on array indexes 
-CREATE TABLE test_df (a.b[0].c TEXT DEFAULT "foo");
-INSERT INTO test_df VALUES {};
--- error:
 
 -- test: duplicate field names: root
 CREATE TABLE test_df ;

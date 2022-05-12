@@ -1,2 +1,0 @@
-go test fuzz v1
-string("INSERT INTO test (a, b) VALUES ('c', 'd', 'e')")
