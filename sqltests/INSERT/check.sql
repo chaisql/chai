@@ -66,7 +66,7 @@ INSERT INTO test (a) VALUES ("hello");
 -- error: document violates check constraint "test_check"
 
 -- test: no type constraint, null
-CREATE TABLE test (a CHECK(a > 10));
+CREATE TABLE test (a CHECK(a > 10), ...);
 INSERT INTO test (b) VALUES (10);
 SELECT * FROM test;
 /* result:

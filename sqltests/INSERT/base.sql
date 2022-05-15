@@ -281,9 +281,9 @@ VALUES {
 SELECT * FROM test_tc;
 /* result:
 {
-  "i": 10000000000,
-  "db": 21.21,
   "b": true,
+  "db": 21.21,
+  "i": 10000000000,
   "bb": CAST("YmxvYlZhbHVlCg==" AS BLOB),
   "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
   "t": "text",
@@ -360,7 +360,7 @@ SELECT * FROM test_oc;
 */
 
 -- test: insert with on conflict do replace, pk
-CREATE TABLE test_oc(a INTEGER PRIMARY KEY);
+CREATE TABLE test_oc(a INTEGER PRIMARY KEY, ...);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
 INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
@@ -373,7 +373,7 @@ SELECT * FROM test_oc;
 */
 
 -- test: insert with on conflict do replace, unique
-CREATE TABLE test_oc(a INTEGER UNIQUE);
+CREATE TABLE test_oc(a INTEGER UNIQUE, ...);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
 INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
@@ -386,7 +386,7 @@ SELECT * FROM test_oc;
 */
 
 -- test: insert with on conflict do replace, not null
-CREATE TABLE test_oc(a INTEGER NOT NULL);
+CREATE TABLE test_oc(a INTEGER NOT NULL, ...);
 INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 -- error:
 
@@ -418,7 +418,7 @@ SELECT * FROM test_df;
 */
 
 -- test: duplicate field names: root
-CREATE TABLE test_df ;
+CREATE TABLE test_df;
 INSERT INTO test_df(a, a) VALUES (1, 10);
 -- error:
 

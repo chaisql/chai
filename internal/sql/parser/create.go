@@ -58,6 +58,13 @@ func (p *Parser) parseCreateTableStatement() (*statement.CreateTableStmt, error)
 
 	// parse field constraints
 	err = p.parseConstraints(&stmt)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stmt.Info.FieldConstraints.Ordered) == 0 {
+		stmt.Info.FieldConstraints.AllowExtraFields = true
+	}
 	return &stmt, err
 }
 
@@ -168,6 +175,12 @@ func (p *Parser) parseFieldDefinition(parent document.Path) (*database.FieldCons
 		if anon != nil {
 			fc.Type = types.DocumentValue
 			fc.AnonymousType = anon
+		} else if fc.Type == types.DocumentValue {
+			// if the field constraint is a document but doesn't have any constraint,
+			// its AllowExtraFields is set to true
+			// i.e CREATE TABLE foo(a DOCUMENT) -> CREATE TABLE foo(a DOCUMENT (...))
+			fc.AnonymousType = &database.AnonymousType{}
+			fc.AnonymousType.FieldConstraints.AllowExtraFields = true
 		}
 
 		if len(nestedTCs) != 0 {
@@ -419,7 +432,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (*statement.CreateIndexS
 	}
 
 	// Parse table name
-	stmt.Info.TableName, err = p.parseIdent()
+	stmt.Info.Owner.TableName, err = p.parseIdent()
 	if err != nil {
 		return nil, err
 	}

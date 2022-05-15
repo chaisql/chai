@@ -12,17 +12,15 @@ import (
 )
 
 func TestEncodeDecode(t *testing.T) {
-	userMapDoc, err := document.NewFromMap(map[string]interface{}{
+	userMapDoc := document.NewFromMap(map[string]any{
 		"age":  10,
 		"name": "john",
 	})
-	assert.NoError(t, err)
 
-	addressMapDoc, err := document.NewFromMap(map[string]string{
+	addressMapDoc := document.NewFromMap(map[string]any{
 		"city":    "Ajaccio",
 		"country": "France",
 	})
-	assert.NoError(t, err)
 
 	complexArray := document.NewValueBuffer().
 		Append(types.NewBoolValue(true)).
@@ -206,11 +204,10 @@ func TestArrayGetByIndex(t *testing.T) {
 }
 
 func TestDecodeDocument(t *testing.T) {
-	mapDoc, err := document.NewFromMap(map[string]string{
+	mapDoc := document.NewFromMap(map[string]string{
 		"city":    "Ajaccio",
 		"country": "France",
 	})
-	assert.NoError(t, err)
 
 	doc := document.NewFieldBuffer().
 		Add("age", types.NewIntegerValue(10)).
@@ -219,7 +216,7 @@ func TestDecodeDocument(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	err = encoding.EncodeValue(&buf, types.NewDocumentValue(doc))
+	err := encoding.EncodeValue(&buf, types.NewDocumentValue(doc))
 	assert.NoError(t, err)
 
 	ec, err := encoding.DecodeValue(buf.Bytes())
@@ -286,11 +283,10 @@ func TestDecodeDocument(t *testing.T) {
 }
 
 func TestArrayIterate(t *testing.T) {
-	addressMapDoc, err := document.NewFromMap(map[string]string{
+	addressMapDoc := document.NewFromMap(map[string]string{
 		"city":    "Ajaccio",
 		"country": "France",
 	})
-	assert.NoError(t, err)
 
 	complexArray := document.NewValueBuffer().
 		Append(types.NewBoolValue(true)).
@@ -304,7 +300,7 @@ func TestArrayIterate(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	err = encoding.EncodeValue(&buf, types.NewArrayValue(complexArray))
+	err := encoding.EncodeValue(&buf, types.NewArrayValue(complexArray))
 	assert.NoError(t, err)
 
 	ec, err := encoding.DecodeValue(buf.Bytes())

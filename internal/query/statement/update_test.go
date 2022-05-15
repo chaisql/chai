@@ -52,7 +52,7 @@ func TestUpdateStmt(t *testing.T) {
 				assert.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test (a text not null)")
+				err = db.Exec("CREATE TABLE test (a text not null, ...)")
 				assert.NoError(t, err)
 
 				if indexed {

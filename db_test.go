@@ -109,14 +109,14 @@ func TestOpen(t *testing.T) {
 
 	var count int
 	want := []string{
-		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
+		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
 		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`,
 		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
 		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":101, "type":"table"}`,
-		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":102, "table_name":"tableA", "type":"index"}`,
+		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":102, "type":"index"}`,
 		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":103, "type":"table"}`,
-		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC", "namespace":104, "type":"table"}`,
-		`{"name":"tableC_a_b_idx", "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":105, "table_name":"tableC", "type":"index"}`,
+		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (...)", "namespace":104, "type":"table"}`,
+		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":105, "type":"index"}`,
 		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
 	err = res1.Iterate(func(d types.Document) error {

@@ -142,27 +142,6 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	return nil
 }
 
-// ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (ti *TableInfo) ValidateDocument(tx *Transaction, d types.Document) (*document.FieldBuffer, error) {
-	fb := document.NewFieldBuffer()
-	err := fb.Copy(d)
-	if err != nil {
-		return nil, err
-	}
-
-	fb, err = ti.FieldConstraints.ValidateDocument(tx, fb)
-	if err != nil {
-		return nil, err
-	}
-
-	err = ti.TableConstraints.ValidateDocument(tx, fb)
-	if err != nil {
-		return nil, err
-	}
-
-	return fb, nil
-}
-
 func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
 	var pk PrimaryKey
 
@@ -276,7 +255,6 @@ type PrimaryKey struct {
 
 // IndexInfo holds the configuration of an index.
 type IndexInfo struct {
-	TableName string
 	// namespace of the store associated with the index.
 	StoreNamespace kv.NamespaceID
 	IndexName      string
@@ -300,7 +278,7 @@ func (i *IndexInfo) String() string {
 		s.WriteString("UNIQUE ")
 	}
 
-	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.TableName, '`'))
+	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.Owner.TableName, '`'))
 
 	for i, p := range i.Paths {
 		if i > 0 {

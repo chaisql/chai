@@ -83,8 +83,7 @@ func TestNewFromMap(t *testing.T) {
 		"nilField": nil,
 	}
 
-	doc, err := document.NewFromMap(m)
-	assert.NoError(t, err)
+	doc := document.NewFromMap(m)
 
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
@@ -121,15 +120,6 @@ func TestNewFromMap(t *testing.T) {
 
 		_, err = doc.GetByField("bar")
 		require.Equal(t, types.ErrFieldNotFound, err)
-	})
-
-	t.Run("Invalid types", func(t *testing.T) {
-
-		// test NewFromMap rejects invalid types
-		_, err = document.NewFromMap(8)
-		assert.Errorf(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map")
-		_, err = document.NewFromMap(map[int]float64{2: 4.3})
-		assert.Errorf(t, err, "Expected document.NewFromMap to return an error if the passed parameter is not a map with a string key type")
 	})
 }
 

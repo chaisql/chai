@@ -33,8 +33,8 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
 			database.FieldConstraint{Field: "b", Type: types.IntegerValue},
 			[]*database.FieldConstraint{
-				{Field: "a", Type: types.IntegerValue},
-				{Field: "b", Type: types.IntegerValue},
+				{Position: 0, Field: "a", Type: types.IntegerValue},
+				{Position: 1, Field: "b", Type: types.IntegerValue},
 			},
 			false,
 		},
@@ -43,8 +43,8 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
 			database.FieldConstraint{Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(testutil.DoubleValue(5))},
 			[]*database.FieldConstraint{
-				{Field: "a", Type: types.IntegerValue},
-				{Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(testutil.DoubleValue(5))},
+				{Position: 0, Field: "a", Type: types.IntegerValue},
+				{Position: 1, Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(testutil.DoubleValue(5))},
 			},
 			false,
 		},
@@ -53,8 +53,8 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
 			database.FieldConstraint{Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
 			[]*database.FieldConstraint{
-				{Field: "a", Type: types.IntegerValue},
-				{Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+				{Position: 0, Field: "a", Type: types.IntegerValue},
+				{Position: 1, Field: "b", Type: types.IntegerValue, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
 			},
 			false,
 		},
@@ -77,8 +77,8 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
 			database.FieldConstraint{Field: "b", DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
 			[]*database.FieldConstraint{
-				{Field: "a", Type: types.IntegerValue},
-				{Field: "b", DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
+				{Position: 0, Field: "a", Type: types.IntegerValue},
+				{Position: 1, Field: "b", DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
 			},
 			false,
 		},

@@ -37,7 +37,7 @@ func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string,
 	var listName []string
 	q := "SELECT sql FROM __genji_catalog WHERE type = 'index'"
 	if tableName != "" {
-		q += " AND table_name = ?"
+		q += " AND owner.table_name = ?"
 	}
 	res, err := db.Query(q, tableName)
 	if err != nil {

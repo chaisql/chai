@@ -61,5 +61,5 @@ func NewTransientTree(db *Database) (*tree.Tree, func() error, error) {
 		return nil, nil, err
 	}
 
-	return tree.NewTransient(ts), cleanup, nil
+	return tree.NewTransient(ts, AsIsCodec{}), cleanup, nil
 }

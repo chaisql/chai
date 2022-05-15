@@ -53,19 +53,48 @@ func (j jsonEncodedDocument) MarshalJSON() ([]byte, error) {
 
 // NewFromMap creates a document from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap(m interface{}) (types.Document, error) {
-	M := reflect.ValueOf(m)
-	if M.Kind() != reflect.Map || M.Type().Key().Kind() != reflect.String {
-		return nil, &ErrUnsupportedType{m, "parameter must be a map with a string key"}
-	}
-	return mapDocument(M), nil
+func NewFromMap[T any](m map[string]T) types.Document {
+	return mapDocument[T](m)
 }
 
-type mapDocument reflect.Value
+type mapDocument[T any] map[string]T
 
-var _ types.Document = (*mapDocument)(nil)
+var _ types.Document = (*mapDocument[any])(nil)
 
-func (m mapDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (m mapDocument[T]) Iterate(fn func(field string, value types.Value) error) error {
+	for k, v := range m {
+		v, err := NewValue(v)
+		if err != nil {
+			return err
+		}
+
+		err = fn(k, v)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m mapDocument[T]) GetByField(field string) (types.Value, error) {
+	v, ok := m[field]
+	if !ok {
+		return nil, types.ErrFieldNotFound
+	}
+
+	return NewValue(v)
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (m mapDocument[T]) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(m)
+}
+
+type reflectMapDocument reflect.Value
+
+var _ types.Document = (*reflectMapDocument)(nil)
+
+func (m reflectMapDocument) Iterate(fn func(field string, value types.Value) error) error {
 	M := reflect.Value(m)
 	it := M.MapRange()
 
@@ -83,7 +112,7 @@ func (m mapDocument) Iterate(fn func(field string, value types.Value) error) err
 	return nil
 }
 
-func (m mapDocument) GetByField(field string) (types.Value, error) {
+func (m reflectMapDocument) GetByField(field string) (types.Value, error) {
 	M := reflect.Value(m)
 	v := M.MapIndex(reflect.ValueOf(field))
 	if v == (reflect.Value{}) {
@@ -93,7 +122,7 @@ func (m mapDocument) GetByField(field string) (types.Value, error) {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (m mapDocument) MarshalJSON() ([]byte, error) {
+func (m reflectMapDocument) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(m)
 }
 
@@ -230,11 +259,11 @@ func NewValue(x interface{}) (types.Value, error) {
 		}
 		return types.NewArrayValue(&sliceArray{ref: v}), nil
 	case reflect.Map:
-		doc, err := NewFromMap(x)
-		if err != nil {
-			return nil, err
+		if v.Type().Key().Kind() != reflect.String {
+			return nil, &ErrUnsupportedType{x, "parameter must be a map with a string key"}
 		}
-		return types.NewDocumentValue(doc), nil
+
+		return types.NewDocumentValue(reflectMapDocument(v)), nil
 	}
 
 	return nil, &ErrUnsupportedType{x, ""}

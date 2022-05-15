@@ -41,7 +41,9 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 
 	db, tx, fn := testutil.NewTestTx(t)
 
-	return createTable(t, tx, db.Catalog, database.TableInfo{TableName: "test"}), fn
+	ti := database.TableInfo{TableName: "test"}
+	ti.FieldConstraints.AllowExtraFields = true
+	return createTable(t, tx, db.Catalog, ti), fn
 }
 
 func createTable(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
@@ -135,7 +137,9 @@ func TestTableInsert(t *testing.T) {
 				t.Helper()
 
 				// create table if not exists
-				tb := createTableIfNotExists(t, tx, db.Catalog, database.TableInfo{TableName: "test"})
+				ti := database.TableInfo{TableName: "test"}
+				ti.FieldConstraints.AllowExtraFields = true
+				tb := createTableIfNotExists(t, tx, db.Catalog, ti)
 
 				doc := newDocument()
 				key, _, err := tb.Insert(doc)

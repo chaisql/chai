@@ -16,12 +16,15 @@ var sequenceTableInfo = &TableInfo{
 	StoreNamespace: SequenceTableNamespace,
 	FieldConstraints: MustNewFieldConstraints(
 		&FieldConstraint{
-			Field: "name",
-			Type:  types.TextValue,
+			Position:  0,
+			Field:     "name",
+			Type:      types.TextValue,
+			IsNotNull: true,
 		},
 		&FieldConstraint{
-			Field: "seq",
-			Type:  types.IntegerValue,
+			Position: 1,
+			Field:    "seq",
+			Type:     types.IntegerValue,
 		},
 	),
 	TableConstraints: []*TableConstraint{

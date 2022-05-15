@@ -4,7 +4,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test"
+  "sql": "CREATE TABLE test (...)"
 }
 */
 
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test"
+  "sql": "CREATE TABLE test (...)"
 }
 */
 
@@ -31,6 +31,6 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test"
+  "sql": "CREATE TABLE test (...)"
 }
 */

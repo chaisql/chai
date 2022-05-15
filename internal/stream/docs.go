@@ -325,7 +325,7 @@ func (op *DocsGroupAggregateOperator) Iterate(in *environment.Environment, f fun
 
 	var groupExpr string
 	if op.E != nil {
-		groupExpr = fmt.Sprintf("%s", op.E)
+		groupExpr = op.E.String()
 	}
 
 	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
@@ -525,7 +525,8 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 		counter++
 
-		return tr.Put(tk, types.NewDocumentValue(doc))
+		_, err = tr.Put(tk, doc)
+		return err
 	})
 	if err != nil {
 		return err
@@ -534,7 +535,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, v types.Value) error {
+	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, d types.Document) error {
 		kv, err := k.Decode()
 		if err != nil {
 			return err
@@ -550,9 +551,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 			newEnv.Set(environment.DocPKKey, docKey)
 		}
 
-		doc := v.V().(types.Document)
-
-		newEnv.SetDocument(doc)
+		newEnv.SetDocument(d)
 
 		return fn(&newEnv)
 	})

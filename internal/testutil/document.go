@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -140,15 +141,15 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	return buf.Flush()
 }
 
-func RequireDocEqual(t testing.TB, d1, d2 types.Document) {
+func RequireDocEqual(t testing.TB, want, got types.Document) {
 	t.Helper()
 
-	t1, err := types.MarshalTextIndent(types.NewDocumentValue(d1), "\n", "  ")
+	tWant, err := types.MarshalTextIndent(types.NewDocumentValue(document.WithSortedFields(want)), "\n", "  ")
 	require.NoError(t, err)
-	t2, err := types.MarshalTextIndent(types.NewDocumentValue(d2), "\n", "  ")
+	tGot, err := types.MarshalTextIndent(types.NewDocumentValue(document.WithSortedFields(got)), "\n", "  ")
 	require.NoError(t, err)
 
-	if diff := cmp.Diff(string(t1), string(t2)); diff != "" {
+	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
 		require.Failf(t, "mismatched documents, (-want, +got)", "%s", diff)
 	}
 }

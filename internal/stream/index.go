@@ -74,7 +74,7 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 		return err
 	}
 
-	table, err := catalog.GetTable(tx, info.TableName)
+	table, err := catalog.GetTable(tx, info.Owner.TableName)
 	if err != nil {
 		return err
 	}
@@ -286,7 +286,7 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 		return err
 	}
 
-	table, err := catalog.GetTable(tx, info.TableName)
+	table, err := catalog.GetTable(tx, info.Owner.TableName)
 	if err != nil {
 		return err
 	}

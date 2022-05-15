@@ -234,7 +234,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v != expr.NullLiteral {
+	if v.Type() != types.NullValue {
 		c.Count++
 	}
 
@@ -308,7 +308,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v == expr.NullLiteral {
+	if v.Type() == types.NullValue {
 		return nil
 	}
 
@@ -412,7 +412,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v == expr.NullLiteral {
+	if v.Type() == types.NullValue {
 		return nil
 	}
 

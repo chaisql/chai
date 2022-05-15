@@ -26,7 +26,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	ng := kv.NewSession(pdb)
 
 	st := ng.GetNamespace(10)
-	tr := tree.New(st)
+	tr := tree.New(st, database.NoOpCodec{})
 
 	var paths []document.Path
 	for i := 0; i < arity; i++ {

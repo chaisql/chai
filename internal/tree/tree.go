@@ -2,6 +2,7 @@ package tree
 
 import (
 	"bytes"
+	"io"
 
 	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/kv"
@@ -21,62 +22,72 @@ import (
 type Tree struct {
 	Namespace      *kv.Namespace
 	TransientStore *kv.TransientStore
+	Codec          Codec
 }
 
-func New(ns *kv.Namespace) *Tree {
+func New(ns *kv.Namespace, codec Codec) *Tree {
 	return &Tree{
 		Namespace: ns,
+		Codec:     codec,
 	}
 }
 
-func NewTransient(store *kv.TransientStore) *Tree {
+func NewTransient(store *kv.TransientStore, codec Codec) *Tree {
 	return &Tree{
 		TransientStore: store,
+		Codec:          codec,
 	}
 }
 
-// Put adds or replaces a key-value combination to the tree.
+// Put adds or replaces a key-doc combination to the tree.
 // If the key already exists, its value will be replaced by
 // the given value.
-func (t *Tree) Put(key Key, value types.Value) error {
+func (t *Tree) Put(key Key, d types.Document) (types.Document, error) {
 	var enc []byte
 
-	if value == nil {
-		value = types.NewNullValue()
+	if d != nil {
+		var buf bytes.Buffer
+
+		err := t.Codec.Encode(&buf, d)
+		if err != nil {
+			return nil, err
+		}
+
+		enc = buf.Bytes()
+	} else {
+		enc = []byte{0}
 	}
 
-	var buf bytes.Buffer
-
-	err := encoding.EncodeValue(&buf, value)
-	if err != nil {
-		return err
-	}
-
-	enc = buf.Bytes()
-
+	var err error
 	if t.TransientStore != nil {
-		return t.TransientStore.Put(key, enc)
+		err = t.TransientStore.Put(key, enc)
+	} else {
+		err = t.Namespace.Put(key, enc)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	return t.Namespace.Put(key, enc)
+	return t.Codec.Decode(enc)
 }
 
 // Get a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
-func (t *Tree) Get(key Key) (types.Value, error) {
+func (t *Tree) Get(key Key) (types.Document, error) {
 	if t.TransientStore != nil {
 		panic("Get not implemented on transient tree")
 	}
 
-	var v Value
+	var d Document
+	d.codec = t.Codec
 	vv, err := t.Namespace.Get(key)
 	if err != nil {
 		return nil, err
 	}
 
-	v.encoded = vv
+	d.encoded = vv
 
-	return &v, nil
+	return &d, nil
 }
 
 // Exists returns true if the key exists in the tree.
@@ -121,7 +132,7 @@ func (t *Tree) Truncate() error {
 // | >= 10 | Min: 10          | DESC      | nil     | 10      |
 // | < 10  | Max: 10, Excl    | DESC      | 10      | nil     |
 // | <= 10 | Max: 10          | DESC      | 10+0xFF | nil     |
-func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value) error) error {
+func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Document) error) error {
 	var start, end []byte
 
 	if rng == nil {
@@ -170,13 +181,15 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Value
 		it.Last()
 	}
 
-	var value Value
+	var d Document
+	d.codec = t.Codec
 
+	prefix := t.buildKey(nil)
 	for it.Valid() {
-		value.encoded = it.Value()
-		value.v = nil
+		d.encoded = it.Value()
+		d.d = nil
 
-		err := fn(bytes.TrimPrefix(it.Key(), t.buildKey(nil)), &value)
+		err := fn(bytes.TrimPrefix(it.Key(), prefix), &d)
 		if err != nil {
 			return err
 		}
@@ -226,53 +239,42 @@ func (t *Tree) buildEndKeyExclusive(key []byte) []byte {
 	return t.buildKey(key)
 }
 
-// Value is an implementation of the types.Value interface returned by Tree.
+// Document is an implementation of the types.Document interface returned by Tree.
 // It is used to lazily decode values from the underlying store.
-type Value struct {
+type Document struct {
+	codec   Codec
 	encoded []byte
-	v       types.Value
+	d       types.Document
 }
 
-func (v *Value) decode() {
-	if v.v != nil {
+func (d *Document) decode() {
+	if d.d != nil {
 		return
 	}
 
 	var err error
-	v.v, err = encoding.DecodeValue(v.encoded)
+	d.d, err = d.codec.Decode(d.encoded)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (v *Value) Type() types.ValueType {
-	v.decode()
+func (d *Document) Iterate(fn func(field string, value types.Value) error) error {
+	d.decode()
 
-	return v.v.Type()
+	return d.d.Iterate(fn)
 }
 
-func (v *Value) V() interface{} {
-	v.decode()
+func (d *Document) GetByField(field string) (types.Value, error) {
+	d.decode()
 
-	return v.v.V()
+	return d.d.GetByField(field)
 }
 
-func (v *Value) String() string {
-	v.decode()
+func (d *Document) MarshalJSON() ([]byte, error) {
+	d.decode()
 
-	return v.v.String()
-}
-
-func (v *Value) MarshalJSON() ([]byte, error) {
-	v.decode()
-
-	return v.v.MarshalJSON()
-}
-
-func (v *Value) MarshalText() ([]byte, error) {
-	v.decode()
-
-	return v.v.MarshalText()
+	return d.d.MarshalJSON()
 }
 
 // A Range of keys to iterate on.
@@ -283,4 +285,9 @@ func (v *Value) MarshalText() ([]byte, error) {
 type Range struct {
 	Min, Max  Key
 	Exclusive bool
+}
+
+type Codec interface {
+	Encode(w io.Writer, d types.Document) error
+	Decode([]byte) (types.Document, error)
 }

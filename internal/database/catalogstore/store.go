@@ -78,7 +78,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 		}
 
 		var currentValue *int64
-		if err == nil {
+		if err == nil && v.Type() != types.NullValue {
 			v := v.V().(int64)
 			currentValue = &v
 		}
@@ -102,20 +102,20 @@ func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (table
 		case database.RelationTableType:
 			ti, err := tableInfoFromDocument(d)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to decode table info")
 			}
 			tables = append(tables, *ti)
 		case database.RelationIndexType:
 			i, err := indexInfoFromDocument(d)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to decode index info")
 			}
 
 			indexes = append(indexes, *i)
 		case database.RelationSequenceType:
 			i, err := sequenceInfoFromDocument(d)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "failed to decode sequence info")
 			}
 			sequences = append(sequences, *i)
 		}
@@ -153,7 +153,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil {
+	if err == nil && v.Type() != types.NullValue {
 		ti.DocidSequenceName = v.V().(string)
 	}
 
@@ -189,7 +189,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil {
+	if err == nil && v.Type() != types.NullValue {
 		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
@@ -217,7 +217,7 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil {
+	if err == nil && v.Type() != types.NullValue {
 		owner, err := ownerFromDocument(v.V().(types.Document))
 		if err != nil {
 			return nil, err
@@ -238,13 +238,13 @@ func ownerFromDocument(d types.Document) (*database.Owner, error) {
 
 	owner.TableName = v.V().(string)
 
-	v, err = d.GetByField("path")
+	v, err = d.GetByField("paths")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil {
+	if err == nil && v.Type() != types.NullValue {
 		err = v.V().(types.Array).Iterate(func(i int, value types.Value) error {
-			pp, err := parser.ParsePath(v.V().(string))
+			pp, err := parser.ParsePath(value.V().(string))
 			if err != nil {
 				return err
 			}

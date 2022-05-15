@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
 )
 
 // FieldConstraint describes constraints on a particular field.
 type FieldConstraint struct {
+	Position      int
 	Field         string
 	Type          types.ValueType
 	IsNotNull     bool
@@ -113,75 +112,10 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 		}
 	}
 
+	newFc.Position = len(f.Ordered)
 	f.Ordered = append(f.Ordered, newFc)
 	f.ByField[newFc.Field] = newFc
 	return nil
-}
-
-// ValidateDocument calls Convert then ensures the document validates against the field constraints.
-func (f *FieldConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) (*document.FieldBuffer, error) {
-	// generate default values for all fields
-	for _, fc := range f.Ordered {
-		if fc.DefaultValue == nil {
-			continue
-		}
-
-		_, err := fb.GetByField(fc.Field)
-		if err == nil {
-			continue
-		}
-
-		if !errors.Is(err, types.ErrFieldNotFound) {
-			return nil, err
-		}
-
-		v, err := fc.DefaultValue.Eval(tx, nil)
-		if err != nil {
-			return nil, err
-		}
-		err = fb.Set(document.NewPath(fc.Field), v)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	fb, err := f.ConvertDocument(fb)
-	if err != nil {
-		return nil, err
-	}
-
-	// ensure no field is missing
-	for _, fc := range f.Ordered {
-		if !fc.IsNotNull {
-			continue
-		}
-
-		v, err := fb.GetByField(fc.Field)
-		if err != nil {
-			if !errors.Is(err, types.ErrFieldNotFound) {
-				return nil, err
-			}
-
-			return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{document.NewPath(fc.Field)}}
-		}
-
-		// if field is found, it has already been converted
-		// to the right type above.
-		// check if it is required but null.
-		if v.Type() == types.NullValue {
-			return nil, &errs.ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{document.NewPath(fc.Field)}}
-		}
-	}
-
-	return fb, nil
-}
-
-// ConvertDocument the document using the field constraints.
-// It converts any path that has a field constraint on it into the specified type using CAST.
-// If there is no constraint on an integer field or value, it converts it into a double.
-// Default values on missing fields are not applied.
-func (f *FieldConstraints) ConvertDocument(d types.Document) (*document.FieldBuffer, error) {
-	return f.convertDocumentAtPath(nil, d, CastConversion)
 }
 
 // ConversionFunc is called when the type of a value is different than the expected type
@@ -332,13 +266,13 @@ func (t *TableConstraint) String() string {
 type TableConstraints []*TableConstraint
 
 // ValidateDocument checks all the table constraint for the given document.
-func (t *TableConstraints) ValidateDocument(tx *Transaction, fb *document.FieldBuffer) error {
+func (t *TableConstraints) ValidateDocument(tx *Transaction, d types.Document) error {
 	for _, tc := range *t {
 		if tc.Check == nil {
 			continue
 		}
 
-		v, err := tc.Check.Eval(tx, fb)
+		v, err := tc.Check.Eval(tx, d)
 		if err != nil {
 			return err
 		}

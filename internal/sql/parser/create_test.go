@@ -22,24 +22,24 @@ func TestParserCreateIndex(t *testing.T) {
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo"))},
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo"))},
 			}}, false},
 		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo.bar[1]"))},
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo.bar[1]"))},
 			}, IfNotExists: true}, false},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", TableName: "test", Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo[3].baz"))}, Unique: true,
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo[3].baz"))}, Unique: true,
 			}, IfNotExists: true}, false},
 		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", &statement.CreateIndexStmt{
-			Info: database.IndexInfo{TableName: "test", Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo[3].baz"))}, Unique: true}}, false},
+			Info: database.IndexInfo{Owner: database.Owner{TableName: "test"}, Paths: []document.Path{document.Path(testutil.ParseDocumentPath(t, "foo[3].baz"))}, Unique: true}}, false},
 		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
 			&statement.CreateIndexStmt{
 				Info: database.IndexInfo{
 					IndexName: "idx",
-					TableName: "test",
+					Owner:     database.Owner{TableName: "test"},
 					Paths: []document.Path{
 						document.Path(testutil.ParseDocumentPath(t, "foo")),
 						document.Path(testutil.ParseDocumentPath(t, "bar")),

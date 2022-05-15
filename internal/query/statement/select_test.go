@@ -114,7 +114,15 @@ func TestSelectStmt(t *testing.T) {
 				assert.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
+				err = db.Exec(`--sql
+				CREATE TABLE test (
+					k INTEGER PRIMARY KEY,
+					color TEXT,
+					size INTEGER,
+					shape TEXT,
+					height INTEGER,
+					weight INTEGER
+				)`)
 				assert.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`
@@ -159,7 +167,7 @@ func TestSelectStmt(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY)")
+		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
 		assert.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)

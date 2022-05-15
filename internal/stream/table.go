@@ -1,9 +1,11 @@
 package stream
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
@@ -120,10 +122,19 @@ func (op *TableValidateOperator) Iterate(in *environment.Environment, fn func(ou
 	if err != nil {
 		return err
 	}
+	if info.ReadOnly {
+		return errors.New("cannot write to read-only table")
+	}
+
+	buf := getBuffer()
+	defer putBuffer(buf)
 
 	var newEnv environment.Environment
 
+	codec := database.NewCodec(tx, info)
+
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		buf.Reset()
 		newEnv.SetOuter(out)
 
 		doc, ok := out.GetDocument()
@@ -131,12 +142,25 @@ func (op *TableValidateOperator) Iterate(in *environment.Environment, fn func(ou
 			return errors.New("missing document")
 		}
 
-		fb, err := info.ValidateDocument(tx, doc)
+		// generate default values, validate and encode document
+		err = codec.Encode(buf, doc)
 		if err != nil {
 			return err
 		}
 
-		newEnv.SetDocument(fb)
+		// use the encoded document as the new document
+		doc, err = codec.Decode(buf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		newEnv.SetDocument(doc)
+
+		// validate CHECK constraints if any
+		err := info.TableConstraints.ValidateDocument(tx, doc)
+		if err != nil {
+			return err
+		}
 
 		return fn(&newEnv)
 	})
@@ -288,4 +312,24 @@ func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *
 
 func (op *TableDeleteOperator) String() string {
 	return fmt.Sprintf("table.Delete('%s')", op.Name)
+}
+
+var pool = sync.Pool{
+	New: func() interface{} {
+		return bytes.NewBuffer(nil)
+	},
+}
+
+func getBuffer() *bytes.Buffer {
+	buf := pool.Get().(*bytes.Buffer)
+	if buf == nil {
+		return nil
+	}
+
+	buf.Reset()
+	return buf
+}
+
+func putBuffer(buf *bytes.Buffer) {
+	pool.Put(buf)
 }

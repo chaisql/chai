@@ -303,7 +303,7 @@ func TestTempTreeSort(t *testing.T) {
 				testutil.MakeDocument(t, `{"a": true}`),
 			},
 			[]types.Document{
-				testutil.MakeDocument(t, `{"a": null}`),
+				testutil.MakeDocument(t, `{}`),
 				testutil.MakeDocument(t, `{"a": 0}`),
 				testutil.MakeDocument(t, `{"a": 1}`),
 			},
@@ -321,7 +321,7 @@ func TestTempTreeSort(t *testing.T) {
 			[]types.Document{
 				testutil.MakeDocument(t, `{"a": 1}`),
 				testutil.MakeDocument(t, `{"a": 0}`),
-				testutil.MakeDocument(t, `{"a": null}`),
+				testutil.MakeDocument(t, `{}`),
 			},
 			false,
 			true,

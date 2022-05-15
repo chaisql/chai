@@ -101,7 +101,7 @@ func TestSaveCommand(t *testing.T) {
 	defer db.Close()
 
 	err = db.Exec(`
-		CREATE TABLE test (a DOUBLE);
+		CREATE TABLE test (a DOUBLE, ...);
 		CREATE INDEX idx_a_b ON test (a, b);
 	`)
 	assert.NoError(t, err)

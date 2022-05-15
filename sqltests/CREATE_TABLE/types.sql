@@ -64,7 +64,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a DOCUMENT (...))"
+  "sql": "CREATE TABLE test (a (...))"
 }
 */
 

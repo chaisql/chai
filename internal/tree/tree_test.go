@@ -5,6 +5,8 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
@@ -36,34 +38,39 @@ func MustNewKey(t *testing.T, values ...types.Value) tree.Key {
 	return key
 }
 
-var val = types.NewBoolValue(true)
+var doc = document.NewFromMap(map[string]bool{
+	"a": true,
+})
 
 func TestTreeGet(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   tree.Key
-		v     types.Value
+		d     types.Document
 		Fails bool
 	}{
-		{"existing", key1, val, false},
+		{"existing", key1, doc, false},
 		{"non-existing", key2, nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			var ti database.TableInfo
+			ti.FieldConstraints.AllowExtraFields = true
 			tree := tree.Tree{
 				Namespace: testutil.NewTestStore(t),
+				Codec:     database.NewCodec(nil, &ti),
 			}
 
-			err := tree.Put(key1, val)
+			_, err := tree.Put(key1, doc)
 			assert.NoError(t, err)
 
-			v, err := tree.Get(test.key)
+			d, err := tree.Get(test.key)
 			if test.Fails {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				require.Equal(t, test.v.V(), v.V())
+				testutil.RequireDocEqual(t, test.d, d)
 			}
 		})
 	}
@@ -81,11 +88,15 @@ func TestTreeDelete(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			var ti database.TableInfo
+			ti.FieldConstraints.AllowExtraFields = true
+
 			tree := tree.Tree{
 				Namespace: testutil.NewTestStore(t),
+				Codec:     database.NewCodec(nil, &ti),
 			}
 
-			err := tree.Put(key1, val)
+			_, err := tree.Put(key1, doc)
 			assert.NoError(t, err)
 
 			err = tree.Delete(test.key)
@@ -121,12 +132,17 @@ func TestTreeIterate(t *testing.T) {
 	sort.Sort(keys)
 
 	buildTree := func() *tree.Tree {
+		var ti database.TableInfo
+		ti.FieldConstraints.AllowExtraFields = true
 		tt := tree.Tree{
 			Namespace: testutil.NewTestStore(t),
+			Codec:     database.NewCodec(nil, &ti),
 		}
 
 		for i, k := range keys {
-			err := tt.Put(k, types.NewIntegerValue(int64(i)))
+			_, err := tt.Put(k, document.NewFromMap(map[string]int{
+				"a": i,
+			}))
 			assert.NoError(t, err)
 		}
 
@@ -168,7 +184,7 @@ func TestTreeIterate(t *testing.T) {
 			} else {
 				rng.Max = test.pivot
 			}
-			err := tt.IterateOnRange(&rng, test.reverse, func(k tree.Key, v types.Value) error {
+			err := tt.IterateOnRange(&rng, test.reverse, func(k tree.Key, _ types.Document) error {
 				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})
@@ -210,12 +226,17 @@ func TestTreeIterateOnRange(t *testing.T) {
 	sort.Sort(keys)
 
 	buildTree := func() *tree.Tree {
+		var ti database.TableInfo
+		ti.FieldConstraints.AllowExtraFields = true
 		tt := tree.Tree{
 			Namespace: testutil.NewTestStore(t),
+			Codec:     database.NewCodec(nil, &ti),
 		}
 
 		for i, k := range keys {
-			err := tt.Put(k, types.NewIntegerValue(int64(i)))
+			_, err := tt.Put(k, document.NewFromMap(map[string]int{
+				"a": i,
+			}))
 			assert.NoError(t, err)
 		}
 
@@ -283,7 +304,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 
 			var keys tree.Keys
 
-			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, v types.Value) error {
+			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, _ types.Document) error {
 				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})

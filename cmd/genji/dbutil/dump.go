@@ -108,7 +108,8 @@ func dumpSchema(tx *genji.Tx, w io.Writer, query string, tableName string) error
 	// Indexes statements.
 	res, err := tx.Query(`
 		SELECT sql FROM __genji_catalog WHERE 
-			type IN ('index', 'sequence') AND owner IS NULL AND table_name = ?
+			type = 'index' AND owner.table_name = ? OR
+			type = 'sequence' AND owner IS NULL
 	`, tableName)
 	if err != nil {
 		return err

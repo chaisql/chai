@@ -125,7 +125,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(s),
+		Tree:    tree.New(s, NewCodec(tx, ti)),
 		Info:    ti,
 		Catalog: c,
 	}, nil
@@ -237,13 +237,13 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
 func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
-	err := c.LockTable(tx, info.TableName, lock.X)
+	err := c.LockTable(tx, info.Owner.TableName, lock.X)
 	if err != nil {
 		return err
 	}
 
 	// check if the associated table exists
-	_, err = c.GetTableInfo(info.TableName)
+	_, err = c.GetTableInfo(info.Owner.TableName)
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 
 	s := tx.Session.GetNamespace(info.StoreNamespace)
 
-	return NewIndex(tree.New(s), *info), nil
+	return NewIndex(tree.New(s, NoOpCodec{}), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -310,14 +310,14 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 		return err
 	}
 
-	err = c.LockTable(tx, info.TableName, lock.X)
+	err = c.LockTable(tx, info.Owner.TableName, lock.X)
 	if err != nil {
 		return err
 	}
 
 	// check if the index has been created by a table constraint
 	if len(info.Owner.Paths) > 0 {
-		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.TableName, info.Owner.Paths)
+		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.Owner.TableName, info.Owner.Paths)
 	}
 
 	_, err = c.Cache.Delete(tx, RelationIndexType, name)
@@ -422,7 +422,7 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 		info := r.(*IndexInfoRelation).Info
 
 		idxClone := info.Clone()
-		idxClone.TableName = clone.TableName
+		idxClone.Owner.TableName = clone.TableName
 
 		cloneRel := &IndexInfoRelation{Info: idxClone}
 		err = c.Cache.Add(tx, cloneRel)
@@ -568,7 +568,7 @@ func (r *IndexInfoRelation) SetName(name string) {
 }
 
 func (r *IndexInfoRelation) GenerateBaseName() string {
-	return fmt.Sprintf("%s_%s_idx", r.Info.TableName, pathsToIndexName(r.Info.Paths))
+	return fmt.Sprintf("%s_%s_idx", r.Info.Owner.TableName, pathsToIndexName(r.Info.Paths))
 }
 
 func pathsToIndexName(paths []document.Path) string {
@@ -762,7 +762,7 @@ func (c *catalogCache) GetTableIndexes(tableName string) []*IndexInfo {
 	var indexes []*IndexInfo
 	for _, o := range c.indexes {
 		idx := o.(*IndexInfoRelation).Info
-		if idx.TableName != tableName {
+		if idx.Owner.TableName != tableName {
 			continue
 		}
 		indexes = append(indexes, idx)
@@ -792,24 +792,51 @@ func newCatalogStore() *CatalogStore {
 			},
 			FieldConstraints: MustNewFieldConstraints(
 				&FieldConstraint{
-					Field: "name",
-					Type:  types.TextValue,
+					Position:  0,
+					Field:     "name",
+					Type:      types.TextValue,
+					IsNotNull: true,
 				},
 				&FieldConstraint{
-					Field: "type",
-					Type:  types.TextValue,
+					Position:  1,
+					Field:     "type",
+					Type:      types.TextValue,
+					IsNotNull: true,
 				},
 				&FieldConstraint{
-					Field: "table_name",
-					Type:  types.TextValue,
+					Position: 2,
+					Field:    "namespace",
+					Type:     types.IntegerValue,
 				},
 				&FieldConstraint{
-					Field: "sql",
-					Type:  types.TextValue,
+					Position: 3,
+					Field:    "sql",
+					Type:     types.TextValue,
 				},
 				&FieldConstraint{
-					Field: "store_name",
-					Type:  types.BlobValue,
+					Position: 4,
+					Field:    "docid_sequence_name",
+					Type:     types.TextValue,
+				},
+				&FieldConstraint{
+					Position: 5,
+					Field:    "owner",
+					Type:     types.DocumentValue,
+					AnonymousType: &AnonymousType{
+						FieldConstraints: MustNewFieldConstraints(
+							&FieldConstraint{
+								Position:  0,
+								Field:     "table_name",
+								Type:      types.TextValue,
+								IsNotNull: true,
+							},
+							&FieldConstraint{
+								Position: 1,
+								Field:    "paths",
+								Type:     types.ArrayValue,
+							},
+						),
+					},
 				},
 			),
 		},
@@ -825,7 +852,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(st),
+		Tree:    tree.New(st, NewCodec(tx, s.info)),
 		Info:    s.info,
 		Catalog: s.Catalog,
 	}
@@ -897,7 +924,6 @@ func indexInfoToDocument(i *IndexInfo) types.Document {
 	buf.Add("name", types.NewTextValue(i.IndexName))
 	buf.Add("type", types.NewTextValue(RelationIndexType))
 	buf.Add("namespace", types.NewIntegerValue(int64(i.StoreNamespace)))
-	buf.Add("table_name", types.NewTextValue(i.TableName))
 	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {
 		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&i.Owner)))

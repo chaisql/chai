@@ -57,7 +57,7 @@ func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
 	}
 
 	// insert into the table
-	err = t.Tree.Put(key, types.NewDocumentValue(d))
+	d, err = t.Tree.Put(key, d)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -98,28 +98,8 @@ func (t *Table) Replace(key tree.Key, d types.Document) (types.Document, error) 
 	}
 
 	// replace old document with new document
-	err = t.Tree.Put(key, types.NewDocumentValue(d))
+	d, err = t.Tree.Put(key, d)
 	return d, err
-}
-
-// This document implementation waits until
-// GetByField or Iterate are called to
-// fetch the value from the engine store.
-// This is useful to prevent reading the value
-// from store on documents that don't need to be
-// decoded.
-type lazilyDecodedDocument struct {
-	types.Value
-}
-
-func (d *lazilyDecodedDocument) GetByField(field string) (v types.Value, err error) {
-	doc := d.V().(types.Document)
-	return doc.GetByField(field)
-}
-
-func (d *lazilyDecodedDocument) Iterate(fn func(field string, value types.Value) error) error {
-	doc := d.V().(types.Document)
-	return doc.Iterate(fn)
 }
 
 func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d types.Document) error) error {
@@ -140,17 +120,14 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d
 		}
 	}
 
-	var d lazilyDecodedDocument
-
-	return t.Tree.IterateOnRange(r, reverse, func(k tree.Key, v types.Value) error {
-		d.Value = v
-		return fn(k, &d)
+	return t.Tree.IterateOnRange(r, reverse, func(k tree.Key, d types.Document) error {
+		return fn(k, d)
 	})
 }
 
 // GetDocument returns one document by key.
 func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
-	v, err := t.Tree.Get(key)
+	d, err := t.Tree.Get(key)
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyNotFound) {
 			return nil, errors.WithStack(errs.ErrDocumentNotFound)
@@ -158,7 +135,7 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
-	return &lazilyDecodedDocument{v}, nil
+	return d, nil
 }
 
 // generate a key for d based on the table configuration.

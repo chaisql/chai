@@ -3,6 +3,7 @@ package document
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
@@ -472,4 +473,41 @@ func (o *onlyDocument) GetByField(field string) (types.Value, error) {
 
 func (o *onlyDocument) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(o)
+}
+
+func WithSortedFields(d types.Document) types.Document {
+	return &sortedDocument{d}
+}
+
+type sortedDocument struct {
+	types.Document
+}
+
+func (s *sortedDocument) Iterate(fn func(field string, value types.Value) error) error {
+	// iterate first to get the list of fields
+	var fields []string
+	err := s.Document.Iterate(func(field string, value types.Value) error {
+		fields = append(fields, field)
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// sort the fields
+	sort.Strings(fields)
+
+	// iterate again
+	for _, f := range fields {
+		v, err := s.Document.GetByField(f)
+		if err != nil {
+			continue
+		}
+
+		if err := fn(f, v); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

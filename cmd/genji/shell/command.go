@@ -149,7 +149,7 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
-		_, err := db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE table_name = ? LIMIT 1", tableName)
+		_, err := db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName)
 		if err != nil {
 			if errors.Is(err, errs.ErrDocumentNotFound) {
 				return fmt.Errorf("%w: %q", errs.NotFoundError{Name: tableName}, tableName)

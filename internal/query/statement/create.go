@@ -54,9 +54,8 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
 			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
-				TableName: stmt.Info.TableName,
-				Paths:     tc.Paths,
-				Unique:    true,
+				Paths:  tc.Paths,
+				Unique: true,
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
 					Paths:     tc.Paths,
@@ -97,7 +96,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 		return res, err
 	}
 
-	s := stream.New(stream.TableScan(stmt.Info.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
+	s := stream.New(stream.TableScan(stmt.Info.Owner.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
 
 	ss := PreparedStreamStmt{
 		Stream:   s,
