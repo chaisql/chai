@@ -23,6 +23,29 @@ func NewLockManager() *LockManager {
 	return &lm
 }
 
+func (lm *LockManager) HasLock(txid uint64, obj *Object, mode LockMode) bool {
+	lm.mu.Lock()
+	head, ok := lm.locks[*obj]
+	if !ok {
+		lm.mu.Unlock()
+		return false
+	}
+	// A lock exists for this object.
+	// Lock the queue header and unlock the map.
+	head.mu.Lock()
+	lm.mu.Unlock()
+
+	for req := head.Queue; req != nil; req = req.Next {
+		if req.Txid == txid {
+			head.mu.Unlock()
+			return req.Mode == mode
+		}
+	}
+
+	head.mu.Unlock()
+	return false
+}
+
 func (lm *LockManager) Lock(ctx context.Context, txid uint64, obj *Object, mode LockMode) (bool, error) {
 	lm.mu.Lock()
 	head, ok := lm.locks[*obj]

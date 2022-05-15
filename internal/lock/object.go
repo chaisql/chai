@@ -1,5 +1,7 @@
 package lock
 
+import "sync"
+
 // An ObjectType defines all objects that can be locked
 // by a transaction.
 type ObjectType int
@@ -42,9 +44,48 @@ func NewDatabaseObject() *Object {
 }
 
 func NewTableObject(name string) *Object {
-	return &Object{Table: name, Type: Table}
+	obj := cache.get(name)
+	if obj != nil {
+		return obj
+	}
+
+	return cache.newTableObject(name)
 }
 
 func NewDocumentObject(tableName string, pk []byte) *Object {
 	return &Object{Key: string(pk), Table: tableName, Type: Document}
+}
+
+var cache = newObjectCache()
+
+type objectCache struct {
+	mu sync.RWMutex
+
+	objects map[string]*Object
+}
+
+func newObjectCache() *objectCache {
+	return &objectCache{
+		objects: make(map[string]*Object),
+	}
+}
+
+func (oc *objectCache) get(key string) *Object {
+	oc.mu.RLock()
+	defer oc.mu.RUnlock()
+	return oc.objects[key]
+}
+
+func (oc *objectCache) newTableObject(name string) *Object {
+	oc.mu.Lock()
+	obj, ok := oc.objects[name]
+	if ok {
+		oc.mu.Unlock()
+		return obj
+	}
+
+	obj = &Object{Table: name, Type: Table}
+	oc.objects[name] = obj
+	oc.mu.Unlock()
+	return obj
 }

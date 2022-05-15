@@ -95,6 +95,10 @@ func (c *Catalog) generateStoreName(tx *Transaction) (kv.NamespaceID, error) {
 
 func (c *Catalog) LockTable(tx *Transaction, tableName string, mode lock.LockMode) error {
 	obj := lock.NewTableObject(tableName)
+	if c.Locks.HasLock(tx.ID, obj, mode) {
+		return nil
+	}
+
 	ok, err := c.Locks.Lock(context.Background(), tx.ID, obj, mode)
 	if !ok || err != nil {
 		return errors.Wrapf(err, "failed to lock table %s", tableName)
