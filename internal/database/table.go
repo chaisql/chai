@@ -1,6 +1,7 @@
 package database
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/cockroachdb/errors"
@@ -56,13 +57,33 @@ func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
 		}
 	}
 
+	d, enc, err := t.encodeDocument(d)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// insert into the table
-	d, err = t.Tree.Put(key, d)
+	err = t.Tree.Put(key, enc)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	return key, d, nil
+}
+
+func (t *Table) encodeDocument(d types.Document) (types.Document, []byte, error) {
+	ed, ok := d.(*EncodedDocument)
+	if ok {
+		return d, ed.encoded, nil
+	}
+
+	var buf bytes.Buffer
+	err := t.Info.EncodeDocument(t.Tx, &buf, d)
+	if err != nil {
+		return nil, nil, err
+	}
+	enc := buf.Bytes()
+	return NewEncodedDocument(&t.Info.FieldConstraints, enc), enc, nil
 }
 
 // Delete a document by key.
@@ -97,8 +118,13 @@ func (t *Table) Replace(key tree.Key, d types.Document) (types.Document, error) 
 		return nil, err
 	}
 
+	d, enc, err := t.encodeDocument(d)
+	if err != nil {
+		return nil, err
+	}
+
 	// replace old document with new document
-	d, err = t.Tree.Put(key, d)
+	err = t.Tree.Put(key, enc)
 	return d, err
 }
 
@@ -120,14 +146,20 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d
 		}
 	}
 
-	return t.Tree.IterateOnRange(r, reverse, func(k tree.Key, d types.Document) error {
-		return fn(k, d)
+	e := EncodedDocument{
+		fieldConstraints: &t.Info.FieldConstraints,
+	}
+
+	return t.Tree.IterateOnRange(r, reverse, func(k tree.Key, enc []byte) error {
+		e.encoded = enc
+		e.reader.Reset(enc)
+		return fn(k, NewEncodedDocument(&t.Info.FieldConstraints, enc))
 	})
 }
 
 // GetDocument returns one document by key.
 func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
-	d, err := t.Tree.Get(key)
+	enc, err := t.Tree.Get(key)
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyNotFound) {
 			return nil, errors.WithStack(errs.ErrDocumentNotFound)
@@ -135,7 +167,7 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}
 
-	return d, nil
+	return NewEncodedDocument(&t.Info.FieldConstraints, enc), nil
 }
 
 // generate a key for d based on the table configuration.

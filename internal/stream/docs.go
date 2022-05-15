@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 
@@ -502,7 +503,10 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 	var counter int64
 
+	codec := database.AsIsCodec{}
+	var buf bytes.Buffer
 	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
+		buf.Reset()
 		// evaluate the sort expression
 		v, err := op.Expr.Eval(out)
 		if err != nil {
@@ -525,8 +529,11 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 		counter++
 
-		_, err = tr.Put(tk, doc)
-		return err
+		err = codec.Encode(&buf, doc)
+		if err != nil {
+			return err
+		}
+		return tr.Put(tk, buf.Bytes())
 	})
 	if err != nil {
 		return err
@@ -535,7 +542,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, d types.Document) error {
+	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, data []byte) error {
 		kv, err := k.Decode()
 		if err != nil {
 			return err
@@ -551,7 +558,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 			newEnv.Set(environment.DocPKKey, docKey)
 		}
 
-		newEnv.SetDocument(d)
+		newEnv.SetDocument(codec.Decode(data))
 
 		return fn(&newEnv)
 	})

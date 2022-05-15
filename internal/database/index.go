@@ -69,8 +69,7 @@ func (idx *Index) Set(vs []types.Value, key tree.Key) error {
 		return err
 	}
 
-	_, err = idx.Tree.Put(treeKey, nil)
-	return err
+	return idx.Tree.Put(treeKey, nil)
 }
 
 // Exists iterates over the index and check if the value exists
@@ -87,7 +86,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
 	var found bool
 	var dKey tree.Key
 
-	err = idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k tree.Key, _ types.Document) error {
+	err = idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k tree.Key, _ []byte) error {
 		if len(seek) > len(k) {
 			return errStop
 		}
@@ -189,8 +188,8 @@ func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey t
 	return idx.Tree.IterateOnRange(rng, reverse, idx.iterator(fn))
 }
 
-func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k tree.Key, d types.Document) error {
-	return func(k tree.Key, _ types.Document) error {
+func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k tree.Key, d []byte) error {
+	return func(k tree.Key, _ []byte) error {
 		// we don't care about the value, we just want to extract the key
 		// which is the last element of the encoded array
 		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})

@@ -168,7 +168,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 			if err != nil {
 				return err
 			}
-			_, err = temp.Put(key, nil)
+			err = temp.Put(key, nil)
 			if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
 				return nil
 			}
@@ -188,7 +188,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	// iterate over the temporary index
-	return temp.IterateOnRange(nil, false, func(key tree.Key, _ types.Document) error {
+	return temp.IterateOnRange(nil, false, func(key tree.Key, _ []byte) error {
 		kv, err := key.Decode()
 		if err != nil {
 			return err

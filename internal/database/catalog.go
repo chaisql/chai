@@ -125,7 +125,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(s, NewCodec(tx, ti)),
+		Tree:    tree.New(s),
 		Info:    ti,
 		Catalog: c,
 	}, nil
@@ -271,7 +271,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 
 	s := tx.Session.GetNamespace(info.StoreNamespace)
 
-	return NewIndex(tree.New(s, NoOpCodec{}), *info), nil
+	return NewIndex(tree.New(s), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -852,7 +852,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(st, NewCodec(tx, s.info)),
+		Tree:    tree.New(st),
 		Info:    s.info,
 		Catalog: s.Catalog,
 	}

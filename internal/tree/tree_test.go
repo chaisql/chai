@@ -59,18 +59,17 @@ func TestTreeGet(t *testing.T) {
 			ti.FieldConstraints.AllowExtraFields = true
 			tree := tree.Tree{
 				Namespace: testutil.NewTestStore(t),
-				Codec:     database.NewCodec(nil, &ti),
 			}
 
-			_, err := tree.Put(key1, doc)
+			err := tree.Put(key1, []byte{1})
 			assert.NoError(t, err)
 
-			d, err := tree.Get(test.key)
+			v, err := tree.Get(test.key)
 			if test.Fails {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				testutil.RequireDocEqual(t, test.d, d)
+				require.Equal(t, []byte{1}, v)
 			}
 		})
 	}
@@ -93,10 +92,9 @@ func TestTreeDelete(t *testing.T) {
 
 			tree := tree.Tree{
 				Namespace: testutil.NewTestStore(t),
-				Codec:     database.NewCodec(nil, &ti),
 			}
 
-			_, err := tree.Put(key1, doc)
+			err := tree.Put(key1, []byte{1})
 			assert.NoError(t, err)
 
 			err = tree.Delete(test.key)
@@ -136,13 +134,10 @@ func TestTreeIterate(t *testing.T) {
 		ti.FieldConstraints.AllowExtraFields = true
 		tt := tree.Tree{
 			Namespace: testutil.NewTestStore(t),
-			Codec:     database.NewCodec(nil, &ti),
 		}
 
 		for i, k := range keys {
-			_, err := tt.Put(k, document.NewFromMap(map[string]int{
-				"a": i,
-			}))
+			err := tt.Put(k, []byte{byte(i)})
 			assert.NoError(t, err)
 		}
 
@@ -184,7 +179,7 @@ func TestTreeIterate(t *testing.T) {
 			} else {
 				rng.Max = test.pivot
 			}
-			err := tt.IterateOnRange(&rng, test.reverse, func(k tree.Key, _ types.Document) error {
+			err := tt.IterateOnRange(&rng, test.reverse, func(k tree.Key, _ []byte) error {
 				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})
@@ -230,13 +225,10 @@ func TestTreeIterateOnRange(t *testing.T) {
 		ti.FieldConstraints.AllowExtraFields = true
 		tt := tree.Tree{
 			Namespace: testutil.NewTestStore(t),
-			Codec:     database.NewCodec(nil, &ti),
 		}
 
 		for i, k := range keys {
-			_, err := tt.Put(k, document.NewFromMap(map[string]int{
-				"a": i,
-			}))
+			err := tt.Put(k, []byte{byte(i)})
 			assert.NoError(t, err)
 		}
 
@@ -304,7 +296,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 
 			var keys tree.Keys
 
-			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, _ types.Document) error {
+			err := tt.IterateOnRange(test.rng, test.reverse, func(k tree.Key, _ []byte) error {
 				keys = append(keys, append([]byte{}, k...))
 				return nil
 			})

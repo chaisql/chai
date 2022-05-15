@@ -6,7 +6,6 @@ import (
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,7 +72,7 @@ func TestReIndex(t *testing.T) {
 				}
 
 				i := 0
-				err = idx.Tree.IterateOnRange(nil, false, func(tree.Key, types.Document) error {
+				err = idx.Tree.IterateOnRange(nil, false, func(tree.Key, []byte) error {
 					i++
 					return nil
 				})

@@ -263,10 +263,10 @@ func (c AsIsCodec) Encode(w io.Writer, d types.Document) error {
 	return encodeGenericDocument(enc, d)
 }
 
-func (c AsIsCodec) Decode(encoded []byte) (types.Document, error) {
+func (c AsIsCodec) Decode(encoded []byte) types.Document {
 	eg := NewEncodedGenericDocument(encoded)
 	eg.intAsDouble = false
-	return eg, nil
+	return eg
 }
 
 type EncodedDocument struct {

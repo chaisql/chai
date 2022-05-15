@@ -22,72 +22,46 @@ import (
 type Tree struct {
 	Namespace      *kv.Namespace
 	TransientStore *kv.TransientStore
-	Codec          Codec
 }
 
-func New(ns *kv.Namespace, codec Codec) *Tree {
+func New(ns *kv.Namespace) *Tree {
 	return &Tree{
 		Namespace: ns,
-		Codec:     codec,
 	}
 }
 
-func NewTransient(store *kv.TransientStore, codec Codec) *Tree {
+func NewTransient(store *kv.TransientStore) *Tree {
 	return &Tree{
 		TransientStore: store,
-		Codec:          codec,
 	}
 }
+
+var defaultValue = []byte{0}
 
 // Put adds or replaces a key-doc combination to the tree.
 // If the key already exists, its value will be replaced by
 // the given value.
-func (t *Tree) Put(key Key, d types.Document) (types.Document, error) {
-	var enc []byte
-
-	if d != nil {
-		var buf bytes.Buffer
-
-		err := t.Codec.Encode(&buf, d)
-		if err != nil {
-			return nil, err
-		}
-
-		enc = buf.Bytes()
-	} else {
-		enc = []byte{0}
+func (t *Tree) Put(key Key, value []byte) error {
+	if len(value) == 0 {
+		value = defaultValue
 	}
-
 	var err error
 	if t.TransientStore != nil {
-		err = t.TransientStore.Put(key, enc)
+		err = t.TransientStore.Put(key, value)
 	} else {
-		err = t.Namespace.Put(key, enc)
+		err = t.Namespace.Put(key, value)
 	}
-	if err != nil {
-		return nil, err
-	}
-
-	return t.Codec.Decode(enc)
+	return err
 }
 
 // Get a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
-func (t *Tree) Get(key Key) (types.Document, error) {
+func (t *Tree) Get(key Key) ([]byte, error) {
 	if t.TransientStore != nil {
 		panic("Get not implemented on transient tree")
 	}
 
-	var d Document
-	d.codec = t.Codec
-	vv, err := t.Namespace.Get(key)
-	if err != nil {
-		return nil, err
-	}
-
-	d.encoded = vv
-
-	return &d, nil
+	return t.Namespace.Get(key)
 }
 
 // Exists returns true if the key exists in the tree.
@@ -132,7 +106,7 @@ func (t *Tree) Truncate() error {
 // | >= 10 | Min: 10          | DESC      | nil     | 10      |
 // | < 10  | Max: 10, Excl    | DESC      | 10      | nil     |
 // | <= 10 | Max: 10          | DESC      | 10+0xFF | nil     |
-func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Document) error) error {
+func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, []byte) error) error {
 	var start, end []byte
 
 	if rng == nil {
@@ -181,15 +155,9 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, types.Docum
 		it.Last()
 	}
 
-	var d Document
-	d.codec = t.Codec
-
 	prefix := t.buildKey(nil)
 	for it.Valid() {
-		d.encoded = it.Value()
-		d.d = nil
-
-		err := fn(bytes.TrimPrefix(it.Key(), prefix), &d)
+		err := fn(bytes.TrimPrefix(it.Key(), prefix), it.Value())
 		if err != nil {
 			return err
 		}
@@ -237,44 +205,6 @@ func (t *Tree) buildEndKeyInclusive(key []byte) []byte {
 
 func (t *Tree) buildEndKeyExclusive(key []byte) []byte {
 	return t.buildKey(key)
-}
-
-// Document is an implementation of the types.Document interface returned by Tree.
-// It is used to lazily decode values from the underlying store.
-type Document struct {
-	codec   Codec
-	encoded []byte
-	d       types.Document
-}
-
-func (d *Document) decode() {
-	if d.d != nil {
-		return
-	}
-
-	var err error
-	d.d, err = d.codec.Decode(d.encoded)
-	if err != nil {
-		panic(err)
-	}
-}
-
-func (d *Document) Iterate(fn func(field string, value types.Value) error) error {
-	d.decode()
-
-	return d.d.Iterate(fn)
-}
-
-func (d *Document) GetByField(field string) (types.Value, error) {
-	d.decode()
-
-	return d.d.GetByField(field)
-}
-
-func (d *Document) MarshalJSON() ([]byte, error) {
-	d.decode()
-
-	return d.d.MarshalJSON()
 }
 
 // A Range of keys to iterate on.
