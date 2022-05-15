@@ -146,7 +146,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 	switch v.Type() {
 	case types.DocumentValue:
 		var buf FieldBuffer
-		err := buf.ScanDocument(v.V().(types.Document))
+		err := buf.ScanDocument(types.As[types.Document](v))
 		if err != nil {
 			return v, err
 		}
@@ -176,7 +176,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		return types.NewDocumentValue(&buf), err
 	case types.ArrayValue:
 		var vb ValueBuffer
-		err := vb.ScanArray(v.V().(types.Array))
+		err := vb.ScanArray(types.As[types.Array](v))
 		if err != nil {
 			return v, err
 		}
@@ -266,7 +266,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 	}
 	switch v.Type() {
 	case types.DocumentValue:
-		subBuf, ok := v.V().(*FieldBuffer)
+		subBuf, ok := types.Is[*FieldBuffer](v)
 		if !ok {
 			return errors.New("Delete doesn't support non buffered document")
 		}
@@ -280,7 +280,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 
 		return types.ErrFieldNotFound
 	case types.ArrayValue:
-		subBuf, ok := v.V().(*ValueBuffer)
+		subBuf, ok := types.Is[*ValueBuffer](v)
 		if !ok {
 			return errors.New("Delete doesn't support non buffered array")
 		}
@@ -322,20 +322,20 @@ func CloneValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
 	case types.ArrayValue:
 		vb := NewValueBuffer()
-		err := vb.Copy(v.V().(types.Array))
+		err := vb.Copy(types.As[types.Array](v))
 		if err != nil {
 			return nil, err
 		}
 		return types.NewArrayValue(vb), nil
 	case types.DocumentValue:
 		fb := NewFieldBuffer()
-		err := fb.Copy(v.V().(types.Document))
+		err := fb.Copy(types.As[types.Document](v))
 		if err != nil {
 			return nil, err
 		}
 		return types.NewDocumentValue(fb), nil
 	case types.BlobValue:
-		return types.NewValueWith(v.Type(), append([]byte{}, v.V().([]byte)...)), nil
+		return types.NewValueWith(v.Type(), append([]byte{}, types.As[[]byte](v)...)), nil
 	default:
 		return types.NewValueWith(v.Type(), v.V()), nil
 	}
@@ -357,10 +357,10 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 
 		switch f.Value.Type() {
 		case types.DocumentValue:
-			buf, ok := f.Value.V().(*FieldBuffer)
+			buf, ok := types.Is[*FieldBuffer](f.Value)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(f.Value.V().(types.Document))
+				err := buf.Copy(types.As[types.Document](f.Value))
 				if err != nil {
 					return err
 				}
@@ -374,10 +374,10 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			}
 			fb.fields[i].Value = types.NewDocumentValue(buf)
 		case types.ArrayValue:
-			buf, ok := f.Value.V().(*ValueBuffer)
+			buf, ok := types.Is[*ValueBuffer](f.Value)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(f.Value.V().(types.Array))
+				err := buf.Copy(types.As[types.Array](f.Value))
 				if err != nil {
 					return err
 				}

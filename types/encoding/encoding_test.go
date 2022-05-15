@@ -116,7 +116,7 @@ func TestDocumentGetByField(t *testing.T) {
 	v, err := encoding.DecodeValue(buf.Bytes())
 	assert.NoError(t, err)
 
-	d := v.V().(types.Document)
+	d := types.As[types.Document](v)
 
 	v, err = d.GetByField("a")
 	assert.NoError(t, err)
@@ -161,13 +161,13 @@ func TestArrayGetByIndex(t *testing.T) {
 	v, err := encoding.DecodeValue(buf.Bytes())
 	assert.NoError(t, err)
 
-	d := v.V().(types.Document)
+	d := types.As[types.Document](v)
 
 	v, err = d.GetByField("a")
 	assert.NoError(t, err)
 
 	require.Equal(t, types.ArrayValue, v.Type())
-	a := v.V().(types.Array)
+	a := types.As[types.Array](v)
 	v, err = a.GetByIndex(0)
 	assert.NoError(t, err)
 

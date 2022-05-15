@@ -93,7 +93,7 @@ func NewValueWith[T any](t ValueType, v T) Value {
 	}
 }
 
-func (v *value[T]) V() interface{} {
+func (v *value[T]) V() any {
 	if v.tp == NullValue {
 		return nil
 	}
@@ -103,6 +103,25 @@ func (v *value[T]) V() interface{} {
 
 func (v *value[T]) Type() ValueType {
 	return v.tp
+}
+
+func As[T any](v Value) T {
+	vv, ok := v.(*value[T])
+	if !ok {
+		return v.V().(T)
+	}
+
+	return vv.v
+}
+
+func Is[T any](v Value) (T, bool) {
+	vv, ok := v.(*value[T])
+	if !ok {
+		x, ok := v.V().(T)
+		return x, ok
+	}
+
+	return vv.v, true
 }
 
 // IsTruthy returns whether v is not equal to the zero value of its type.
@@ -120,26 +139,26 @@ func IsTruthy(v Value) (bool, error) {
 func IsZeroValue(v Value) (bool, error) {
 	switch v.Type() {
 	case BooleanValue:
-		return v.V() == false, nil
+		return !As[bool](v), nil
 	case IntegerValue:
-		return v.V() == int64(0), nil
+		return As[int64](v) == int64(0), nil
 	case DoubleValue:
-		return v.V() == float64(0), nil
+		return As[float64](v) == float64(0), nil
 	case BlobValue:
-		return v.V() == nil, nil
+		return As[[]byte](v) == nil, nil
 	case TextValue:
-		return v.V() == "", nil
+		return As[string](v) == "", nil
 	case ArrayValue:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
 		// it means that the array is empty.
-		_, err := v.V().(Array).GetByIndex(0)
+		_, err := As[Array](v).GetByIndex(0)
 		if errors.Is(err, ErrValueNotFound) {
 			return true, nil
 		}
 		return false, err
 	case DocumentValue:
-		err := v.V().(Document).Iterate(func(_ string, _ Value) error {
+		err := As[Document](v).Iterate(func(_ string, _ Value) error {
 			// We return an error in the first iteration to stop it.
 			return errors.WithStack(errStop)
 		})
@@ -191,13 +210,13 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		dst.WriteString("NULL")
 		return nil
 	case BooleanValue:
-		dst.WriteString(strconv.FormatBool(v.V().(bool)))
+		dst.WriteString(strconv.FormatBool(As[bool](v)))
 		return nil
 	case IntegerValue:
-		dst.WriteString(strconv.FormatInt(v.V().(int64), 10))
+		dst.WriteString(strconv.FormatInt(As[int64](v), 10))
 		return nil
 	case DoubleValue:
-		f := v.V().(float64)
+		f := As[float64](v)
 		abs := math.Abs(f)
 		fmt := byte('f')
 		if abs != 0 {
@@ -213,13 +232,13 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		if float64(int64(f)) == f {
 			prec = 1
 		}
-		dst.WriteString(strconv.FormatFloat(v.V().(float64), fmt, prec, 64))
+		dst.WriteString(strconv.FormatFloat(As[float64](v), fmt, prec, 64))
 		return nil
 	case TextValue:
-		dst.WriteString(strconv.Quote(v.V().(string)))
+		dst.WriteString(strconv.Quote(As[string](v)))
 		return nil
 	case BlobValue:
-		src := v.V().([]byte)
+		src := As[[]byte](v)
 		dst.WriteString("\"\\x")
 		hex.NewEncoder(dst).Write(src)
 		dst.WriteByte('"')
@@ -227,7 +246,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 	case ArrayValue:
 		var nonempty bool
 		dst.WriteByte('[')
-		err := v.V().(Array).Iterate(func(i int, value Value) error {
+		err := As[Array](v).Iterate(func(i int, value Value) error {
 			nonempty = true
 			if i > 0 {
 				dst.WriteByte(',')
@@ -250,7 +269,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 	case DocumentValue:
 		dst.WriteByte('{')
 		var i int
-		err := v.V().(Document).Iterate(func(field string, value Value) error {
+		err := As[Document](v).Iterate(func(field string, value Value) error {
 			if i > 0 {
 				dst.WriteByte(',')
 				if prefix == "" {
@@ -297,7 +316,7 @@ func (v *value[T]) MarshalJSON() ([]byte, error) {
 	case NullValue:
 		return []byte("null"), nil
 	case DoubleValue:
-		f := v.V().(float64)
+		f := As[float64](v)
 		abs := math.Abs(f)
 		fmt := byte('f')
 		if abs != 0 {
@@ -309,18 +328,18 @@ func (v *value[T]) MarshalJSON() ([]byte, error) {
 		// By default the precision is -1 to use the smallest number of digits.
 		// See https://pkg.go.dev/strconv#FormatFloat
 		prec := -1
-		return strconv.AppendFloat(nil, v.V().(float64), fmt, prec, 64), nil
+		return strconv.AppendFloat(nil, As[float64](v), fmt, prec, 64), nil
 	case BlobValue:
-		src := v.V().([]byte)
+		src := As[[]byte](v)
 		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
 		dst[0] = '"'
 		dst[len(dst)-1] = '"'
 		base64.StdEncoding.Encode(dst[1:], src)
 		return dst, nil
 	case ArrayValue:
-		return jsonArray{Array: v.V().(Array)}.MarshalJSON()
+		return jsonArray{Array: As[Array](v)}.MarshalJSON()
 	case DocumentValue:
-		return jsonDocument{Document: v.V().(Document)}.MarshalJSON()
+		return jsonDocument{Document: As[Document](v)}.MarshalJSON()
 	default:
 		return nil, fmt.Errorf("unexpected type: %d", v.Type())
 	}

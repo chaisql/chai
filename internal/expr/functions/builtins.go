@@ -118,12 +118,12 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return expr.NullLiteral, nil
 	}
 
-	vs, err := tree.Key(dpk.V().([]byte)).Decode()
+	vs, err := tree.Key(types.As[[]byte](dpk)).Decode()
 	if err != nil {
 		return expr.NullLiteral, err
 	}
 
-	info, err := env.GetCatalog().GetTableInfo(tableName.V().(string))
+	info, err := env.GetCatalog().GetTableInfo(types.As[string](tableName))
 	if err != nil {
 		return nil, err
 	}
@@ -525,9 +525,9 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 
 	if s.SumF != nil {
 		if v.Type() == types.IntegerValue {
-			*s.SumF += float64(v.V().(int64))
+			*s.SumF += float64(types.As[int64](v))
 		} else {
-			*s.SumF += float64(v.V().(float64))
+			*s.SumF += float64(types.As[float64](v))
 		}
 
 		return nil
@@ -539,7 +539,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 			sumF = float64(*s.SumI)
 		}
 		s.SumF = &sumF
-		*s.SumF += float64(v.V().(float64))
+		*s.SumF += float64(types.As[float64](v))
 
 		return nil
 	}
@@ -549,7 +549,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		s.SumI = &sumI
 	}
 
-	*s.SumI += v.V().(int64)
+	*s.SumI += types.As[int64](v)
 	return nil
 }
 
@@ -630,9 +630,9 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 
 	switch v.Type() {
 	case types.IntegerValue:
-		s.Avg += float64(v.V().(int64))
+		s.Avg += float64(types.As[int64](v))
 	case types.DoubleValue:
-		s.Avg += v.V().(float64)
+		s.Avg += types.As[float64](v)
 	default:
 		return nil
 	}

@@ -79,7 +79,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 
 		var currentValue *int64
 		if err == nil && v.Type() != types.NullValue {
-			v := v.V().(int64)
+			v := types.As[int64](v)
 			currentValue = &v
 		}
 
@@ -98,7 +98,7 @@ func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (table
 			return err
 		}
 
-		switch tp.V().(string) {
+		switch types.As[string](tp) {
 		case database.RelationTableType:
 			ti, err := tableInfoFromDocument(d)
 			if err != nil {
@@ -131,7 +131,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	storeNamespace := v.V().(int64)
+	storeNamespace := types.As[int64](v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
@@ -154,7 +154,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		ti.DocidSequenceName = v.V().(string)
+		ti.DocidSequenceName = types.As[string](v)
 	}
 
 	return &ti, nil
@@ -166,7 +166,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	storeNamespace := v.V().(int64)
+	storeNamespace := types.As[int64](v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
@@ -190,7 +190,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromDocument(v.V().(types.Document))
+		owner, err := ownerFromDocument(types.As[types.Document](v))
 		if err != nil {
 			return nil, err
 		}
@@ -206,7 +206,7 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(s.V().(string))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromDocument(v.V().(types.Document))
+		owner, err := ownerFromDocument(types.As[types.Document](v))
 		if err != nil {
 			return nil, err
 		}
@@ -236,15 +236,15 @@ func ownerFromDocument(d types.Document) (*database.Owner, error) {
 		return nil, err
 	}
 
-	owner.TableName = v.V().(string)
+	owner.TableName = types.As[string](v)
 
 	v, err = d.GetByField("paths")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		err = v.V().(types.Array).Iterate(func(i int, value types.Value) error {
-			pp, err := parser.ParsePath(value.V().(string))
+		err = types.As[types.Array](v).Iterate(func(i int, value types.Value) error {
+			pp, err := parser.ParsePath(types.As[string](value))
 			if err != nil {
 				return err
 			}

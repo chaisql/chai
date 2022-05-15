@@ -40,7 +40,7 @@ func TestDropTable(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		tables = append(tables, v.V().(string))
+		tables = append(tables, types.As[string](v))
 		return nil
 	})
 	assert.NoError(t, err)

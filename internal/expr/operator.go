@@ -107,7 +107,7 @@ func (op *ConcatOperator) Eval(env *environment.Environment) (types.Value, error
 			return NullLiteral, nil
 		}
 
-		return types.NewTextValue(a.V().(string) + b.V().(string)), nil
+		return types.NewTextValue(types.As[string](a) + types.As[string](b)), nil
 	})
 }
 

@@ -253,7 +253,7 @@ func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out 
 			return errors.New("missing key")
 		}
 
-		_, err := table.Replace(key.V().([]byte), d)
+		_, err := table.Replace(types.As[[]byte](key), d)
 		if err != nil {
 			return err
 		}
@@ -301,7 +301,7 @@ func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *
 			return errors.New("missing key")
 		}
 
-		err := table.Delete(key.V().([]byte))
+		err := table.Delete(types.As[[]byte](key))
 		if err != nil {
 			return err
 		}

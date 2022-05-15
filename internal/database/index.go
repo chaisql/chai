@@ -100,7 +100,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
 			return err
 		}
 
-		dKey = values[len(values)-1].V().([]byte)
+		dKey = types.As[[]byte](values[len(values)-1])
 		found = true
 		return errStop
 	})
@@ -195,7 +195,7 @@ func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k 
 		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})
 
 		enc := encoding.EncodedValue(k[pos+1:])
-		pk := tree.Key(enc.V().([]byte))
+		pk := tree.Key(types.As[[]byte](&enc))
 
 		return fn(k, pk)
 	}

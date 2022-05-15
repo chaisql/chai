@@ -387,7 +387,7 @@ func RemoveUnnecessaryFilterNodesRule(sctx *StreamContext) error {
 			// ex: WHERE a IN []
 			lv, ok := t.RightHand().(expr.LiteralValue)
 			if ok && lv.Value.Type() == types.ArrayValue {
-				l, err := document.ArrayLength(lv.Value.V().(types.Array))
+				l, err := document.ArrayLength(types.As[types.Array](lv.Value))
 				if err != nil {
 					return err
 				}

@@ -75,7 +75,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p document
 		}
 
 		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
-			f := v.V().(float64)
+			f := types.As[float64](v)
 			if float64(int64(f)) == f {
 				return document.CastAsInteger(v)
 			}

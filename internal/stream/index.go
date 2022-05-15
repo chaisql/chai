@@ -251,7 +251,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			vs = append(vs, v)
 		}
 
-		err = idx.Set(vs, key.V().([]byte))
+		err = idx.Set(vs, types.As[[]byte](key))
 		if err != nil {
 			return fmt.Errorf("error while inserting index value: %w", err)
 		}
@@ -302,7 +302,7 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 			return errors.New("missing document key")
 		}
 
-		key := tree.Key(dk.V().([]byte))
+		key := tree.Key(types.As[[]byte](dk))
 
 		old, err := table.GetDocument(key)
 		if err != nil {

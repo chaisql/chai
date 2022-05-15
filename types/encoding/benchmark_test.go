@@ -43,7 +43,7 @@ func BenchmarkDocumentGetByField(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		v, _ := encoding.DecodeValue(buf.Bytes())
-		doc := v.V().(types.Document)
+		doc := types.As[types.Document](v)
 		doc.GetByField("name-99")
 	}
 }
@@ -62,7 +62,7 @@ func BenchmarkDocumentIterate(b *testing.B) {
 	assert.NoError(b, err)
 
 	v, _ := encoding.DecodeValue(buf.Bytes())
-	doc := v.V().(types.Document)
+	doc := types.As[types.Document](v)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -110,12 +110,12 @@ func BenchmarkDecodeDocument(b *testing.B) {
 func walkValue(v types.Value) {
 	switch v.Type() {
 	case types.ArrayValue:
-		v.V().(types.Array).Iterate(func(i int, value types.Value) error {
+		types.As[types.Array](v).Iterate(func(i int, value types.Value) error {
 			walkValue(value)
 			return nil
 		})
 	case types.DocumentValue:
-		v.V().(types.Document).Iterate(func(field string, value types.Value) error {
+		types.As[types.Document](v).Iterate(func(field string, value types.Value) error {
 			walkValue(value)
 			return nil
 		})

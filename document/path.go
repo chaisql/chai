@@ -143,9 +143,9 @@ func (p Path) ExtendIndex(index int) Path {
 func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
 	case types.DocumentValue:
-		return p.GetValueFromDocument(v.V().(types.Document))
+		return p.GetValueFromDocument(types.As[types.Document](v))
 	case types.ArrayValue:
-		return p.GetValueFromArray(v.V().(types.Array))
+		return p.GetValueFromArray(types.As[types.Array](v))
 	}
 
 	return nil, types.ErrFieldNotFound

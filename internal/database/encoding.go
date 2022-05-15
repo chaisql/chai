@@ -79,7 +79,7 @@ func encodeDocument(tx *Transaction, enc *msgpack.Encoder, fcs *FieldConstraints
 			if err != nil {
 				return err
 			}
-			err = encodeDocument(tx, enc, &fc.AnonymousType.FieldConstraints, v.V().(types.Document))
+			err = encodeDocument(tx, enc, &fc.AnonymousType.FieldConstraints, types.As[types.Document](v))
 		} else {
 			err = encodeValue(enc, v)
 		}
@@ -152,21 +152,21 @@ func encodeExtraFields(enc *msgpack.Encoder, fcs *FieldConstraints, d types.Docu
 func encodeValue(enc *msgpack.Encoder, v types.Value) error {
 	switch v.Type() {
 	case types.DocumentValue:
-		return encodeGenericDocument(enc, v.V().(types.Document))
+		return encodeGenericDocument(enc, types.As[types.Document](v))
 	case types.ArrayValue:
-		return encodeArray(enc, v.V().(types.Array))
+		return encodeArray(enc, types.As[types.Array](v))
 	case types.NullValue:
 		return enc.EncodeNil()
 	case types.TextValue:
-		return enc.EncodeString(v.V().(string))
+		return enc.EncodeString(types.As[string](v))
 	case types.BlobValue:
-		return enc.EncodeBytes(v.V().([]byte))
+		return enc.EncodeBytes(types.As[[]byte](v))
 	case types.BooleanValue:
-		return enc.EncodeBool(v.V().(bool))
+		return enc.EncodeBool(types.As[bool](v))
 	case types.IntegerValue:
-		return enc.EncodeInt(v.V().(int64))
+		return enc.EncodeInt(types.As[int64](v))
 	case types.DoubleValue:
-		return enc.EncodeFloat64(v.V().(float64))
+		return enc.EncodeFloat64(types.As[float64](v))
 	}
 
 	panic("cannot encode type " + v.Type().String() + " as key")

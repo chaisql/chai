@@ -194,7 +194,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 			return err
 		}
 
-		doc := kv[0].V().(types.Document)
+		doc := types.As[types.Document](kv[0])
 
 		newEnv.SetDocument(doc)
 		return fn(&newEnv)

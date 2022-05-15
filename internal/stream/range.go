@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/types"
 )
 
 // Range represents a range to select values after or before
@@ -36,7 +37,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 			return nil, err
 		}
 
-		rng.Min = min.V().(*document.ValueBuffer).Values
+		rng.Min = types.As[*document.ValueBuffer](min).Values
 	}
 
 	if r.Max != nil {
@@ -44,7 +45,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		if err != nil {
 			return nil, err
 		}
-		rng.Max = max.V().(*document.ValueBuffer).Values
+		rng.Max = types.As[*document.ValueBuffer](max).Values
 	}
 
 	return &rng, nil

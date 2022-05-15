@@ -28,7 +28,7 @@ func (op *LikeOperator) Eval(env *environment.Environment) (types.Value, error) 
 			return NullLiteral, nil
 		}
 
-		if like(b.V().(string), a.V().(string)) {
+		if like(types.As[string](b), types.As[string](a)) {
 			return TrueLiteral, nil
 		}
 

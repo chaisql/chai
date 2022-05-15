@@ -74,23 +74,23 @@ func encode(buf []byte, v types.Value) ([]byte, error) {
 	case types.NullValue:
 		return buf, nil
 	case types.ArrayValue:
-		return appendArray(buf, v.V().(types.Array))
+		return appendArray(buf, types.As[types.Array](v))
 	case types.DocumentValue:
-		return appendDocument(buf, v.V().(types.Document))
+		return appendDocument(buf, types.As[types.Document](v))
 	}
 
 	switch v.Type() {
 	case types.BlobValue:
-		buf, err = AppendBase64(buf, v.V().([]byte))
+		buf, err = AppendBase64(buf, types.As[[]byte](v))
 	case types.TextValue:
-		text := v.V().(string)
+		text := types.As[string](v)
 		buf, err = AppendBase64(buf, []byte(text))
 	case types.BooleanValue:
-		buf, err = AppendBool(buf, v.V().(bool)), nil
+		buf, err = AppendBool(buf, types.As[bool](v)), nil
 	case types.IntegerValue:
-		buf = AppendInt64(buf, v.V().(int64))
+		buf = AppendInt64(buf, types.As[int64](v))
 	case types.DoubleValue:
-		buf = AppendFloat64(buf, v.V().(float64))
+		buf = AppendFloat64(buf, types.As[float64](v))
 	default:
 		panic("cannot encode type " + v.Type().String() + " as key")
 	}

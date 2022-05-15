@@ -76,19 +76,19 @@ func compare(op operator, l, r Value) (bool, error) {
 
 	// compare booleans together
 	case l.Type() == BooleanValue && r.Type() == BooleanValue:
-		return compareBooleans(op, l.V().(bool), r.V().(bool)), nil
+		return compareBooleans(op, As[bool](l), As[bool](r)), nil
 
 	// compare texts together
 	case l.Type() == TextValue && r.Type() == TextValue:
-		return compareTexts(op, l.V().(string), r.V().(string)), nil
+		return compareTexts(op, As[string](l), As[string](r)), nil
 
 	// compare blobs together
 	case r.Type() == BlobValue && l.Type() == BlobValue:
-		return compareBlobs(op, l.V().([]byte), r.V().([]byte)), nil
+		return compareBlobs(op, As[[]byte](l), As[[]byte](r)), nil
 
 	// compare integers together
 	case l.Type() == IntegerValue && r.Type() == IntegerValue:
-		return compareIntegers(op, l.V().(int64), r.V().(int64)), nil
+		return compareIntegers(op, As[int64](l), As[int64](r)), nil
 
 	// compare numbers together
 	case l.Type().IsNumber() && r.Type().IsNumber():
@@ -96,11 +96,11 @@ func compare(op operator, l, r Value) (bool, error) {
 
 	// compare arrays together
 	case l.Type() == ArrayValue && r.Type() == ArrayValue:
-		return compareArrays(op, l.V().(Array), r.V().(Array))
+		return compareArrays(op, As[Array](l), As[Array](r))
 
 	// compare documents together
 	case l.Type() == DocumentValue && r.Type() == DocumentValue:
-		return compareDocuments(op, l.V().(Document), r.V().(Document))
+		return compareDocuments(op, As[Document](l), As[Document](r))
 	}
 
 	return false, nil
@@ -189,8 +189,8 @@ func compareNumbers(op operator, l, r Value) bool {
 	l = convertNumberToDouble(l)
 	r = convertNumberToDouble(r)
 
-	af := l.V().(float64)
-	bf := r.V().(float64)
+	af := As[float64](l)
+	bf := As[float64](r)
 
 	var ok bool
 

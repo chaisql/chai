@@ -38,7 +38,7 @@ func (op *DocsEmitOperator) Iterate(in *environment.Environment, fn func(out *en
 			return errors.WithStack(ErrInvalidResult)
 		}
 
-		newEnv.SetDocument(v.V().(types.Document))
+		newEnv.SetDocument(types.As[types.Document](v))
 		err = fn(&newEnv)
 		if err != nil {
 			return err
@@ -248,7 +248,7 @@ func (op *DocsTakeOperator) Iterate(in *environment.Environment, f func(out *env
 		return err
 	}
 
-	n := v.V().(int64)
+	n := types.As[int64](v)
 	var count int64
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		if count < n {
@@ -291,7 +291,7 @@ func (op *DocsSkipOperator) Iterate(in *environment.Environment, f func(out *env
 		return err
 	}
 
-	n := v.V().(int64)
+	n := types.As[int64](v)
 	var skipped int64
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {

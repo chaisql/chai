@@ -127,10 +127,10 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 
 		switch v.Type() {
 		case types.DocumentValue:
-			buf, ok := v.V().(*FieldBuffer)
+			buf, ok := types.Is[*FieldBuffer](v)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(v.V().(types.Document))
+				err := buf.Copy(types.As[types.Document](v))
 				if err != nil {
 					return err
 				}
@@ -144,10 +144,10 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			}
 			vb.Values[i] = types.NewDocumentValue(buf)
 		case types.ArrayValue:
-			buf, ok := v.V().(*ValueBuffer)
+			buf, ok := types.Is[*ValueBuffer](v)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(v.V().(types.Array))
+				err := buf.Copy(types.As[types.Array](v))
 				if err != nil {
 					return err
 				}

@@ -82,10 +82,10 @@ func calculateIntegers(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb int64
 
 	ia := convertNumberToInteger(a)
-	xa = ia.V().(int64)
+	xa = As[int64](ia)
 
 	ib := convertNumberToInteger(b)
-	xb = ib.V().(int64)
+	xb = As[int64](ib)
 
 	var xr int64
 
@@ -143,10 +143,10 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 	var xa, xb float64
 
 	fa := convertNumberToDouble(a)
-	xa = fa.V().(float64)
+	xa = As[float64](fa)
 
 	fb := convertNumberToDouble(b)
-	xb = fb.V().(float64)
+	xb = As[float64](fb)
 
 	switch operator {
 	case '+':
@@ -188,7 +188,7 @@ func convertNumberToInteger(v Value) Value {
 	case IntegerValue:
 		return v
 	default:
-		return NewIntegerValue(int64(v.V().(float64)))
+		return NewIntegerValue(int64(As[float64](v)))
 	}
 }
 
@@ -197,6 +197,6 @@ func convertNumberToDouble(v Value) Value {
 	case DoubleValue:
 		return v
 	default:
-		return NewDoubleValue(float64(v.V().(int64)))
+		return NewDoubleValue(float64(As[int64](v)))
 	}
 }

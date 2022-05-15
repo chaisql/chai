@@ -112,7 +112,7 @@ func TestUnion(t *testing.T) {
 					return err
 				}
 
-				got = append(got, clone.V().(types.Document))
+				got = append(got, types.As[types.Document](clone))
 				i++
 				return nil
 			})
@@ -162,7 +162,7 @@ func TestConcatOperator(t *testing.T) {
 	want := append(in1, in2...)
 	for i, w := range want {
 		v, _ := w.Eval(new(environment.Environment))
-		d := v.V().(types.Document)
+		d := types.As[types.Document](v)
 		testutil.RequireDocEqual(t, d, got[i])
 	}
 }

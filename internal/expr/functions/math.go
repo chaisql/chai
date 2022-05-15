@@ -30,7 +30,7 @@ var floor = &ScalarDefinition{
 	callFn: func(args ...types.Value) (types.Value, error) {
 		switch args[0].Type() {
 		case types.DoubleValue:
-			return types.NewDoubleValue(math.Floor(args[0].V().(float64))), nil
+			return types.NewDoubleValue(math.Floor(types.As[float64](args[0]))), nil
 		case types.IntegerValue:
 			return args[0], nil
 		default:
@@ -50,7 +50,7 @@ var abs = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		res := math.Abs(v.V().(float64))
+		res := math.Abs(types.As[float64](v))
 		if args[0].Type() == types.IntegerValue {
 			return document.CastAs(types.NewDoubleValue(res), types.IntegerValue)
 		}
@@ -69,7 +69,7 @@ var acos = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := v.V().(float64)
+		vv := types.As[float64](v)
 		if vv > 1.0 || vv < -1.0 {
 			return nil, fmt.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
 		}
@@ -89,7 +89,7 @@ var acosh = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := v.V().(float64)
+		vv := types.As[float64](v)
 		if vv < 1.0 {
 			return nil, fmt.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
 		}
@@ -109,7 +109,7 @@ var asin = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := v.V().(float64)
+		vv := types.As[float64](v)
 		if vv > 1.0 || vv < -1.0 {
 			return nil, fmt.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
 		}
@@ -126,7 +126,7 @@ var asinh = &ScalarDefinition{
 		if err != nil || v.Type() == types.NullValue {
 			return v, err
 		}
-		vv := v.V().(float64)
+		vv := types.As[float64](v)
 		res := math.Asinh(vv)
 		return types.NewDoubleValue(res), nil
 	},
@@ -140,7 +140,7 @@ var atan = &ScalarDefinition{
 		if err != nil || v.Type() == types.NullValue {
 			return v, err
 		}
-		vv := v.V().(float64)
+		vv := types.As[float64](v)
 		res := math.Atan(vv)
 		return types.NewDoubleValue(res), nil
 	},
@@ -154,12 +154,12 @@ var atan2 = &ScalarDefinition{
 		if err != nil || vA.Type() == types.NullValue {
 			return vA, err
 		}
-		vvA := vA.V().(float64)
+		vvA := types.As[float64](vA)
 		vB, err := document.CastAs(args[1], types.DoubleValue)
 		if err != nil || vB.Type() == types.NullValue {
 			return vB, err
 		}
-		vvB := vB.V().(float64)
+		vvB := types.As[float64](vB)
 		res := math.Atan2(vvA, vvB)
 		return types.NewDoubleValue(res), nil
 	},

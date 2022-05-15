@@ -132,10 +132,10 @@ func CastConversion(v types.Value, path document.Path, targetType types.ValueTyp
 func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	switch v.Type() {
 	case types.ArrayValue:
-		vb, err := f.convertArrayAtPath(path, v.V().(types.Array), conversionFn)
+		vb, err := f.convertArrayAtPath(path, types.As[types.Array](v), conversionFn)
 		return types.NewArrayValue(vb), err
 	case types.DocumentValue:
-		fb, err := f.convertDocumentAtPath(path, v.V().(types.Document), conversionFn)
+		fb, err := f.convertDocumentAtPath(path, types.As[types.Document](v), conversionFn)
 		return types.NewDocumentValue(fb), err
 	}
 	return f.convertScalarAtPath(path, v, conversionFn)
@@ -279,11 +279,11 @@ func (t *TableConstraints) ValidateDocument(tx *Transaction, d types.Document) e
 		var ok bool
 		switch v.Type() {
 		case types.BooleanValue:
-			ok = v.V().(bool)
+			ok = types.As[bool](v)
 		case types.IntegerValue:
-			ok = v.V().(int64) != 0
+			ok = types.As[int64](v) != 0
 		case types.DoubleValue:
-			ok = v.V().(float64) != 0
+			ok = types.As[float64](v) != 0
 		case types.NullValue:
 			ok = true
 		}
