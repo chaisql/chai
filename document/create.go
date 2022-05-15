@@ -263,6 +263,31 @@ func NewValue(x interface{}) (types.Value, error) {
 			return nil, &ErrUnsupportedType{x, "parameter must be a map with a string key"}
 		}
 
+		// use fast generic map if possible
+		switch v.Type().Elem().Kind() {
+		case reflect.Bool:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]bool))), nil
+		case reflect.Int:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]int))), nil
+		case reflect.Int8:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]int8))), nil
+		case reflect.Int16:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]int16))), nil
+		case reflect.Int32:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]int32))), nil
+		case reflect.Int64:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]int64))), nil
+		case reflect.Float32:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]float32))), nil
+		case reflect.Float64:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]float64))), nil
+		case reflect.String:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]string))), nil
+		case reflect.Interface:
+			return types.NewDocumentValue(NewFromMap(x.(map[string]any))), nil
+		}
+
+		// use reflect based map for other types
 		return types.NewDocumentValue(reflectMapDocument(v)), nil
 	}
 

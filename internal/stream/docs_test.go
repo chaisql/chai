@@ -225,7 +225,11 @@ func TestAggregate(t *testing.T) {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				require.Equal(t, test.want, got)
+				for i, doc := range test.want {
+					testutil.RequireDocEqual(t, doc, got[i])
+				}
+
+				require.Equal(t, len(test.want), len(got))
 			}
 		})
 	}

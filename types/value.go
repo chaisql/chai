@@ -14,23 +14,23 @@ import (
 )
 
 // A Value stores encoded data alongside its type.
-type value struct {
+type value[T any] struct {
 	tp ValueType
-	v  interface{}
+	v  T
 }
 
-var _ Value = &value{}
+var _ Value = &value[bool]{}
 
 // NewNullValue returns a Null value.
 func NewNullValue() Value {
-	return &value{
+	return &value[struct{}]{
 		tp: NullValue,
 	}
 }
 
 // NewBoolValue encodes x and returns a value.
 func NewBoolValue(x bool) Value {
-	return &value{
+	return &value[bool]{
 		tp: BooleanValue,
 		v:  x,
 	}
@@ -39,15 +39,15 @@ func NewBoolValue(x bool) Value {
 // NewIntegerValue encodes x and returns a value whose type depends on the
 // magnitude of x.
 func NewIntegerValue(x int64) Value {
-	return &value{
+	return &value[int64]{
 		tp: IntegerValue,
-		v:  int64(x),
+		v:  x,
 	}
 }
 
 // NewDoubleValue encodes x and returns a value.
 func NewDoubleValue(x float64) Value {
-	return &value{
+	return &value[float64]{
 		tp: DoubleValue,
 		v:  x,
 	}
@@ -55,7 +55,7 @@ func NewDoubleValue(x float64) Value {
 
 // NewBlobValue encodes x and returns a value.
 func NewBlobValue(x []byte) Value {
-	return &value{
+	return &value[[]byte]{
 		tp: BlobValue,
 		v:  x,
 	}
@@ -63,7 +63,7 @@ func NewBlobValue(x []byte) Value {
 
 // NewTextValue encodes x and returns a value.
 func NewTextValue(x string) Value {
-	return &value{
+	return &value[string]{
 		tp: TextValue,
 		v:  x,
 	}
@@ -71,7 +71,7 @@ func NewTextValue(x string) Value {
 
 // NewArrayValue returns a value of type Array.
 func NewArrayValue(a Array) Value {
-	return &value{
+	return &value[Array]{
 		tp: ArrayValue,
 		v:  a,
 	}
@@ -79,25 +79,29 @@ func NewArrayValue(a Array) Value {
 
 // NewDocumentValue returns a value of type Document.
 func NewDocumentValue(d Document) Value {
-	return &value{
+	return &value[Document]{
 		tp: DocumentValue,
 		v:  d,
 	}
 }
 
 // NewValueWith creates a value with the given type and value.
-func NewValueWith(t ValueType, v interface{}) Value {
-	return &value{
+func NewValueWith[T any](t ValueType, v T) Value {
+	return &value[T]{
 		tp: t,
 		v:  v,
 	}
 }
 
-func (v *value) V() interface{} {
+func (v *value[T]) V() interface{} {
+	if v.tp == NullValue {
+		return nil
+	}
+
 	return v.v
 }
 
-func (v *value) Type() ValueType {
+func (v *value[T]) Type() ValueType {
 	return v.tp
 }
 
@@ -156,12 +160,12 @@ func IsZeroValue(v Value) (bool, error) {
 	return false, nil
 }
 
-func (v *value) String() string {
+func (v *value[T]) String() string {
 	data, _ := v.MarshalText()
 	return string(data)
 }
 
-func (v *value) MarshalText() ([]byte, error) {
+func (v *value[T]) MarshalText() ([]byte, error) {
 	return MarshalTextIndent(v, "", "")
 }
 
@@ -286,7 +290,7 @@ func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (v *value) MarshalJSON() ([]byte, error) {
+func (v *value[T]) MarshalJSON() ([]byte, error) {
 	switch v.Type() {
 	case BooleanValue, IntegerValue, TextValue:
 		return v.MarshalText()
