@@ -97,7 +97,16 @@ func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
 		return p.parseDocumentsWithFields(fields)
 	}
 
-	return p.parseLiteralDocOrParamList()
+	tok, pos, lit := p.ScanIgnoreWhitespace()
+	p.Unscan()
+	switch tok {
+	case scanner.LPAREN:
+		return p.parseDocumentsWithFields(fields)
+	case scanner.LBRACKET, scanner.NAMEDPARAM, scanner.POSITIONALPARAM:
+		return p.parseLiteralDocOrParamList()
+	}
+
+	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"(", "[", "?", "$"}, pos)
 }
 
 // parseExprListValues parses the "VALUES" clause of the query, if it exists.
@@ -140,13 +149,19 @@ func (p *Parser) parseExprListWithFields(fields []string) (*expr.KVPairs, error)
 	var pairs expr.KVPairs
 	pairs.Pairs = make([]expr.KVPair, len(list))
 
-	if len(fields) != len(list) {
-		return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
-	}
+	if len(fields) > 0 {
+		if len(fields) != len(list) {
+			return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
+		}
 
-	for i := range list {
-		pairs.Pairs[i].K = fields[i]
-		pairs.Pairs[i].V = list[i]
+		for i := range list {
+			pairs.Pairs[i].K = fields[i]
+			pairs.Pairs[i].V = list[i]
+		}
+	} else {
+		for i := range list {
+			pairs.Pairs[i].V = list[i]
+		}
 	}
 
 	return &pairs, nil

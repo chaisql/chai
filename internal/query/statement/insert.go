@@ -34,6 +34,30 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
 	if stmt.Values != nil {
+		// if no fields have been specified, we need to inject the fields from the defined table info
+		if len(stmt.Fields) == 0 {
+			ti, err := c.Catalog.GetTableInfo(stmt.TableName)
+			if err != nil {
+				return nil, err
+			}
+
+			for i := range stmt.Values {
+				kvs, ok := stmt.Values[i].(*expr.KVPairs)
+				if !ok {
+					continue
+				}
+
+				for i := range kvs.Pairs {
+					if kvs.Pairs[i].K == "" {
+						if i >= len(ti.FieldConstraints.Ordered) {
+							return nil, errors.Errorf("too many values for %s", stmt.TableName)
+						}
+
+						kvs.Pairs[i].K = ti.FieldConstraints.Ordered[i].Field
+					}
+				}
+			}
+		}
 		s = stream.New(stream.DocsEmit(stmt.Values...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
