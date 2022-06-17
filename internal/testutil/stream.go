@@ -62,6 +62,8 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 		}
 		require.NoError(t, err, append([]interface{}{msg}, args...)...)
 
+		v, err = document.CloneValue(v)
+		require.NoError(t, err, append([]interface{}{msg}, args...)...)
 		want.Append(v)
 	}
 

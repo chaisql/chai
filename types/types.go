@@ -19,32 +19,24 @@ var (
 type ValueType uint8
 
 // List of supported value types.
-// These types are separated by family so that when
-// new types are introduced we don't need to modify them.
 const (
 	// denote the absence of type
-	AnyValue ValueType = 0x0
+	AnyValue ValueType = 0x00
 
-	NullValue ValueType = 0x80
+	NullValue ValueType = 0x05
 
-	BooleanValue ValueType = 0x81
+	BooleanValue ValueType = 0x10
 
-	// integer family: 0x90 to 0x9F
-	IntegerValue ValueType = 0x90
+	IntegerValue ValueType = 0x20
 
-	// double family: 0xA0 to 0xAF
-	DoubleValue ValueType = 0xA0
+	DoubleValue ValueType = 0xD0
 
-	// string family: 0xC0 to 0xCF
-	TextValue ValueType = 0xC0
+	TextValue ValueType = 0xDA
 
-	// blob family: 0xD0 to 0xDF
-	BlobValue ValueType = 0xD0
+	BlobValue ValueType = 0xE0
 
-	// array family: 0xE0 to 0xEF
-	ArrayValue ValueType = 0xE0
+	ArrayValue ValueType = 0xE6
 
-	// document family: 0xF0 to 0xFF
 	DocumentValue ValueType = 0xF0
 )
 

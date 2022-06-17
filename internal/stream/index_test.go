@@ -55,36 +55,6 @@ func TestIndexScan(t *testing.T) {
 	})
 }
 
-// func TestTransientIndexScan(t *testing.T) {
-// 	testIndexScan(t, func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.IndexRange) stream.Operator {
-// 		var paths []document.Path
-// 		pp := strings.Split(indexOn, ",")
-// 		for _, p := range pp {
-// 			paths = append(paths, document.NewPath(strings.TrimSpace(p)))
-// 		}
-
-// 		op := stream.TransientIndexScan("test", paths, ranges...)
-// 		op.Reverse = reverse
-// 		return op
-// 	})
-
-// 	t.Run("String", func(t *testing.T) {
-// 		paths := []document.Path{document.NewPath("a.b[0]"), document.NewPath("b")}
-// 		require.Equal(t, `transientIndexScan("test", [a.b[0], b], [[1, 1], [2, 2]])`, stream.TransientIndexScan("test", paths, stream.IndexRange{
-// 			Min: testutil.ExprList(t, `[1, 1]`),
-// 			Max: testutil.ExprList(t, `[2, 2]`),
-// 		}).String())
-
-// 		op := stream.TransientIndexScan("test", paths, stream.IndexRange{
-// 			Min: testutil.ExprList(t, `[1, 1]`),
-// 			Max: testutil.ExprList(t, `[2, 2]`),
-// 		})
-// 		op.Reverse = true
-
-// 		require.Equal(t, `transientIndexScanReverse("test", [a.b[0], b], [[1, 1], [2, 2]])`, op.String())
-// 	})
-// }
-
 func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.Transaction, name string, indexOn string, reverse bool, ranges ...stream.Range) stream.Operator) {
 	tests := []struct {
 		name                  string
@@ -94,25 +64,25 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		reverse               bool
 		fails                 bool
 	}{
-		// {name: "empty", indexOn: "a"},
-		// {
-		// 	"no range", "a",
-		// 	testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-		// 	nil, false, false,
-		// },
-		// {
-		// 	"no range", "a, b",
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-		// 	testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-		// 	nil, false, false,
-		// },
+		{name: "empty", indexOn: "a"},
+		{
+			"no range", "a",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			nil, false, false,
+		},
+		{
+			"no range", "a, b",
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			nil, false, false,
+		},
 		{
 			"max:2", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -121,25 +91,25 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[1.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
 		{
 			"max:[2, 2]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Max: testutil.ExprList(t, `[2, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
 		{
 			"max:[2, 2.2]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2, 2.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Max: testutil.ExprList(t, `[2, 2.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -148,7 +118,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -157,16 +127,16 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Max: testutil.ExprList(t, `[1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
 		{
 			"max:[1.1, 2]", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			testutil.MakeDocuments(t),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1.1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Max: testutil.ExprList(t, `[1.1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -175,7 +145,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			false, false,
 		},
@@ -184,7 +154,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, Exclusive: true},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, Exclusive: true},
 			},
 			false, false,
 		},
@@ -193,7 +163,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}, Exclusive: true},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}, Exclusive: true},
 			},
 			false, false,
 		},
@@ -202,7 +172,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[2, 1]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
@@ -214,7 +184,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[2, 1.5]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
@@ -226,7 +196,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
@@ -239,7 +209,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
@@ -252,7 +222,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`), // [1, 3] < [2, 2]
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
@@ -260,27 +230,27 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			},
 			false, false,
 		},
-		// {
-		// 	"reverse/no range", "a",
-		// 	testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-		// 	testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
-		// 	nil, true, false,
-		// },
+		{
+			"reverse/no range", "a",
+			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			nil, true, false,
+		},
 		{
 			"reverse/max", "a",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
 		{
 			"reverse/max", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Max:   testutil.ExprList(t, `[2, 2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
@@ -292,7 +262,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
@@ -301,16 +271,16 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": -2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
 			},
 			true, false,
 		},
 		{
 			"reverse/min", "a, b",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
@@ -322,7 +292,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
@@ -335,7 +305,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
@@ -348,7 +318,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Max:   testutil.ExprList(t, `[1]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
 				},
@@ -360,7 +330,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Max:       testutil.ExprList(t, `[1]`),
 					Exclusive: false,
 					Exact:     false,
@@ -374,7 +344,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Max: testutil.ExprList(t, `[1, 2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b"), testutil.ParseDocumentPath(t, "c")},
 				},
 			},
@@ -385,7 +355,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			false, false,
 		},
@@ -394,7 +364,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b"), testutil.ParseDocumentPath(t, "c")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b"), testutil.ParseDocumentPath(t, "c")}},
 			},
 			false, false,
 		},
@@ -403,7 +373,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")}},
 			},
 			true, false,
 		},
@@ -412,7 +382,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},
@@ -425,7 +395,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
 			testutil.MakeDocuments(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
 			stream.Ranges{
-				{
+				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
 					Paths: []document.Path{testutil.ParseDocumentPath(t, "a"), testutil.ParseDocumentPath(t, "b")},

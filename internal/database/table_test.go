@@ -92,7 +92,7 @@ func TestTableGetDocument(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		r, err := tb.GetDocument([]byte("id"))
+		r, err := tb.GetDocument(tree.NewEncodedKey([]byte("id")))
 		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 		require.Nil(t, r)
 	})
@@ -130,7 +130,7 @@ func TestTableInsert(t *testing.T) {
 
 		db1 := testutil.NewTestDBWithPebble(t, ng)
 
-		insertDoc := func(db *database.Database) (rawKey tree.Key) {
+		insertDoc := func(db *database.Database) (rawKey *tree.Key) {
 			t.Helper()
 
 			update(t, db, func(tx *database.Transaction) error {
@@ -179,7 +179,7 @@ func TestTableDelete(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		err := tb.Delete([]byte("id"))
+		err := tb.Delete(tree.NewEncodedKey([]byte("id")))
 		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
@@ -198,11 +198,11 @@ func TestTableDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		// delete the document
-		err = tb.Delete([]byte(key1))
+		err = tb.Delete(key1)
 		assert.NoError(t, err)
 
 		// try again, should fail
-		err = tb.Delete([]byte(key1))
+		err = tb.Delete(key1)
 		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 
 		// make sure it didn't also delete the other one
@@ -219,7 +219,7 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		_, err := tb.Replace([]byte("id"), newDocument())
+		_, err := tb.Replace(tree.NewEncodedKey([]byte("id")), newDocument())
 		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 	})
 
@@ -291,7 +291,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		assert.NoError(t, err)
 
-		err = tb.IterateOnRange(nil, false, func(key tree.Key, _ types.Document) error {
+		err = tb.IterateOnRange(nil, false, func(key *tree.Key, _ types.Document) error {
 			return errors.New("should not iterate")
 		})
 
@@ -345,7 +345,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.IterateOnRange(nil, false, func(tree.Key, types.Document) error {
+				tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
 					return nil
 				})
 			}

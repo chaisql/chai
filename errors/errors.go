@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/tree"
 )
 
 var (
@@ -51,25 +49,6 @@ func IsNotFoundError(err error) bool {
 	err = errors.UnwrapAll(err)
 	switch err.(type) {
 	case NotFoundError, *NotFoundError:
-		return true
-	default:
-		return false
-	}
-}
-
-type ConstraintViolationError struct {
-	Constraint string
-	Paths      []document.Path
-	Key        tree.Key
-}
-
-func (c *ConstraintViolationError) Error() string {
-	return fmt.Sprintf("%s constraint error: %s", c.Constraint, c.Paths)
-}
-
-func IsConstraintViolationError(err error) bool {
-	switch err.(type) {
-	case *ConstraintViolationError:
 		return true
 	default:
 		return false

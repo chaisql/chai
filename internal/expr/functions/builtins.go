@@ -7,7 +7,6 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -113,12 +112,12 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return expr.NullLiteral, nil
 	}
 
-	dpk, ok := env.Get(environment.DocPKKey)
+	dpk, ok := env.GetKey()
 	if !ok {
 		return expr.NullLiteral, nil
 	}
 
-	vs, err := tree.Key(types.As[[]byte](dpk)).Decode()
+	vs, err := dpk.Decode()
 	if err != nil {
 		return expr.NullLiteral, err
 	}

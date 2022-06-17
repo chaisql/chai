@@ -17,10 +17,7 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	tb, err := catalog.GetTable(tx, database.SequenceTableName)
 	assert.NoError(t, err)
 
-	k, err := tree.NewKey(types.NewTextValue(name))
-	if err != nil {
-		return nil, err
-	}
+	k := tree.NewKey(types.NewTextValue(name))
 	d, err := tb.GetDocument(k)
 	if err != nil {
 		return nil, err

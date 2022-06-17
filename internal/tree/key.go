@@ -1,91 +1,79 @@
 package tree
 
 import (
-	"bytes"
-	"strings"
-
-	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
-type Key []byte
-
-func NewKey(values ...types.Value) (Key, error) {
-	if len(values) == 0 {
-		return nil, nil
-	}
-
-	if values[0].Type() != types.NullValue && values[0].V() == nil {
-		return nil, errors.New("cannot encode nil value")
-	}
-
-	var key Key
-	var buf bytes.Buffer
-	err := encoding.EncodeValue(&buf, types.NewArrayValue(document.NewValueBuffer(values...)))
-	if err != nil {
-		return nil, err
-	}
-
-	key = buf.Bytes()
-	// remove '[' and ']'
-	key = key[1 : len(key)-1]
-	return key, nil
+type Key struct {
+	Values  []types.Value
+	Encoded []byte
 }
 
-func NewMinKeyForType(t types.ValueType) Key {
-	return []byte{byte(t)}
+func NewKey(values ...types.Value) *Key {
+	return &Key{
+		Values: values,
+	}
 }
 
-func NewMaxKeyForType(t types.ValueType) Key {
-	return []byte{byte(t + 1)}
+func NewEncodedKey(enc []byte) *Key {
+	return &Key{
+		Encoded: enc,
+	}
 }
 
-func (k Key) String() string {
+func (k *Key) Encode(ns Namespace) ([]byte, error) {
+	if k.Encoded != nil {
+		return k.Encoded, nil
+	}
+
+	var buf []byte
+	var err error
+
+	if ns != 0 {
+		buf = encoding.EncodeInt(buf, int64(ns))
+	}
+
+	for _, v := range k.Values {
+		buf, err = encoding.EncodeValue(buf, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	k.Encoded = buf
+	return buf, nil
+}
+
+func (key *Key) Decode() ([]types.Value, error) {
+	if key.Values != nil {
+		return key.Values, nil
+	}
+
+	var values []types.Value
+
+	b := key.Encoded
+
+	// ignore namespace
+	n := encoding.Skip(key.Encoded)
+	b = b[n:]
+
+	for {
+		v, n := encoding.DecodeValue(b, false /* intAsDouble */)
+		b = b[n:]
+
+		values = append(values, v)
+		if len(b) == 0 {
+			break
+		}
+	}
+
+	return values, nil
+}
+
+func (k *Key) String() string {
 	values, _ := k.Decode()
 
 	return types.NewArrayValue(document.NewValueBuffer(values...)).String()
-}
-
-func (key Key) Decode() ([]types.Value, error) {
-	var buf bytes.Buffer
-
-	buf.Grow(len(key) + 2)
-	buf.WriteByte(byte(types.ArrayValue))
-	buf.Write(key)
-	buf.WriteByte(encoding.ArrayEnd)
-
-	vb := document.NewValueBuffer()
-	enc := encoding.EncodedValue(buf.Bytes())
-	err := enc.V().(types.Array).Iterate(func(i int, value types.Value) error {
-		vb.Append(value)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return vb.Values, nil
-}
-
-type Keys []Key
-
-func (a Keys) Len() int      { return len(a) }
-func (a Keys) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a Keys) Less(i, j int) bool {
-	return bytes.Compare(a[i], a[j]) < 0
-}
-
-func (a Keys) String() string {
-	var buf strings.Builder
-
-	for i, k := range a {
-		if i > 0 {
-			buf.WriteByte(',')
-		}
-		buf.WriteString(k.String())
-	}
-
-	return buf.String()
 }

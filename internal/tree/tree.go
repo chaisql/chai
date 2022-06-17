@@ -1,14 +1,17 @@
 package tree
 
 import (
-	"bytes"
-	"io"
+	"fmt"
+	"math"
 
+	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
+
+type Namespace int64
 
 // A Tree is an abstraction over a k-v store that allows
 // manipulating data using high level keys and values of the
@@ -20,20 +23,32 @@ import (
 // of the types package operators.
 // A Tree doesn't support duplicate keys.
 type Tree struct {
-	Namespace      *kv.Namespace
-	TransientStore *kv.TransientStore
+	Session   kv.Session
+	Namespace Namespace
 }
 
-func New(ns *kv.Namespace) *Tree {
+func New(session kv.Session, ns Namespace) *Tree {
 	return &Tree{
 		Namespace: ns,
+		Session:   session,
 	}
 }
 
-func NewTransient(store *kv.TransientStore) *Tree {
-	return &Tree{
-		TransientStore: store,
+func NewTransient(db *pebble.DB, ns Namespace) (*Tree, func() error, error) {
+	t := Tree{
+		Namespace: ns,
+		Session:   kv.NewTransientSession(db),
 	}
+
+	// ensure the namespace is not in use
+	err := t.IterateOnRange(nil, false, func(k *Key, b []byte) error {
+		return errors.Errorf("namespace %d is already in use", ns)
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &t, t.Truncate, nil
 }
 
 var defaultValue = []byte{0}
@@ -41,73 +56,59 @@ var defaultValue = []byte{0}
 // Put adds or replaces a key-doc combination to the tree.
 // If the key already exists, its value will be replaced by
 // the given value.
-func (t *Tree) Put(key Key, value []byte) error {
+func (t *Tree) Put(key *Key, value []byte) error {
 	if len(value) == 0 {
 		value = defaultValue
 	}
-	var err error
-	if t.TransientStore != nil {
-		err = t.TransientStore.Put(key, value)
-	} else {
-		err = t.Namespace.Put(key, value)
+	k, err := key.Encode(t.Namespace)
+	if err != nil {
+		return err
 	}
-	return err
+
+	return t.Session.Put(k, value)
 }
 
 // Get a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
-func (t *Tree) Get(key Key) ([]byte, error) {
-	if t.TransientStore != nil {
-		panic("Get not implemented on transient tree")
+func (t *Tree) Get(key *Key) ([]byte, error) {
+	k, err := key.Encode(t.Namespace)
+	if err != nil {
+		return nil, err
 	}
 
-	return t.Namespace.Get(key)
+	return t.Session.Get(k)
 }
 
 // Exists returns true if the key exists in the tree.
-func (t *Tree) Exists(key Key) (bool, error) {
-	if t.TransientStore != nil {
-		panic("Exists not implemented on transient tree")
+func (t *Tree) Exists(key *Key) (bool, error) {
+	k, err := key.Encode(t.Namespace)
+	if err != nil {
+		return false, err
 	}
 
-	return t.Namespace.Exists(key)
+	return t.Session.Exists(k)
 }
 
 // Delete a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
-func (t *Tree) Delete(key Key) error {
-	if t.TransientStore != nil {
-		panic("Delete not implemented on transient tree")
+func (t *Tree) Delete(key *Key) error {
+	k, err := key.Encode(t.Namespace)
+	if err != nil {
+		return err
 	}
 
-	return t.Namespace.Delete(key)
+	return t.Session.Delete(k)
 }
 
 // Truncate the tree.
 func (t *Tree) Truncate() error {
-	if t.TransientStore != nil {
-		panic("Truncate not implemented on transient tree")
-	}
-
-	return t.Namespace.Truncate()
+	return t.Session.DeleteRange(encoding.EncodeInt(nil, int64(t.Namespace)), encoding.EncodeInt(nil, int64(t.Namespace)+1))
 }
 
 // IterateOnRange iterates on all keys that are in the given range.
-// Depending on the direction, the range is translated to the following table:
-// | SQL   | Range            | Direction | Seek    | End     |
-// | ----- | ---------------- | --------- | ------- | ------- |
-// | = 10  | Min: 10, Max: 10 | ASC       | 10      | 10      |
-// | > 10  | Min: 10, Excl    | ASC       | 10+0xFF | nil     |
-// | >= 10 | Min: 10          | ASC       | 10      | nil     |
-// | < 10  | Max: 10, Excl    | ASC       | nil     | 10 excl |
-// | <= 10 | Max: 10          | ASC       | nil     | 10      |
-// | = 10  | Min: 10, Max: 10 | DESC      | 10+0xFF | 10      |
-// | > 10  | Min: 10, Excl    | DESC      | nil     | 10 excl |
-// | >= 10 | Min: 10          | DESC      | nil     | 10      |
-// | < 10  | Max: 10, Excl    | DESC      | 10      | nil     |
-// | <= 10 | Max: 10          | DESC      | 10+0xFF | nil     |
-func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, []byte) error) error {
+func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) error) error {
 	var start, end []byte
+	var err error
 
 	if rng == nil {
 		rng = &Range{}
@@ -115,38 +116,42 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, []byte) err
 
 	if !rng.Exclusive {
 		if rng.Min == nil {
-			start = t.buildFirstKey()
+			start, err = t.buildMinKeyForType(rng.Max)
 		} else {
-			start = t.buildStartKeyInclusive(rng.Min)
+			start, err = t.buildStartKeyInclusive(rng.Min)
+		}
+		if err != nil {
+			return err
 		}
 		if rng.Max == nil {
-			end = t.buildLastKey()
+			end, err = t.buildMaxKeyForType(rng.Min)
 		} else {
-			end = t.buildEndKeyInclusive(rng.Max)
+			end, err = t.buildEndKeyInclusive(rng.Max)
 		}
 	} else {
 		if rng.Min == nil {
-			start = t.buildFirstKey()
+			start, err = t.buildMinKeyForType(rng.Max)
 		} else {
-			start = t.buildStartKeyExclusive(rng.Min)
+			start, err = t.buildStartKeyExclusive(rng.Min)
+		}
+		if err != nil {
+			return err
 		}
 		if rng.Max == nil {
-			end = t.buildLastKey()
+			end, err = t.buildMaxKeyForType(rng.Min)
 		} else {
-			end = t.buildEndKeyExclusive(rng.Max)
+			end, err = t.buildEndKeyExclusive(rng.Max)
 		}
 	}
+	if err != nil {
+		return err
+	}
 
-	var it *kv.Iterator
 	opts := pebble.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	}
-	if t.TransientStore != nil {
-		it = t.TransientStore.Iterator(&opts)
-	} else {
-		it = t.Namespace.Iterator(&opts)
-	}
+	it := t.Session.Iterator(&opts)
 	defer it.Close()
 
 	if !reverse {
@@ -155,9 +160,12 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, []byte) err
 		it.Last()
 	}
 
-	prefix := t.buildKey(nil)
+	var k Key
 	for it.Valid() {
-		err := fn(bytes.TrimPrefix(it.Key(), prefix), it.Value())
+		k.Encoded = it.Key()
+		k.Values = nil
+
+		err := fn(&k, it.Value())
 		if err != nil {
 			return err
 		}
@@ -172,52 +180,132 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(Key, []byte) err
 	return it.Error()
 }
 
-func (t *Tree) buildKey(key Key) []byte {
-	if t.Namespace != nil {
-		return kv.BuildKey(t.Namespace.ID, key)
-	}
-
-	return key
+func (t *Tree) buildFirstKey() ([]byte, error) {
+	k := NewKey()
+	return k.Encode(t.Namespace)
 }
 
-func (t *Tree) buildFirstKey() []byte {
-	return t.buildKey(nil)
+func (t *Tree) buildMinKeyForType(max *Key) ([]byte, error) {
+	if max == nil {
+		return t.buildFirstKey()
+	}
+
+	if len(max.Values) == 1 {
+		return NewKey(t.NewMinValueForType(max.Values[0].Type())).Encode(t.Namespace)
+	}
+
+	var values []types.Value
+	for i := range max.Values {
+		if i < len(max.Values)-1 {
+			values = append(values, max.Values[i])
+			continue
+		}
+
+		values = append(values, t.NewMinValueForType(max.Values[i].Type()))
+	}
+
+	return NewKey(values...).Encode(t.Namespace)
+}
+
+func (t *Tree) buildMaxKeyForType(min *Key) ([]byte, error) {
+	if min == nil {
+		return t.buildLastKey(), nil
+	}
+
+	if len(min.Values) == 1 {
+		buf := encoding.EncodeInt(nil, int64(t.Namespace))
+		return append(buf, byte(t.NewMaxTypeForType(min.Values[0].Type()))), nil
+	}
+
+	buf, err := NewKey(min.Values[:len(min.Values)-1]...).Encode(t.Namespace)
+	if err != nil {
+		return nil, err
+	}
+	return append(buf, byte(t.NewMaxTypeForType(min.Values[len(min.Values)-1].Type()))), nil
 }
 
 func (t *Tree) buildLastKey() []byte {
-	if t.Namespace != nil {
-		return t.Namespace.ID.UpperBound()
+	buf := encoding.EncodeInt(nil, int64(t.Namespace))
+	return append(buf, 0xFF)
+}
+
+func (t *Tree) buildStartKeyInclusive(key *Key) ([]byte, error) {
+	return key.Encode(t.Namespace)
+}
+
+func (t *Tree) buildStartKeyExclusive(key *Key) ([]byte, error) {
+	b, err := key.Encode(t.Namespace)
+	if err != nil {
+		return nil, err
 	}
-	return []byte{0xFF}
+
+	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildStartKeyInclusive(key []byte) []byte {
-	return t.buildKey(key)
+func (t *Tree) buildEndKeyInclusive(key *Key) ([]byte, error) {
+	b, err := key.Encode(t.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildStartKeyExclusive(key []byte) []byte {
-	return append(t.buildKey(key), encoding.ArrayValueDelim, 0xFF)
+func (t *Tree) buildEndKeyExclusive(key *Key) ([]byte, error) {
+	return key.Encode(t.Namespace)
 }
 
-func (t *Tree) buildEndKeyInclusive(key []byte) []byte {
-	return append(t.buildKey(key), encoding.ArrayValueDelim, 0xFF)
+func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
+	switch tp {
+	case types.NullValue:
+		return types.NewNullValue()
+	case types.BooleanValue:
+		return types.NewBoolValue(false)
+	case types.IntegerValue:
+		return types.NewIntegerValue(math.MinInt64)
+	case types.DoubleValue:
+		return types.NewDoubleValue(-math.MaxFloat64)
+	case types.TextValue:
+		return types.NewTextValue("")
+	case types.BlobValue:
+		return types.NewBlobValue(nil)
+	case types.ArrayValue:
+		return types.NewArrayValue(nil)
+	case types.DocumentValue:
+		return types.NewDocumentValue(nil)
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
 }
 
-func (t *Tree) buildEndKeyExclusive(key []byte) []byte {
-	return t.buildKey(key)
+func (t *Tree) NewMaxTypeForType(tp types.ValueType) types.ValueType {
+	switch tp {
+	case types.NullValue:
+		return 0x06 // NullValue = 0x05
+	case types.BooleanValue:
+		return 0x12 // TrueValue = 0x10, FalseValue = 0x11
+	case types.IntegerValue:
+		return 0xC8 // Integers go from 0x20 to 0xC7
+	case types.DoubleValue:
+		return 0xD2 // Doubles go from 0xD0 to 0xD1
+	case types.TextValue:
+		return 0xDB // TextValue = 0xDA
+	case types.BlobValue:
+		return 0xE1 // BlobValue = 0xE0
+	case types.ArrayValue:
+		return 0xE7 // ArrayValue = 0xE6
+	case types.DocumentValue:
+		return 0xF1 // DocumentValue = 0xF0
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
 }
 
 // A Range of keys to iterate on.
 // By default, Min and Max are inclusive.
 // If Exclusive is true, Min and Max are excluded
 // from the results.
-// If Type is provided, the results will be filtered by that type.
 type Range struct {
-	Min, Max  Key
+	Min, Max  *Key
 	Exclusive bool
-}
-
-type Codec interface {
-	Encode(w io.Writer, d types.Document) error
-	Decode([]byte) (types.Document, error)
 }

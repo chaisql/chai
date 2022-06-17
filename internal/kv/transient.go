@@ -1,65 +1,43 @@
 package kv
 
 import (
-	"fmt"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"time"
-
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
 )
 
-// A TransientStore is an implementation of the *kv.Store interface.
-type TransientStore struct {
-	DB    *pebble.DB
-	Path  string
-	batch *pebble.Batch
+const (
+	maxTransientBatchSize int = 1 << 20
+)
+
+func NewTransientSession(db *pebble.DB) *TransientSession {
+	return &TransientSession{
+		db: db,
+	}
 }
 
-// NewTransientStore creates a pebble db with fast options.
-func NewTransientStore(opts *pebble.Options) (*TransientStore, error) {
-	// build engine with fast options
-	var inMemory bool
-	if opts != nil {
-		_, inMemory = opts.FS.(*vfs.MemFS)
-	}
+var _ Session = (*TransientSession)(nil)
 
-	opt := pebble.Options{
-		DisableWAL: true,
-	}
+type TransientSession struct {
+	db     *pebble.DB
+	batch  *pebble.Batch
+	closed bool
+}
 
-	var path string
-	if inMemory {
-		opt.FS = vfs.NewMem()
-	} else {
-		path = filepath.Join(os.TempDir(), fmt.Sprintf(".genji-transient-%d", time.Now().Unix()+rand.Int63()))
-	}
-	opt.Logger = nil
+func (s *TransientSession) Commit() error {
+	return errors.New("cannot commit in transient mode")
+}
 
-	db, err := pebble.Open(path, &opt)
-	if err != nil {
-		return nil, err
+func (s *TransientSession) Close() error {
+	if s.closed {
+		return errors.New("already closed")
 	}
+	s.closed = true
 
-	s := TransientStore{
-		DB:    db,
-		Path:  path,
-		batch: db.NewIndexedBatch(),
-	}
-
-	err = s.Reset()
-	if err != nil {
-		return nil, err
-	}
-
-	return &s, nil
+	return s.batch.Close()
 }
 
 // Put stores a key value pair. If it already exists, it overrides it.
-func (s *TransientStore) Put(k, v []byte) error {
+func (s *TransientSession) Put(k, v []byte) error {
 	if len(k) == 0 {
 		return errors.New("cannot store empty key")
 	}
@@ -69,42 +47,73 @@ func (s *TransientStore) Put(k, v []byte) error {
 	}
 
 	if s.batch == nil {
-		s.batch = s.DB.NewIndexedBatch()
+		s.batch = s.db.NewIndexedBatch()
+	}
+
+	if len(s.batch.Repr()) > maxTransientBatchSize && s.batch.Count() > 0 {
+		err := s.batch.Commit(pebble.NoSync)
+		if err != nil {
+			return err
+		}
+
+		s.batch = s.db.NewIndexedBatch()
 	}
 
 	return s.batch.Set(k, v, nil)
 }
 
-func (s *TransientStore) Iterator(opts *pebble.IterOptions) *Iterator {
-	it := s.batch.NewIter(opts)
-
-	return &Iterator{
-		Iterator: it,
+// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
+func (s *TransientSession) Get(k []byte) ([]byte, error) {
+	if s.batch == nil {
+		return nil, errors.WithStack(ErrKeyNotFound)
 	}
+
+	return get(s.batch, k)
 }
 
-// Drop releases any resource (files, memory, etc.) used by a transient store.
-func (s *TransientStore) Drop() error {
-	if s.batch != nil {
-		_ = s.batch.Close()
+// Exists returns whether a key exists and is visible by the current session.
+func (s *TransientSession) Exists(k []byte) (bool, error) {
+	if s.batch == nil {
+		return false, nil
 	}
 
-	_ = s.DB.Close()
+	return exists(s.batch, k)
+}
 
-	err := os.RemoveAll(s.Path)
+// Delete a record by key. If not found, returns ErrKeyNotFound.
+func (s *TransientSession) Delete(k []byte) error {
+	if s.batch == nil {
+		return errors.WithStack(ErrKeyNotFound)
+	}
+
+	_, closer, err := s.batch.Get(k)
+	if err != nil {
+		if errors.Is(err, pebble.ErrNotFound) {
+			return errors.WithStack(ErrKeyNotFound)
+		}
+
+		return err
+	}
+	err = closer.Close()
 	if err != nil {
 		return err
 	}
 
-	s.batch = nil
-	s.DB = nil
-	return nil
+	return s.batch.Delete(k, nil)
 }
 
-// Reset resets the transient store to be reused.
-func (s *TransientStore) Reset() error {
-	if s.batch != nil {
-		s.batch.Reset()
+func (s *TransientSession) DeleteRange(start []byte, end []byte) error {
+	if s.batch == nil {
+		return nil
 	}
-	return nil
+
+	return s.batch.DeleteRange(start, end, nil)
+}
+
+func (s *TransientSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
+	if s.batch == nil {
+		return s.db.NewIter(opts)
+	}
+
+	return s.batch.NewIter(opts)
 }

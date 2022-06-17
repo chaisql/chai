@@ -127,7 +127,7 @@ func runDocCmd(expr string) error {
 
 // runTablesCmd displays all tables.
 func runTablesCmd(db *genji.DB, w io.Writer) error {
-	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name != '__genji_sequence'")
+	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name NOT LIKE '__genji_%'")
 	if err != nil {
 		return err
 	}

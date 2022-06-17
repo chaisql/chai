@@ -11,7 +11,7 @@ import (
 )
 
 func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) error) error {
-	query := "SELECT name, sql FROM __genji_catalog WHERE type = 'table' AND name != '__genji_sequence'"
+	query := "SELECT name, sql FROM __genji_catalog WHERE type = 'table' AND name NOT LIKE '__genji_%'"
 	if len(tables) > 0 {
 		query += " AND name IN ?"
 	}

@@ -1,14 +1,13 @@
 package document_test
 
 import (
-	"bytes"
 	"testing"
 	"time"
 
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,11 +33,11 @@ func TestScan(t *testing.T) {
 	nestedDoc := document.NewFieldBuffer().
 		Add("foo", types.NewDocumentValue(simpleDoc))
 
-	var buf bytes.Buffer
-	err := encoding.EncodeValue(&buf, types.NewDocumentValue(nestedDoc))
+	var buf []byte
+	buf, err := encoding.EncodeValue(buf, types.NewDocumentValue(nestedDoc))
 	assert.NoError(t, err)
 
-	dec, err := encoding.DecodeValue(buf.Bytes())
+	dec, _ := encoding.DecodeValue(buf, false)
 	assert.NoError(t, err)
 
 	doc := document.NewFieldBuffer().

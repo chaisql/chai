@@ -194,7 +194,7 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 				return err
 			}
 			if err != nil {
-				fmt.Println(err)
+				fmt.Printf("%+v\n", err)
 				continue
 			}
 

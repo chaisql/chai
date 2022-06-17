@@ -2,12 +2,9 @@ package kv_test
 
 import (
 	"bytes"
-	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/kv"
@@ -17,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getValue(t *testing.T, st *kv.Namespace, key []byte) []byte {
+func getValue(t *testing.T, st kv.Session, key []byte) []byte {
 	v, err := st.Get([]byte(key))
 	assert.NoError(t, err)
 	return v
@@ -27,19 +24,16 @@ func TestReadOnly(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewReadSession(pdb)
+		sro := kv.NewSnapshotSession(pdb)
 		defer sro.Close()
-
-		// fetch the store and the index
-		st := sro.GetNamespace(10)
 
 		tests := []struct {
 			name string
 			fn   func(*error)
 		}{
-			{"StorePut", func(err *error) { *err = st.Put([]byte("id"), nil) }},
-			{"StoreDelete", func(err *error) { *err = st.Delete([]byte("id")) }},
-			{"StoreTruncate", func(err *error) { *err = st.Truncate() }},
+			{"StorePut", func(err *error) { *err = sro.Put([]byte("id"), nil) }},
+			{"StoreDelete", func(err *error) { *err = sro.Delete([]byte("id")) }},
+			{"StoreDeleteRange", func(err *error) { *err = sro.DeleteRange([]byte("start"), []byte("end")) }},
 		}
 
 		for _, test := range tests {
@@ -53,48 +47,20 @@ func TestReadOnly(t *testing.T) {
 	})
 }
 
-func TestGetNamespace(t *testing.T) {
-	t.Run("Should return the right store", func(t *testing.T) {
-		pdb := testutil.NewPebble(t)
-
-		s := kv.NewSession(pdb)
-		defer s.Close()
-
-		// fetch first store
-		sta := s.GetNamespace(10)
-
-		// fetch second store
-		stb := s.GetNamespace(20)
-
-		// insert data in first store
-		err := sta.Put([]byte("foo"), []byte("FOO"))
-		assert.NoError(t, err)
-
-		// use sta to fetch data and verify if it's present
-		v := getValue(t, sta, []byte("foo"))
-		require.Equal(t, v, []byte("FOO"))
-
-		// use stb to fetch data and verify it's not present
-		_, err = stb.Get([]byte("foo"))
-		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
-	})
-}
-
-func storeBuilder(t testing.TB) *kv.Namespace {
+func kvBuilder(t testing.TB) kv.Session {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewSession(pdb)
+	s := kv.NewBatchSession(pdb)
 	t.Cleanup(func() {
 		s.Close()
 	})
 
-	st := s.GetNamespace(10)
-	return st
+	return s
 }
 
 func TestStorePut(t *testing.T) {
 	t.Run("Should insert data", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
@@ -104,7 +70,7 @@ func TestStorePut(t *testing.T) {
 	})
 
 	t.Run("Should replace existing key", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
@@ -117,7 +83,7 @@ func TestStorePut(t *testing.T) {
 	})
 
 	t.Run("Should fail when key is nil or empty", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put(nil, []byte("FOO"))
 		assert.Error(t, err)
@@ -127,7 +93,7 @@ func TestStorePut(t *testing.T) {
 	})
 
 	t.Run("Should fail when value is nil or empty", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), nil)
 		assert.Error(t, err)
@@ -140,7 +106,7 @@ func TestStorePut(t *testing.T) {
 // TestStoreGet verifies Get behaviour.
 func TestStoreGet(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		r, err := st.Get([]byte("id"))
 		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
@@ -148,7 +114,7 @@ func TestStoreGet(t *testing.T) {
 	})
 
 	t.Run("Should return the right key", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
@@ -166,14 +132,14 @@ func TestStoreGet(t *testing.T) {
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Delete([]byte("id"))
 		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
-		st := storeBuilder(t)
+		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
 		assert.NoError(t, err)
@@ -200,37 +166,10 @@ func TestStoreDelete(t *testing.T) {
 		defer it.Close()
 		i := 0
 		for it.First(); it.Valid(); it.Next() {
-			require.Equal(t, []byte("foo"), it.Key()[4:])
+			require.Equal(t, []byte("foo"), it.Key())
 			i++
 		}
 		require.Equal(t, 1, i)
-	})
-}
-
-func TestStoreTruncate(t *testing.T) {
-	t.Run("Should succeed if store is empty", func(t *testing.T) {
-		st := storeBuilder(t)
-
-		err := st.Truncate()
-		assert.NoError(t, err)
-	})
-
-	t.Run("Should truncate the store", func(t *testing.T) {
-		st := storeBuilder(t)
-
-		err := st.Put([]byte("foo"), []byte("FOO"))
-		assert.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
-		assert.NoError(t, err)
-
-		err = st.Truncate()
-		assert.NoError(t, err)
-
-		it := st.Iterator(nil)
-		defer it.Close()
-		it.First()
-		assert.NoError(t, it.Error())
-		require.False(t, it.Valid())
 	})
 }
 
@@ -421,26 +360,4 @@ func TestQueriesSameTransaction(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	})
-}
-
-func TestTransient(t *testing.T) {
-	ts, err := kv.NewTransientStore(&pebble.Options{FS: vfs.NewMem()})
-	assert.NoError(t, err)
-
-	dir := ts.Path
-
-	err = ts.Put([]byte("foo"), []byte("bar"))
-	assert.NoError(t, err)
-
-	it := ts.Iterator(nil)
-	defer it.Close()
-
-	it.SeekGE([]byte("foo"))
-	require.True(t, it.Valid())
-
-	err = ts.Drop()
-	assert.NoError(t, err)
-
-	_, err = os.Stat(dir)
-	require.True(t, os.IsNotExist(err))
 }

@@ -8,7 +8,6 @@ require (
 	github.com/cockroachdb/pebble v0.0.0-20220513193540-b8c9a560bed5
 	github.com/google/go-cmp v0.5.8
 	github.com/stretchr/testify v1.7.1
-	github.com/vmihailenco/msgpack/v5 v5.3.5
 	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
 )
 
@@ -28,7 +27,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	golang.org/x/exp v0.0.0-20220428152302-39d4317da171 // indirect
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
 	gopkg.in/yaml.v3 v3.0.0-20220512140231-539c8e751b99 // indirect

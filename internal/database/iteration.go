@@ -28,10 +28,7 @@ func (r *Range) ToTreeRange(constraints *FieldConstraints, paths []document.Path
 			}
 		}
 
-		rng.Min, err = tree.NewKey(r.Min...)
-		if err != nil {
-			return nil, err
-		}
+		rng.Min = tree.NewKey(r.Min...)
 	}
 
 	if len(r.Max) > 0 {
@@ -42,10 +39,7 @@ func (r *Range) ToTreeRange(constraints *FieldConstraints, paths []document.Path
 			}
 		}
 
-		rng.Max, err = tree.NewKey(r.Max...)
-		if err != nil {
-			return nil, err
-		}
+		rng.Max = tree.NewKey(r.Max...)
 	}
 
 	if r.Exclusive && r.Exact {

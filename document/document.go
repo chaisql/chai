@@ -4,13 +4,13 @@ package document
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
 
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
@@ -94,15 +94,6 @@ type fieldValue struct {
 
 // Add a field to the buffer.
 func (fb *FieldBuffer) Add(field string, v types.Value) *FieldBuffer {
-	var err error
-
-	if ev, ok := v.(*encoding.EncodedValue); ok {
-		v, err = CloneValue(ev)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	fb.fields = append(fb.fields, fieldValue{field, v})
 	return fb
 }
@@ -313,13 +304,29 @@ func (fb *FieldBuffer) Replace(field string, v types.Value) error {
 // If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
 func (fb *FieldBuffer) Copy(d types.Document) error {
 	return d.Iterate(func(field string, value types.Value) error {
-		fb.Add(field, value)
+		v, err := CloneValue(value)
+		if err != nil {
+			return err
+		}
+		fb.Add(strings.Clone(field), v)
 		return nil
 	})
 }
 
 func CloneValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
+	case types.NullValue:
+		return types.NewNullValue(), nil
+	case types.BooleanValue:
+		return types.NewBoolValue(types.As[bool](v)), nil
+	case types.IntegerValue:
+		return types.NewIntegerValue(types.As[int64](v)), nil
+	case types.DoubleValue:
+		return types.NewDoubleValue(types.As[float64](v)), nil
+	case types.TextValue:
+		return types.NewTextValue(strings.Clone(types.As[string](v))), nil
+	case types.BlobValue:
+		return types.NewBlobValue(append([]byte{}, types.As[[]byte](v)...)), nil
 	case types.ArrayValue:
 		vb := NewValueBuffer()
 		err := vb.Copy(types.As[types.Array](v))
@@ -334,11 +341,9 @@ func CloneValue(v types.Value) (types.Value, error) {
 			return nil, err
 		}
 		return types.NewDocumentValue(fb), nil
-	case types.BlobValue:
-		return types.NewValueWith(v.Type(), append([]byte{}, types.As[[]byte](v)...)), nil
-	default:
-		return types.NewValueWith(v.Type(), v.V()), nil
 	}
+
+	panic(fmt.Sprintf("Unsupported value type: %s", v.Type()))
 }
 
 // Apply a function to all the values of the buffer.

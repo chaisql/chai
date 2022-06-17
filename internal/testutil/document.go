@@ -154,6 +154,19 @@ func RequireDocEqual(t testing.TB, want, got types.Document) {
 	}
 }
 
+func RequireArrayEqual(t testing.TB, want, got types.Array) {
+	t.Helper()
+
+	tWant, err := types.MarshalTextIndent(types.NewArrayValue(want), "\n", "  ")
+	require.NoError(t, err)
+	tGot, err := types.MarshalTextIndent(types.NewArrayValue(got), "\n", "  ")
+	require.NoError(t, err)
+
+	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
+		require.Failf(t, "mismatched arrays, (-want, +got)", "%s", diff)
+	}
+}
+
 func CloneDocument(t testing.TB, d types.Document) *document.FieldBuffer {
 	t.Helper()
 

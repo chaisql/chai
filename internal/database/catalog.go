@@ -10,18 +10,16 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/lock"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/lib/atomic"
 	"github.com/genjidb/genji/types"
 )
 
 // System tables
 const (
-	CatalogTableName                      = InternalPrefix + "catalog"
-	CatalogTableNamespace  kv.NamespaceID = 1
-	SequenceTableName                     = InternalPrefix + "sequence"
-	SequenceTableNamespace kv.NamespaceID = 2
+	CatalogTableName  = InternalPrefix + "catalog"
+	SequenceTableName = InternalPrefix + "sequence"
 )
 
 // Relation types
@@ -36,6 +34,14 @@ const (
 	StoreSequence = InternalPrefix + "store_seq"
 )
 
+// System namespaces
+const (
+	CatalogTableNamespace  tree.Namespace = 1
+	SequenceTableNamespace tree.Namespace = 2
+	MinTransientNamespace  tree.Namespace = math.MaxInt64 - 1<<24
+	MaxTransientNamespace  tree.Namespace = math.MaxInt64
+)
+
 // Catalog manages all database objects such as tables, indexes and sequences.
 // It stores all these objects in memory for fast access. Any modification
 // is persisted into the __genji_catalog table.
@@ -43,34 +49,43 @@ type Catalog struct {
 	Cache        *catalogCache
 	CatalogTable *CatalogStore
 	Locks        *lock.LockManager
+
+	TransientNamespaces *atomic.Counter
 }
 
 func NewCatalog() *Catalog {
 	return &Catalog{
-		Cache:        newCatalogCache(),
-		CatalogTable: newCatalogStore(),
-		Locks:        lock.NewLockManager(),
+		Cache:               newCatalogCache(),
+		CatalogTable:        newCatalogStore(),
+		Locks:               lock.NewLockManager(),
+		TransientNamespaces: atomic.NewCounter(int64(MinTransientNamespace), int64(MaxTransientNamespace)),
 	}
 }
 
 func (c *Catalog) Init(tx *Transaction) error {
+	// ensure the catalog schema is store in the catalog table
+	err := c.ensureTableExists(tx, c.CatalogTable.info)
+	if err != nil {
+		return err
+	}
+
 	// ensure the store sequence exists
 	return c.ensureSequenceExists(tx, &SequenceInfo{
 		Name:        StoreSequence,
 		IncrementBy: 1,
-		Min:         1, Max: math.MaxUint32,
-		Start: 101, // first 100 are reserved for system tables
+		Start:       3,
+		Min:         1, Max: int64(MinTransientNamespace), // last 24 bits are for transient namespaces
 		Owner: Owner{
 			TableName: CatalogTableName,
 		},
 	})
 }
 
-func (c *Catalog) ensureSequenceExists(tx *Transaction, seq *SequenceInfo) error {
-	err := c.CreateSequence(tx, seq)
+func (c *Catalog) ensureTableExists(tx *Transaction, info *TableInfo) error {
+	err := c.CreateTable(tx, info.TableName, info)
 	if err != nil {
 		switch {
-		case errs.IsConstraintViolationError(err) && err.(*errs.ConstraintViolationError).Constraint == "PRIMARY KEY":
+		case IsConstraintViolationError(err) && err.(*ConstraintViolationError).Constraint == "PRIMARY KEY":
 		case errs.IsAlreadyExistsError(err):
 		default:
 			return err
@@ -80,7 +95,21 @@ func (c *Catalog) ensureSequenceExists(tx *Transaction, seq *SequenceInfo) error
 	return nil
 }
 
-func (c *Catalog) generateStoreName(tx *Transaction) (kv.NamespaceID, error) {
+func (c *Catalog) ensureSequenceExists(tx *Transaction, seq *SequenceInfo) error {
+	err := c.CreateSequence(tx, seq)
+	if err != nil {
+		switch {
+		case IsConstraintViolationError(err) && err.(*ConstraintViolationError).Constraint == "PRIMARY KEY":
+		case errs.IsAlreadyExistsError(err):
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Catalog) generateStoreName(tx *Transaction) (tree.Namespace, error) {
 	seq, err := c.GetSequence(StoreSequence)
 	if err != nil {
 		return 0, err
@@ -90,7 +119,7 @@ func (c *Catalog) generateStoreName(tx *Transaction) (kv.NamespaceID, error) {
 		return 0, err
 	}
 
-	return kv.NamespaceID(v), nil
+	return tree.Namespace(v), nil
 }
 
 func (c *Catalog) LockTable(tx *Transaction, tableName string, mode lock.LockMode) error {
@@ -125,11 +154,9 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	ti := o.(*TableInfoRelation).Info
 
-	s := tx.Session.GetNamespace(ti.StoreNamespace)
-
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(s),
+		Tree:    tree.New(tx.Session, ti.StoreNamespace),
 		Info:    ti,
 		Catalog: c,
 	}, nil
@@ -235,7 +262,7 @@ func (c *Catalog) DropTable(tx *Transaction, tableName string) error {
 		return err
 	}
 
-	return tx.Session.GetNamespace(ti.StoreNamespace).Truncate()
+	return tree.New(tx.Session, ti.StoreNamespace).Truncate()
 }
 
 // CreateIndex creates an index with the given name.
@@ -273,9 +300,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	s := tx.Session.GetNamespace(info.StoreNamespace)
-
-	return NewIndex(tree.New(s), *info), nil
+	return NewIndex(tree.New(tx.Session, info.StoreNamespace), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -333,7 +358,7 @@ func (c *Catalog) DropIndex(tx *Transaction, name string) error {
 }
 
 func (c *Catalog) dropIndex(tx *Transaction, info *IndexInfo) error {
-	err := tx.Session.GetNamespace(info.StoreNamespace).Truncate()
+	err := tree.New(tx.Session, info.StoreNamespace).Truncate()
 	if err != nil {
 		return err
 	}
@@ -526,6 +551,17 @@ func (c *Catalog) DropSequence(tx *Transaction, name string) error {
 // ListSequences returns all sequence names sorted lexicographically.
 func (c *Catalog) ListSequences() []string {
 	return c.Cache.ListObjects(RelationSequenceType)
+}
+
+// GetFreeTransientNamespace returns the next available transient namespace.
+// Transient namespaces start from math.MaxInt64 - (2 << 24) to math.MaxInt64 (around 16 M).
+// The transient namespaces counter is not persisted and reset when the database is restarted.
+// Once the counter reaches its maximum value, it will wrap around to the minimum value.
+// Technically, if a transient namespace is still in use by the time the counter wraps around
+// its data may be overwritten. However, transient trees are supposed to verify that the
+// namespace is not in use before writing to it.
+func (c *Catalog) GetFreeTransientNamespace() tree.Namespace {
+	return tree.Namespace(c.TransientNamespaces.Incr())
 }
 
 type Relation interface {
@@ -852,11 +888,9 @@ func (s *CatalogStore) Info() *TableInfo {
 }
 
 func (s *CatalogStore) Table(tx *Transaction) *Table {
-	st := tx.Session.GetNamespace(CatalogTableNamespace)
-
 	return &Table{
 		Tx:      tx,
-		Tree:    tree.New(st),
+		Tree:    tree.New(tx.Session, CatalogTableNamespace),
 		Info:    s.info,
 		Catalog: s.Catalog,
 	}
@@ -867,7 +901,7 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
 	_, _, err := tb.Insert(relationToDocument(r))
-	if cerr, ok := err.(*errs.ConstraintViolationError); ok && cerr.Constraint == "PRIMARY KEY" {
+	if cerr, ok := err.(*ConstraintViolationError); ok && cerr.Constraint == "PRIMARY KEY" {
 		return errors.WithStack(errs.AlreadyExistsError{Name: r.Name()})
 	}
 
@@ -878,21 +912,15 @@ func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 func (s *CatalogStore) Replace(tx *Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
-	key, err := tree.NewKey(types.NewTextValue(name))
-	if err != nil {
-		return err
-	}
-	_, err = tb.Replace(key, relationToDocument(r))
+	key := tree.NewKey(types.NewTextValue(name))
+	_, err := tb.Replace(key, relationToDocument(r))
 	return err
 }
 
 func (s *CatalogStore) Delete(tx *Transaction, name string) error {
 	tb := s.Table(tx)
 
-	key, err := tree.NewKey(types.NewTextValue(name))
-	if err != nil {
-		return err
-	}
+	key := tree.NewKey(types.NewTextValue(name))
 
 	return tb.Delete(key)
 }

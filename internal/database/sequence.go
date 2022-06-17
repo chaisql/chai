@@ -45,7 +45,7 @@ type Sequence struct {
 
 	CurrentValue *int64
 	Cached       uint64
-	Key          tree.Key
+	Key          *tree.Key
 }
 
 // NewSequence creates a new or existing sequence. If currentValue is not nil
@@ -65,14 +65,13 @@ func NewSequence(info *SequenceInfo, currentValue *int64) Sequence {
 	return seq
 }
 
-func (s *Sequence) key() (tree.Key, error) {
-	var err error
+func (s *Sequence) key() *tree.Key {
 	if s.Key != nil {
-		return s.Key, nil
+		return s.Key
 	}
 
-	s.Key, err = tree.NewKey(types.NewTextValue(s.Info.Name))
-	return s.Key, err
+	s.Key = tree.NewKey(types.NewTextValue(s.Info.Name))
+	return s.Key
 }
 
 func (s *Sequence) Init(tx *Transaction, catalog *Catalog) error {
@@ -95,10 +94,7 @@ func (s *Sequence) Drop(tx *Transaction, catalog *Catalog) error {
 		return err
 	}
 
-	k, err := s.key()
-	if err != nil {
-		return err
-	}
+	k := s.key()
 
 	return tb.Delete(k)
 }
@@ -176,10 +172,7 @@ func (s *Sequence) SetLease(tx *Transaction, catalog *Catalog, name string, v in
 		return err
 	}
 
-	k, err := s.key()
-	if err != nil {
-		return err
-	}
+	k := s.key()
 
 	_, err = tb.Replace(k,
 		document.NewFieldBuffer().

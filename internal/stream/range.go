@@ -31,7 +31,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		Exact:     r.Exact,
 	}
 
-	if r.Min != nil {
+	if len(r.Min) > 0 {
 		min, err := r.Min.Eval(env)
 		if err != nil {
 			return nil, err
@@ -40,7 +40,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		rng.Min = types.As[*document.ValueBuffer](min).Values
 	}
 
-	if r.Max != nil {
+	if len(r.Max) > 0 {
 		max, err := r.Max.Eval(env)
 		if err != nil {
 			return nil, err
@@ -57,13 +57,13 @@ func (r *Range) String() string {
 	sb.WriteByte('{')
 	var needsComa bool
 
-	if r.Min != nil {
+	if len(r.Min) > 0 {
 		sb.WriteString(`"min": `)
 		sb.WriteString(r.Min.String())
 		needsComa = true
 	}
 
-	if r.Max != nil {
+	if len(r.Max) > 0 {
 		if needsComa {
 			sb.WriteString(", ")
 		}

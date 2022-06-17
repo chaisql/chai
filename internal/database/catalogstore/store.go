@@ -12,7 +12,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-func LoadCatalog(session *kv.Session, c *database.Catalog) error {
+func LoadCatalog(session kv.Session, c *database.Catalog) error {
 	tx := database.Transaction{
 		Session: session,
 	}
@@ -63,10 +63,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 
 	sequences := make([]database.Sequence, len(info))
 	for i := range info {
-		key, err := tree.NewKey(types.NewTextValue(info[i].Name))
-		if err != nil {
-			return nil, err
-		}
+		key := tree.NewKey(types.NewTextValue(info[i].Name))
 		d, err := tb.GetDocument(key)
 		if err != nil {
 			return nil, err
@@ -92,7 +89,7 @@ func loadSequences(tx *database.Transaction, c *database.Catalog, info []databas
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.IterateOnRange(nil, false, func(key tree.Key, d types.Document) error {
+	err = tb.IterateOnRange(nil, false, func(key *tree.Key, d types.Document) error {
 		tp, err := d.GetByField("type")
 		if err != nil {
 			return err
@@ -147,7 +144,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
 
-	ti.StoreNamespace = kv.NamespaceID(storeNamespace)
+	ti.StoreNamespace = tree.Namespace(storeNamespace)
 
 	v, err = d.GetByField("docid_sequence_name")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
@@ -183,7 +180,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
 
-	i.StoreNamespace = kv.NamespaceID(storeNamespace)
+	i.StoreNamespace = tree.Namespace(storeNamespace)
 
 	v, err = d.GetByField("owner")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {

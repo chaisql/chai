@@ -84,8 +84,8 @@ func (it *TableScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	}
 
 	for _, rng := range ranges {
-		err = table.IterateOnRange(rng, it.Reverse, func(key tree.Key, d types.Document) error {
-			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+		err = table.IterateOnRange(rng, it.Reverse, func(key *tree.Key, d types.Document) error {
+			newEnv.SetKey(key)
 			newEnv.SetDocument(d)
 
 			return fn(&newEnv)
@@ -126,15 +126,12 @@ func (op *TableValidateOperator) Iterate(in *environment.Environment, fn func(ou
 		return errors.New("cannot write to read-only table")
 	}
 
-	buf := getBuffer()
-	defer putBuffer(buf)
+	var buf []byte
 
 	var newEnv environment.Environment
 
-	codec := database.NewCodec(tx, info)
-
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		buf.Reset()
+		buf = buf[:0]
 		newEnv.SetOuter(out)
 
 		doc, ok := out.GetDocument()
@@ -143,16 +140,13 @@ func (op *TableValidateOperator) Iterate(in *environment.Environment, fn func(ou
 		}
 
 		// generate default values, validate and encode document
-		err = codec.Encode(buf, doc)
+		buf, err = info.EncodeDocument(tx, buf, doc)
 		if err != nil {
 			return err
 		}
 
 		// use the encoded document as the new document
-		doc, err = codec.Decode(buf.Bytes())
-		if err != nil {
-			return err
-		}
+		doc = database.NewEncodedDocument(&info.FieldConstraints, buf)
 
 		newEnv.SetDocument(doc)
 
@@ -208,7 +202,7 @@ func (op *TableInsertOperator) Iterate(in *environment.Environment, f func(out *
 			return err
 		}
 
-		newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+		newEnv.SetKey(key)
 		newEnv.SetDocument(d)
 
 		return f(&newEnv)
@@ -248,12 +242,12 @@ func (op *TableReplaceOperator) Iterate(in *environment.Environment, f func(out 
 			}
 		}
 
-		key, ok := out.Get(environment.DocPKKey)
+		key, ok := out.GetKey()
 		if !ok {
 			return errors.New("missing key")
 		}
 
-		_, err := table.Replace(types.As[[]byte](key), d)
+		_, err := table.Replace(key, d)
 		if err != nil {
 			return err
 		}
@@ -296,12 +290,12 @@ func (op *TableDeleteOperator) Iterate(in *environment.Environment, f func(out *
 			}
 		}
 
-		key, ok := out.Get(environment.DocPKKey)
+		key, ok := out.GetKey()
 		if !ok {
 			return errors.New("missing key")
 		}
 
-		err := table.Delete(types.As[[]byte](key))
+		err := table.Delete(key)
 		if err != nil {
 			return err
 		}

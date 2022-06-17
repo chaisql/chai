@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/tree"
@@ -153,21 +152,17 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 			}
 
 			if temp == nil {
-				// create a temporary database
+				// create a temporary tree
 				db := in.GetDB()
-
-				tr, f, err := database.NewTransientTree(db)
+				catalog := in.GetCatalog()
+				tns := catalog.GetFreeTransientNamespace()
+				temp, cleanup, err = tree.NewTransient(db.DB, tns)
 				if err != nil {
 					return err
 				}
-				temp = tr
-				cleanup = f
 			}
 
-			key, err := tree.NewKey(types.NewDocumentValue(doc))
-			if err != nil {
-				return err
-			}
+			key := tree.NewKey(types.NewDocumentValue(doc))
 			err = temp.Put(key, nil)
 			if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
 				return nil
@@ -188,7 +183,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	// iterate over the temporary index
-	return temp.IterateOnRange(nil, false, func(key tree.Key, _ []byte) error {
+	return temp.IterateOnRange(nil, false, func(key *tree.Key, _ []byte) error {
 		kv, err := key.Decode()
 		if err != nil {
 			return err
@@ -271,13 +266,13 @@ func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		err := fn(out)
 		if err != nil {
-			if cerr, ok := err.(*errs.ConstraintViolationError); ok {
+			if cerr, ok := err.(*database.ConstraintViolationError); ok {
 				if op.OnConflict == nil {
 					return nil
 				}
 
 				newEnv.SetOuter(out)
-				newEnv.Set(environment.DocPKKey, types.NewBlobValue(cerr.Key))
+				newEnv.SetKey(cerr.Key)
 
 				err = op.OnConflict.Iterate(&newEnv, func(out *environment.Environment) error { return nil })
 			}
@@ -288,7 +283,7 @@ func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *
 
 func (op *OnConflictOperator) String() string {
 	if op.OnConflict == nil {
-		return fmt.Sprintf("stream.OnConflict(NULL)")
+		return "stream.OnConflict(NULL)"
 	}
 
 	return fmt.Sprintf("stream.OnConflict(%s)", op.OnConflict)

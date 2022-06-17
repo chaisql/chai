@@ -1,13 +1,12 @@
 package stream
 
 import (
-	"bytes"
 	"fmt"
 	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/tree"
@@ -495,7 +494,9 @@ func DocsTempTreeSortReverse(e expr.Expr) *DocsTempTreeSortOperator {
 func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	db := in.GetDB()
 
-	tr, cleanup, err := database.NewTransientTree(db)
+	catalog := in.GetCatalog()
+	tns := catalog.GetFreeTransientNamespace()
+	tr, cleanup, err := tree.NewTransient(db.DB, tns)
 	if err != nil {
 		return err
 	}
@@ -503,10 +504,9 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 	var counter int64
 
-	codec := database.AsIsCodec{}
-	var buf bytes.Buffer
+	var buf []byte
 	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
-		buf.Reset()
+		buf = buf[:0]
 		// evaluate the sort expression
 		v, err := op.Expr.Eval(out)
 		if err != nil {
@@ -520,20 +520,21 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 		tableName, _ := out.Get(environment.TableKey)
 
-		key, _ := out.Get(environment.DocPKKey)
-
-		tk, err := tree.NewKey(v, tableName, key, types.NewIntegerValue(counter))
-		if err != nil {
-			return err
+		var encKey []byte
+		key, ok := out.GetKey()
+		if ok {
+			encKey = key.Encoded
 		}
+
+		tk := tree.NewKey(v, tableName, types.NewBlobValue(encKey), types.NewIntegerValue(counter))
 
 		counter++
 
-		err = codec.Encode(&buf, doc)
+		buf, err = encoding.EncodeDocument(buf, doc)
 		if err != nil {
 			return err
 		}
-		return tr.Put(tk, buf.Bytes())
+		return tr.Put(tk, buf)
 	})
 	if err != nil {
 		return err
@@ -542,7 +543,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	return tr.IterateOnRange(nil, op.Desc, func(k tree.Key, data []byte) error {
+	return tr.IterateOnRange(nil, op.Desc, func(k *tree.Key, data []byte) error {
 		kv, err := k.Decode()
 		if err != nil {
 			return err
@@ -555,10 +556,10 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 		docKey := kv[2]
 		if docKey.Type() != types.NullValue {
-			newEnv.Set(environment.DocPKKey, docKey)
+			newEnv.SetKey(tree.NewEncodedKey(types.As[[]byte](docKey)))
 		}
 
-		newEnv.SetDocument(codec.Decode(data))
+		newEnv.SetDocument(encoding.DecodeDocument(data, false /* intAsDouble */))
 
 		return fn(&newEnv)
 	})

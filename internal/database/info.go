@@ -8,8 +8,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -18,7 +18,7 @@ type TableInfo struct {
 	// name of the table.
 	TableName string
 	// namespace of the store associated with the table.
-	StoreNamespace kv.NamespaceID
+	StoreNamespace tree.Namespace
 	ReadOnly       bool
 
 	// Name of the docid sequence if any.
@@ -256,7 +256,7 @@ type PrimaryKey struct {
 // IndexInfo holds the configuration of an index.
 type IndexInfo struct {
 	// namespace of the store associated with the index.
-	StoreNamespace kv.NamespaceID
+	StoreNamespace tree.Namespace
 	IndexName      string
 	Paths          []document.Path
 

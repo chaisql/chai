@@ -3,13 +3,11 @@ package database
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
 var (
@@ -47,8 +45,8 @@ var errStop = errors.New("stop")
 // Every record is stored like this:
 //   k: <encoded values><primary key>
 //   v: length of the encoded value, as an unsigned varint
-func (idx *Index) Set(vs []types.Value, key tree.Key) error {
-	if len(key) == 0 {
+func (idx *Index) Set(vs []types.Value, key []byte) error {
+	if key == nil {
 		return errors.New("cannot index value without a key")
 	}
 
@@ -64,43 +62,29 @@ func (idx *Index) Set(vs []types.Value, key tree.Key) error {
 	values := append(vs, types.NewBlobValue(key))
 
 	// create the key for the tree
-	treeKey, err := tree.NewKey(values...)
-	if err != nil {
-		return err
-	}
+	treeKey := tree.NewKey(values...)
 
 	return idx.Tree.Put(treeKey, nil)
 }
 
 // Exists iterates over the index and check if the value exists
-func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
+func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 	if len(vs) != idx.Arity {
 		return false, nil, fmt.Errorf("required arity of %d", idx.Arity)
 	}
 
-	seek, err := tree.NewKey(vs...)
-	if err != nil {
-		return false, nil, err
-	}
+	seek := tree.NewKey(vs...)
 
 	var found bool
-	var dKey tree.Key
+	var dKey *tree.Key
 
-	err = idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k tree.Key, _ []byte) error {
-		if len(seek) > len(k) {
-			return errStop
-		}
-
-		if !bytes.Equal(k[:len(seek)], seek) {
-			return errStop
-		}
-
+	err := idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k *tree.Key, _ []byte) error {
 		values, err := k.Decode()
 		if err != nil {
 			return err
 		}
 
-		dKey = types.As[[]byte](values[len(values)-1])
+		dKey = tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
 		found = true
 		return errStop
 	})
@@ -111,19 +95,15 @@ func (idx *Index) Exists(vs []types.Value) (bool, tree.Key, error) {
 }
 
 // Delete all the references to the key from the index.
-func (idx *Index) Delete(vs []types.Value, key tree.Key) error {
-	vk, err := tree.NewKey(vs...)
-	if err != nil {
-		return err
-	}
-
+func (idx *Index) Delete(vs []types.Value, key []byte) error {
+	vk := tree.NewKey(vs...)
 	rng := tree.Range{
 		Min: vk,
 		Max: vk,
 	}
 
-	err = idx.iterateOnRange(&rng, false, func(itmKey tree.Key, pk tree.Key) error {
-		if bytes.Equal(pk, key) {
+	err := idx.iterateOnRange(&rng, false, func(itmKey *tree.Key, pk *tree.Key) error {
+		if bytes.Equal(pk.Encoded, key) {
 			err := idx.Tree.Delete(itmKey)
 			if err == nil {
 				err = errStop
@@ -144,58 +124,26 @@ func (idx *Index) Delete(vs []types.Value, key tree.Key) error {
 	return kv.ErrKeyNotFound
 }
 
-// IterateOnRange seeks for the pivot and then goes through all the subsequent key value pairs in increasing or decreasing order and calls the given function for each pair.
-// If the given function returns an error, the iteration stops and returns that error.
-// If the pivot(s) is/are empty, starts from the beginning.
-//
-// Valid pivots are:
-// - zero value pivot
-//   - iterate on everything
-// - n elements pivot (where n is the index arity) with each element having a value and a type
-//   - iterate starting at the closest index value
-//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
-// - less than n elements pivot, with each element having a value and a type
-//   - iterate starting at the closest index value, using the first known value for missing elements
-//   - optionally, the last pivot element can have just a type and no value, which will scope the value of that element to that type
-// - a single element with a type but nil value: will iterate on everything of that type
-//
-// Any other variation of a pivot are invalid and will panic.
-func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key tree.Key) error) error {
-	if rng.Min == nil && rng.Max == nil {
-		panic("range cannot be empty")
-	}
-
-	// if one of the boundaries is nil, ensure the iteration only returns
-	// keys of the same type as the other boundary's first value.
-	if rng.Min == nil {
-		rng.Min = tree.NewMinKeyForType(types.ValueType(rng.Max[0]))
-	} else if rng.Max == nil {
-		rng.Max = tree.NewMaxKeyForType(types.ValueType(rng.Min[0]))
-	}
-
-	return idx.iterateOnRange(rng, reverse, func(itmKey, key tree.Key) error {
+func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {
+	return idx.iterateOnRange(rng, reverse, func(itmKey, key *tree.Key) error {
 		return fn(key)
 	})
 }
 
-func (idx *Index) Iterate(reverse bool, fn func(key tree.Key) error) error {
-	return idx.Tree.IterateOnRange(nil, reverse, idx.iterator(func(itmKey tree.Key, key tree.Key) error {
-		return fn(key)
-	}))
-}
-
-func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey tree.Key, key tree.Key) error) error {
+func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey *tree.Key, key *tree.Key) error) error {
 	return idx.Tree.IterateOnRange(rng, reverse, idx.iterator(fn))
 }
 
-func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k tree.Key, d []byte) error {
-	return func(k tree.Key, _ []byte) error {
+func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(k *tree.Key, d []byte) error {
+	return func(k *tree.Key, _ []byte) error {
 		// we don't care about the value, we just want to extract the key
 		// which is the last element of the encoded array
-		pos := bytes.LastIndex(k, []byte{encoding.ArrayValueDelim})
+		values, err := k.Decode()
+		if err != nil {
+			return err
+		}
 
-		enc := encoding.EncodedValue(k[pos+1:])
-		pk := tree.Key(types.As[[]byte](&enc))
+		pk := tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
 
 		return fn(k, pk)
 	}
@@ -204,14 +152,4 @@ func (idx *Index) iterator(fn func(itmKey tree.Key, key tree.Key) error) func(k 
 // Truncate deletes all the index data.
 func (idx *Index) Truncate() error {
 	return idx.Tree.Truncate()
-}
-
-type NoOpCodec struct{}
-
-func (NoOpCodec) Encode(w io.Writer, d types.Document) error {
-	return nil
-}
-
-func (NoOpCodec) Decode(b []byte) (types.Document, error) {
-	return nil, nil
 }

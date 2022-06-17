@@ -8,6 +8,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 )
 
@@ -29,9 +30,6 @@ type Database struct {
 	// This limits the number of write transactions to 1.
 	writetxmu *sync.Mutex
 
-	// Pool of reusable transient engines to use for temporary indices.
-	TransientStorePool *TransientStorePool
-
 	// TransactionIDs is used to assign transaction an ID at runtime.
 	// Since transaction IDs are not persisted and not used for concurrent
 	// access, we can use 8 bytes ids that will be reset every time
@@ -51,15 +49,11 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*Database, error) {
+func New(ctx context.Context, pdb *pebble.DB) (*Database, error) {
 	db := Database{
 		DB:        pdb,
 		Catalog:   NewCatalog(),
 		writetxmu: &sync.Mutex{},
-		TransientStorePool: &TransientStorePool{
-			pdb:  pdb,
-			opts: opts,
-		},
 	}
 
 	tx, err := db.Begin(true)
@@ -73,24 +67,17 @@ func New(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*Database, 
 		return nil, err
 	}
 
+	err = db.cleanupTransientNamespaces(tx)
+	if err != nil {
+		return nil, err
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		return nil, err
 	}
 
 	return &db, nil
-}
-
-// NewTransientStore creates a temporary store to be used for creating temporary indices.
-func (db *Database) NewTransientStore(ctx context.Context) (*kv.TransientStore, func() error, error) {
-	tdb, err := db.TransientStorePool.Get(context.Background())
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return tdb, func() error {
-		return db.TransientStorePool.Release(context.Background(), tdb)
-	}, nil
 }
 
 // Close the database.
@@ -184,11 +171,11 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		opts = &TxOptions{}
 	}
 
-	var sess *kv.Session
+	var sess kv.Session
 	if opts.ReadOnly {
-		sess = kv.NewReadSession(db.DB)
+		sess = kv.NewSnapshotSession(db.DB)
 	} else {
-		sess = kv.NewSession(db.DB)
+		sess = kv.NewBatchSession(db.DB)
 	}
 
 	tx := Transaction{
@@ -217,4 +204,12 @@ func (db *Database) releaseAttachedTx() {
 	if db.attachedTransaction != nil {
 		db.attachedTransaction = nil
 	}
+}
+
+// ensures the transient namespaces are all empty before starting the database.
+func (db *Database) cleanupTransientNamespaces(tx *Transaction) error {
+	return tx.Session.DeleteRange(
+		encoding.EncodeUint(nil, uint64(MinTransientNamespace)),
+		encoding.EncodeUint(nil, uint64(MaxTransientNamespace)),
+	)
 }

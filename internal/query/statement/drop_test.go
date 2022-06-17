@@ -46,7 +46,7 @@ func TestDropTable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, res.Close())
 
-	require.Equal(t, []string{"__genji_sequence", "test2", "test3"}, tables)
+	require.Equal(t, []string{"__genji_catalog", "__genji_sequence", "test2", "test3"}, tables)
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.

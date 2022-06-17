@@ -11,12 +11,14 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
+	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -35,7 +37,7 @@ func NewPebble(t testing.TB) *pebble.DB {
 
 	dir := TempDir(t)
 
-	db, err := pebble.Open(filepath.Join(dir, "pebble"), nil)
+	db, err := ipebble.Open(filepath.Join(dir, "pebble"), nil)
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -47,27 +49,25 @@ func NewPebble(t testing.TB) *pebble.DB {
 func NewMemPebble(t testing.TB) *pebble.DB {
 	t.Helper()
 
-	pdb, err := pebble.Open("", &pebble.Options{FS: vfs.NewStrictMem()})
+	pdb, err := ipebble.Open("", &pebble.Options{FS: vfs.NewStrictMem()})
 	assert.NoError(t, err)
 
 	return pdb
 }
 
-func NewTestStore(t testing.TB) *kv.Namespace {
+func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 	t.Helper()
 
 	pdb := NewMemPebble(t)
 
-	ng := kv.NewSession(pdb)
-
-	st := ng.GetNamespace(10)
+	session := kv.NewBatchSession(pdb)
 
 	t.Cleanup(func() {
-		ng.Close()
+		session.Close()
 		pdb.Close()
 	})
 
-	return st
+	return tree.New(session, namespace)
 }
 
 func NewTestDB(t testing.TB) *database.Database {
@@ -79,10 +79,10 @@ func NewTestDB(t testing.TB) *database.Database {
 func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	t.Helper()
 
-	db, err := database.New(context.Background(), pdb, &pebble.Options{FS: vfs.NewMem()})
+	db, err := database.New(context.Background(), pdb)
 	assert.NoError(t, err)
 
-	sess := kv.NewReadSession(pdb)
+	sess := kv.NewSnapshotSession(pdb)
 	defer sess.Close()
 	err = catalogstore.LoadCatalog(sess, db.Catalog)
 	assert.NoError(t, err)

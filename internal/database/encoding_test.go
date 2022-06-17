@@ -1,7 +1,6 @@
 package database_test
 
 import (
-	"bytes"
 	"testing"
 
 	"github.com/genjidb/genji/document"
@@ -54,8 +53,6 @@ func TestEncoding(t *testing.T) {
 
 	ti.FieldConstraints.AllowExtraFields = true
 
-	codec := database.NewCodec(nil, &ti)
-
 	doc := document.NewFromMap(map[string]any{
 		"a":     int64(1),
 		"b":     "hello",
@@ -67,11 +64,11 @@ func TestEncoding(t *testing.T) {
 		"doc":   document.NewFromMap(map[string]int64{"a": 10}),
 	})
 
-	var buf bytes.Buffer
-	err = codec.Encode(&buf, doc)
+	var buf []byte
+	buf, err = ti.EncodeDocument(nil, buf, doc)
 	require.NoError(t, err)
 
-	d, err := codec.Decode(buf.Bytes())
+	d := database.NewEncodedDocument(&ti.FieldConstraints, buf)
 	require.NoError(t, err)
 
 	want := document.NewFromMap(map[string]any{
@@ -87,4 +84,69 @@ func TestEncoding(t *testing.T) {
 	})
 
 	testutil.RequireDocEqual(t, want, d)
+
+	t.Run("with nested documents", func(t *testing.T) {
+		var ti database.TableInfo
+
+		// a DOCUMENT(...)
+		err := ti.AddFieldConstraint(&database.FieldConstraint{
+			Position: 0,
+			Field:    "a",
+			Type:     types.DocumentValue,
+			AnonymousType: &database.AnonymousType{
+				FieldConstraints: database.FieldConstraints{
+					AllowExtraFields: true,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// b DOCUMENT(d TEST)
+		var subfcs database.FieldConstraints
+		err = subfcs.Add(&database.FieldConstraint{
+			Position: 0,
+			Field:    "d",
+			Type:     types.TextValue,
+		})
+		subfcs.AllowExtraFields = true
+		require.NoError(t, err)
+
+		err = ti.AddFieldConstraint(&database.FieldConstraint{
+			Position: 1,
+			Field:    "b",
+			Type:     types.DocumentValue,
+			AnonymousType: &database.AnonymousType{
+				FieldConstraints: subfcs,
+			},
+		})
+		require.NoError(t, err)
+
+		// c INT
+		err = ti.AddFieldConstraint(&database.FieldConstraint{
+			Position: 2,
+			Field:    "c",
+			Type:     types.IntegerValue,
+		})
+		require.NoError(t, err)
+
+		doc := document.NewFromMap(map[string]any{
+			"a": document.WithSortedFields(document.NewFromMap(map[string]any{"w": "hello", "x": int64(1)})),
+			"b": document.WithSortedFields(document.NewFromMap(map[string]any{"d": "bye", "e": int64(2)})),
+			"c": int64(100),
+		})
+
+		got, err := ti.EncodeDocument(nil, nil, doc)
+		require.NoError(t, err)
+
+		d := database.NewEncodedDocument(&ti.FieldConstraints, got)
+		require.NoError(t, err)
+
+		want := document.NewFromMap(map[string]any{
+			"a": document.WithSortedFields(document.NewFromMap(map[string]any{"w": "hello", "x": float64(1)})),
+			"b": document.WithSortedFields(document.NewFromMap(map[string]any{"d": "bye", "e": float64(2)})),
+			"c": int64(100),
+		})
+
+		testutil.RequireDocEqual(t, want, d)
+	})
 }

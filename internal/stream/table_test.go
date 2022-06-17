@@ -41,7 +41,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2]`)},
+				stream.Range{Max: testutil.ExprList(t, `[2]`)},
 			},
 			false, false,
 		},
@@ -50,7 +50,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1]`)},
+				stream.Range{Max: testutil.ExprList(t, `[1]`)},
 			},
 			false, false,
 		},
@@ -59,7 +59,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[1.1]`)},
+				stream.Range{Max: testutil.ExprList(t, `[1.1]`)},
 			},
 			false, false,
 		},
@@ -68,7 +68,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`)},
+				stream.Range{Min: testutil.ExprList(t, `[1]`)},
 			},
 			false, false,
 		},
@@ -77,7 +77,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[0.5]`)},
+				stream.Range{Min: testutil.ExprList(t, `[0.5]`)},
 			},
 			false, false,
 		},
@@ -86,7 +86,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
 			},
 			false, false,
 		},
@@ -95,7 +95,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[0.5]`), Max: testutil.ExprList(t, `[1.5]`)},
+				stream.Range{Min: testutil.ExprList(t, `[0.5]`), Max: testutil.ExprList(t, `[1.5]`)},
 			},
 			false, false,
 		},
@@ -104,7 +104,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Max: testutil.ExprList(t, `[2]`)},
+				stream.Range{Max: testutil.ExprList(t, `[2]`)},
 			},
 			true, false,
 		},
@@ -113,7 +113,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`)},
+				stream.Range{Min: testutil.ExprList(t, `[1]`)},
 			},
 			true, false,
 		},
@@ -122,7 +122,7 @@ func TestTableScan(t *testing.T) {
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
 			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
 			},
 			true, false,
 		},

@@ -42,6 +42,7 @@ func cloneCatalog(c *database.Catalog) *database.Catalog {
 	clone.CatalogTable = c.CatalogTable
 	clone.Locks = c.Locks
 	clone.Cache = c.Cache.Clone()
+	clone.TransientNamespaces = c.TransientNamespaces
 
 	return &clone
 }
@@ -447,19 +448,21 @@ func TestReadOnlyTables(t *testing.T) {
 	err = res.Iterate(func(d types.Document) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, docid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
 		case 1:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 4294967295 START WITH 101 CACHE 0", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
 		case 2:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":101, "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 3 CACHE 0", "type":"sequence"}`)
 		case 3:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":102, "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":3, "type":"table"}`)
 		case 4:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":4, "type":"index"}`)
 		case 5:
-			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":103, "type":"index", "owner": {"table_name": "foo"}}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
+		case 6:
+			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":5, "type":"index", "owner": {"table_name": "foo"}}`)
 		default:
-			t.Fatalf("count should be 5, got %d", i)
+			t.Fatalf("count should be 6, got %d", i)
 		}
 
 		i++
@@ -483,8 +486,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 			require.NotNil(t, seq)
 
 			tb := db.Catalog.CatalogTable.Table(tx)
-			key, err := tree.NewKey(types.NewTextValue("test1"))
-			assert.NoError(t, err)
+			key := tree.NewKey(types.NewTextValue("test1"))
 
 			_, err = tb.GetDocument(key)
 			assert.NoError(t, err)

@@ -1,7 +1,6 @@
 package database
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/cockroachdb/errors"
@@ -34,7 +33,7 @@ func (t *Table) Truncate() error {
 // in the given document.
 // If no primary key has been selected, a monotonic autoincremented integer key will be generated.
 // It returns the inserted document alongside its key.
-func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
+func (t *Table) Insert(d types.Document) (*tree.Key, types.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, nil, errors.New("cannot write to read-only table")
 	}
@@ -50,7 +49,7 @@ func (t *Table) Insert(d types.Document) (tree.Key, types.Document, error) {
 		return nil, nil, err
 	}
 	if ok {
-		return nil, nil, &errs.ConstraintViolationError{
+		return nil, nil, &ConstraintViolationError{
 			Constraint: "PRIMARY KEY",
 			Paths:      t.Info.GetPrimaryKey().Paths,
 			Key:        key,
@@ -77,24 +76,22 @@ func (t *Table) encodeDocument(d types.Document) (types.Document, []byte, error)
 		return d, ed.encoded, nil
 	}
 
-	var buf bytes.Buffer
-	err := t.Info.EncodeDocument(t.Tx, &buf, d)
+	dst, err := t.Info.EncodeDocument(t.Tx, nil, d)
 	if err != nil {
 		return nil, nil, err
 	}
-	enc := buf.Bytes()
-	return NewEncodedDocument(&t.Info.FieldConstraints, enc), enc, nil
+	return NewEncodedDocument(&t.Info.FieldConstraints, dst), dst, nil
 }
 
 // Delete a document by key.
-func (t *Table) Delete(key tree.Key) error {
+func (t *Table) Delete(key *tree.Key) error {
 	if t.Info.ReadOnly {
 		return errors.New("cannot write to read-only table")
 	}
 
 	err := t.Tree.Delete(key)
 	if errors.Is(err, kv.ErrKeyNotFound) {
-		return errs.ErrDocumentNotFound
+		return errors.WithStack(errs.ErrDocumentNotFound)
 	}
 
 	return err
@@ -103,19 +100,18 @@ func (t *Table) Delete(key tree.Key) error {
 // Replace a document by key.
 // An error is returned if the key doesn't exist.
 // Indexes are automatically updated.
-func (t *Table) Replace(key tree.Key, d types.Document) (types.Document, error) {
+func (t *Table) Replace(key *tree.Key, d types.Document) (types.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
 	}
 
 	// make sure key exists
-	_, err := t.Tree.Get(key)
+	ok, err := t.Tree.Exists(key)
 	if err != nil {
-		if errors.Is(err, kv.ErrKeyNotFound) {
-			return nil, errs.ErrDocumentNotFound
-		}
-
 		return nil, err
+	}
+	if !ok {
+		return nil, errors.Wrapf(errs.ErrDocumentNotFound, "can't replace key %q", key)
 	}
 
 	d, enc, err := t.encodeDocument(d)
@@ -128,7 +124,7 @@ func (t *Table) Replace(key tree.Key, d types.Document) (types.Document, error) 
 	return d, err
 }
 
-func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d types.Document) error) error {
+func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, d types.Document) error) error {
 	var paths []document.Path
 
 	pk := t.Info.GetPrimaryKey()
@@ -150,15 +146,14 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key tree.Key, d
 		fieldConstraints: &t.Info.FieldConstraints,
 	}
 
-	return t.Tree.IterateOnRange(r, reverse, func(k tree.Key, enc []byte) error {
+	return t.Tree.IterateOnRange(r, reverse, func(k *tree.Key, enc []byte) error {
 		e.encoded = enc
-		e.reader.Reset(enc)
 		return fn(k, NewEncodedDocument(&t.Info.FieldConstraints, enc))
 	})
 }
 
 // GetDocument returns one document by key.
-func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
+func (t *Table) GetDocument(key *tree.Key) (types.Document, error) {
 	enc, err := t.Tree.Get(key)
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyNotFound) {
@@ -176,7 +171,7 @@ func (t *Table) GetDocument(key tree.Key) (types.Document, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the docid.
-func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error) {
+func (t *Table) generateKey(info *TableInfo, d types.Document) (*tree.Key, error) {
 	if pk := t.Info.GetPrimaryKey(); pk != nil {
 		vs := make([]types.Value, 0, len(pk.Paths))
 		for _, p := range pk.Paths {
@@ -191,7 +186,7 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error)
 			vs = append(vs, v)
 		}
 
-		return tree.NewKey(vs...)
+		return tree.NewKey(vs...), nil
 	}
 
 	seq, err := t.Catalog.GetSequence(t.Info.DocidSequenceName)
@@ -203,5 +198,5 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) (tree.Key, error)
 		return nil, err
 	}
 
-	return tree.NewKey(types.NewIntegerValue(docid))
+	return tree.NewKey(types.NewIntegerValue(docid)), nil
 }

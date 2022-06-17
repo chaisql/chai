@@ -4,7 +4,6 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
-	"github.com/genjidb/genji/types/encoding"
 )
 
 // ArrayLength returns the length of an array.
@@ -89,14 +88,6 @@ func (vb *ValueBuffer) Len() int {
 
 // Append a value to the buffer and return a new buffer.
 func (vb *ValueBuffer) Append(v types.Value) *ValueBuffer {
-	var err error
-	if ev, ok := v.(*encoding.EncodedValue); ok {
-		v, err = CloneValue(ev)
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	vb.Values = append(vb.Values, v)
 	return vb
 }
@@ -113,7 +104,11 @@ func (vb *ValueBuffer) ScanArray(a types.Array) error {
 // If a value is a document or an array, it will be stored as a *FieldBuffer or *ValueBuffer respectively.
 func (vb *ValueBuffer) Copy(a types.Array) error {
 	return a.Iterate(func(i int, value types.Value) error {
-		vb.Append(value)
+		v, err := CloneValue(value)
+		if err != nil {
+			return err
+		}
+		vb.Append(v)
 		return nil
 	})
 }

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/tree"
@@ -34,28 +33,6 @@ func IndexScan(name string, ranges ...Range) *IndexScanOperator {
 // IndexScanReverse creates an iterator that iterates over each document of the given table in reverse order.
 func IndexScanReverse(name string, ranges ...Range) *IndexScanOperator {
 	return &IndexScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
-}
-
-func (it *IndexScanOperator) String() string {
-	var s strings.Builder
-
-	s.WriteString("index.Scan")
-	if it.Reverse {
-		s.WriteString("Reverse")
-	}
-
-	s.WriteRune('(')
-
-	s.WriteString(strconv.Quote(it.IndexName))
-	if len(it.Ranges) > 0 {
-		s.WriteString(", [")
-		s.WriteString(it.Ranges.String())
-		s.WriteString("]")
-	}
-
-	s.WriteString(")")
-
-	return s.String()
 }
 
 // Iterate over the documents of the table. Each document is stored in the environment
@@ -89,10 +66,10 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	newEnv.SetDocument(&ptr)
 
 	if len(it.Ranges) == 0 {
-		return index.Iterate(it.Reverse, func(key tree.Key) error {
+		return index.IterateOnRange(nil, it.Reverse, func(key *tree.Key) error {
 			ptr.key = key
 			ptr.Doc = nil
-			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+			newEnv.SetKey(key)
 
 			return fn(&newEnv)
 		})
@@ -109,10 +86,10 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 			return err
 		}
 
-		err = index.IterateOnRange(r, it.Reverse, func(key tree.Key) error {
+		err = index.IterateOnRange(r, it.Reverse, func(key *tree.Key) error {
 			ptr.key = key
 			ptr.Doc = nil
-			newEnv.Set(environment.DocPKKey, types.NewBlobValue(key))
+			newEnv.SetKey(key)
 
 			return fn(&newEnv)
 		})
@@ -125,6 +102,28 @@ func (it *IndexScanOperator) Iterate(in *environment.Environment, fn func(out *e
 	}
 
 	return nil
+}
+
+func (it *IndexScanOperator) String() string {
+	var s strings.Builder
+
+	s.WriteString("index.Scan")
+	if it.Reverse {
+		s.WriteString("Reverse")
+	}
+
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.IndexName))
+	if len(it.Ranges) > 0 {
+		s.WriteString(", [")
+		s.WriteString(it.Ranges.String())
+		s.WriteString("]")
+	}
+
+	s.WriteString(")")
+
+	return s.String()
 }
 
 // IndexValidateOperator reads the input stream and deletes the document from the specified index.
@@ -188,7 +187,7 @@ func (op *IndexValidateOperator) Iterate(in *environment.Environment, fn func(ou
 				return err
 			}
 			if duplicate {
-				return &errs.ConstraintViolationError{
+				return &database.ConstraintViolationError{
 					Constraint: "UNIQUE",
 					Paths:      info.Paths,
 					Key:        key,
@@ -237,7 +236,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			return errors.New("missing document")
 		}
 
-		key, ok := out.Get(environment.DocPKKey)
+		key, ok := out.GetKey()
 		if !ok {
 			return errors.New("missing document key")
 		}
@@ -251,7 +250,7 @@ func (op *IndexInsertOperator) Iterate(in *environment.Environment, fn func(out 
 			vs = append(vs, v)
 		}
 
-		err = idx.Set(vs, types.As[[]byte](key))
+		err = idx.Set(vs, key.Encoded)
 		if err != nil {
 			return fmt.Errorf("error while inserting index value: %w", err)
 		}
@@ -297,12 +296,10 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 	}
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		dk, ok := out.Get(environment.DocPKKey)
+		key, ok := out.GetKey()
 		if !ok {
 			return errors.New("missing document key")
 		}
-
-		key := tree.Key(types.As[[]byte](dk))
 
 		old, err := table.GetDocument(key)
 		if err != nil {
@@ -323,7 +320,7 @@ func (op *IndexDeleteOperator) Iterate(in *environment.Environment, fn func(out 
 			vs = append(vs, v)
 		}
 
-		err = idx.Delete(vs, key)
+		err = idx.Delete(vs, key.Encoded)
 		if err != nil {
 			return err
 		}
@@ -339,7 +336,7 @@ func (op *IndexDeleteOperator) String() string {
 // DocumentPointer holds a document key and lazily loads the document on demand when the Iterate or GetByField method is called.
 // It implements the types.Document and the document.Keyer interfaces.
 type DocumentPointer struct {
-	key   []byte
+	key   *tree.Key
 	Table *database.Table
 	Doc   types.Document
 }

@@ -16,6 +16,7 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
+	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
@@ -32,13 +33,13 @@ type DB struct {
 	pdb *pebble.DB
 }
 
-func newDB(ctx context.Context, pdb *pebble.DB, opts *pebble.Options) (*DB, error) {
-	db, err := database.New(ctx, pdb, opts)
+func newDB(ctx context.Context, pdb *pebble.DB) (*DB, error) {
+	db, err := database.New(ctx, pdb)
 	if err != nil {
 		return nil, err
 	}
 
-	sess := kv.NewReadSession(pdb)
+	sess := kv.NewSnapshotSession(pdb)
 	defer sess.Close()
 
 	err = catalogstore.LoadCatalog(sess, db.Catalog)
@@ -64,13 +65,13 @@ func Open(path string) (*DB, error) {
 		path = ""
 	}
 
-	pdb, err := pebble.Open(path, &opts)
+	pdb, err := ipebble.Open(path, &opts)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx := context.Background()
-	return newDB(ctx, pdb, &opts)
+	return newDB(ctx, pdb)
 }
 
 // WithContext creates a new database handle using the given context for every operation.

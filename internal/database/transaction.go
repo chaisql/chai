@@ -12,7 +12,7 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	Session   *kv.Session
+	Session   kv.Session
 	ID        uint64
 	Writable  bool
 	WriteTxMu *sync.Mutex
