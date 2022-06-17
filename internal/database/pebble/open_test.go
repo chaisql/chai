@@ -79,7 +79,7 @@ func TestPebbleBatchSet(t *testing.T) {
 	var opts pebble.Options
 	opts.FS = vfs.NewMem()
 
-	opts.Comparer = WithStats(DefaultComparer)
+	opts.Comparer = DefaultComparer
 
 	db, err := Open("", &opts)
 	require.NoError(t, err)

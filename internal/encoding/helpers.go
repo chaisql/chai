@@ -240,6 +240,10 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 }
 
 func Successor(dst, a []byte) []byte {
+	if len(a) == 0 {
+		return a
+	}
+
 	namespace, _ := DecodeInt(a)
 	if namespace == math.MaxInt64 {
 		return a
