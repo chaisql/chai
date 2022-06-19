@@ -1,28 +1,24 @@
 package kv
 
 import (
-	"io"
-
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 )
 
 // Common errors returned by the engine implementations.
 var (
-	// ErrStoreNotFound is returned when the targeted store doesn't exist.
-	ErrStoreNotFound = errors.New("store not found")
-
-	// ErrStoreAlreadyExists must be returned when attempting to create a store with the
-	// same name as an existing one.
-	ErrStoreAlreadyExists = errors.New("store already exists")
-
 	// ErrKeyNotFound is returned when the targeted key doesn't exist.
 	ErrKeyNotFound = errors.New("key not found")
+
+	// ErrKeyAlreadyExists is returned when the targeted key already exists.
+	ErrKeyAlreadyExists = errors.New("key already exists")
 )
 
 type Session interface {
 	Commit() error
 	Close() error
+	// Insert inserts a key-value pair. If it already exists, it returns ErrKeyAlreadyExists.
+	Insert(k, v []byte) error
 	// Put stores a key-value pair. If it already exists, it overrides it.
 	Put(k, v []byte) error
 	// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
@@ -37,10 +33,7 @@ type Session interface {
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func get(r pebble.Reader, k []byte) ([]byte, error) {
-	var closer io.Closer
-	var err error
-	var value []byte
-	value, closer, err = r.Get(k)
+	value, closer, err := r.Get(k)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
 			return nil, errors.WithStack(ErrKeyNotFound)
@@ -62,9 +55,7 @@ func get(r pebble.Reader, k []byte) ([]byte, error) {
 
 // Exists returns whether a key exists and is visible by the current session.
 func exists(r pebble.Reader, k []byte) (bool, error) {
-	var closer io.Closer
-	var err error
-	_, closer, err = r.Get(k)
+	_, closer, err := r.Get(k)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
 			return false, nil

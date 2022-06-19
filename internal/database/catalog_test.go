@@ -452,15 +452,15 @@ func TestReadOnlyTables(t *testing.T) {
 		case 1:
 			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
 		case 2:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 3 CACHE 0", "type":"sequence"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
 		case 3:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":3, "type":"table"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":10, "type":"table"}`)
 		case 4:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":4, "type":"index"}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":11, "type":"index"}`)
 		case 5:
 			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
 		case 6:
-			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":5, "type":"index", "owner": {"table_name": "foo"}}`)
+			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":12, "type":"index", "owner": {"table_name": "foo"}}`)
 		default:
 			t.Fatalf("count should be 6, got %d", i)
 		}

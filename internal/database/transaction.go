@@ -12,10 +12,11 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	Session   kv.Session
-	ID        uint64
-	Writable  bool
-	WriteTxMu *sync.Mutex
+	Session         kv.Session
+	RollbackSegment *kv.RollbackSegment
+	ID              uint64
+	Writable        bool
+	WriteTxMu       *sync.Mutex
 
 	// these functions are run after a successful rollback.
 	OnRollbackHooks []func()
@@ -31,6 +32,11 @@ func (tx *Transaction) Rollback() error {
 	}
 
 	if tx.Writable {
+		err = tx.RollbackSegment.Rollback()
+		if err != nil {
+			return err
+		}
+
 		defer func() {
 			tx.WriteTxMu.Unlock()
 		}()

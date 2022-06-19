@@ -72,7 +72,7 @@ func TestTreeDelete(t *testing.T) {
 		Fails bool
 	}{
 		{"existing", key1, false},
-		{"non-existing", key2, true},
+		{"non-existing", key2, false},
 	}
 
 	for _, test := range tests {

@@ -36,10 +36,11 @@ const (
 
 // System namespaces
 const (
-	CatalogTableNamespace  tree.Namespace = 1
-	SequenceTableNamespace tree.Namespace = 2
-	MinTransientNamespace  tree.Namespace = math.MaxInt64 - 1<<24
-	MaxTransientNamespace  tree.Namespace = math.MaxInt64
+	CatalogTableNamespace    tree.Namespace = 1
+	SequenceTableNamespace   tree.Namespace = 2
+	RollbackSegmentNamespace tree.Namespace = 3
+	MinTransientNamespace    tree.Namespace = math.MaxInt64 - 1<<24
+	MaxTransientNamespace    tree.Namespace = math.MaxInt64
 )
 
 // Catalog manages all database objects such as tables, indexes and sequences.
@@ -73,7 +74,7 @@ func (c *Catalog) Init(tx *Transaction) error {
 	return c.ensureSequenceExists(tx, &SequenceInfo{
 		Name:        StoreSequence,
 		IncrementBy: 1,
-		Start:       3,
+		Start:       10,
 		Min:         1, Max: int64(MinTransientNamespace), // last 24 bits are for transient namespaces
 		Owner: Owner{
 			TableName: CatalogTableName,

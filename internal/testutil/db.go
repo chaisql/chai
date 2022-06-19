@@ -60,7 +60,10 @@ func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 
 	pdb := NewMemPebble(t)
 
-	session := kv.NewBatchSession(pdb)
+	session := kv.NewBatchSession(pdb, kv.BatchOptions{
+		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
+		MaxBatchSize:    1 << 7,
+	})
 
 	t.Cleanup(func() {
 		session.Close()

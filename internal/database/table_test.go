@@ -175,12 +175,12 @@ func TestTableInsert(t *testing.T) {
 
 // TestTableDelete verifies Delete behaviour.
 func TestTableDelete(t *testing.T) {
-	t.Run("Should fail if not found", func(t *testing.T) {
+	t.Run("Should not fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
 		err := tb.Delete(tree.NewEncodedKey([]byte("id")))
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		assert.NoError(t, err)
 	})
 
 	t.Run("Should delete the right document", func(t *testing.T) {
@@ -202,7 +202,7 @@ func TestTableDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		// try again, should fail
-		err = tb.Delete(key1)
+		_, err = tb.GetDocument(key1)
 		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
 
 		// make sure it didn't also delete the other one

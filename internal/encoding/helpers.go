@@ -146,6 +146,8 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 	// then compare values
 	switch a[0] {
 	case NullValue, FalseValue, TrueValue:
+		fallthrough
+	case 0: // tombstone
 		return 0, 1
 	}
 

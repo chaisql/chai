@@ -111,13 +111,13 @@ func TestOpen(t *testing.T) {
 	want := []string{
 		`{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, docid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
 		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
-		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 3 CACHE 0", "type":"sequence"}`,
+		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
 		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
-		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":3, "type":"table"}`,
-		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":4, "type":"index"}`,
-		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":5, "type":"table"}`,
-		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (...)", "namespace":6, "type":"table"}`,
-		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":7, "type":"index"}`,
+		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":10, "type":"table"}`,
+		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":11, "type":"index"}`,
+		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":12, "type":"table"}`,
+		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (...)", "namespace":13, "type":"table"}`,
+		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":14, "type":"index"}`,
 		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
 	err = res1.Iterate(func(d types.Document) error {
@@ -137,7 +137,7 @@ func TestOpen(t *testing.T) {
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":7}`)
+	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":14}`)
 
 	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
 	assert.NoError(t, err)

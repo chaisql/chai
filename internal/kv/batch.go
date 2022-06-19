@@ -7,22 +7,54 @@ import (
 
 var _ Session = (*BatchSession)(nil)
 
+const (
+	// 10MB
+	defaultMaxBatchSize = 10 * 1024 * 1024
+)
+
+var (
+	tombStone = []byte{0}
+)
+
 type BatchSession struct {
-	Batch  *pebble.Batch
-	closed bool
+	DB              *pebble.DB
+	Batch           *pebble.Batch
+	closed          bool
+	rollbackSegment *RollbackSegment
+	maxBatchSize    int
 }
 
-func NewBatchSession(db *pebble.DB) *BatchSession {
+type BatchOptions struct {
+	RollbackSegment *RollbackSegment
+	MaxBatchSize    int
+}
+
+func NewBatchSession(db *pebble.DB, opts BatchOptions) *BatchSession {
 	b := db.NewIndexedBatch()
 
+	bsize := opts.MaxBatchSize
+	if bsize <= 0 {
+		bsize = defaultMaxBatchSize
+	}
+
 	return &BatchSession{
-		Batch: b,
+		DB:              db,
+		Batch:           b,
+		rollbackSegment: opts.RollbackSegment,
+		maxBatchSize:    bsize,
 	}
 }
 
 func (s *BatchSession) Commit() error {
 	if s.closed {
 		return errors.New("already closed")
+	}
+
+	// We are about to commit the batch, we can empty
+	// the rollback segment.
+	err := s.rollbackSegment.Clear(s.Batch)
+	if err != nil {
+		return err
 	}
 
 	s.closed = true
@@ -38,19 +70,6 @@ func (s *BatchSession) Close() error {
 	return s.Batch.Close()
 }
 
-// Put stores a key value pair. If it already exists, it overrides it.
-func (s *BatchSession) Put(k, v []byte) error {
-	if len(k) == 0 {
-		return errors.New("cannot store empty key")
-	}
-
-	if len(v) == 0 {
-		return errors.New("cannot store empty value")
-	}
-
-	return s.Batch.Set(k, v, nil)
-}
-
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *BatchSession) Get(k []byte) ([]byte, error) {
 	return get(s.Batch, k)
@@ -61,26 +80,109 @@ func (s *BatchSession) Exists(k []byte) (bool, error) {
 	return exists(s.Batch, k)
 }
 
-// Delete a record by key. If not found, returns ErrKeyNotFound.
-func (s *BatchSession) Delete(k []byte) error {
-	_, closer, err := s.Batch.Get(k)
-	if err != nil {
-		if errors.Is(err, pebble.ErrNotFound) {
-			return errors.WithStack(ErrKeyNotFound)
-		}
-
-		return err
+func (s *BatchSession) ensureBatchSize() error {
+	if len(s.Batch.Repr()) < s.maxBatchSize {
+		return nil
 	}
-	err = closer.Close()
+
+	// The batch is too large. Insert the rollback segments and commit the batch.
+	err := s.rollbackSegment.Apply(s.Batch)
 	if err != nil {
 		return err
 	}
 
-	return s.Batch.Delete(k, nil)
+	// this is an intermediary commit that might be rolled back by the user
+	// so we don't need durability here.
+	err = s.Batch.Commit(&pebble.WriteOptions{
+		Sync: false,
+	})
+	if err != nil {
+		return err
+	}
+
+	// reset batch
+	s.Batch.Reset()
+
+	return nil
 }
 
+// Insert inserts a key-value pair. If it already exists, it returns ErrKeyAlreadyExists.
+func (s *BatchSession) Insert(k, v []byte) error {
+	if len(k) == 0 {
+		return errors.New("cannot store empty key")
+	}
+
+	if len(v) == 0 {
+		return errors.New("cannot store empty value")
+	}
+
+	ok, err := s.Exists(k)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return ErrKeyAlreadyExists
+	}
+
+	s.rollbackSegment.EnqueueOp(k, kvOpInsert)
+
+	err = s.Batch.Set(k, v, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.ensureBatchSize()
+}
+
+// Put stores a key value pair. If it already exists, it overrides it.
+func (s *BatchSession) Put(k, v []byte) error {
+	if len(k) == 0 {
+		return errors.New("cannot store empty key")
+	}
+
+	if len(v) == 0 {
+		return errors.New("cannot store empty value")
+	}
+
+	s.rollbackSegment.EnqueueOp(k, kvOpSet)
+
+	err := s.Batch.Set(k, v, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.ensureBatchSize()
+}
+
+// Delete a record by key. If the key doesn't exist, it doesn't do anything.
+func (s *BatchSession) Delete(k []byte) error {
+	s.rollbackSegment.EnqueueOp(k, kvOpDel)
+
+	err := s.Batch.Delete(k, nil)
+	if err != nil {
+		return err
+	}
+
+	return s.ensureBatchSize()
+}
+
+// DeleteRange deletes all keys in the given range.
+// This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	return s.Batch.DeleteRange(start, end, nil)
+	it := s.Batch.NewIter(&pebble.IterOptions{
+		LowerBound: start,
+		UpperBound: end,
+	})
+	defer it.Close()
+
+	for it.First(); it.Valid(); it.Next() {
+		err := s.Delete(it.Key())
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *BatchSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {

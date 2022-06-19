@@ -35,7 +35,10 @@ type Database struct {
 	// access, we can use 8 bytes ids that will be reset every time
 	// the database restarts.
 	TransactionIDs uint64
-	closeOnce      sync.Once
+
+	closeOnce sync.Once
+
+	RollbackSegment *kv.RollbackSegment
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -51,9 +54,17 @@ type TxOptions struct {
 // New initializes the DB using the given engine.
 func New(ctx context.Context, pdb *pebble.DB) (*Database, error) {
 	db := Database{
-		DB:        pdb,
-		Catalog:   NewCatalog(),
-		writetxmu: &sync.Mutex{},
+		DB:              pdb,
+		Catalog:         NewCatalog(),
+		writetxmu:       &sync.Mutex{},
+		RollbackSegment: kv.NewRollbackSegment(pdb, int64(RollbackSegmentNamespace)),
+	}
+
+	// ensure the rollback segment doesn't contain any data that needs to be rolled back
+	// due to a previous crash.
+	err := db.RollbackSegment.Rollback()
+	if err != nil {
+		return nil, err
 	}
 
 	tx, err := db.Begin(true)
@@ -62,12 +73,12 @@ func New(ctx context.Context, pdb *pebble.DB) (*Database, error) {
 	}
 	defer tx.Rollback()
 
-	err = db.Catalog.Init(tx)
+	err = db.cleanupTransientNamespaces(tx)
 	if err != nil {
 		return nil, err
 	}
 
-	err = db.cleanupTransientNamespaces(tx)
+	err = db.Catalog.Init(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -175,13 +186,16 @@ func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 	if opts.ReadOnly {
 		sess = kv.NewSnapshotSession(db.DB)
 	} else {
-		sess = kv.NewBatchSession(db.DB)
+		sess = kv.NewBatchSession(db.DB, kv.BatchOptions{
+			RollbackSegment: db.RollbackSegment,
+		})
 	}
 
 	tx := Transaction{
-		Session:  sess,
-		Writable: !opts.ReadOnly,
-		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
+		RollbackSegment: db.RollbackSegment,
+		Session:         sess,
+		Writable:        !opts.ReadOnly,
+		ID:              atomic.AddUint64(&db.TransactionIDs, 1),
 	}
 
 	if !opts.ReadOnly {

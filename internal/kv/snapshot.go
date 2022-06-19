@@ -31,6 +31,10 @@ func (s *SnapshotSession) Close() error {
 	return s.Snapshot.Close()
 }
 
+func (s *SnapshotSession) Insert(k, v []byte) error {
+	return errors.New("cannot insert in read-only mode")
+}
+
 func (s *SnapshotSession) Put(k, v []byte) error {
 	return errors.New("cannot put in read-only mode")
 }

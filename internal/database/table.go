@@ -43,28 +43,23 @@ func (t *Table) Insert(d types.Document) (*tree.Key, types.Document, error) {
 		return nil, nil, err
 	}
 
-	// ensure the key is not already present in the table
-	ok, err := t.Tree.Exists(key)
-	if err != nil {
-		return nil, nil, err
-	}
-	if ok {
-		return nil, nil, &ConstraintViolationError{
-			Constraint: "PRIMARY KEY",
-			Paths:      t.Info.GetPrimaryKey().Paths,
-			Key:        key,
-		}
-	}
-
 	d, enc, err := t.encodeDocument(d)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// insert into the table
-	err = t.Tree.Put(key, enc)
+	err = t.Tree.Insert(key, enc)
 	if err != nil {
-		return nil, nil, err
+		if errors.Is(err, kv.ErrKeyAlreadyExists) {
+			return nil, nil, &ConstraintViolationError{
+				Constraint: "PRIMARY KEY",
+				Paths:      t.Info.GetPrimaryKey().Paths,
+				Key:        key,
+			}
+		}
+
+		return nil, nil, errors.Wrapf(err, "failed to insert document %q", key)
 	}
 
 	return key, d, nil
@@ -99,7 +94,6 @@ func (t *Table) Delete(key *tree.Key) error {
 
 // Replace a document by key.
 // An error is returned if the key doesn't exist.
-// Indexes are automatically updated.
 func (t *Table) Replace(key *tree.Key, d types.Document) (types.Document, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")

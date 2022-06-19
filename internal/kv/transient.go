@@ -36,6 +36,10 @@ func (s *TransientSession) Close() error {
 	return s.batch.Close()
 }
 
+func (s *TransientSession) Insert(k, v []byte) error {
+	return errors.New("cannot insert in transient mode")
+}
+
 // Put stores a key value pair. If it already exists, it overrides it.
 func (s *TransientSession) Put(k, v []byte) error {
 	if len(k) == 0 {

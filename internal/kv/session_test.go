@@ -5,8 +5,11 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
@@ -50,12 +53,81 @@ func TestReadOnly(t *testing.T) {
 func kvBuilder(t testing.TB) kv.Session {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewBatchSession(pdb)
+	s := kv.NewBatchSession(pdb, kv.BatchOptions{
+		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
+		MaxBatchSize:    1 << 7,
+	})
 	t.Cleanup(func() {
 		s.Close()
 	})
 
 	return s
+}
+
+func TestBatchCommit(t *testing.T) {
+	pdb := testutil.NewPebble(t)
+
+	s := kv.NewBatchSession(pdb, kv.BatchOptions{
+		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
+		MaxBatchSize:    1 << 7,
+	})
+	defer s.Close()
+
+	var k int64
+	for i := int64(0); i < 10; i++ {
+		for j := int64(0); j < 10; j++ {
+			k++
+			key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), j)
+			err := s.Put(key, encoding.EncodeInt(nil, k))
+			assert.NoError(t, err)
+		}
+	}
+
+	err := s.Commit()
+	require.NoError(t, err)
+
+	for i := int64(9); i >= 0; i-- {
+		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
+		v, closer, err := pdb.Get(key)
+		require.NoError(t, err)
+		require.Equal(t, encoding.EncodeInt(nil, k), v)
+		err = closer.Close()
+		require.NoError(t, err)
+		k--
+	}
+}
+
+func TestRollback(t *testing.T) {
+	pdb := testutil.NewPebble(t)
+
+	rseg := kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace))
+	s := kv.NewBatchSession(pdb, kv.BatchOptions{
+		RollbackSegment: rseg,
+		MaxBatchSize:    1 << 7,
+	})
+	defer s.Close()
+
+	var k int64
+	for i := int64(0); i < 10; i++ {
+		for j := int64(0); j < 10; j++ {
+			k++
+			key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), j)
+			err := s.Put(key, encoding.EncodeInt(nil, k))
+			assert.NoError(t, err)
+		}
+	}
+
+	err := s.Close()
+	require.NoError(t, err)
+
+	err = rseg.Rollback()
+	require.NoError(t, err)
+
+	for i := int64(9); i >= 0; i-- {
+		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
+		_, _, err = pdb.Get(key)
+		require.Equal(t, pebble.ErrNotFound, err)
+	}
 }
 
 func TestStorePut(t *testing.T) {
@@ -131,13 +203,6 @@ func TestStoreGet(t *testing.T) {
 
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T) {
-	t.Run("Should fail if not found", func(t *testing.T) {
-		st := kvBuilder(t)
-
-		err := st.Delete([]byte("id"))
-		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
-	})
-
 	t.Run("Should delete the right document", func(t *testing.T) {
 		st := kvBuilder(t)
 
@@ -154,8 +219,9 @@ func TestStoreDelete(t *testing.T) {
 		assert.NoError(t, err)
 
 		// try again, should fail
-		err = st.Delete([]byte("bar"))
-		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
+		ok, err := st.Exists([]byte("bar"))
+		assert.NoError(t, err)
+		require.False(t, ok)
 
 		// make sure it didn't also delete the other one
 		v = getValue(t, st, []byte("foo"))
