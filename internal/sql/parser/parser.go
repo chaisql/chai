@@ -56,7 +56,7 @@ func ParseExpr(s string) (expr.Expr, error) {
 func MustParseExpr(s string) expr.Expr {
 	e, err := ParseExpr(s)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%+v", err))
 	}
 
 	return e

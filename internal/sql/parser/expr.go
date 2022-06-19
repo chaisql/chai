@@ -195,33 +195,39 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		p.Unscan()
 		return p.parseCastExpression()
 	case scanner.IDENT:
-		tok1, _, _ := p.Scan()
+		tok1, _, _ := p.ScanIgnoreWhitespace()
 		// if the next token is a left parenthesis, this is a global function
 		if tok1 == scanner.LPAREN {
 			p.Unscan()
+			if tk, _, _ := p.s.Curr(); tk == scanner.WS {
+				p.Unscan()
+			}
 			p.Unscan()
 			return p.parseFunction()
-		} else {
+		} else if tok1 == scanner.DOT {
 			// it may be a package function instead.
-			if tok1 == scanner.DOT {
-				if tok2, _, _ := p.Scan(); tok2 == scanner.IDENT {
-					if tok3, _, _ := p.Scan(); tok3 == scanner.LPAREN {
-						p.Unscan()
-						p.Unscan()
-						p.Unscan()
-						p.Unscan()
-						return p.parseFunction()
-					} else {
-						p.Unscan()
-						p.Unscan()
-					}
+			if tok2, _, _ := p.Scan(); tok2 == scanner.IDENT {
+				if tok3, _, _ := p.Scan(); tok3 == scanner.LPAREN {
+					p.Unscan()
+					p.Unscan()
+					p.Unscan()
+					p.Unscan()
+					return p.parseFunction()
 				} else {
 					p.Unscan()
+					p.Unscan()
 				}
+			} else {
+				p.Unscan()
 			}
 		}
 		p.Unscan()
+		if tk, _, _ := p.s.Curr(); tk == scanner.WS {
+			p.Unscan()
+		}
+
 		p.Unscan()
+
 		field, err := p.parsePath()
 		if err != nil {
 			return nil, err
