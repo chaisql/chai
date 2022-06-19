@@ -37,7 +37,8 @@ type Database struct {
 
 	closeOnce sync.Once
 
-	RollbackSegment *kv.RollbackSegment
+	// Underlying kv store.
+	Store *kv.Store
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -53,15 +54,17 @@ type TxOptions struct {
 // New initializes the DB using the given engine.
 func New(pdb *pebble.DB) (*Database, error) {
 	db := Database{
-		DB:              pdb,
-		Catalog:         NewCatalog(),
-		writetxmu:       &sync.Mutex{},
-		RollbackSegment: kv.NewRollbackSegment(pdb, int64(RollbackSegmentNamespace)),
+		DB:        pdb,
+		Catalog:   NewCatalog(),
+		writetxmu: &sync.Mutex{},
+		Store: kv.NewStore(pdb, kv.Options{
+			RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
+		}),
 	}
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
 	// due to a previous crash.
-	err := db.RollbackSegment.Rollback()
+	err := db.Store.Rollback()
 	if err != nil {
 		return nil, err
 	}
@@ -183,18 +186,16 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 
 	var sess kv.Session
 	if opts.ReadOnly {
-		sess = kv.NewSnapshotSession(db.DB)
+		sess = db.Store.NewSnapshotSession()
 	} else {
-		sess = kv.NewBatchSession(db.DB, kv.BatchOptions{
-			RollbackSegment: db.RollbackSegment,
-		})
+		sess = db.Store.NewBatchSession()
 	}
 
 	tx := Transaction{
-		RollbackSegment: db.RollbackSegment,
-		Session:         sess,
-		Writable:        !opts.ReadOnly,
-		ID:              atomic.AddUint64(&db.TransactionIDs, 1),
+		Store:    db.Store,
+		Session:  sess,
+		Writable: !opts.ReadOnly,
+		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
 	}
 
 	if !opts.ReadOnly {

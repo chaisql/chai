@@ -22,10 +22,10 @@ func values(vs ...types.Value) []types.Value {
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	pdb := testutil.NewMemPebble(t)
-	session := kv.NewBatchSession(pdb, kv.BatchOptions{
-		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
-		MaxBatchSize:    1 << 7,
-	})
+	session := kv.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
+	}).NewBatchSession()
 
 	tr := tree.New(session, 10)
 

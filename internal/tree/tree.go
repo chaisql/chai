@@ -34,10 +34,10 @@ func New(session kv.Session, ns Namespace) *Tree {
 	}
 }
 
-func NewTransient(db *pebble.DB, ns Namespace) (*Tree, func() error, error) {
+func NewTransient(session kv.Session, ns Namespace) (*Tree, func() error, error) {
 	t := Tree{
 		Namespace: ns,
-		Session:   kv.NewTransientSession(db),
+		Session:   session,
 	}
 
 	// ensure the namespace is not in use

@@ -27,7 +27,7 @@ func TestReadOnly(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewSnapshotSession(pdb)
+		sro := kv.NewStore(pdb, kv.Options{}).NewSnapshotSession()
 		defer sro.Close()
 
 		tests := []struct {
@@ -53,10 +53,10 @@ func TestReadOnly(t *testing.T) {
 func kvBuilder(t testing.TB) kv.Session {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewBatchSession(pdb, kv.BatchOptions{
-		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
-		MaxBatchSize:    1 << 7,
-	})
+	s := kv.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
+	}).NewBatchSession()
 	t.Cleanup(func() {
 		s.Close()
 	})
@@ -67,44 +67,55 @@ func kvBuilder(t testing.TB) kv.Session {
 func TestBatchCommit(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewBatchSession(pdb, kv.BatchOptions{
-		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
-		MaxBatchSize:    1 << 7,
+	store := kv.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
 	})
-	defer s.Close()
+	batch := store.NewBatchSession()
+	defer batch.Close()
 
 	var k int64
 	for i := int64(0); i < 10; i++ {
 		for j := int64(0); j < 10; j++ {
 			k++
 			key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), j)
-			err := s.Put(key, encoding.EncodeInt(nil, k))
+			err := batch.Put(key, encoding.EncodeInt(nil, k))
 			assert.NoError(t, err)
 		}
 	}
 
-	err := s.Commit()
+	// snapshots created during the write transaction should not see the changes
+	ss := store.NewSnapshotSession()
+	_, err := ss.Get(encoding.EncodeInt(encoding.EncodeInt(nil, 10), 9))
+	require.Error(t, err)
+	err = ss.Close()
 	require.NoError(t, err)
 
+	// commit the write transaction
+	err = batch.Commit()
+	require.NoError(t, err)
+
+	// try to read again, should see the changes
+	ss = store.NewSnapshotSession()
 	for i := int64(9); i >= 0; i-- {
 		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
-		v, closer, err := pdb.Get(key)
+		v, err := ss.Get(key)
 		require.NoError(t, err)
 		require.Equal(t, encoding.EncodeInt(nil, k), v)
-		err = closer.Close()
-		require.NoError(t, err)
 		k--
 	}
+	err = ss.Close()
+	require.NoError(t, err)
 }
 
 func TestRollback(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
-	rseg := kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace))
-	s := kv.NewBatchSession(pdb, kv.BatchOptions{
-		RollbackSegment: rseg,
-		MaxBatchSize:    1 << 7,
+	store := kv.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
 	})
+	s := store.NewBatchSession()
 	defer s.Close()
 
 	var k int64
@@ -120,7 +131,7 @@ func TestRollback(t *testing.T) {
 	err := s.Close()
 	require.NoError(t, err)
 
-	err = rseg.Rollback()
+	err = store.Rollback()
 	require.NoError(t, err)
 
 	for i := int64(9); i >= 0; i-- {

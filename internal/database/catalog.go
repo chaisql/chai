@@ -556,7 +556,7 @@ func (c *Catalog) ListSequences() []string {
 
 // GetFreeTransientNamespace returns the next available transient namespace.
 // Transient namespaces start from math.MaxInt64 - (2 << 24) to math.MaxInt64 (around 16 M).
-// The transient namespaces counter is not persisted and reset when the database is restarted.
+// The transient namespaces counter is not persisted and resets when the database is restarted.
 // Once the counter reaches its maximum value, it will wrap around to the minimum value.
 // Technically, if a transient namespace is still in use by the time the counter wraps around
 // its data may be overwritten. However, transient trees are supposed to verify that the

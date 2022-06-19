@@ -60,10 +60,10 @@ func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 
 	pdb := NewMemPebble(t)
 
-	session := kv.NewBatchSession(pdb, kv.BatchOptions{
-		RollbackSegment: kv.NewRollbackSegment(pdb, int64(database.RollbackSegmentNamespace)),
-		MaxBatchSize:    1 << 7,
-	})
+	session := kv.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
+	}).NewBatchSession()
 
 	t.Cleanup(func() {
 		session.Close()
@@ -85,7 +85,7 @@ func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	db, err := database.New(pdb)
 	assert.NoError(t, err)
 
-	sess := kv.NewSnapshotSession(pdb)
+	sess := db.Store.NewSnapshotSession()
 	defer sess.Close()
 	err = catalogstore.LoadCatalog(sess, db.Catalog)
 	assert.NoError(t, err)

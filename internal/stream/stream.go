@@ -156,7 +156,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 				db := in.GetDB()
 				catalog := in.GetCatalog()
 				tns := catalog.GetFreeTransientNamespace()
-				temp, cleanup, err = tree.NewTransient(db.DB, tns)
+				temp, cleanup, err = tree.NewTransient(db.Store.NewTransientSession(), tns)
 				if err != nil {
 					return err
 				}

@@ -6,21 +6,16 @@ import (
 )
 
 const (
-	maxTransientBatchSize int = 1 << 19 // 512KB
+	defaultMaxTransientBatchSize int = 1 << 19 // 512KB
 )
-
-func NewTransientSession(db *pebble.DB) *TransientSession {
-	return &TransientSession{
-		db: db,
-	}
-}
 
 var _ Session = (*TransientSession)(nil)
 
 type TransientSession struct {
-	db     *pebble.DB
-	batch  *pebble.Batch
-	closed bool
+	db           *pebble.DB
+	batch        *pebble.Batch
+	maxBatchSize int
+	closed       bool
 }
 
 func (s *TransientSession) Commit() error {
@@ -54,7 +49,7 @@ func (s *TransientSession) Put(k, v []byte) error {
 		s.batch = s.db.NewIndexedBatch()
 	}
 
-	if len(s.batch.Repr()) > maxTransientBatchSize && s.batch.Count() > 0 {
+	if len(s.batch.Repr()) > s.maxBatchSize && s.batch.Count() > 0 {
 		err := s.batch.Commit(pebble.NoSync)
 		if err != nil {
 			return err

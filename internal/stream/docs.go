@@ -496,7 +496,7 @@ func (op *DocsTempTreeSortOperator) Iterate(in *environment.Environment, fn func
 
 	catalog := in.GetCatalog()
 	tns := catalog.GetFreeTransientNamespace()
-	tr, cleanup, err := tree.NewTransient(db.DB, tns)
+	tr, cleanup, err := tree.NewTransient(db.Store.NewTransientSession(), tns)
 	if err != nil {
 		return err
 	}

@@ -1,22 +1,35 @@
 package kv
 
 import (
+	"sync/atomic"
+
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 )
 
+type snapshot struct {
+	refCount int64
+	snapshot *pebble.Snapshot
+}
+
+func (s *snapshot) Incr() {
+	atomic.AddInt64(&s.refCount, 1)
+}
+
+func (s *snapshot) Done() error {
+	if atomic.AddInt64(&s.refCount, -1) == 0 {
+		return s.snapshot.Close()
+	}
+	return nil
+}
+
 type SnapshotSession struct {
-	Snapshot *pebble.Snapshot
+	Store    *Store
+	Snapshot *snapshot
 	closed   bool
 }
 
 var _ Session = (*SnapshotSession)(nil)
-
-func NewSnapshotSession(db *pebble.DB) *SnapshotSession {
-	return &SnapshotSession{
-		Snapshot: db.NewSnapshot(),
-	}
-}
 
 func (s *SnapshotSession) Commit() error {
 	return errors.New("cannot commit in read-only mode")
@@ -28,7 +41,7 @@ func (s *SnapshotSession) Close() error {
 	}
 	s.closed = true
 
-	return s.Snapshot.Close()
+	return s.Snapshot.Done()
 }
 
 func (s *SnapshotSession) Insert(k, v []byte) error {
@@ -41,12 +54,12 @@ func (s *SnapshotSession) Put(k, v []byte) error {
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *SnapshotSession) Get(k []byte) ([]byte, error) {
-	return get(s.Snapshot, k)
+	return get(s.Snapshot.snapshot, k)
 }
 
 // Exists returns whether a key exists and is visible by the current session.
 func (s *SnapshotSession) Exists(k []byte) (bool, error) {
-	return exists(s.Snapshot, k)
+	return exists(s.Snapshot.snapshot, k)
 }
 
 // Delete a record by key. If not found, returns ErrKeyNotFound.
@@ -59,5 +72,5 @@ func (s *SnapshotSession) DeleteRange(start []byte, end []byte) error {
 }
 
 func (s *SnapshotSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
-	return s.Snapshot.NewIter(opts)
+	return s.Snapshot.snapshot.NewIter(opts)
 }

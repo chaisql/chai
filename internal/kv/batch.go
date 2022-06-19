@@ -1,6 +1,8 @@
 package kv
 
 import (
+	"fmt"
+
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 )
@@ -17,32 +19,12 @@ var (
 )
 
 type BatchSession struct {
+	Store           *Store
 	DB              *pebble.DB
 	Batch           *pebble.Batch
 	closed          bool
 	rollbackSegment *RollbackSegment
 	maxBatchSize    int
-}
-
-type BatchOptions struct {
-	RollbackSegment *RollbackSegment
-	MaxBatchSize    int
-}
-
-func NewBatchSession(db *pebble.DB, opts BatchOptions) *BatchSession {
-	b := db.NewIndexedBatch()
-
-	bsize := opts.MaxBatchSize
-	if bsize <= 0 {
-		bsize = defaultMaxBatchSize
-	}
-
-	return &BatchSession{
-		DB:              db,
-		Batch:           b,
-		rollbackSegment: opts.RollbackSegment,
-		maxBatchSize:    bsize,
-	}
 }
 
 func (s *BatchSession) Commit() error {
@@ -57,13 +39,12 @@ func (s *BatchSession) Commit() error {
 		return err
 	}
 
-	s.closed = true
 	err = s.Batch.Commit(nil)
 	if err != nil {
 		return err
 	}
 
-	return s.Batch.Close()
+	return s.Close()
 }
 
 func (s *BatchSession) Close() error {
@@ -71,6 +52,8 @@ func (s *BatchSession) Close() error {
 		return errors.New("already closed")
 	}
 	s.closed = true
+
+	s.Store.UnlockSharedSnapshot()
 
 	return s.Batch.Close()
 }
@@ -90,6 +73,7 @@ func (s *BatchSession) ensureBatchSize() error {
 		return nil
 	}
 
+	fmt.Println("Committing batch")
 	// The batch is too large. Insert the rollback segments and commit the batch.
 	err := s.rollbackSegment.Apply(s.Batch)
 	if err != nil {

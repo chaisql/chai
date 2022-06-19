@@ -17,7 +17,6 @@ import (
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -53,7 +52,7 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 
-	sess := kv.NewSnapshotSession(pdb)
+	sess := db.Store.NewSnapshotSession()
 	defer sess.Close()
 
 	err = catalogstore.LoadCatalog(sess, db.Catalog)
