@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"io/ioutil"
 	"os"
 
 	"github.com/cockroachdb/errors"
@@ -44,7 +45,7 @@ func NewRestoreCommand() (cmd *cli.Command) {
 			}
 			defer db.Close()
 
-			return dbutil.ExecSQL(c.Context, db, file, os.Stdout)
+			return dbutil.ExecSQL(c.Context, db, file, ioutil.Discard)
 		},
 	}
 }

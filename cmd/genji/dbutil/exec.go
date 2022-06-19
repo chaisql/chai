@@ -7,6 +7,7 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/internal/query"
+	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/types"
 )
@@ -14,22 +15,17 @@ import (
 // ExecSQL reads SQL queries from reader and executes them until the reader is exhausted.
 // If the query has results, they will be outputted to w.
 func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error {
-	q, err := parser.NewParser(r).ParseQuery()
-	if err != nil {
-		return err
-	}
-
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
-	for _, p := range q.Statements {
-		qq := query.New(p)
+	return parser.NewParser(r).Parse(func(s statement.Statement) error {
+		qq := query.New(s)
 		qctx := query.Context{
 			Ctx: ctx,
 			DB:  db.DB,
 		}
-		err = qq.Prepare(&qctx)
+		err := qq.Prepare(&qctx)
 		if err != nil {
 			return err
 		}
@@ -53,11 +49,6 @@ func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error 
 			return err
 		}
 
-		err = res.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+		return res.Close()
+	})
 }

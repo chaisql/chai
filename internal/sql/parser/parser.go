@@ -65,23 +65,41 @@ func MustParseExpr(s string) expr.Expr {
 // ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []statement.Statement
+
+	err := p.Parse(func(s statement.Statement) error {
+		statements = append(statements, s)
+		return nil
+	})
+	if err != nil {
+		return query.Query{}, err
+	}
+
+	return query.Query{Statements: statements}, nil
+}
+
+// ParseQuery parses a Genji SQL string and returns a Query.
+func (p *Parser) Parse(fn func(statement.Statement) error) error {
 	semi := true
 
 	for {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
-			return query.New(statements...), nil
+			return nil
 		} else if tok == scanner.SEMICOLON {
 			semi = true
 		} else {
 			if !semi {
-				return query.Query{}, newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
+				return newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
 			}
 			p.Unscan()
 			s, err := p.ParseStatement()
 			if err != nil {
-				return query.Query{}, err
+				return err
 			}
-			statements = append(statements, s)
+			err = fn(s)
+			if err != nil {
+				return err
+			}
+
 			semi = false
 		}
 	}

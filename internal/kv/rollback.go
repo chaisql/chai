@@ -128,7 +128,7 @@ func (s *RollbackSegment) Rollback() error {
 		if bytes.Equal(v, tombStone) {
 			err = b.Delete(uk, nil)
 		} else {
-			err = b.Set(k, v, nil)
+			err = b.Set(uk, v, nil)
 		}
 		if err != nil {
 			return err
