@@ -140,17 +140,10 @@ func (s *RollbackSegment) Rollback() error {
 		return err
 	}
 
-	err = b.Commit(&pebble.WriteOptions{
-		// we don't need to sync here.
-		// in case of a crash, the rollback segment will be rolled back
-		// during the next recovery.
-		Sync: false,
-	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	// we don't need to sync here.
+	// in case of a crash, the rollback segment will be rolled back
+	// during the next recovery.
+	return b.Commit(pebble.NoSync)
 }
 
 func (s *RollbackSegment) Clear(b *pebble.Batch) error {

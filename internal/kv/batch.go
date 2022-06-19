@@ -58,7 +58,12 @@ func (s *BatchSession) Commit() error {
 	}
 
 	s.closed = true
-	return s.Batch.Commit(nil)
+	err = s.Batch.Commit(nil)
+	if err != nil {
+		return err
+	}
+
+	return s.Batch.Close()
 }
 
 func (s *BatchSession) Close() error {
@@ -93,9 +98,7 @@ func (s *BatchSession) ensureBatchSize() error {
 
 	// this is an intermediary commit that might be rolled back by the user
 	// so we don't need durability here.
-	err = s.Batch.Commit(&pebble.WriteOptions{
-		Sync: false,
-	})
+	err = s.Batch.Commit(pebble.NoSync)
 	if err != nil {
 		return err
 	}

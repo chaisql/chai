@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	maxTransientBatchSize int = 1 << 20
+	maxTransientBatchSize int = 1 << 19 // 512KB
 )
 
 func NewTransientSession(db *pebble.DB) *TransientSession {
@@ -60,7 +60,7 @@ func (s *TransientSession) Put(k, v []byte) error {
 			return err
 		}
 
-		s.batch = s.db.NewIndexedBatch()
+		s.batch.Reset()
 	}
 
 	return s.batch.Set(k, v, nil)
