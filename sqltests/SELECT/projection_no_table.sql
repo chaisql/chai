@@ -60,3 +60,10 @@ SELECT a;
 SELECT *;
 -- error:
 
+-- test: functions: MAX
+SELECT MAX(3);
+-- error:
+
+-- test: functions: COUNT
+SELECT COUNT(3);
+-- error:

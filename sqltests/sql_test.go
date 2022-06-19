@@ -11,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -111,8 +113,20 @@ func TestSQL(t *testing.T) {
 								}
 
 								if test.Fails {
-									err := db.Exec(test.Expr)
+									exec := func() error {
+										res, err := db.Query(test.Expr)
+										if err != nil {
+											return err
+										}
+										defer res.Close()
 
+										return res.Iterate(func(d types.Document) error {
+											var fb document.FieldBuffer
+											return fb.Copy(d)
+										})
+									}
+
+									err := exec()
 									if test.ErrorMatch != "" {
 										require.NotNilf(t, err, "%s:%d expected error, got nil", absPath, test.Line)
 										require.Equal(t, test.ErrorMatch, err.Error(), "Source %s:%d", absPath, test.Line)

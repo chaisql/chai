@@ -71,7 +71,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 		// add Aggregation node
 		s = s.Pipe(stream.DocsTempTreeSort(stmt.GroupByExpr))
 		s = s.Pipe(stream.DocsGroupAggregate(stmt.GroupByExpr, aggregators...))
-	} else {
+	} else if stmt.TableName != "" {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
 		var aggregators []expr.AggregatorBuilder
