@@ -1,4 +1,4 @@
-package stream_test
+package path_test
 
 import (
 	"testing"
@@ -8,6 +8,8 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/path"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -42,7 +44,7 @@ func TestSet(t *testing.T) {
 		t.Run(test.path, func(t *testing.T) {
 			p, err := parser.ParsePath(test.path)
 			assert.NoError(t, err)
-			s := stream.New(stream.DocsEmit(test.in...)).Pipe(stream.PathsSet(p, test.e))
+			s := stream.New(docs.Emit(test.in...)).Pipe(path.Set(p, test.e))
 			i := 0
 			err = s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
@@ -59,44 +61,6 @@ func TestSet(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.PathsSet(document.NewPath("a", "b"), parser.MustParseExpr("1")).String(), "paths.Set(a.b, 1)")
-	})
-}
-
-func TestUnset(t *testing.T) {
-	tests := []struct {
-		path  string
-		in    []expr.Expr
-		out   []types.Document
-		fails bool
-	}{
-		{
-			"a",
-			testutil.ParseExprs(t, `{"a": 10, "b": 20}`),
-			testutil.MakeDocuments(t, `{"b": 20}`),
-			false,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.path, func(t *testing.T) {
-			s := stream.New(stream.DocsEmit(test.in...)).Pipe(stream.PathsUnset(test.path))
-			i := 0
-			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				d, _ := out.GetDocument()
-				require.Equal(t, test.out[i], d)
-				i++
-				return nil
-			})
-			if test.fails {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-
-	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.PathsUnset("a").String(), "paths.Unset(a)")
+		require.Equal(t, path.Set(document.NewPath("a", "b"), parser.MustParseExpr("1")).String(), "paths.Set(a.b, 1)")
 	})
 }

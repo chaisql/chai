@@ -4,6 +4,9 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // DeleteConfig holds DELETE configuration.
@@ -30,34 +33,34 @@ func NewDeleteStatement() *DeleteStmt {
 }
 
 func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
-	s := stream.New(stream.TableScan(stmt.TableName))
+	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
+		s = s.Pipe(docs.Filter(stmt.WhereExpr))
 	}
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.DocsTempTreeSortReverse(stmt.OrderBy))
+			s = s.Pipe(docs.TempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.DocsTempTreeSort(stmt.OrderBy))
+			s = s.Pipe(docs.TempTreeSort(stmt.OrderBy))
 		}
 	}
 
 	if stmt.OffsetExpr != nil {
-		s = s.Pipe(stream.DocsSkip(stmt.OffsetExpr))
+		s = s.Pipe(docs.Skip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
-		s = s.Pipe(stream.DocsTake(stmt.LimitExpr))
+		s = s.Pipe(docs.Take(stmt.LimitExpr))
 	}
 
 	indexNames := c.Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
-		s = s.Pipe(stream.IndexDelete(indexName))
+		s = s.Pipe(index.Delete(indexName))
 	}
 
-	s = s.Pipe(stream.TableDelete(stmt.TableName))
+	s = s.Pipe(table.Delete(stmt.TableName))
 
 	st := StreamStmt{
 		Stream:   s,

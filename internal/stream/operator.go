@@ -39,23 +39,23 @@ func Pipe(ops ...Operator) Operator {
 	return ops[len(ops)-1]
 }
 
-type baseOperator struct {
+type BaseOperator struct {
 	Prev Operator
 	Next Operator
 }
 
-func (op *baseOperator) SetPrev(o Operator) {
+func (op *BaseOperator) SetPrev(o Operator) {
 	op.Prev = o
 }
 
-func (op *baseOperator) SetNext(o Operator) {
+func (op *BaseOperator) SetNext(o Operator) {
 	op.Next = o
 }
 
-func (op *baseOperator) GetPrev() Operator {
+func (op *BaseOperator) GetPrev() Operator {
 	return op.Prev
 }
 
-func (op *baseOperator) GetNext() Operator {
+func (op *BaseOperator) GetNext() Operator {
 	return op.Next
 }

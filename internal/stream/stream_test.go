@@ -10,6 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -17,13 +18,13 @@ import (
 )
 
 func TestStream(t *testing.T) {
-	s := stream.New(stream.DocsEmit(
+	s := stream.New(docs.Emit(
 		testutil.ParseExpr(t, `{"a": 1}`),
 		testutil.ParseExpr(t, `{"a": 2}`),
 	))
 
-	s = s.Pipe(stream.DocsFilter(parser.MustParseExpr("a > 1")))
-	s = s.Pipe(stream.DocsProject(parser.MustParseExpr("a + 1")))
+	s = s.Pipe(docs.Filter(parser.MustParseExpr("a > 1")))
+	s = s.Pipe(docs.Project(parser.MustParseExpr("a + 1")))
 
 	var count int64
 	err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -86,13 +87,13 @@ func TestUnion(t *testing.T) {
 
 			var streams []*stream.Stream
 			if test.first != nil {
-				streams = append(streams, stream.New(stream.DocsEmit(test.first...)))
+				streams = append(streams, stream.New(docs.Emit(test.first...)))
 			}
 			if test.second != nil {
-				streams = append(streams, stream.New(stream.DocsEmit(test.second...)))
+				streams = append(streams, stream.New(docs.Emit(test.second...)))
 			}
 			if test.third != nil {
-				streams = append(streams, stream.New(stream.DocsEmit(test.third...)))
+				streams = append(streams, stream.New(docs.Emit(test.third...)))
 			}
 
 			st := stream.New(stream.Union(streams...))
@@ -128,9 +129,9 @@ func TestUnion(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		st := stream.New(stream.Union(
-			stream.New(stream.DocsEmit(testutil.ParseExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
-			stream.New(stream.DocsEmit(testutil.ParseExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
-			stream.New(stream.DocsEmit(testutil.ParseExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
+			stream.New(docs.Emit(testutil.ParseExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
+			stream.New(docs.Emit(testutil.ParseExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
+			stream.New(docs.Emit(testutil.ParseExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
 		))
 
 		require.Equal(t, `union(docs.Emit({a: 1}, {a: 2}), docs.Emit({a: 3}, {a: 4}), docs.Emit({a: 5}, {a: 6}))`, st.String())
@@ -141,8 +142,8 @@ func TestConcatOperator(t *testing.T) {
 	in1 := testutil.ParseExprs(t, `{"a": 10}`, `{"a": 11}`)
 	in2 := testutil.ParseExprs(t, `{"a": 12}`, `{"a": 13}`)
 
-	s1 := stream.New(stream.DocsEmit(in1...))
-	s2 := stream.New(stream.DocsEmit(in2...))
+	s1 := stream.New(docs.Emit(in1...))
+	s2 := stream.New(docs.Emit(in2...))
 	s := stream.Concat(s1, s2)
 
 	var got []types.Document

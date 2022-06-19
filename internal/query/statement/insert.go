@@ -5,6 +5,10 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // InsertStmt holds INSERT configuration.
@@ -58,7 +62,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 				}
 			}
 		}
-		s = stream.New(stream.DocsEmit(stmt.Values...))
+		s = stream.New(docs.Emit(stmt.Values...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {
@@ -69,24 +73,24 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 
 		// ensure we are not reading and writing to the same table.
 		// TODO(asdine): if same table, write content to a temp table.
-		if tableScan, ok := s.First().(*stream.TableScanOperator); ok && tableScan.TableName == stmt.TableName {
+		if tableScan, ok := s.First().(*table.ScanOperator); ok && tableScan.TableName == stmt.TableName {
 			return nil, errors.New("cannot read and write to the same table")
 		}
 
 		if len(stmt.Fields) > 0 {
-			s = s.Pipe(stream.PathsRename(stmt.Fields...))
+			s = s.Pipe(path.PathsRename(stmt.Fields...))
 		}
 	}
 
 	// validate document
-	s = s.Pipe(stream.TableValidate(stmt.TableName))
+	s = s.Pipe(table.Validate(stmt.TableName))
 
 	if stmt.OnConflict != 0 {
 		switch stmt.OnConflict {
 		case database.OnConflictDoNothing:
 			s = s.Pipe(stream.OnConflict(nil))
 		case database.OnConflictDoReplace:
-			s = s.Pipe(stream.OnConflict(stream.New(stream.TableReplace(stmt.TableName))))
+			s = s.Pipe(stream.OnConflict(stream.New(table.Replace(stmt.TableName))))
 		default:
 			panic("unreachable")
 		}
@@ -101,18 +105,18 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		}
 
 		if info.Unique {
-			s = s.Pipe(stream.IndexValidate(indexName))
+			s = s.Pipe(index.Validate(indexName))
 		}
 	}
 
-	s = s.Pipe(stream.TableInsert(stmt.TableName))
+	s = s.Pipe(table.Insert(stmt.TableName))
 
 	for _, indexName := range indexNames {
-		s = s.Pipe(stream.IndexInsert(indexName))
+		s = s.Pipe(index.IndexInsert(indexName))
 	}
 
 	if len(stmt.Returning) > 0 {
-		s = s.Pipe(stream.DocsProject(stmt.Returning...))
+		s = s.Pipe(docs.Project(stmt.Returning...))
 	}
 
 	st := StreamStmt{

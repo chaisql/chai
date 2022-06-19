@@ -5,6 +5,9 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
@@ -66,7 +69,7 @@ func SelectIndex(sctx *StreamContext) error {
 	if firstNode == nil {
 		return nil
 	}
-	seq, ok := firstNode.(*stream.TableScanOperator)
+	seq, ok := firstNode.(*table.ScanOperator)
 	if !ok {
 		return nil
 	}
@@ -94,7 +97,7 @@ func SelectIndex(sctx *StreamContext) error {
 // can benefit from using an index.
 // It then compares the cost of each plan and returns the cheapest stream.
 type indexSelector struct {
-	tableScan *stream.TableScanOperator
+	tableScan *table.ScanOperator
 	sctx      *StreamContext
 }
 
@@ -179,12 +182,12 @@ func (i *indexSelector) selectIndex() error {
 	// remove the filter nodes from the tree
 	for _, f := range selected.nodes {
 		switch tp := f.node.(type) {
-		case *stream.DocsFilterOperator:
+		case *docs.FilterOperator:
 			i.sctx.removeFilterNode(tp)
 			if f.orderBy != nil {
-				i.sctx.removeTempTreeNodeNode(f.orderBy.node.(*stream.DocsTempTreeSortOperator))
+				i.sctx.removeTempTreeNodeNode(f.orderBy.node.(*docs.TempTreeSortOperator))
 			}
-		case *stream.DocsTempTreeSortOperator:
+		case *docs.TempTreeSortOperator:
 			i.sctx.removeTempTreeNodeNode(tp)
 		}
 	}
@@ -204,7 +207,7 @@ func (i *indexSelector) selectIndex() error {
 	return nil
 }
 
-func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *indexableNode {
+func (i *indexSelector) isFilterIndexable(f *docs.FilterOperator) *indexableNode {
 	// only operators can associate this node to an index
 	op, ok := f.Expr.(expr.Operator)
 	if !ok {
@@ -232,7 +235,7 @@ func (i *indexSelector) isFilterIndexable(f *stream.DocsFilterOperator) *indexab
 	return &node
 }
 
-func (i *indexSelector) isTempTreeSortIndexable(n *stream.DocsTempTreeSortOperator) *indexableNode {
+func (i *indexSelector) isTempTreeSortIndexable(n *docs.TempTreeSortOperator) *indexableNode {
 	// only paths can be associated with an index
 	path, ok := n.Expr.(expr.Path)
 	if !ok {
@@ -333,21 +336,21 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 		if !isIndex {
 			if !desc {
 				c.replaceRootBy = []stream.Operator{
-					stream.TableScan(treeName),
+					table.Scan(treeName),
 				}
 			} else {
 				c.replaceRootBy = []stream.Operator{
-					stream.TableScanReverse(treeName),
+					table.ScanReverse(treeName),
 				}
 			}
 		} else {
 			if !desc {
 				c.replaceRootBy = []stream.Operator{
-					stream.IndexScan(treeName),
+					index.Scan(treeName),
 				}
 			} else {
 				c.replaceRootBy = []stream.Operator{
-					stream.IndexScanReverse(treeName),
+					index.ScanReverse(treeName),
 				}
 			}
 		}
@@ -381,21 +384,21 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 	if !isIndex {
 		if !desc {
 			c.replaceRootBy = []stream.Operator{
-				stream.TableScan(treeName, ranges...),
+				table.Scan(treeName, ranges...),
 			}
 		} else {
 			c.replaceRootBy = []stream.Operator{
-				stream.TableScanReverse(treeName, ranges...),
+				table.ScanReverse(treeName, ranges...),
 			}
 		}
 	} else {
 		if !desc {
 			c.replaceRootBy = []stream.Operator{
-				stream.IndexScan(treeName, ranges...),
+				index.Scan(treeName, ranges...),
 			}
 		} else {
 			c.replaceRootBy = []stream.Operator{
-				stream.IndexScanReverse(treeName, ranges...),
+				index.ScanReverse(treeName, ranges...),
 			}
 		}
 	}

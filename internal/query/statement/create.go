@@ -6,6 +6,8 @@ import (
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // CreateTableStmt represents a parsed CREATE TABLE statement.
@@ -96,7 +98,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 		return res, err
 	}
 
-	s := stream.New(stream.TableScan(stmt.Info.Owner.TableName)).Pipe(stream.IndexInsert(stmt.Info.IndexName))
+	s := stream.New(table.Scan(stmt.Info.Owner.TableName)).Pipe(index.IndexInsert(stmt.Info.IndexName))
 
 	ss := PreparedStreamStmt{
 		Stream:   s,

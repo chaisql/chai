@@ -8,6 +8,8 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 type SelectCoreStmt struct {
@@ -24,11 +26,11 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
-		s = s.Pipe(stream.TableScan(stmt.TableName))
+		s = s.Pipe(table.Scan(stmt.TableName))
 	}
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
+		s = s.Pipe(docs.Filter(stmt.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
@@ -69,8 +71,8 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 		// add Aggregation node
-		s = s.Pipe(stream.DocsTempTreeSort(stmt.GroupByExpr))
-		s = s.Pipe(stream.DocsGroupAggregate(stmt.GroupByExpr, aggregators...))
+		s = s.Pipe(docs.TempTreeSort(stmt.GroupByExpr))
+		s = s.Pipe(docs.GroupAggregate(stmt.GroupByExpr, aggregators...))
 	} else if stmt.TableName != "" {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
@@ -91,7 +93,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 
 		// add Aggregation node
 		if len(aggregators) > 0 {
-			s = s.Pipe(stream.DocsGroupAggregate(nil, aggregators...))
+			s = s.Pipe(docs.GroupAggregate(nil, aggregators...))
 		}
 	}
 
@@ -114,7 +116,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			}
 		}
 	}
-	s = s.Pipe(stream.DocsProject(stmt.ProjectionExprs...))
+	s = s.Pipe(docs.Project(stmt.ProjectionExprs...))
 
 	// SELECT is read-only most of the time, unless it's using some expressions
 	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
@@ -211,18 +213,18 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(stream.DocsTempTreeSortReverse(stmt.OrderBy))
+			s = s.Pipe(docs.TempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(stream.DocsTempTreeSort(stmt.OrderBy))
+			s = s.Pipe(docs.TempTreeSort(stmt.OrderBy))
 		}
 	}
 
 	if stmt.OffsetExpr != nil {
-		s = s.Pipe(stream.DocsSkip(stmt.OffsetExpr))
+		s = s.Pipe(docs.Skip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
-		s = s.Pipe(stream.DocsTake(stmt.LimitExpr))
+		s = s.Pipe(docs.Take(stmt.LimitExpr))
 	}
 
 	st := StreamStmt{

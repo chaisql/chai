@@ -4,6 +4,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/types"
 )
 
@@ -38,7 +39,7 @@ func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 
 	newStatement := PreparedStreamStmt{
 		Stream: &stream.Stream{
-			Op: stream.DocsProject(
+			Op: docs.Project(
 				&expr.NamedExpr{
 					ExprName: "plan",
 					Expr:     expr.LiteralValue{Value: types.NewTextValue(plan)},

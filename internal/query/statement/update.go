@@ -5,6 +5,10 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // UpdateConfig holds UPDATE configuration.
@@ -49,10 +53,10 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	}
 	pk := ti.GetPrimaryKey()
 
-	s := stream.New(stream.TableScan(stmt.TableName))
+	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(stream.DocsFilter(stmt.WhereExpr))
+		s = s.Pipe(docs.Filter(stmt.WhereExpr))
 	}
 
 	var pkModified bool
@@ -68,7 +72,7 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 					}
 				}
 			}
-			s = s.Pipe(stream.PathsSet(pair.Path, pair.E))
+			s = s.Pipe(path.Set(pair.Path, pair.E))
 		}
 	} else if stmt.UnsetFields != nil {
 		for _, name := range stmt.UnsetFields {
@@ -81,30 +85,30 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 					}
 				}
 			}
-			s = s.Pipe(stream.PathsUnset(name))
+			s = s.Pipe(path.Unset(name))
 		}
 	}
 
 	// validate document
-	s = s.Pipe(stream.TableValidate(stmt.TableName))
+	s = s.Pipe(table.Validate(stmt.TableName))
 
 	// TODO(asdine): This removes ALL indexed fields for each document
 	// even if the update modified a single field. We should only
 	// update the indexed fields that were modified.
 	indexNames := c.Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
-		s = s.Pipe(stream.IndexDelete(indexName))
+		s = s.Pipe(index.Delete(indexName))
 	}
 
 	if pkModified {
-		s = s.Pipe(stream.TableDelete(stmt.TableName))
-		s = s.Pipe(stream.TableInsert(stmt.TableName))
+		s = s.Pipe(table.Delete(stmt.TableName))
+		s = s.Pipe(table.Insert(stmt.TableName))
 	} else {
-		s = s.Pipe(stream.TableReplace(stmt.TableName))
+		s = s.Pipe(table.Replace(stmt.TableName))
 	}
 
 	for _, indexName := range indexNames {
-		s = s.Pipe(stream.IndexInsert(indexName))
+		s = s.Pipe(index.IndexInsert(indexName))
 	}
 
 	st := StreamStmt{

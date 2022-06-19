@@ -21,6 +21,7 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/types"
 )
 
@@ -387,7 +388,7 @@ func (r *Result) Fields() []string {
 
 	// Search for the ProjectOperator. If found, extract the projected expression list
 	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*stream.DocsProjectOperator); ok {
+		if po, ok := op.(*docs.ProjectOperator); ok {
 			// if there are no projected expression, it's a wildcard
 			if len(po.Exprs) == 0 {
 				break

@@ -7,6 +7,8 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/path"
 	"github.com/genjidb/genji/types"
 )
 
@@ -56,9 +58,9 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 type StreamContext struct {
 	Catalog       *database.Catalog
 	Stream        *stream.Stream
-	Filters       []*stream.DocsFilterOperator
-	Projections   []*stream.DocsProjectOperator
-	TempTreeSorts []*stream.DocsTempTreeSortOperator
+	Filters       []*docs.FilterOperator
+	Projections   []*docs.ProjectOperator
+	TempTreeSorts []*docs.TempTreeSortOperator
 }
 
 func NewStreamContext(s *stream.Stream) *StreamContext {
@@ -72,15 +74,15 @@ func NewStreamContext(s *stream.Stream) *StreamContext {
 
 	for n != nil {
 		switch t := n.(type) {
-		case *stream.DocsFilterOperator:
+		case *docs.FilterOperator:
 			if prevIsFilter || len(sctx.Filters) == 0 {
 				sctx.Filters = append(sctx.Filters, t)
 				prevIsFilter = true
 			}
-		case *stream.DocsProjectOperator:
+		case *docs.ProjectOperator:
 			sctx.Projections = append(sctx.Projections, t)
 			prevIsFilter = false
-		case *stream.DocsTempTreeSortOperator:
+		case *docs.TempTreeSortOperator:
 			sctx.TempTreeSorts = append(sctx.TempTreeSorts, t)
 			prevIsFilter = false
 		}
@@ -97,7 +99,7 @@ func (sctx *StreamContext) removeFilterNodeByIndex(index int) {
 	sctx.Filters = append(sctx.Filters[:index], sctx.Filters[index+1:]...)
 }
 
-func (sctx *StreamContext) removeFilterNode(f *stream.DocsFilterOperator) {
+func (sctx *StreamContext) removeFilterNode(f *docs.FilterOperator) {
 	for i, flt := range sctx.Filters {
 		if flt == f {
 			sctx.removeFilterNodeByIndex(i)
@@ -112,7 +114,7 @@ func (sctx *StreamContext) removeTempTreeNodeByIndex(index int) {
 	sctx.TempTreeSorts = append(sctx.TempTreeSorts[:index], sctx.TempTreeSorts[index+1:]...)
 }
 
-func (sctx *StreamContext) removeTempTreeNodeNode(f *stream.DocsTempTreeSortOperator) {
+func (sctx *StreamContext) removeTempTreeNodeNode(f *docs.TempTreeSortOperator) {
 	for i, flt := range sctx.TempTreeSorts {
 		if flt == f {
 			sctx.removeTempTreeNodeByIndex(i)
@@ -173,7 +175,7 @@ func SplitANDConditionRule(sctx *StreamContext) error {
 
 			// create new filter nodes and add them to the stream
 			for _, e := range exprs {
-				newF := stream.DocsFilter(e)
+				newF := docs.Filter(e)
 				cur = stream.InsertAfter(cur, newF)
 				sctx.Filters = append(sctx.Filters, newF)
 			}
@@ -216,20 +218,20 @@ func PrecalculateExprRule(sctx *StreamContext) error {
 
 	for n != nil {
 		switch t := n.(type) {
-		case *stream.DocsFilterOperator:
+		case *docs.FilterOperator:
 			t.Expr, err = precalculateExpr(t.Expr)
-		case *stream.DocsProjectOperator:
+		case *docs.ProjectOperator:
 			for i := range t.Exprs {
 				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
 				if err != nil {
 					return err
 				}
 			}
-		case *stream.DocsTempTreeSortOperator:
+		case *docs.TempTreeSortOperator:
 			t.Expr, err = precalculateExpr(t.Expr)
-		case *stream.PathsSetOperator:
+		case *path.SetOperator:
 			t.Expr, err = precalculateExpr(t.Expr)
-		case *stream.DocsEmitOperator:
+		case *docs.EmitOperator:
 			for i := range t.Exprs {
 				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
 				if err != nil {

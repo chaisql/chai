@@ -1,4 +1,4 @@
-package stream_test
+package table_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -139,7 +140,7 @@ func TestTableScan(t *testing.T) {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
 			}
 
-			op := stream.TableScan("test", test.ranges...)
+			op := table.Scan("test", test.ranges...)
 			op.Reverse = test.reverse
 			var env environment.Environment
 			env.Tx = tx
@@ -174,11 +175,11 @@ func TestTableScan(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `table.Scan("test", [{"min": [1], "max": [2]}])`, stream.TableScan("test", stream.Range{
+		require.Equal(t, `table.Scan("test", [{"min": [1], "max": [2]}])`, table.Scan("test", stream.Range{
 			Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 		}).String())
 
-		op := stream.TableScan("test",
+		op := table.Scan("test",
 			stream.Range{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`), Exclusive: true},
 			stream.Range{Min: testutil.ExprList(t, `[10]`), Exact: true},
 			stream.Range{Min: testutil.ExprList(t, `[100]`)},

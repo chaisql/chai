@@ -12,6 +12,9 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -53,7 +56,7 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.e.String(), func(t *testing.T) {
-			s := stream.New(stream.DocsEmit(test.in...)).Pipe(stream.DocsFilter(test.e))
+			s := stream.New(docs.Emit(test.in...)).Pipe(docs.Filter(test.e))
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				d, _ := out.GetDocument()
@@ -71,7 +74,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.DocsFilter(parser.MustParseExpr("1")).String(), "docs.Filter(1)")
+		require.Equal(t, docs.Filter(parser.MustParseExpr("1")).String(), "docs.Filter(1)")
 	})
 }
 
@@ -89,14 +92,14 @@ func TestTake(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
-			var docs []expr.Expr
+			var ds []expr.Expr
 
 			for i := 0; i < test.inNumber; i++ {
-				docs = append(docs, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
+				ds = append(ds, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.DocsEmit(docs...))
-			s = s.Pipe(stream.DocsTake(parser.MustParseExpr(strconv.Itoa(test.n))))
+			s := stream.New(docs.Emit(ds...))
+			s = s.Pipe(docs.Take(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -116,7 +119,7 @@ func TestTake(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "docs.Take(1)", stream.DocsTake(parser.MustParseExpr("1")).String())
+		require.Equal(t, "docs.Take(1)", docs.Take(parser.MustParseExpr("1")).String())
 	})
 }
 
@@ -134,14 +137,14 @@ func TestSkip(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%d/%d", test.inNumber, test.n), func(t *testing.T) {
-			var docs []expr.Expr
+			var ds []expr.Expr
 
 			for i := 0; i < test.inNumber; i++ {
-				docs = append(docs, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
+				ds = append(ds, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(stream.DocsEmit(docs...))
-			s = s.Pipe(stream.DocsSkip(parser.MustParseExpr(strconv.Itoa(test.n))))
+			s := stream.New(docs.Emit(ds...))
+			s = s.Pipe(docs.Skip(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -158,18 +161,8 @@ func TestSkip(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "docs.Skip(1)", stream.DocsSkip(parser.MustParseExpr("1")).String())
+		require.Equal(t, "docs.Skip(1)", docs.Skip(parser.MustParseExpr("1")).String())
 	})
-}
-
-func generateSeqDocs(t testing.TB, max int) (docs []types.Document) {
-	t.Helper()
-
-	for i := 0; i < max; i++ {
-		docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
-	}
-
-	return docs
 }
 
 func TestTableInsert(t *testing.T) {
@@ -182,7 +175,7 @@ func TestTableInsert(t *testing.T) {
 	}{
 		{
 			"doc with no key",
-			stream.DocsEmit(testutil.ParseExpr(t, `{"a": 10}`), testutil.ParseExpr(t, `{"a": 11}`)),
+			docs.Emit(testutil.ParseExpr(t, `{"a": 10}`), testutil.ParseExpr(t, `{"a": 11}`)),
 			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)},
 			1,
 			false,
@@ -200,7 +193,7 @@ func TestTableInsert(t *testing.T) {
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
-			s := stream.New(test.in).Pipe(stream.TableInsert("test"))
+			s := stream.New(test.in).Pipe(table.Insert("test"))
 
 			var i int
 			err := s.Iterate(in, func(out *environment.Environment) error {
@@ -220,7 +213,7 @@ func TestTableInsert(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "table.Insert(\"test\")", stream.TableInsert("test").String())
+		require.Equal(t, "table.Insert(\"test\")", table.Insert("test").String())
 	})
 }
 
@@ -235,7 +228,7 @@ func TestTableReplace(t *testing.T) {
 		{
 			"doc with key",
 			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
-			stream.PathsSet(testutil.ParseDocumentPath(t, "b"), testutil.ParseExpr(t, "2")),
+			path.Set(testutil.ParseDocumentPath(t, "b"), testutil.ParseExpr(t, "2")),
 			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
 			false,
 		},
@@ -256,9 +249,9 @@ func TestTableReplace(t *testing.T) {
 			in.Tx = tx
 			in.Catalog = db.Catalog
 
-			s := stream.New(stream.TableScan("test")).
+			s := stream.New(table.Scan("test")).
 				Pipe(test.op).
-				Pipe(stream.TableReplace("test"))
+				Pipe(table.Replace("test"))
 
 			var i int
 			err := s.Iterate(&in, func(out *environment.Environment) error {
@@ -295,7 +288,7 @@ func TestTableReplace(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.TableReplace("test").String(), "table.Replace(\"test\")")
+		require.Equal(t, table.Replace("test").String(), "table.Replace(\"test\")")
 	})
 }
 
@@ -310,7 +303,7 @@ func TestTableDelete(t *testing.T) {
 		{
 			"doc with key",
 			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
-			stream.DocsFilter(testutil.ParseExpr(t, `a > 1`)),
+			docs.Filter(testutil.ParseExpr(t, `a > 1`)),
 			testutil.MakeDocuments(t, `{"a": 1}`),
 			false,
 		},
@@ -331,7 +324,7 @@ func TestTableDelete(t *testing.T) {
 			env.Tx = tx
 			env.Catalog = db.Catalog
 
-			s := stream.New(stream.TableScan("test")).Pipe(test.op).Pipe(stream.TableDelete("test"))
+			s := stream.New(table.Scan("test")).Pipe(test.op).Pipe(table.Delete("test"))
 
 			err := s.Iterate(&env, func(out *environment.Environment) error {
 				return nil
@@ -358,7 +351,7 @@ func TestTableDelete(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.TableDelete("test").String(), "table.Delete('test')")
+		require.Equal(t, table.Delete("test").String(), "table.Delete('test')")
 	})
 }
 
@@ -390,7 +383,7 @@ func TestPathsRename(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		s := stream.New(stream.DocsEmit(test.in...)).Pipe(stream.PathsRename(test.fieldNames...))
+		s := stream.New(docs.Emit(test.in...)).Pipe(path.PathsRename(test.fieldNames...))
 		t.Run(s.String(), func(t *testing.T) {
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
@@ -408,6 +401,6 @@ func TestPathsRename(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, stream.PathsRename("a", "b", "c").String(), "paths.Rename(a, b, c)")
+		require.Equal(t, path.PathsRename("a", "b", "c").String(), "paths.Rename(a, b, c)")
 	})
 }

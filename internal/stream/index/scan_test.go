@@ -1,4 +1,4 @@
-package stream_test
+package index_test
 
 import (
 	"testing"
@@ -7,6 +7,7 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -19,18 +20,18 @@ func TestIndexScan(t *testing.T) {
 
 		testutil.MustExec(t, db, tx, "CREATE INDEX idx_test_a ON test("+indexOn+")")
 
-		op := stream.IndexScan(name, ranges...)
+		op := index.Scan(name, ranges...)
 		op.Reverse = reverse
 		return op
 	})
 
 	t.Run("String", func(t *testing.T) {
 		t.Run("idx_test_a", func(t *testing.T) {
-			require.Equal(t, `index.Scan("idx_test_a", [{"min": [1], "max": [2]}])`, stream.IndexScan("idx_test_a", stream.Range{
+			require.Equal(t, `index.Scan("idx_test_a", [{"min": [1], "max": [2]}])`, index.Scan("idx_test_a", stream.Range{
 				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 			}).String())
 
-			op := stream.IndexScan("idx_test_a", stream.Range{
+			op := index.Scan("idx_test_a", stream.Range{
 				Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`),
 			})
 			op.Reverse = true
@@ -39,12 +40,12 @@ func TestIndexScan(t *testing.T) {
 		})
 
 		t.Run("idx_test_a_b", func(t *testing.T) {
-			require.Equal(t, `index.Scan("idx_test_a_b", [{"min": [1, 1], "max": [2, 2]}])`, stream.IndexScan("idx_test_a_b", stream.Range{
+			require.Equal(t, `index.Scan("idx_test_a_b", [{"min": [1, 1], "max": [2, 2]}])`, index.Scan("idx_test_a_b", stream.Range{
 				Min: testutil.ExprList(t, `[1, 1]`),
 				Max: testutil.ExprList(t, `[2, 2]`),
 			}).String())
 
-			op := stream.IndexScan("idx_test_a_b", stream.Range{
+			op := index.Scan("idx_test_a_b", stream.Range{
 				Min: testutil.ExprList(t, `[1, 1]`),
 				Max: testutil.ExprList(t, `[2, 2]`),
 			})
