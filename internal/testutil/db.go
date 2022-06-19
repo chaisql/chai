@@ -82,7 +82,7 @@ func NewTestDB(t testing.TB) *database.Database {
 func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	t.Helper()
 
-	db, err := database.New(context.Background(), pdb)
+	db, err := database.New(pdb)
 	assert.NoError(t, err)
 
 	sess := kv.NewSnapshotSession(pdb)

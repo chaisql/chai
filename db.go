@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"fmt"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
@@ -33,27 +32,6 @@ type DB struct {
 	pdb *pebble.DB
 }
 
-func newDB(ctx context.Context, pdb *pebble.DB) (*DB, error) {
-	db, err := database.New(ctx, pdb)
-	if err != nil {
-		return nil, err
-	}
-
-	sess := kv.NewSnapshotSession(pdb)
-	defer sess.Close()
-
-	err = catalogstore.LoadCatalog(sess, db.Catalog)
-	if err != nil {
-		return nil, err
-	}
-
-	return &DB{
-		pdb: pdb,
-		DB:  db,
-		ctx: ctx,
-	}, nil
-}
-
 // Open creates a Genji database at the given path.
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
@@ -70,8 +48,23 @@ func Open(path string) (*DB, error) {
 		return nil, err
 	}
 
-	ctx := context.Background()
-	return newDB(ctx, pdb)
+	db, err := database.New(pdb)
+	if err != nil {
+		return nil, err
+	}
+
+	sess := kv.NewSnapshotSession(pdb)
+	defer sess.Close()
+
+	err = catalogstore.LoadCatalog(sess, db.Catalog)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DB{
+		pdb: pdb,
+		DB:  db,
+	}, nil
 }
 
 // WithContext creates a new database handle using the given context for every operation.
@@ -95,7 +88,7 @@ func (db *DB) Close() error {
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.DB.BeginTx(db.ctx, &database.TxOptions{
+	tx, err := db.DB.BeginTx(&database.TxOptions{
 		ReadOnly: !writable,
 	})
 	if err != nil {
@@ -277,7 +270,7 @@ func (s *Statement) Query(args ...interface{}) (*Result, error) {
 		return nil, err
 	}
 
-	return &Result{result: r}, nil
+	return &Result{result: r, ctx: s.db.ctx}, nil
 }
 
 func argsToParams(args []interface{}) []environment.Param {
@@ -365,10 +358,22 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 // Result of a query.
 type Result struct {
 	result *statement.Result
+	ctx    context.Context
 }
 
 func (r *Result) Iterate(fn func(d types.Document) error) error {
-	return r.result.Iterate(fn)
+	if r.ctx == nil {
+		return r.result.Iterate(fn)
+	}
+
+	return r.result.Iterate(func(d types.Document) error {
+		select {
+		case <-r.ctx.Done():
+			return r.ctx.Err()
+		default:
+			return fn(d)
+		}
+	})
 }
 
 func (r *Result) Fields() []string {
@@ -391,7 +396,7 @@ func (r *Result) Fields() []string {
 
 			fields := make([]string, len(po.Exprs))
 			for i := range po.Exprs {
-				fields[i] = fmt.Sprintf("%s", po.Exprs[i])
+				fields[i] = po.Exprs[i].String()
 			}
 
 			return fields

@@ -110,7 +110,9 @@ func Run(ctx context.Context, opts *Options) error {
 
 	promptExecCh := make(chan string)
 
-	ctx, cancel := context.WithCancel(ctx)
+	// from this point, do not use the root context anymore,
+	// instead use our own signal handlers.
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)

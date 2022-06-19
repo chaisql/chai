@@ -1,8 +1,6 @@
 package query
 
 import (
-	"context"
-
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -18,13 +16,13 @@ func (stmt BeginStmt) Prepare(*statement.Context) (statement.Statement, error) {
 	return stmt, nil
 }
 
-func (stmt BeginStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
+func (stmt BeginStmt) alterQuery(db *database.Database, q *Query) error {
 	if q.tx != nil {
 		return errors.New("cannot begin a transaction within a transaction")
 	}
 
 	var err error
-	q.tx, err = db.BeginTx(ctx, &database.TxOptions{
+	q.tx, err = db.BeginTx(&database.TxOptions{
 		ReadOnly: !stmt.Writable,
 		Attached: true,
 	})
@@ -48,7 +46,7 @@ func (stmt RollbackStmt) Prepare(*statement.Context) (statement.Statement, error
 	return stmt, nil
 }
 
-func (stmt RollbackStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
+func (stmt RollbackStmt) alterQuery(db *database.Database, q *Query) error {
 	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot rollback with no active transaction")
 	}
@@ -78,7 +76,7 @@ func (stmt CommitStmt) Prepare(*statement.Context) (statement.Statement, error) 
 	return stmt, nil
 }
 
-func (stmt CommitStmt) alterQuery(ctx context.Context, db *database.Database, q *Query) error {
+func (stmt CommitStmt) alterQuery(db *database.Database, q *Query) error {
 	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot commit with no active transaction")
 	}

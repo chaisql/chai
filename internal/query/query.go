@@ -47,10 +47,12 @@ func (q *Query) Prepare(context *Context) error {
 	ctx := context.Ctx
 
 	for i, stmt := range q.Statements {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
+		if ctx != nil {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
 		}
 
 		p, ok := stmt.(statement.Preparer)
@@ -61,7 +63,7 @@ func (q *Query) Prepare(context *Context) error {
 		if tx == nil {
 			tx = context.GetTx()
 			if tx == nil {
-				tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
+				tx, err = context.DB.BeginTx(&database.TxOptions{
 					ReadOnly: true,
 				})
 				if err != nil {
@@ -99,17 +101,18 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 	ctx := context.Ctx
 
 	for i, stmt := range q.Statements {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
+		if ctx != nil {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+			}
 		}
-
 		// reinitialize the result
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(ctx, context.DB, &q)
+			err = qa.alterQuery(context.DB, &q)
 			if err != nil {
 				if tx := context.GetTx(); tx != nil {
 					tx.Rollback()
@@ -121,7 +124,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		}
 
 		if q.tx == nil {
-			q.tx, err = context.DB.BeginTx(ctx, &database.TxOptions{
+			q.tx, err = context.DB.BeginTx(&database.TxOptions{
 				ReadOnly: stmt.IsReadOnly(),
 			})
 			if err != nil {
@@ -185,5 +188,5 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 }
 
 type queryAlterer interface {
-	alterQuery(ctx context.Context, db *database.Database, q *Query) error
+	alterQuery(db *database.Database, q *Query) error
 }

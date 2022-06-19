@@ -11,5 +11,10 @@ func OpenDB(ctx context.Context, dbPath string) (*genji.DB, error) {
 	if dbPath == "" {
 		dbPath = ":memory:"
 	}
-	return genji.Open(dbPath)
+	db, err := genji.Open(dbPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return db.WithContext(ctx), nil
 }

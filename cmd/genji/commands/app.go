@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"context"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/shell"
@@ -23,6 +26,25 @@ func NewApp() *cli.App {
 		NewBenchCommand(),
 	}
 
+	// inject cancelable context to all commands (except the shell command)
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		defer cancel()
+		<-ch
+	}()
+
+	for i := range app.Commands {
+		action := app.Commands[i].Action
+		app.Commands[i].Action = func(c *cli.Context) error {
+			c.Context = ctx
+			return action(c)
+		}
+	}
+
 	// Root command
 	app.Action = func(c *cli.Context) error {
 		dbpath := c.Args().First()
@@ -40,6 +62,11 @@ func NewApp() *cli.App {
 		return shell.Run(c.Context, &shell.Options{
 			DBPath: dbpath,
 		})
+	}
+
+	app.After = func(c *cli.Context) error {
+		cancel()
+		return nil
 	}
 
 	return app

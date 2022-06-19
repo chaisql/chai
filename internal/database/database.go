@@ -2,7 +2,6 @@
 package database
 
 import (
-	"context"
 	"sync"
 	"sync/atomic"
 
@@ -52,7 +51,7 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(ctx context.Context, pdb *pebble.DB) (*Database, error) {
+func New(pdb *pebble.DB) (*Database, error) {
 	db := Database{
 		DB:              pdb,
 		Catalog:         NewCatalog(),
@@ -112,7 +111,7 @@ func (db *Database) closeDatabase() error {
 	defer db.writetxmu.Unlock()
 
 	// release all sequences
-	tx, err := db.beginTx(context.Background(), nil)
+	tx, err := db.beginTx(nil)
 	if err != nil {
 		return err
 	}
@@ -146,7 +145,7 @@ func (db *Database) GetAttachedTx() *Transaction {
 // Begin starts a new transaction with default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *Database) Begin(writable bool) (*Transaction, error) {
-	return db.BeginTx(context.Background(), &TxOptions{
+	return db.BeginTx(&TxOptions{
 		ReadOnly: !writable,
 	})
 }
@@ -157,7 +156,7 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // If the Attached option is passed, it opens a database level transaction, which gets
 // attached to the database and prevents any other transaction to be opened afterwards
 // until it gets rolled back or commited.
-func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
+func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = new(TxOptions)
 	}
@@ -173,11 +172,11 @@ func (db *Database) BeginTx(ctx context.Context, opts *TxOptions) (*Transaction,
 		return nil, errors.New("cannot open a transaction within a transaction")
 	}
 
-	return db.beginTx(ctx, opts)
+	return db.beginTx(opts)
 }
 
 // beginTx creates a transaction without locks.
-func (db *Database) beginTx(ctx context.Context, opts *TxOptions) (*Transaction, error) {
+func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = &TxOptions{}
 	}
