@@ -12,6 +12,7 @@ INSERT INTO test (a, b, c, d) VALUES (1, 1, 1, 1), (1, 1, 1, 1);
 
 -- test: different values
 INSERT INTO test (a, b, c, d) VALUES (1, 1, 1, 1), (1, 2, 1, 1);
+SELECT * FROM test;
 /* result:
 {a: 1, b: 1, c: 1, d: 1}
 {a: 1, b: 2, c: 1, d: 1}

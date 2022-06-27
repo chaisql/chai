@@ -61,6 +61,8 @@ func (tx *Transaction) Commit() error {
 		return err
 	}
 
+	_ = tx.Session.Close()
+
 	defer func() {
 		tx.WriteTxMu.Unlock()
 	}()

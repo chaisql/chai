@@ -21,29 +21,34 @@ func TestParserDelete(t *testing.T) {
 		s        string
 		expected *stream.Stream
 	}{
-		{"NoCond", "DELETE FROM test", stream.New(table.Scan("test")).Pipe(table.Delete("test"))},
+		{"NoCond", "DELETE FROM test", stream.New(table.Scan("test")).Pipe(table.Delete("test")).
+			Pipe(stream.Discard())},
 		{"WithCond", "DELETE FROM test WHERE age = 10",
 			stream.New(table.Scan("test")).
 				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(table.Delete("test")),
+				Pipe(table.Delete("test")).
+				Pipe(stream.Discard()),
 		},
 		{"WithOffset", "DELETE FROM test WHERE age = 10 OFFSET 20",
 			stream.New(table.Scan("test")).
 				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(docs.Skip(parser.MustParseExpr("20"))).
-				Pipe(table.Delete("test")),
+				Pipe(table.Delete("test")).
+				Pipe(stream.Discard()),
 		},
 		{"WithLimit", "DELETE FROM test LIMIT 10",
 			stream.New(table.Scan("test")).
 				Pipe(docs.Take(parser.MustParseExpr("10"))).
-				Pipe(table.Delete("test")),
+				Pipe(table.Delete("test")).
+				Pipe(stream.Discard()),
 		},
 		{"WithOrderByThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age OFFSET 20",
 			stream.New(table.Scan("test")).
 				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(docs.TempTreeSort(parser.MustParseExpr("age"))).
 				Pipe(docs.Skip(parser.MustParseExpr("20"))).
-				Pipe(table.Delete("test")),
+				Pipe(table.Delete("test")).
+				Pipe(stream.Discard()),
 		},
 		{"WithOrderByThenLimitThenOffset", "DELETE FROM test WHERE age = 10 ORDER BY age LIMIT 10 OFFSET 20",
 			stream.New(table.Scan("test")).
@@ -51,7 +56,8 @@ func TestParserDelete(t *testing.T) {
 				Pipe(docs.TempTreeSort(parser.MustParseExpr("age"))).
 				Pipe(docs.Skip(parser.MustParseExpr("20"))).
 				Pipe(docs.Take(parser.MustParseExpr("10"))).
-				Pipe(table.Delete("test")),
+				Pipe(table.Delete("test")).
+				Pipe(stream.Discard()),
 		},
 	}
 

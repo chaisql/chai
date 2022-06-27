@@ -117,6 +117,8 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 
 	if len(stmt.Returning) > 0 {
 		s = s.Pipe(docs.Project(stmt.Returning...))
+	} else {
+		s = s.Pipe(stream.Discard())
 	}
 
 	st := StreamStmt{

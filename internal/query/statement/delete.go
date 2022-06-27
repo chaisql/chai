@@ -62,6 +62,8 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 
 	s = s.Pipe(table.Delete(stmt.TableName))
 
+	s = s.Pipe(stream.Discard())
+
 	st := StreamStmt{
 		Stream:   s,
 		ReadOnly: false,

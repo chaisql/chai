@@ -37,7 +37,8 @@ func TestParserInsert(t *testing.T) {
 				}},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Documents / Multiple", `INSERT INTO test VALUES {"a": 'a', b: -2.3}, {a: 1, d: true}`,
 			stream.New(docs.Emit(
@@ -48,7 +49,8 @@ func TestParserInsert(t *testing.T) {
 				&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{{K: "a", V: testutil.IntegerValue(1)}, {K: "d", V: testutil.BoolValue(true)}}},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Documents / Positional Param", "INSERT INTO test VALUES ?, ?",
 			stream.New(docs.Emit(
@@ -56,7 +58,8 @@ func TestParserInsert(t *testing.T) {
 				expr.PositionalParam(2),
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Documents / Named Param", "INSERT INTO test VALUES $foo, $bar",
 			stream.New(docs.Emit(
@@ -64,7 +67,8 @@ func TestParserInsert(t *testing.T) {
 				expr.NamedParam("bar"),
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Values / With fields", "INSERT INTO test (a, b) VALUES ('c', 'd')",
 			stream.New(docs.Emit(
@@ -74,7 +78,8 @@ func TestParserInsert(t *testing.T) {
 				}},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Values / With too many values", "INSERT INTO test (a, b) VALUES ('c', 'd', 'e')",
 			nil, true},
@@ -90,7 +95,8 @@ func TestParserInsert(t *testing.T) {
 				}},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Values / Returning", "INSERT INTO test (a, b) VALUES ('c', 'd') RETURNING *, a, b as B, c",
 			stream.New(docs.Emit(
@@ -157,33 +163,38 @@ func TestParserInsert(t *testing.T) {
 		{"Select / Without fields", "INSERT INTO test SELECT * FROM foo",
 			stream.New(table.Scan("foo")).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Select / Without fields / With projection", "INSERT INTO test SELECT a, b FROM foo",
 			stream.New(table.Scan("foo")).
 				Pipe(docs.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Select / With fields", "INSERT INTO test (a, b) SELECT * FROM foo",
 			stream.New(table.Scan("foo")).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT a, b FROM foo",
 			stream.New(table.Scan("foo")).
 				Pipe(docs.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Select / With fields / With projection / different fields", "INSERT INTO test (a, b) SELECT c, d FROM foo",
 			stream.New(table.Scan("foo")).
 				Pipe(docs.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
-				Pipe(table.Insert("test")),
+				Pipe(table.Insert("test")).
+				Pipe(stream.Discard()),
 			false},
 		{"Select / With fields / With projection / different fields / Returning", "INSERT INTO test (a, b) SELECT c, d FROM foo RETURNING a",
 			stream.New(table.Scan("foo")).

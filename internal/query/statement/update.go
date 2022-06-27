@@ -111,6 +111,8 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 		s = s.Pipe(index.IndexInsert(indexName))
 	}
 
+	s = s.Pipe(stream.Discard())
+
 	st := StreamStmt{
 		Stream:   s,
 		ReadOnly: false,

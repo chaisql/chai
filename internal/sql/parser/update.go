@@ -19,7 +19,7 @@ func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
 	// Parse table name
 	stmt.TableName, err = p.parseIdent()
 	if err != nil {
-		pErr := err.(*ParseError)
+		pErr := errors.Unwrap(err).(*ParseError)
 		pErr.Expected = []string{"table_name"}
 		return nil, pErr
 	}

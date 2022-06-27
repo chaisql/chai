@@ -139,7 +139,9 @@ func TestInsertStmt(t *testing.T) {
 		defer res.Close()
 
 		var b bytes.Buffer
-		testutil.IteratorToJSONArray(&b, res)
+		err = testutil.IteratorToJSONArray(&b, res)
+		require.NoError(t, err)
+
 		require.JSONEq(t, `
 		[{"a": 1, "b": 1},
 		{"a": 2, "b": 2},

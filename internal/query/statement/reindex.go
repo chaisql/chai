@@ -62,7 +62,7 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	}
 
 	st := StreamStmt{
-		Stream:   stream.New(stream.Concat(streams...)),
+		Stream:   stream.New(stream.Concat(streams...)).Pipe(stream.Discard()),
 		ReadOnly: false,
 	}
 

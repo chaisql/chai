@@ -1,8 +1,6 @@
 package kv
 
 import (
-	"fmt"
-
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 )
@@ -73,7 +71,6 @@ func (s *BatchSession) ensureBatchSize() error {
 		return nil
 	}
 
-	fmt.Println("Committing batch")
 	// The batch is too large. Insert the rollback segments and commit the batch.
 	err := s.rollbackSegment.Apply(s.Batch)
 	if err != nil {

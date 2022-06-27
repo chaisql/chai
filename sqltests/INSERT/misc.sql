@@ -186,3 +186,16 @@ INSERT INTO test_df(a, a) VALUES (1, 10);
 CREATE TABLE test_df;
 insert into test_df(a) values ({b: 1, b: 10});
 -- error:
+
+-- test: inserts must be silent
+CREATE TABLE test (a int);
+INSERT INTO test VALUES (1);
+/* result:
+*/
+
+-- test: inserts must be silent: explain
+CREATE TABLE test (a int);
+EXPLAIN INSERT INTO test (a) VALUES (1);
+/* result:
+{plan: "docs.Emit({a: 1}) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
+*/
