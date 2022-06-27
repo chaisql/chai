@@ -54,7 +54,7 @@ func TestDump(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, ...);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b ANY, c ANY, ...);", table)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")
