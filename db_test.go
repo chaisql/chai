@@ -147,6 +147,7 @@ func TestOpen(t *testing.T) {
 func TestQueryDocument(t *testing.T) {
 	db, err := genji.Open(":memory:")
 	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
 	assert.NoError(t, err)
