@@ -46,7 +46,7 @@ func TestExplainStmt(t *testing.T) {
 			assert.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY)")
+			err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY, a any, b any, x any, y any)")
 			assert.NoError(t, err)
 			err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);

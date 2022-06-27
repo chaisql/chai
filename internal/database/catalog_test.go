@@ -294,6 +294,9 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{Field: "a", Type: types.TextValue},
+				),
 				TableConstraints: []*database.TableConstraint{
 					{Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, PrimaryKey: true},
 				},
@@ -321,7 +324,11 @@ func TestCatalogCreateIndex(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
+				),
+			})
 		})
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
@@ -356,25 +363,37 @@ func TestCatalogCreateIndex(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			return catalog.CreateTable(tx, "test", nil)
+			return catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{Field: "foo", Type: types.DocumentValue, AnonymousType: &database.AnonymousType{
+						FieldConstraints: database.MustNewFieldConstraints(
+							&database.FieldConstraint{Field: "  bar ", Type: types.DocumentValue, AnonymousType: &database.AnonymousType{
+								FieldConstraints: database.MustNewFieldConstraints(
+									&database.FieldConstraint{Field: "c", Type: types.TextValue},
+								),
+							}},
+						),
+					}},
+				),
+			})
 		})
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
-				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.a[10].`  bar `.c")},
+				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
 
-			_, err = catalog.GetIndex(tx, "test_foo.a[10].  bar .c_idx")
+			_, err = catalog.GetIndex(tx, "test_foo.  bar .c_idx")
 			assert.NoError(t, err)
 
 			// create another one
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
-				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.a[10].`  bar `.c")},
+				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
 
-			_, err = catalog.GetIndex(tx, "test_foo.a[10].  bar .c_idx1")
+			_, err = catalog.GetIndex(tx, "test_foo.  bar .c_idx1")
 			assert.NoError(t, err)
 			return nil
 		})
@@ -386,7 +405,12 @@ func TestTxDropIndex(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
-			err := catalog.CreateTable(tx, "test", nil)
+			err := catalog.CreateTable(tx, "test", &database.TableInfo{
+				FieldConstraints: database.MustNewFieldConstraints(
+					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
+					&database.FieldConstraint{Field: "bar", Type: types.AnyValue},
+				),
+			})
 			assert.NoError(t, err)
 			err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},

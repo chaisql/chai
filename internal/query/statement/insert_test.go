@@ -34,7 +34,7 @@ func TestInsertStmt(t *testing.T) {
 				assert.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test")
+				err = db.Exec("CREATE TABLE test(a any, b any, c any)")
 				assert.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`

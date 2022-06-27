@@ -390,7 +390,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
+				CREATE TABLE foo (k INT PRIMARY KEY, a INT, b INT, c INT, d ANY);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
@@ -700,7 +700,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo (k INT PRIMARY KEY, c INT);
+				CREATE TABLE foo (k INT PRIMARY KEY, a ANY, b ANY, c INT, d ANY, x ANY, y ANY, z ANY);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
@@ -754,10 +754,10 @@ func TestSelectIndex_Composite(t *testing.T) {
 				testutil.MustExec(t, db, tx, `
 						CREATE TABLE foo (
 							k ARRAY PRIMARY KEY,
-							a ARRAY
+							a ARRAY,
+							b ANY
 						);
 						CREATE INDEX idx_foo_a_b ON foo(a, b);
-						CREATE INDEX idx_foo_a0 ON foo(a[0]);
 						INSERT INTO foo (k, a, b) VALUES
 							([1, 1], [1, 1], [1, 1]),
 							([2, 2], [2, 2], [2, 2]),
@@ -848,8 +848,8 @@ func TestOptimize(t *testing.T) {
 		db, tx, cleanup := testutil.NewTestTx(t)
 		defer cleanup()
 		testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo;
-				CREATE TABLE bar;
+				CREATE TABLE foo(a any, d any);
+				CREATE TABLE bar(a, d);
 				CREATE INDEX idx_foo_a_d ON foo(a, d);
 				CREATE INDEX idx_bar_a_d ON bar(a, d);
 			`)

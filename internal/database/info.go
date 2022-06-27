@@ -168,26 +168,7 @@ func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
 }
 
 func (ti *TableInfo) GetFieldConstraintForPath(p document.Path) *FieldConstraint {
-	var cur *FieldConstraints = &ti.FieldConstraints
-	for i := range p {
-		if cur == nil {
-			return nil
-		}
-		fc, ok := cur.ByField[p[i].FieldName]
-		if !ok {
-			return nil
-		}
-		if i == len(p)-1 {
-			return fc
-		}
-
-		if fc.AnonymousType == nil {
-			return nil
-		}
-		cur = &fc.AnonymousType.FieldConstraints
-	}
-
-	return nil
+	return ti.FieldConstraints.GetFieldConstraintForPath(p)
 }
 
 // String returns a SQL representation.

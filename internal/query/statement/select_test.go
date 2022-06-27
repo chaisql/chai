@@ -236,7 +236,7 @@ func TestSelectStmt(t *testing.T) {
 		assert.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test; CREATE INDEX idx_foo ON test(foo);")
+		err = db.Exec("CREATE TABLE test(foo any); CREATE INDEX idx_foo ON test(foo);")
 		assert.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo) VALUES (1), ('hello'), (2), (true)`)
@@ -293,7 +293,7 @@ func TestSelectStmt(t *testing.T) {
 		defer db.Close()
 
 		err = db.Exec(`
-			CREATE TABLE test;
+			CREATE TABLE test(a any);
 			INSERT INTO test (a) VALUES ([1,2,3]), ([4, 5, 6]);
 		`)
 		assert.NoError(t, err)

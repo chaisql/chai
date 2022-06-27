@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test;
+CREATE TABLE test(a double, ...);
 INSERT INTO test(a, b, c) VALUES (1, {a: 1}, [true]);
 
 -- suite: no index

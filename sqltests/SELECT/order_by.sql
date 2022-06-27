@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test;
+CREATE TABLE test(a double);
 INSERT INTO test (a) VALUES (1), (2), (3);
 
 -- suite: no index

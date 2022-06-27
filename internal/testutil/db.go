@@ -138,6 +138,8 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 }
 
 func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) {
+	t.Helper()
+
 	err := Exec(db, tx, q, params...)
 	assert.NoError(t, err)
 }

@@ -275,9 +275,17 @@ func (c *Catalog) CreateIndex(tx *Transaction, info *IndexInfo) error {
 	}
 
 	// check if the associated table exists
-	_, err = c.GetTableInfo(info.Owner.TableName)
+	ti, err := c.GetTableInfo(info.Owner.TableName)
 	if err != nil {
 		return err
+	}
+
+	// check if the indexed fields exist
+	for _, p := range info.Paths {
+		fc := ti.GetFieldConstraintForPath(p)
+		if fc == nil {
+			return errors.Errorf("field %q does not exist for table %q", p, ti.TableName)
+		}
 	}
 
 	info.StoreNamespace, err = c.generateStoreName(tx)

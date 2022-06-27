@@ -86,7 +86,7 @@ func TestOpen(t *testing.T) {
 	err = db.Exec(`
 		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b (c (d DOUBLE PRIMARY KEY)));
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
-		CREATE TABLE tableC;
+		CREATE TABLE tableC (a INTEGER, b BOOL);
 		CREATE INDEX tableC_a_b_idx ON tableC(a, b);
 		CREATE SEQUENCE seqD INCREMENT BY 10 CYCLE MINVALUE 100 NO MAXVALUE START 500;
 
@@ -116,7 +116,7 @@ func TestOpen(t *testing.T) {
 		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":10, "type":"table"}`,
 		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":11, "type":"index"}`,
 		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":12, "type":"table"}`,
-		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (...)", "namespace":13, "type":"table"}`,
+		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b BOOLEAN)", "namespace":13, "type":"table"}`,
 		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":14, "type":"index"}`,
 		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
