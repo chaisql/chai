@@ -76,7 +76,9 @@ func main() {
         CREATE TABLE user(
             id              INT     PRIMARY KEY,
             name            TEXT    NOT NULL,
-            address.city    TEXT    DEFAULT "?",
+            address (
+                city        TEXT    DEFAULT "?",
+            ),
             friends         ARRAY,
 
             UNIQUE(name)
