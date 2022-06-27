@@ -67,7 +67,7 @@ func (s *BatchSession) Exists(k []byte) (bool, error) {
 }
 
 func (s *BatchSession) ensureBatchSize() error {
-	if len(s.Batch.Repr()) < s.maxBatchSize {
+	if s.Batch.Len() < s.maxBatchSize {
 		return nil
 	}
 
