@@ -26,7 +26,7 @@ func TestExecSQL(t *testing.T) {
 	`), &got)
 	assert.NoError(t, err)
 
-	require.Equal(t, "{\n  \"a\": 1,\n  \"b\": 2\n}\n{\n  \"a\": 2,\n  \"b\": 2\n}\n{\n  \"a\": 3,\n  \"b\": 2\n}\n{\n  \"a\": 1,\n  \"b\": 2\n}\n{\n  \"a\": 2,\n  \"b\": 2\n}\n{\n  \"a\": 3,\n  \"b\": 2\n}\n", got.String())
+	require.Equal(t, "{\n  \"a\": 1,\n  \"b\": 2\n}\n{\n  \"a\": 2,\n  \"b\": 2\n}\n{\n  \"a\": 3,\n  \"b\": 2\n}\n", got.String())
 
 	// Ensure that the data is present.
 	doc, err := db.QueryDocument("SELECT * FROM test")
