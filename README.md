@@ -35,7 +35,7 @@ Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc]
 Install the Genji database
 
 ```bash
-go get github.com/genjidb/genji
+go install github.com/genjidb/genji/cmd/genji@latest
 ```
 
 ## Usage
@@ -206,7 +206,7 @@ The genji command line provides an SQL shell that can be used to create, modify 
 Make sure the Genji command line is installed:
 
 ```bash
-go get github.com/genjidb/genji/cmd/genji
+go install github.com/genjidb/genji/cmd/genji@latest
 ```
 
 Example:
