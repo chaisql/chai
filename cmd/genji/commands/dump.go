@@ -70,7 +70,7 @@ $ genji dump -f dump.sql my.db`,
 			w = file
 		}
 
-		return dbutil.Dump(c.Context, db, w, tables...)
+		return dbutil.Dump(db, w, tables...)
 	}
 
 	return &cmd

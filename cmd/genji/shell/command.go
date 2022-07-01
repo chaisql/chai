@@ -158,7 +158,7 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 		}
 	}
 
-	indexes, err := dbutil.ListIndexes(context.Background(), db, tableName)
+	indexes, err := dbutil.ListIndexes(db, tableName)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func runSaveCmd(ctx context.Context, db *genji.DB, dbPath string) error {
 
 	var dbDump bytes.Buffer
 
-	err = dbutil.Dump(ctx, db, &dbDump)
+	err = dbutil.Dump(db, &dbDump)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func runSaveCmd(ctx context.Context, db *genji.DB, dbPath string) error {
 	return otherDB.Exec(dbDump.String())
 }
 
-func runImportCmd(ctx context.Context, db *genji.DB, fileType, path, table string) error {
+func runImportCmd(db *genji.DB, fileType, path, table string) error {
 	if strings.ToLower(fileType) != "csv" {
 		return errors.New("TYPE should be csv")
 	}

@@ -96,7 +96,7 @@ in the same transaction, use -t`,
 		}
 		defer db.Close()
 
-		return dbutil.Bench(c.Context, db, query, dbutil.BenchOptions{
+		return dbutil.Bench(db, query, dbutil.BenchOptions{
 			Init:       c.String("init"),
 			N:          c.Int("number"),
 			SampleSize: c.Int("sample"),

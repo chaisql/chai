@@ -1,7 +1,6 @@
 package dbutil
 
 import (
-	"context"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -30,7 +29,7 @@ type execer func(q string, args ...interface{}) error
 
 // Bench takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
-func Bench(ctx context.Context, db *genji.DB, query string, opt BenchOptions) error {
+func Bench(db *genji.DB, query string, opt BenchOptions) error {
 	var p preparer = db
 	var e execer = db.Exec
 
