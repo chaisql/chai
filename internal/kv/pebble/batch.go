@@ -1,11 +1,12 @@
-package kv
+package pebble
 
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/internal/kv"
 )
 
-var _ Session = (*BatchSession)(nil)
+var _ kv.Session = (*BatchSession)(nil)
 
 const (
 	// 10MB
@@ -17,7 +18,7 @@ var (
 )
 
 type BatchSession struct {
-	Store           *Store
+	Store           kv.Store
 	DB              *pebble.DB
 	Batch           *pebble.Batch
 	closed          bool
@@ -25,7 +26,7 @@ type BatchSession struct {
 	maxBatchSize    int
 }
 
-func (s *BatchSession) Commit() error {
+func (s *BatchSession) Commit(opts ...kv.CommitOptionFunc) error {
 	if s.closed {
 		return errors.New("already closed")
 	}
@@ -37,7 +38,18 @@ func (s *BatchSession) Commit() error {
 		return err
 	}
 
-	err = s.Batch.Commit(nil)
+	w := pebble.Sync
+
+	opt := &kv.CommitOption{}
+	for i := range opts {
+		opts[i](opt)
+	}
+
+	if opt.NoSync {
+		w = pebble.NoSync
+	}
+
+	err = s.Batch.Commit(w)
 	if err != nil {
 		return err
 	}
@@ -105,7 +117,7 @@ func (s *BatchSession) Insert(k, v []byte) error {
 		return err
 	}
 	if ok {
-		return ErrKeyAlreadyExists
+		return kv.ErrKeyAlreadyExists
 	}
 
 	s.rollbackSegment.EnqueueOp(k, kvOpInsert)
@@ -169,6 +181,9 @@ func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
 	return nil
 }
 
-func (s *BatchSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
-	return s.Batch.NewIter(opts)
+func (s *BatchSession) Iterator(start []byte, end []byte) kv.Iterator {
+	return s.Batch.NewIter(&pebble.IterOptions{
+		LowerBound: start,
+		UpperBound: end,
+	})
 }

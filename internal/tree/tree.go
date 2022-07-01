@@ -5,7 +5,6 @@ import (
 	"math"
 
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/types"
@@ -161,11 +160,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		return err
 	}
 
-	opts := pebble.IterOptions{
-		LowerBound: start,
-		UpperBound: end,
-	}
-	it := t.Session.Iterator(&opts)
+	it := t.Session.Iterator(start, end)
 	defer it.Close()
 
 	if !reverse {

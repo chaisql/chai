@@ -2,6 +2,7 @@ package database_test
 
 import (
 	"fmt"
+	kvpebble "github.com/genjidb/genji/internal/kv/pebble"
 	"testing"
 
 	"github.com/cockroachdb/errors"
@@ -22,7 +23,7 @@ func values(vs ...types.Value) []types.Value {
 
 func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 	pdb := testutil.NewMemPebble(t)
-	session := kv.NewStore(pdb, kv.Options{
+	session := kvpebble.NewStore(pdb, kv.Options{
 		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
 		MaxBatchSize:             1 << 7,
 	}).NewBatchSession()

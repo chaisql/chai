@@ -1,4 +1,4 @@
-package kv_test
+package pebble_test
 
 import (
 	"bytes"
@@ -15,6 +15,8 @@ import (
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
+
+	kvpebble "github.com/genjidb/genji/internal/kv/pebble"
 )
 
 func getValue(t *testing.T, st kv.Session, key []byte) []byte {
@@ -27,7 +29,7 @@ func TestReadOnly(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewStore(pdb, kv.Options{}).NewSnapshotSession()
+		sro := kvpebble.NewStore(pdb, kv.Options{}).NewSnapshotSession()
 		defer sro.Close()
 
 		tests := []struct {
@@ -53,7 +55,7 @@ func TestReadOnly(t *testing.T) {
 func kvBuilder(t testing.TB) kv.Session {
 	pdb := testutil.NewPebble(t)
 
-	s := kv.NewStore(pdb, kv.Options{
+	s := kvpebble.NewStore(pdb, kv.Options{
 		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
 		MaxBatchSize:             1 << 7,
 	}).NewBatchSession()
@@ -67,7 +69,7 @@ func kvBuilder(t testing.TB) kv.Session {
 func TestBatchCommit(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
-	store := kv.NewStore(pdb, kv.Options{
+	store := kvpebble.NewStore(pdb, kv.Options{
 		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
 		MaxBatchSize:             1 << 7,
 	})
@@ -111,7 +113,7 @@ func TestBatchCommit(t *testing.T) {
 func TestRollback(t *testing.T) {
 	pdb := testutil.NewPebble(t)
 
-	store := kv.NewStore(pdb, kv.Options{
+	store := kvpebble.NewStore(pdb, kv.Options{
 		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
 		MaxBatchSize:             1 << 7,
 	})
@@ -239,7 +241,7 @@ func TestStoreDelete(t *testing.T) {
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
-		it := st.Iterator(nil)
+		it := st.Iterator(nil, nil)
 		defer it.Close()
 		i := 0
 		for it.First(); it.Valid(); it.Next() {

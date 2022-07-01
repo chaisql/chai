@@ -1,6 +1,7 @@
-package kv
+package pebble
 
 import (
+	"github.com/genjidb/genji/internal/kv"
 	"sync/atomic"
 
 	"github.com/cockroachdb/errors"
@@ -24,14 +25,14 @@ func (s *snapshot) Done() error {
 }
 
 type SnapshotSession struct {
-	Store    *Store
+	Store    kv.Store
 	Snapshot *snapshot
 	closed   bool
 }
 
-var _ Session = (*SnapshotSession)(nil)
+var _ kv.Session = (*SnapshotSession)(nil)
 
-func (s *SnapshotSession) Commit() error {
+func (s *SnapshotSession) Commit(opts ...kv.CommitOptionFunc) error {
 	return errors.New("cannot commit in read-only mode")
 }
 
@@ -71,6 +72,9 @@ func (s *SnapshotSession) DeleteRange(start []byte, end []byte) error {
 	return errors.New("cannot delete range in read-only mode")
 }
 
-func (s *SnapshotSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
-	return s.Snapshot.snapshot.NewIter(opts)
+func (s *SnapshotSession) Iterator(start []byte, end []byte) kv.Iterator {
+	return s.Snapshot.snapshot.NewIter(&pebble.IterOptions{
+		LowerBound: start,
+		UpperBound: end,
+	})
 }

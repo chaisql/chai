@@ -1,113 +1,83 @@
 package kv
 
-import (
-	"sync"
-
-	"github.com/cockroachdb/pebble"
-)
-
-type Store struct {
-	db              *pebble.DB
-	opts            Options
-	rollbackSegment *RollbackSegment
-
-	// holds the shared snapshot read by all the read sessions
-	// when a write session is open.
-	// when no write session is open, the snapshot is nil
-	// and every read session will use db.NewSnapshot()
-	sharedSnapshot struct {
-		sync.RWMutex
-
-		snapshot *snapshot
-	}
-}
+import "github.com/cockroachdb/errors"
 
 type Options struct {
 	RollbackSegmentNamespace int64
 	MaxBatchSize             int
 	MaxTransientBatchSize    int
+	Extra                    map[string]string
 }
 
-func NewStore(db *pebble.DB, opts Options) *Store {
-	if opts.MaxBatchSize <= 0 {
-		opts.MaxBatchSize = defaultMaxBatchSize
-	}
-	if opts.MaxTransientBatchSize <= 0 {
-		opts.MaxTransientBatchSize = defaultMaxTransientBatchSize
-	}
+type Store interface {
+	NewSnapshotSession() Session
+	NewBatchSession() Session
+	NewTransientSession() Session
 
-	return &Store{
-		db:              db,
-		opts:            opts,
-		rollbackSegment: NewRollbackSegment(db, opts.RollbackSegmentNamespace),
-	}
+	LockSharedSnapshot()
+	UnlockSharedSnapshot()
+	Rollback() error
+
+	Close() error
 }
 
-func (s *Store) NewSnapshotSession() *SnapshotSession {
-	var sn *snapshot
+type CommitOptionFunc = func(opt *CommitOption)
 
-	// if there is a shared snapshot, use it.
-	s.sharedSnapshot.RLock()
-	sn = s.sharedSnapshot.snapshot
-
-	// if there is no shared snapshot, create one.
-	if sn == nil {
-		sn = &snapshot{
-			snapshot: s.db.NewSnapshot(),
-			refCount: 1,
-		}
-	} else {
-		// if there is a shared snapshot, increment the ref count.
-		sn.Incr()
-	}
-
-	s.sharedSnapshot.RUnlock()
-
-	return &SnapshotSession{
-		Store:    s,
-		Snapshot: sn,
-	}
+type CommitOption struct {
+	NoSync bool
 }
 
-func (s *Store) NewBatchSession() *BatchSession {
-	// before creating a batch session, create a shared snapshot
-	// at this point-in-time.
-	s.LockSharedSnapshot()
+var NoSync = func(opt *CommitOption) {
+	opt.NoSync = true
+}
 
-	b := s.db.NewIndexedBatch()
+type Session interface {
+	Commit(opts ...CommitOptionFunc) error
 
-	return &BatchSession{
-		Store:           s,
-		DB:              s.db,
-		Batch:           b,
-		rollbackSegment: s.rollbackSegment,
-		maxBatchSize:    s.opts.MaxBatchSize,
+	Close() error
+	// Insert inserts a key-value pair. If it already exists, it returns ErrKeyAlreadyExists.
+	Insert(k, v []byte) error
+	// Put stores a key-value pair. If it already exists, it overrides it.
+	Put(k, v []byte) error
+	// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
+	Get(k []byte) ([]byte, error)
+	// Exists returns whether a key exists and is visible by the current session.
+	Exists(k []byte) (bool, error)
+	// Delete a record by key. If not found, returns ErrKeyNotFound.
+	Delete(k []byte) error
+	DeleteRange(start []byte, end []byte) error
+
+	Iterator(start []byte, end []byte) Iterator
+}
+
+type Iterator interface {
+	First() bool
+	Next() bool
+
+	Last() bool // reverse
+	Prev() bool
+
+	Valid() bool
+	Error() error
+
+	Key() []byte
+	Value() []byte
+	Close() error
+}
+
+type StoreEngine interface {
+	New(opt Options) (Store, error)
+}
+
+var engines = map[string]StoreEngine{}
+
+func RegisterEngine(engine string, store StoreEngine) {
+	engines[engine] = store
+}
+
+func NewStore(engine string, opt Options) (Store, error) {
+	if e, ok := engines[engine]; ok {
+		return e.New(opt)
 	}
-}
-
-func (s *Store) NewTransientSession() *TransientSession {
-	return &TransientSession{
-		db:           s.db,
-		maxBatchSize: s.opts.MaxTransientBatchSize,
-	}
-}
-
-func (s *Store) Rollback() error {
-	return s.rollbackSegment.Rollback()
-}
-
-func (s *Store) LockSharedSnapshot() {
-	s.sharedSnapshot.Lock()
-	s.sharedSnapshot.snapshot = &snapshot{
-		snapshot: s.db.NewSnapshot(),
-		refCount: 1,
-	}
-	s.sharedSnapshot.Unlock()
-}
-
-func (s *Store) UnlockSharedSnapshot() {
-	s.sharedSnapshot.Lock()
-	s.sharedSnapshot.snapshot.Done()
-	s.sharedSnapshot.snapshot = nil
-	s.sharedSnapshot.Unlock()
+	return nil, errors.Errorf("unknown engine %s", engine)
 }

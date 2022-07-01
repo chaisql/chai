@@ -1,15 +1,16 @@
-package kv
+package pebble
 
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/internal/kv"
 )
 
 const (
 	defaultMaxTransientBatchSize int = 1 << 19 // 512KB
 )
 
-var _ Session = (*TransientSession)(nil)
+var _ kv.Session = (*TransientSession)(nil)
 
 type TransientSession struct {
 	db           *pebble.DB
@@ -18,7 +19,7 @@ type TransientSession struct {
 	closed       bool
 }
 
-func (s *TransientSession) Commit() error {
+func (s *TransientSession) Commit(opts ...kv.CommitOptionFunc) error {
 	return errors.New("cannot commit in transient mode")
 }
 
@@ -64,7 +65,7 @@ func (s *TransientSession) Put(k, v []byte) error {
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *TransientSession) Get(k []byte) ([]byte, error) {
 	if s.batch == nil {
-		return nil, errors.WithStack(ErrKeyNotFound)
+		return nil, errors.WithStack(kv.ErrKeyNotFound)
 	}
 
 	return get(s.batch, k)
@@ -82,13 +83,13 @@ func (s *TransientSession) Exists(k []byte) (bool, error) {
 // Delete a record by key. If not found, returns ErrKeyNotFound.
 func (s *TransientSession) Delete(k []byte) error {
 	if s.batch == nil {
-		return errors.WithStack(ErrKeyNotFound)
+		return errors.WithStack(kv.ErrKeyNotFound)
 	}
 
 	_, closer, err := s.batch.Get(k)
 	if err != nil {
 		if errors.Is(err, pebble.ErrNotFound) {
-			return errors.WithStack(ErrKeyNotFound)
+			return errors.WithStack(kv.ErrKeyNotFound)
 		}
 
 		return err
@@ -109,10 +110,16 @@ func (s *TransientSession) DeleteRange(start []byte, end []byte) error {
 	return s.batch.DeleteRange(start, end, nil)
 }
 
-func (s *TransientSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
+func (s *TransientSession) Iterator(start []byte, end []byte) kv.Iterator {
 	if s.batch == nil {
-		return s.db.NewIter(opts)
+		return s.db.NewIter(&pebble.IterOptions{
+			LowerBound: start,
+			UpperBound: end,
+		})
 	}
 
-	return s.batch.NewIter(opts)
+	return s.batch.NewIter(&pebble.IterOptions{
+		LowerBound: start,
+		UpperBound: end,
+	})
 }

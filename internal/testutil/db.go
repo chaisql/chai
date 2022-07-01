@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	kvpebble "github.com/genjidb/genji/internal/kv/pebble"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -60,7 +61,7 @@ func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 
 	pdb := NewMemPebble(t)
 
-	session := kv.NewStore(pdb, kv.Options{
+	session := kvpebble.NewStore(pdb, kv.Options{
 		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
 		MaxBatchSize:             1 << 7,
 	}).NewBatchSession()
@@ -82,7 +83,9 @@ func NewTestDB(t testing.TB) *database.Database {
 func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	t.Helper()
 
-	db, err := database.New(pdb)
+	db, err := database.New(kvpebble.NewStore(pdb, kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+	}))
 	assert.NoError(t, err)
 
 	sess := db.Store.NewSnapshotSession()

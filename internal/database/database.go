@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 )
@@ -16,7 +15,6 @@ const (
 )
 
 type Database struct {
-	DB      *pebble.DB
 	Catalog *Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
@@ -38,7 +36,7 @@ type Database struct {
 	closeOnce sync.Once
 
 	// Underlying kv store.
-	Store *kv.Store
+	Store kv.Store
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -52,14 +50,11 @@ type TxOptions struct {
 }
 
 // New initializes the DB using the given engine.
-func New(pdb *pebble.DB) (*Database, error) {
+func New(s kv.Store) (*Database, error) {
 	db := Database{
-		DB:        pdb,
 		Catalog:   NewCatalog(),
 		writetxmu: &sync.Mutex{},
-		Store: kv.NewStore(pdb, kv.Options{
-			RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
-		}),
+		Store:     s,
 	}
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
