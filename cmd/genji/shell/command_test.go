@@ -135,7 +135,7 @@ func TestSaveCommand(t *testing.T) {
 	require.Equal(t, 2, res.B)
 
 	// ensure that the index has been created
-	indexes, err := dbutil.ListIndexes(context.Background(), db, "")
+	indexes, err := dbutil.ListIndexes(db, "")
 	assert.NoError(t, err)
 	require.Len(t, indexes, 1)
 	require.Equal(t, "idx_a_b", indexes[0])

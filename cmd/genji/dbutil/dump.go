@@ -1,7 +1,6 @@
 package dbutil
 
 import (
-	"context"
 	"fmt"
 	"io"
 
@@ -13,7 +12,7 @@ import (
 
 // Dump takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
-func Dump(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) error {
+func Dump(db *genji.DB, w io.Writer, tables ...string) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err
@@ -77,7 +76,7 @@ func dumpTable(tx *genji.Tx, w io.Writer, query, tableName string) error {
 
 // DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
 // If tables are provided, only selected tables will be outputted.
-func DumpSchema(ctx context.Context, db *genji.DB, w io.Writer, tables ...string) error {
+func DumpSchema(db *genji.DB, w io.Writer, tables ...string) error {
 	tx, err := db.Begin(false)
 	if err != nil {
 		return err

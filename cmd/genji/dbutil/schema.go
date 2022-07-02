@@ -1,8 +1,6 @@
 package dbutil
 
 import (
-	"context"
-
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -33,7 +31,7 @@ func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) erro
 	})
 }
 
-func ListIndexes(ctx context.Context, db *genji.DB, tableName string) ([]string, error) {
+func ListIndexes(db *genji.DB, tableName string) ([]string, error) {
 	var listName []string
 	q := "SELECT sql FROM __genji_catalog WHERE type = 'index'"
 	if tableName != "" {

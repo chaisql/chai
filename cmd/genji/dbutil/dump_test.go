@@ -2,7 +2,6 @@ package dbutil
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"testing"
 
@@ -87,7 +86,7 @@ func TestDump(t *testing.T) {
 			want.WriteString("COMMIT;\n")
 
 			var got bytes.Buffer
-			err = Dump(context.Background(), db, &got, tt.tables...)
+			err = Dump(db, &got, tt.tables...)
 			assert.NoError(t, err)
 
 			require.Equal(t, want.String(), got.String())

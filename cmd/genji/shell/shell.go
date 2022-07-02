@@ -135,7 +135,7 @@ func Run(ctx context.Context, opts *Options) error {
 	go func() {
 		defer cancel()
 
-		err := sh.runPrompt(ctx, promptExecCh)
+		err := sh.runPrompt(promptExecCh)
 		if err != nil && !errors.Is(err, errExitCtrlD) {
 			fmt.Fprintln(os.Stderr, err.Error())
 		}
@@ -213,7 +213,7 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 // User input is sent to the execCh channel which must deal with parsing and error handling.
 // Once the execution of the user input is done by the reader of the channel, it must
 // send a string back to execCh so that this function will display another prompt.
-func (sh *Shell) runPrompt(ctx context.Context, execCh chan (string)) error {
+func (sh *Shell) runPrompt(execCh chan (string)) error {
 	sh.loadCommandSuggestions()
 	history, err := sh.loadHistory()
 	if err != nil {
@@ -462,7 +462,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 		return runIndexesCmd(sh.db, tableName, os.Stdout)
 	case ".dump":
-		return dbutil.Dump(ctx, sh.db, os.Stdout, cmd[1:]...)
+		return dbutil.Dump(sh.db, os.Stdout, cmd[1:]...)
 	case ".save":
 		var path string
 		if len(cmd) == 2 {
@@ -473,13 +473,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 		return runSaveCmd(ctx, sh.db, path)
 	case ".schema":
-		return dbutil.DumpSchema(ctx, sh.db, os.Stdout, cmd[1:]...)
+		return dbutil.DumpSchema(sh.db, os.Stdout, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
 			return fmt.Errorf(getUsage(".import"))
 		}
 
-		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
+		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
 	case ".doc":
 		if len(cmd) != 2 {
 			return fmt.Errorf(getUsage(".doc"))
@@ -504,7 +504,7 @@ func (sh *Shell) changelivePrefix() (string, bool) {
 }
 
 // listTables returns all the tables of the database, except the system ones.
-func (sh *Shell) listTables(ctx context.Context) ([]string, error) {
+func (sh *Shell) listTables() ([]string, error) {
 	var tables []string
 
 	res, err := sh.db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name NOT LIKE '__genji%'")
@@ -546,12 +546,12 @@ func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
 		expected := e.Expected
 		switch expected[0] {
 		case "table_name":
-			expected, err = sh.listTables(context.Background())
+			expected, err = sh.listTables()
 			if err != nil {
 				return suggestions
 			}
 		case "index_name":
-			expected, err = dbutil.ListIndexes(context.Background(), sh.db, "")
+			expected, err = dbutil.ListIndexes(sh.db, "")
 			if err != nil {
 				return suggestions
 			}
