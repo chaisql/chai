@@ -124,6 +124,10 @@ func Is[T any](v Value) (T, bool) {
 	return vv.v, true
 }
 
+func IsNull(v Value) bool {
+	return v == nil || v.Type() == NullValue
+}
+
 // IsTruthy returns whether v is not equal to the zero value of its type.
 func IsTruthy(v Value) (bool, error) {
 	if v.Type() == NullValue {

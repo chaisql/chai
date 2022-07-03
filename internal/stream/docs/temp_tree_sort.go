@@ -3,6 +3,7 @@ package docs
 import (
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
@@ -49,6 +50,17 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 		v, err := op.Expr.Eval(out)
 		if err != nil {
 			return err
+		}
+
+		if types.IsNull(v) {
+			// the expression might be pointing to the original document.
+			v, err = op.Expr.Eval(out.Outer)
+			if err != nil {
+				// the only valid error here is a missing field.
+				if !errors.Is(err, types.ErrFieldNotFound) {
+					return err
+				}
+			}
 		}
 
 		doc, ok := out.GetDocument()
