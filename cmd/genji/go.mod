@@ -6,7 +6,7 @@ require (
 	github.com/agnivade/levenshtein v1.1.1
 	github.com/c-bata/go-prompt v0.2.6
 	github.com/cockroachdb/errors v1.9.0
-	github.com/genjidb/genji v0.15.0
+	github.com/genjidb/genji v0.16.0
 	github.com/stretchr/testify v1.7.5
 	github.com/urfave/cli/v2 v2.3.0
 	go.uber.org/multierr v1.7.0
@@ -45,3 +45,5 @@ require (
 	golang.org/x/sys v0.0.0-20220624220833-87e55d714810 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/genjidb/genji v0.16.0 => ../../
