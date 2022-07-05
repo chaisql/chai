@@ -11,7 +11,6 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
-	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query"
@@ -37,7 +36,7 @@ func NewPebble(t testing.TB) *pebble.DB {
 
 	dir := TempDir(t)
 
-	db, err := ipebble.Open(filepath.Join(dir, "pebble"), nil)
+	db, err := pebble.Open(filepath.Join(dir, "pebble"), nil)
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -49,7 +48,7 @@ func NewPebble(t testing.TB) *pebble.DB {
 func NewMemPebble(t testing.TB) *pebble.DB {
 	t.Helper()
 
-	pdb, err := ipebble.Open("", &pebble.Options{FS: vfs.NewStrictMem()})
+	pdb, err := database.OpenPebble("", &pebble.Options{FS: vfs.NewStrictMem()})
 	assert.NoError(t, err)
 
 	return pdb
@@ -82,12 +81,9 @@ func NewTestDB(t testing.TB) *database.Database {
 func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
 	t.Helper()
 
-	db, err := database.New(pdb)
-	assert.NoError(t, err)
-
-	sess := db.Store.NewSnapshotSession()
-	defer sess.Close()
-	err = catalogstore.LoadCatalog(sess, db.Catalog)
+	db, err := database.New(pdb, &database.Options{
+		CatalogLoader: catalogstore.LoadCatalog,
+	})
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {

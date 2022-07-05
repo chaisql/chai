@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 )
@@ -41,6 +42,19 @@ type Database struct {
 	Store *kv.Store
 }
 
+// Options are passed to Open to control
+// how the database is loaded.
+type Options struct {
+	CatalogLoader func(tx *Transaction) (*Catalog, error)
+}
+
+// CatalogLoader loads the catalog from the disk.
+// It may parse a SQL representation of the catalog
+// and return a Catalog that represents all entities stored on disk.
+type CatalogLoader interface {
+	LoadCatalog(kv.Session) (*Catalog, error)
+}
+
 // TxOptions are passed to Begin to configure transactions.
 type TxOptions struct {
 	// Open a read-only transaction.
@@ -51,11 +65,52 @@ type TxOptions struct {
 	Attached bool
 }
 
-// New initializes the DB using the given engine.
-func New(pdb *pebble.DB) (*Database, error) {
+func Open(path string, opts *Options) (*Database, error) {
+	popts := pebble.Options{
+		Comparer: DefaultComparer,
+	}
+
+	if path == ":memory:" {
+		popts.FS = vfs.NewMem()
+		path = ""
+	}
+
+	pdb, err := OpenPebble(path, &popts)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(pdb, opts)
+}
+
+// Open a database with a custom comparer.
+func OpenPebble(path string, opts *pebble.Options) (*pebble.DB, error) {
+	if opts == nil {
+		opts = &pebble.Options{}
+	}
+
+	if opts.Comparer == nil {
+		opts.Comparer = DefaultComparer
+	}
+	return pebble.Open(path, opts)
+}
+
+// DefaultComparer is the default implementation of the Comparer interface for Genji.
+var DefaultComparer = &pebble.Comparer{
+	Compare:        encoding.Compare,
+	Equal:          encoding.Equal,
+	AbbreviatedKey: encoding.AbbreviatedKey,
+	FormatKey:      pebble.DefaultComparer.FormatKey,
+	Separator:      pebble.DefaultComparer.Separator,
+	Successor:      encoding.Successor,
+	// This name is part of the C++ Level-DB implementation's default file
+	// format, and should not be changed.
+	Name: "leveldb.BytewiseComparator",
+}
+
+func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 	db := Database{
 		DB:        pdb,
-		Catalog:   NewCatalog(),
 		writetxmu: &sync.Mutex{},
 		Store: kv.NewStore(pdb, kv.Options{
 			RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
@@ -74,6 +129,15 @@ func New(pdb *pebble.DB) (*Database, error) {
 		return nil, err
 	}
 	defer tx.Rollback()
+
+	if opts.CatalogLoader == nil {
+		db.Catalog = NewCatalog()
+	} else {
+		db.Catalog, err = opts.CatalogLoader(tx)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to load catalog")
+		}
+	}
 
 	err = db.cleanupTransientNamespaces(tx)
 	if err != nil {
@@ -132,7 +196,12 @@ func (db *Database) closeDatabase() error {
 		}
 	}
 
-	return tx.Session.Commit()
+	err = tx.Session.Commit()
+	if err != nil {
+		return err
+	}
+
+	return db.DB.Close()
 }
 
 // GetAttachedTx returns the transaction attached to the database. It returns nil if there is no

@@ -380,11 +380,7 @@ func TestSequence(t *testing.T) {
 		err = seq.Release(tx, db.Catalog)
 		assert.NoError(t, err)
 
-		c := database.NewCatalog()
-		err = c.Init(tx)
-		assert.NoError(t, err)
-
-		err = catalogstore.LoadCatalog(tx.Session, c)
+		c, err := catalogstore.LoadCatalog(tx)
 		assert.NoError(t, err)
 
 		db.Catalog = c

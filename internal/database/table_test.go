@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
+	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
@@ -126,9 +128,11 @@ func TestTableGetDocument(t *testing.T) {
 // TestTableInsert verifies Insert behaviour.
 func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
-		ng := testutil.NewMemPebble(t)
+		fs := vfs.NewStrictMem()
+		pdb, err := database.OpenPebble("", &pebble.Options{FS: fs})
+		assert.NoError(t, err)
 
-		db1 := testutil.NewTestDBWithPebble(t, ng)
+		db1 := testutil.NewTestDBWithPebble(t, pdb)
 
 		insertDoc := func(db *database.Database) (rawKey *tree.Key) {
 			t.Helper()
@@ -153,11 +157,13 @@ func TestTableInsert(t *testing.T) {
 
 		key1 := insertDoc(db1)
 
-		err := db1.Close()
+		err = db1.Close()
 		assert.NoError(t, err)
 
 		// create a new database object
-		db2 := testutil.NewTestDBWithPebble(t, ng)
+		pdb, err = database.OpenPebble("", &pebble.Options{FS: fs})
+		assert.NoError(t, err)
+		db2 := testutil.NewTestDBWithPebble(t, pdb)
 
 		key2 := insertDoc(db2)
 

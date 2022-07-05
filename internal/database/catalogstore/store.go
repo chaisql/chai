@@ -5,20 +5,23 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
-func LoadCatalog(session kv.Session, c *database.Catalog) error {
-	tx := database.Transaction{
-		Session: session,
-	}
-	tables, indexes, sequences, err := loadCatalogStore(&tx, c.CatalogTable)
+func LoadCatalog(tx *database.Transaction) (*database.Catalog, error) {
+	c := database.NewCatalog()
+
+	err := c.Init(tx)
 	if err != nil {
-		return errors.Wrap(err, "failed to load catalog store")
+		return nil, err
+	}
+
+	tables, indexes, sequences, err := loadCatalogStore(tx, c.CatalogTable)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to load catalog store")
 	}
 
 	for _, tb := range tables {
@@ -44,15 +47,15 @@ func LoadCatalog(session kv.Session, c *database.Catalog) error {
 
 	if len(sequences) > 0 {
 		var seqList []database.Sequence
-		seqList, err = loadSequences(&tx, c, sequences)
+		seqList, err = loadSequences(tx, c, sequences)
 		if err != nil {
-			return errors.Wrap(err, "failed to load sequences")
+			return nil, errors.Wrap(err, "failed to load sequences")
 		}
 
 		c.Cache.Load(nil, nil, seqList)
 	}
 
-	return nil
+	return c, nil
 }
 
 func loadSequences(tx *database.Transaction, c *database.Catalog, info []database.SequenceInfo) ([]database.Sequence, error) {

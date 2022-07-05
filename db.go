@@ -9,13 +9,10 @@ import (
 	"database/sql/driver"
 
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
-	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
@@ -29,41 +26,21 @@ import (
 type DB struct {
 	DB  *database.Database
 	ctx context.Context
-	pdb *pebble.DB
 }
 
 // Open creates a Genji database at the given path.
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database using the BoltDB engine.
 func Open(path string) (*DB, error) {
-	var opts pebble.Options
-
-	if path == ":memory:" {
-		opts.FS = vfs.NewMem()
-		path = ""
-	}
-
-	pdb, err := ipebble.Open(path, &opts)
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := database.New(pdb)
-	if err != nil {
-		return nil, err
-	}
-
-	sess := db.Store.NewSnapshotSession()
-	defer sess.Close()
-
-	err = catalogstore.LoadCatalog(sess, db.Catalog)
+	db, err := database.Open(path, &database.Options{
+		CatalogLoader: catalogstore.LoadCatalog,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{
-		pdb: pdb,
-		DB:  db,
+		DB: db,
 	}, nil
 }
 
@@ -75,14 +52,7 @@ func (db DB) WithContext(ctx context.Context) *DB {
 
 // Close the database.
 func (db *DB) Close() error {
-	err := db.DB.Close()
-	if err != nil {
-		_ = db.pdb.Close()
-
-		return err
-	}
-
-	return db.pdb.Close()
+	return db.DB.Close()
 }
 
 // Begin starts a new transaction.
