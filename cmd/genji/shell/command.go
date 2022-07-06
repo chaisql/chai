@@ -91,6 +91,12 @@ var commands = []command{
 		DisplayName: ".timer",
 		Description: "Display the execution time after each query or hide it.",
 	},
+	{
+		Name:        ".restore",
+		Options:     "[dumpFile]",
+		DisplayName: ".restore",
+		Description: "The restore command can restore a database from a text file.",
+	},
 }
 
 func getUsage(cmdName string) string {
@@ -145,7 +151,7 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 }
 
 // runIndexesCmd displays a list of indexes. If table is non-empty, it only
-// display that table's indexes. If not, it displays all indexes.
+// displays that table's indexes. If not, it displays all indexes.
 func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {

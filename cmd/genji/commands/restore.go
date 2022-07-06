@@ -1,9 +1,6 @@
 package commands
 
 import (
-	"io/ioutil"
-	"os"
-
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/urfave/cli/v2"
@@ -20,32 +17,11 @@ func NewRestoreCommand() (cmd *cli.Command) {
 	$ genji restore dump.sql mydb`,
 		Flags: []cli.Flag{},
 		Action: func(c *cli.Context) error {
-			if c.Args().Len() != 2 {
+			args := c.Args()
+			if args.Len() != 2 {
 				return errors.New(cmd.UsageText)
 			}
-			dbPath := c.Args().Get(c.Args().Len() - 1)
-			if dbPath == "" {
-				return errors.New("database path expected")
-			}
-
-			f := c.Args().First()
-			if f == "" {
-				return errors.New("dump file expected")
-			}
-
-			file, err := os.Open(f)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-
-			db, err := dbutil.OpenDB(c.Context, dbPath)
-			if err != nil {
-				return err
-			}
-			defer db.Close()
-
-			return dbutil.ExecSQL(c.Context, db, file, ioutil.Discard)
+			return dbutil.Restore(c.Context, nil, args.First(), args.Get(args.Len()-1))
 		},
 	}
 }

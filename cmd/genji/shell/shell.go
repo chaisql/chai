@@ -464,14 +464,10 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 	case ".dump":
 		return dbutil.Dump(sh.db, os.Stdout, cmd[1:]...)
 	case ".save":
-		var path string
-		if len(cmd) == 2 {
-			path = cmd[1]
-		} else {
-			return fmt.Errorf("can't save without output path")
+		if len(cmd) != 2 {
+			return fmt.Errorf("cannot save without output path")
 		}
-
-		return runSaveCmd(ctx, sh.db, path)
+		return runSaveCmd(ctx, sh.db, cmd[1])
 	case ".schema":
 		return dbutil.DumpSchema(sh.db, os.Stdout, cmd[1:]...)
 	case ".import":
@@ -485,6 +481,11 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			return fmt.Errorf(getUsage(".doc"))
 		}
 		return runDocCmd(cmd[1])
+	case ".restore":
+		if len(cmd) != 2 {
+			return fmt.Errorf(getUsage(".restore"))
+		}
+		return dbutil.Restore(ctx, sh.db, cmd[1], "./")
 	default:
 		return displaySuggestions(in)
 	}
