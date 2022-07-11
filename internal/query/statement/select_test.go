@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSelectStmt(t *testing.T) {
@@ -95,9 +96,9 @@ func TestSelectStmt(t *testing.T) {
 		{"With multiple maxs", "SELECT MAX(color), MAX(weight) FROM test", false, `[{"MAX(color)": "red", "MAX(weight)": 200}]`, nil},
 		{"With sum", "SELECT SUM(k) FROM test", false, `[{"SUM(k)": 6}]`, nil},
 		{"With multiple sums", "SELECT SUM(color), SUM(weight) FROM test", false, `[{"SUM(color)": null, "SUM(weight)": 300}]`, nil},
-		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, `[]`, nil},
-		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, `[]`, nil},
-		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, `[]`, nil},
+		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", true, ``, nil},
+		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", true, ``, nil},
+		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", true, ``, nil},
 		// See issue https://github.com/genjidb/genji/issues/283
 		{"With empty WHERE and IN", "SELECT * FROM test WHERE [] IN [];", false, `[]`, nil},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", true, ``, nil},
@@ -229,6 +230,22 @@ func TestSelectStmt(t *testing.T) {
 
 		err = db.Exec("SELECT * FROM foo")
 		assert.Error(t, err)
+	})
+
+	t.Run("with unknown field", func(t *testing.T) {
+		db, err := genji.Open(":memory:")
+		assert.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec("CREATE TABLE test(a INTEGER);")
+		assert.NoError(t, err)
+
+		err = db.Exec(`INSERT INTO test (a) VALUES (1)`)
+		assert.NoError(t, err)
+
+		st, err := db.Query("SELECT a,b FROM test")
+		assert.Error(t, err)
+		defer st.Close()
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {

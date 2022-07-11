@@ -2,14 +2,18 @@ package statement
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/table"
+	"github.com/genjidb/genji/types"
 )
 
 type SelectCoreStmt struct {
@@ -20,21 +24,115 @@ type SelectCoreStmt struct {
 	ProjectionExprs []expr.Expr
 }
 
-func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
+func (stmt *SelectCoreStmt) analyzeExpr(ti *database.TableInfo, e expr.Expr) error {
+	if ti.FieldConstraints.AllowExtraFields {
+		return nil
+	}
+
+	var (
+		prev scanner.Token
+		path string
+	)
+
+	scan := scanner.NewScanner(strings.NewReader(e.String()))
+	for {
+		tok, _, lit := scan.Scan()
+		switch tok {
+		case scanner.IDENT:
+			path += lit
+		case scanner.DOT:
+			path += "."
+		case scanner.WS:
+			if prev == scanner.IDENT {
+				err := analyzePath(strings.Split(path, "."), ti.FieldConstraints)
+				if err != nil {
+					return err
+				}
+			}
+			path = ""
+		case scanner.EOF:
+			if prev == scanner.IDENT {
+				return analyzePath(strings.Split(path, "."), ti.FieldConstraints)
+			}
+			return nil
+		}
+
+		prev = tok
+	}
+
+}
+
+func analyzePath(path []string, fc database.FieldConstraints) error {
+	if fc.AllowExtraFields {
+		return nil
+	}
+
+	f, ok := fc.ByField[path[0]]
+	if !ok {
+		return types.ErrFieldNotFound
+	}
+
+	if len(path) == 1 {
+		return nil
+	}
+
+	return analyzePath(path[1:], f.AnonymousType.FieldConstraints)
+}
+
+func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 	isReadOnly := true
 
-	var s *stream.Stream
+	var (
+		s   *stream.Stream
+		ti  *database.TableInfo
+		err error
+	)
 
 	if stmt.TableName != "" {
+		ti, err = ctx.Catalog.GetTableInfo(stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, pe := range stmt.ProjectionExprs {
+			var err error
+			expr.Walk(pe, func(e expr.Expr) bool {
+				switch e.(type) {
+				case expr.Path:
+					err = analyzePath(strings.Split(e.String(), "."), ti.FieldConstraints)
+					if err != nil {
+						return false
+					}
+
+					return true
+				default:
+					return true
+				}
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		s = s.Pipe(table.Scan(stmt.TableName))
 	}
 
 	if stmt.WhereExpr != nil {
+		err := stmt.analyzeExpr(ti, stmt.WhereExpr)
+		if err != nil {
+			return nil, err
+		}
+
 		s = s.Pipe(docs.Filter(stmt.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 	if stmt.GroupByExpr != nil {
+		err := stmt.analyzeExpr(ti, stmt.GroupByExpr)
+		if err != nil {
+			return nil, err
+		}
+
 		var invalidProjectedField expr.Expr
 		var aggregators []expr.AggregatorBuilder
 
@@ -167,17 +265,31 @@ func NewSelectStatement() *SelectStmt {
 
 // Prepare implements the Preparer interface.
 func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
-	var s *stream.Stream
+	var (
+		coreStmts []*stream.Stream
+		s         *stream.Stream
+		prev      scanner.Token
+		errStmt   []error
+		readOnly  bool
+	)
 
-	var prev scanner.Token
-
-	var coreStmts []*stream.Stream
-	var readOnly bool = true
-
+	readOnly = true
 	for i, coreSelect := range stmt.CompoundSelect {
 		coreStmt, err := coreSelect.Prepare(ctx)
 		if err != nil {
 			return nil, err
+		}
+
+		if stmt.OrderBy != nil {
+			ti, err := ctx.Catalog.GetTableInfo(coreSelect.TableName)
+			if err != nil {
+				return nil, err
+			}
+
+			err = coreSelect.analyzeExpr(ti, stmt.OrderBy)
+			if err != nil {
+				errStmt = append(errStmt, err)
+			}
 		}
 
 		if len(stmt.CompoundSelect) == 1 {
@@ -212,6 +324,10 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 	}
 
 	if stmt.OrderBy != nil {
+		if len(errStmt) == len(stmt.CompoundSelect) {
+			return nil, errStmt[0]
+		}
+
 		if stmt.OrderByDirection == scanner.DESC {
 			s = s.Pipe(docs.TempTreeSortReverse(stmt.OrderBy))
 		} else {
