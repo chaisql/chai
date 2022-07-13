@@ -353,5 +353,28 @@ func abbreviatedValue(key []byte) uint64 {
 	}
 
 	return 0
-	// panic(fmt.Sprintf("unsupported value type: %d, %v", key[0], key))
+}
+
+func Separator(dst, a, b []byte) (foo []byte) {
+	var n, cmp int
+	var idx int
+	var aa []byte = a
+
+	for {
+		if n == len(a) {
+			return a
+		}
+
+		a = a[n:]
+		b = b[n:]
+		idx += n
+
+		cmp, n = compareNextValue(a, b)
+		if cmp != 0 {
+			idx += n
+			dst = append(dst, aa[:idx]...)
+			dst = append(dst, 0xFF)
+			return dst
+		}
+	}
 }

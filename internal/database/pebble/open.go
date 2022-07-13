@@ -23,7 +23,7 @@ var DefaultComparer = &pebble.Comparer{
 	Equal:          encoding.Equal,
 	AbbreviatedKey: encoding.AbbreviatedKey,
 	FormatKey:      pebble.DefaultComparer.FormatKey,
-	Separator:      pebble.DefaultComparer.Separator,
+	Separator:      encoding.Separator,
 	Successor:      encoding.Successor,
 	// This name is part of the C++ Level-DB implementation's default file
 	// format, and should not be changed.
