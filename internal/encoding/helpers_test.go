@@ -243,3 +243,26 @@ func TestAbbreviatedKey(t *testing.T) {
 		})
 	}
 }
+
+func TestSeparator(t *testing.T) {
+	tests := []struct {
+		k1, k2 string
+	}{
+		{`[1, 1]`, `[1, 2]`},
+		{`[1, 1]`, `[1, 3]`},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("Separator(%v, %v)", test.k1, test.k2), func(t *testing.T) {
+			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			k1 := mustNewKey(t, v1.V().(*document.ValueBuffer).Values...)
+			k2 := mustNewKey(t, v2.V().(*document.ValueBuffer).Values...)
+			sep := encoding.Separator(nil, k1, k2)
+			require.LessOrEqual(t, encoding.Compare(k1, sep), 0)
+			require.Less(t, encoding.Compare(sep, k2), 0)
+		})
+	}
+}
