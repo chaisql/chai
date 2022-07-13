@@ -24,6 +24,7 @@ func NewApp() *cli.App {
 		NewDumpCommand(),
 		NewRestoreCommand(),
 		NewBenchCommand(),
+		NewPebbleCommand(),
 	}
 
 	// inject cancelable context to all commands (except the shell command)
