@@ -3,8 +3,8 @@ package statement
 import (
 	"math"
 
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/stream/table"
