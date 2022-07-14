@@ -6,7 +6,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )

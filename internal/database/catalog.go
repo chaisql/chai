@@ -9,7 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/lock"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/lib/atomic"
@@ -422,8 +422,8 @@ func (c *Catalog) RenameTable(tx *Transaction, oldName, newName string) error {
 
 	// Delete the old table info.
 	err = c.CatalogTable.Delete(tx, oldName)
-	if errors.Is(err, errs.ErrDocumentNotFound) {
-		return errors.WithStack(errs.NotFoundError{Name: oldName})
+	if errs.IsNotFoundError(err) {
+		return errors.Wrapf(err, "table %s does not exist", oldName)
 	}
 	if err != nil {
 		return err
@@ -789,7 +789,7 @@ func (c *catalogCache) Get(tp, name string) (Relation, error) {
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errors.WithStack(errs.NotFoundError{Name: name})
+		return nil, errors.WithStack(&errs.NotFoundError{Name: name})
 	}
 
 	return o, nil

@@ -12,11 +12,11 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	ipebble "github.com/genjidb/genji/internal/database/pebble"
 	"github.com/genjidb/genji/internal/environment"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
@@ -329,7 +329,7 @@ func scanDocument(iter document.Iterator) (types.Document, error) {
 	}
 
 	if d == nil {
-		return nil, errors.WithStack(errs.ErrDocumentNotFound)
+		return nil, errors.WithStack(errs.NewDocumentNotFoundError())
 	}
 
 	fb := document.NewFieldBuffer()

@@ -6,8 +6,8 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
@@ -93,7 +93,7 @@ func TestTableGetDocument(t *testing.T) {
 		defer cleanup()
 
 		r, err := tb.GetDocument(tree.NewEncodedKey([]byte("id")))
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		require.True(t, errs.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
 
@@ -203,7 +203,7 @@ func TestTableDelete(t *testing.T) {
 
 		// try again, should fail
 		_, err = tb.GetDocument(key1)
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		require.True(t, errs.IsNotFoundError(err))
 
 		// make sure it didn't also delete the other one
 		res, err := tb.GetDocument(key2)
@@ -220,7 +220,7 @@ func TestTableReplace(t *testing.T) {
 		defer cleanup()
 
 		_, err := tb.Replace(tree.NewEncodedKey([]byte("id")), newDocument())
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		require.True(t, errs.IsNotFoundError(err))
 	})
 
 	t.Run("Should replace the right document", func(t *testing.T) {

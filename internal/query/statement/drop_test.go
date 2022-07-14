@@ -5,7 +5,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -105,7 +105,7 @@ func TestDropSequence(t *testing.T) {
 
 	// Assert that the good index has been dropped.
 	_, err := db.Catalog.GetSequence("seq1")
-	require.IsType(t, errs.NotFoundError{}, errors.Unwrap(err))
+	require.IsType(t, &errs.NotFoundError{}, errors.Unwrap(err))
 	_, err = db.Catalog.GetSequence("seq2")
 	assert.NoError(t, err)
 

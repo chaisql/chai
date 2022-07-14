@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
@@ -342,15 +343,10 @@ type ConstraintViolationError struct {
 	Key        *tree.Key
 }
 
-func (c *ConstraintViolationError) Error() string {
+func (c ConstraintViolationError) Error() string {
 	return fmt.Sprintf("%s constraint error: %s", c.Constraint, c.Paths)
 }
 
 func IsConstraintViolationError(err error) bool {
-	switch err.(type) {
-	case *ConstraintViolationError:
-		return true
-	default:
-		return false
-	}
+	return errors.Is(err, (*ConstraintViolationError)(nil))
 }
