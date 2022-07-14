@@ -6,15 +6,6 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-var (
-	// ErrDocumentNotFound is returned when no document is associated with the provided key.
-	ErrDocumentNotFound = errors.New("document not found")
-
-	// ErrDuplicateDocument is returned when another document is already associated with a given key, primary key,
-	// or if there is a unique index violation.
-	ErrDuplicateDocument = errors.New("duplicate document")
-)
-
 // AlreadyExistsError is returned when to create a table, an index or a sequence
 // with a name that is already used by another resource.
 type AlreadyExistsError struct {
@@ -26,13 +17,15 @@ func (a AlreadyExistsError) Error() string {
 }
 
 func IsAlreadyExistsError(err error) bool {
-	err = errors.UnwrapAll(err)
-	switch err.(type) {
-	case AlreadyExistsError, *AlreadyExistsError:
-		return true
-	default:
-		return false
+	for err != nil {
+		switch err.(type) {
+		case *AlreadyExistsError, AlreadyExistsError:
+			return true
+		}
+		err = errors.Unwrap(err)
 	}
+
+	return false
 }
 
 // NotFoundError is returned when the requested table, index or sequence
@@ -41,16 +34,30 @@ type NotFoundError struct {
 	Name string
 }
 
+func NewDocumentNotFoundError() error {
+	return NewNotFoundError("document")
+}
+
+func NewNotFoundError(name string) error {
+	return &NotFoundError{Name: name}
+}
+
 func (a NotFoundError) Error() string {
+	if a.Name == "document" {
+		return "document not found"
+	}
+
 	return fmt.Sprintf("%q not found", a.Name)
 }
 
 func IsNotFoundError(err error) bool {
-	err = errors.UnwrapAll(err)
-	switch err.(type) {
-	case NotFoundError, *NotFoundError:
-		return true
-	default:
-		return false
+	for err != nil {
+		switch err.(type) {
+		case *NotFoundError, NotFoundError:
+			return true
+		}
+		err = errors.Unwrap(err)
 	}
+
+	return false
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/doc"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/types"
 )
 
@@ -157,8 +157,8 @@ func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	if tableName != "" {
 		_, err := db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName)
 		if err != nil {
-			if errors.Is(err, errs.ErrDocumentNotFound) {
-				return fmt.Errorf("%w: %q", errs.NotFoundError{Name: tableName}, tableName)
+			if errs.IsNotFoundError(err) {
+				return errors.Wrapf(err, "table %s does not exist", tableName)
 			}
 			return err
 		}

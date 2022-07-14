@@ -5,7 +5,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
@@ -86,7 +86,7 @@ func (t *Table) Delete(key *tree.Key) error {
 
 	err := t.Tree.Delete(key)
 	if errors.Is(err, kv.ErrKeyNotFound) {
-		return errors.WithStack(errs.ErrDocumentNotFound)
+		return errors.WithStack(errs.NewNotFoundError(key.String()))
 	}
 
 	return err
@@ -105,7 +105,7 @@ func (t *Table) Replace(key *tree.Key, d types.Document) (types.Document, error)
 		return nil, err
 	}
 	if !ok {
-		return nil, errors.Wrapf(errs.ErrDocumentNotFound, "can't replace key %q", key)
+		return nil, errors.Wrapf(errs.NewNotFoundError(key.String()), "can't replace key %q", key)
 	}
 
 	d, enc, err := t.encodeDocument(d)
@@ -151,7 +151,7 @@ func (t *Table) GetDocument(key *tree.Key) (types.Document, error) {
 	enc, err := t.Tree.Get(key)
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyNotFound) {
-			return nil, errors.WithStack(errs.ErrDocumentNotFound)
+			return nil, errors.WithStack(errs.NewNotFoundError(key.String()))
 		}
 		return nil, fmt.Errorf("failed to fetch document %q: %w", key, err)
 	}

@@ -8,8 +8,8 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/database"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
@@ -68,7 +68,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting a table that doesn't exist should fail.
 			_, err = catalog.GetTable(tx, "unknown")
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "unknown"})
 			}
 
@@ -91,13 +91,13 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting a table that has been dropped should fail.
 			_, err = catalog.GetTable(tx, "test")
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
 			// Dropping a table that doesn't exist should fail.
 			err = catalog.DropTable(tx, "test")
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
@@ -153,7 +153,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Getting the old table should return an error.
 			_, err = catalog.GetTable(tx, "foo")
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
@@ -179,7 +179,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Renaming a non existing table should return an error
 			err = catalog.RenameTable(tx, "foo", "")
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 			}
 
@@ -230,7 +230,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Renaming a non existing table should return an error
 			err = catalog.AddFieldConstraint(tx, "bar", &fieldToAdd, nil)
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "bar"})
 			}
 
@@ -351,7 +351,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
-			if !errors.Is(err, errs.NotFoundError{}) {
+			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
 			}
 
@@ -449,7 +449,7 @@ func TestTxDropIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
 			err := catalog.DropIndex(tx, "idxFoo")
-			assert.ErrorIs(t, err, errs.NotFoundError{Name: "idxFoo"})
+			assert.ErrorIs(t, err, &errs.NotFoundError{Name: "idxFoo"})
 			return nil
 		})
 	})

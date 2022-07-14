@@ -3,12 +3,11 @@ package statement_test
 import (
 	"testing"
 
-	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
 
-	errs "github.com/genjidb/genji/errors"
+	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +32,7 @@ func TestAlterTable(t *testing.T) {
 
 	// Selecting from the old name should fail.
 	err = db.Exec("SELECT * FROM foo")
-	if !errors.Is(err, errs.NotFoundError{}) {
+	if !errs.IsNotFoundError(err) {
 		assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 	}
 

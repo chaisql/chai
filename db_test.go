@@ -11,7 +11,6 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/document"
-	errs "github.com/genjidb/genji/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -184,14 +183,14 @@ func TestQueryDocument(t *testing.T) {
 
 	t.Run("Should return an error if no document", func(t *testing.T) {
 		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		require.True(t, genji.IsNotFoundError(err))
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		assert.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
-		assert.ErrorIs(t, err, errs.ErrDocumentNotFound)
+		require.True(t, genji.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
 }
