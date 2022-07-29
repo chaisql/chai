@@ -14,8 +14,7 @@ type StreamStmt struct {
 	ReadOnly bool
 }
 
-// Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
-// the result.
+// Prepare implements the Preparer interface.
 func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
 	st, err := planner.Optimize(s.Stream, ctx.Catalog)
 	if err != nil {
