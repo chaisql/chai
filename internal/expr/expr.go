@@ -108,11 +108,11 @@ func (e *NamedExpr) String() string {
 type Function interface {
 	Expr
 
-	// Returns the list of parameters this function has received.
+	// Params returns the list of parameters this function has received.
 	Params() []Expr
 }
 
-// A Aggregator is an expression that aggregates documents into one result.
+// An Aggregator is an expression that aggregates documents into one result.
 type Aggregator interface {
 	Expr
 

@@ -20,7 +20,7 @@ type ValueType uint8
 
 // List of supported value types.
 const (
-	// denote the absence of type
+	// AnyValue denotes the absence of type
 	AnyValue ValueType = 0x00
 
 	NullValue ValueType = 0x05
@@ -87,7 +87,7 @@ type Document interface {
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(field string, value Value) error) error
 	// GetByField returns a value by field name.
-	// Must return ErrFieldNotFound if the field doesnt exist.
+	// Must return ErrFieldNotFound if the field doesn't exist.
 	GetByField(field string) (Value, error)
 
 	// MarshalJSON implements the json.Marshaler interface.

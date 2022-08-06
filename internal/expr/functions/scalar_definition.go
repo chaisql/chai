@@ -10,7 +10,7 @@ import (
 )
 
 // A ScalarDefinition is the definition type for functions which operates on scalar values in contrast to other SQL functions
-// such as the SUM aggregator wich operates on expressions instead.
+// such as the SUM aggregator which operates on expressions instead.
 //
 // This difference allows to simply define them with a CallFn function that takes multiple document.Value and
 // return another types.Value, rather than having to manually evaluate expressions (see Definition).
