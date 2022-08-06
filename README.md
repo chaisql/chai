@@ -65,7 +65,9 @@ func main() {
     // If needed, attach context, e.g. (*http.Request).Context().
     db = db.WithContext(context.Background())
 
-    // Create a table with a strict schema
+    // Create a table with a strict schema.
+    // Useful to have full control of the table content.
+    // Notice that it is possible to define constraint on nested documents.
     err = db.Exec(`
         CREATE TABLE user (
             id              INT     PRIMARY KEY,
@@ -78,18 +80,24 @@ func main() {
         )
     `)
 
-    // or a partial schema, using the ellipsis
+    // or a partial schema, using an ellipsis.
+    // Useful to apply constraints only on a few fields, while storing documents of any shape
     err = db.Exec(`
         CREATE TABLE github_issues (
-            ID TEXT PRIMARY KEY,
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            state TEXT NOT NULL,
             ...
-        )
+        );
+
+        CREATE INDEX ON github_issues (state);
     `)
 
     // or a schemaless table
-    err = db.Exec(`
-        CREATE TABLE document_cache;
-    `)
+    // Useful when you need to store data first and explore it later,
+    // or if you the structure of the data is already defined somewhere else
+    // (e.g. documents returned from an API)
+    err = db.Exec(`CREATE TABLE twitter_tweets_v2`)
 
     // Create an index
     err = db.Exec("CREATE INDEX user_city_idx ON user (address.city, address.zipCode)")
