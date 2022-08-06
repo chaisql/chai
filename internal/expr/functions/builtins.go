@@ -241,7 +241,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 }
 
 // Eval returns the result of the aggregation as an integer.
-func (c *CountAggregator) Eval(env *environment.Environment) (types.Value, error) {
+func (c *CountAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	return types.NewIntegerValue(c.Count), nil
 }
 
@@ -342,7 +342,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 }
 
 // Eval return the minimum value.
-func (m *MinAggregator) Eval(env *environment.Environment) (types.Value, error) {
+func (m *MinAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if m.Min == nil {
 		return types.NewNullValue(), nil
 	}
@@ -446,7 +446,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 }
 
 // Eval return the maximum value.
-func (m *MaxAggregator) Eval(env *environment.Environment) (types.Value, error) {
+func (m *MaxAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if m.Max == nil {
 		return types.NewNullValue(), nil
 	}
@@ -553,7 +553,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 }
 
 // Eval return the aggregated sum.
-func (s *SumAggregator) Eval(env *environment.Environment) (types.Value, error) {
+func (s *SumAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.SumF != nil {
 		return types.NewDoubleValue(*s.SumF), nil
 	}
@@ -641,7 +641,7 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 }
 
 // Eval returns the aggregated average as a double.
-func (s *AvgAggregator) Eval(env *environment.Environment) (types.Value, error) {
+func (s *AvgAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.Counter == 0 {
 		return types.NewDoubleValue(0), nil
 	}

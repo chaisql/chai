@@ -192,7 +192,7 @@ func ExprRunner(t *testing.T, testfile string) {
 				} else {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
 						t.Helper()
-						// parse the given epxr
+						// parse the given expr
 						e, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
 						if err != nil {
 							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
