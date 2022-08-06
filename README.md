@@ -243,4 +243,10 @@ Contributions are welcome!
 
 Thank you, [contributors](https://github.com/genjidb/genji/graphs/contributors)!
 
+<a href="https://github.com/genjidb/genji/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=genjidb/genji" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
+
 If you have any doubt, join the [Gophers Slack channel](https://gophers.slack.com/messages/CKPCYQFE0) or open an [issue](https://github.com/genjidb/genji/issues/new).
