@@ -17,25 +17,23 @@
 
 Genji is a database that allows running SQL queries on documents.
 
-Checkout the [SQL documentation](https://genji.dev/docs/genji-sql), the [Go doc](https://pkg.go.dev/github.com/genjidb/genji) and the [usage example](#usage) in the README to get started quickly.
+Checkout the [SQL documentation](https://genji.dev/docs/essentials/sql-introduction/), the [Go doc](https://pkg.go.dev/github.com/genjidb/genji) and the [usage example](#usage) in the README to get started quickly.
 
 > :warning: **Genji's API is still unstable**: Database compatibility is not guaranteed before reaching v1.0.0
 
 ## Features
 
--   **Optional schemas**: Genji tables are schemaless, but it is possible to add constraints on any field to ensure the coherence of data within a table.
--   **On-disk or in memory**: It is possible to store data on disk or in ram. Genji relies on [Pebble](https://github.com/cockroachdb/pebble) to manage data.
--   **Transaction support**: Read-only and read/write transactions are supported by default.
--   **SQL and Documents**: Genji mixes the best of both worlds by combining powerful SQL commands with JSON.
--   **Easy to use, easy to learn**: Genji was designed for simplicity in mind. It is really easy to insert and read documents of any shape.
--   **Compatible** with the `database/sql` package
+- **SQL and documents**: Use a powerful SQL language designed for documents as first-class citizen.
+- **Flexible schemas**: Define your table with strict schemas, partial schemas, or no schemas at all.
+- **Transaction support**: Fully serializable transactions with multiple readers and single writer. Readers don’t block writers and writers don’t block readers.
+- **Compatible** with the `database/sql` package
 
 ## Installation
 
 Install the Genji database
 
 ```bash
-go install github.com/genjidb/genji/cmd/genji@latest
+go install github.com/genjidb/genji
 ```
 
 ## Usage
@@ -62,34 +60,42 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    // Don't forget to close the database when you're done
     defer db.Close()
 
-    // Attach context, e.g. (*http.Request).Context().
+    // If needed, attach context, e.g. (*http.Request).Context().
     db = db.WithContext(context.Background())
 
-    // Create a table. Schemas are optional, you don't need to specify one if not needed
-    err = db.Exec("CREATE TABLE user")
-
-    // or you can create a table with constraints on certain fields
+    // Create a table with a strict schema
     err = db.Exec(`
-        CREATE TABLE user(
+        CREATE TABLE user (
             id              INT     PRIMARY KEY,
-            name            TEXT    NOT NULL,
+            name            TEXT    NOT NULL UNIQUE,
             address (
                 city        TEXT    DEFAULT "?",
+                zipcode     TEXT
             ),
-            friends         ARRAY,
-
-            UNIQUE(name)
+            friends         ARRAY
         )
     `)
 
+    // or a partial schema, using the ellipsis
+    err = db.Exec(`
+        CREATE TABLE github_issues (
+            ID TEXT PRIMARY KEY,
+            ...
+        )
+    `)
+
+    // or a schemaless table
+    err = db.Exec(`
+        CREATE TABLE document_cache;
+    `)
+
     // Create an index
-    err = db.Exec("CREATE INDEX idx_user_city_zip ON user (address.city, address.zipcode)")
+    err = db.Exec("CREATE INDEX user_city_idx ON user (address.city, address.zipCode)")
 
     // Insert some data
-    err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "Foo1", 15)
+    err = db.Exec("INSERT INTO user (id, name) VALUES (?, ?)", 10, "Foo1", 15)
 
     // Supported values can go from simple integers to richer data types like lists or documents
     err = db.Exec(`
@@ -197,6 +203,10 @@ defer db.Close()
 res, err := db.ExecContext(...)
 res, err := db.Query(...)
 res, err := db.QueryRow(...)
+
+// use the driver.Scanner to scan into a struct
+var u User
+err = res.Scan(driver.Scanner(&u))
 ```
 
 ## Genji shell
