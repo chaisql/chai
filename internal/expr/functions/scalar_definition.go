@@ -55,7 +55,7 @@ func (fd *ScalarDefinition) Arity() int {
 }
 
 // A ScalarFunction is a function which operates on scalar values in contrast to other SQL functions
-// such as the SUM aggregator wich operates on expressions instead.
+// such as the SUM aggregator which operates on expressions instead.
 type ScalarFunction struct {
 	def    *ScalarDefinition
 	params []expr.Expr

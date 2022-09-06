@@ -199,7 +199,7 @@ func newFromStruct(ref reflect.Value) (types.Document, error) {
 	return &fb, nil
 }
 
-// NewValue creates a value whose type is infered from x.
+// NewValue creates a value whose type is inferred from x.
 func NewValue(x interface{}) (types.Value, error) {
 	// Attempt exact matches first:
 	switch v := x.(type) {
