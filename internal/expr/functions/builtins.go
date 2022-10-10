@@ -60,6 +60,13 @@ var builtinFunctions = Definitions{
 			return &Avg{Expr: args[0]}, nil
 		},
 	},
+	"len": &definition{
+		name:  "len",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Len{Expr: args[0]}, nil
+		},
+	},
 }
 
 // BuiltinDefinitions returns a map of builtin functions.
@@ -651,4 +658,62 @@ func (s *AvgAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 
 func (s *AvgAggregator) String() string {
 	return s.Fn.String()
+}
+
+// Len represents the len() function.
+// It returns the length of string, array or document.
+// For other types len() returns NULL.
+type Len struct {
+	Expr expr.Expr
+}
+
+// Eval extracts the average value from the given document and returns it.
+func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
+	val, err := s.Expr.Eval(env)
+	if err != nil {
+		return nil, err
+	}
+	var length int
+	switch val.Type() {
+	case types.TextValue:
+		length = len(types.As[string](val))
+	case types.ArrayValue:
+		arrayLen, err := document.ArrayLength(types.As[types.Array](val))
+		if err != nil {
+			return nil, err
+		}
+		length = arrayLen
+	case types.DocumentValue:
+		docLen, err := document.Length(types.As[types.Document](val))
+		if err != nil {
+			return nil, err
+		}
+		length = docLen
+	default:
+		return types.NewNullValue(), nil
+	}
+
+	return types.NewIntegerValue(int64(length)), nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (s *Len) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*Len)
+	if !ok {
+		return false
+	}
+
+	return expr.Equal(s.Expr, o.Expr)
+}
+
+func (s *Len) Params() []expr.Expr { return []expr.Expr{s.Expr} }
+
+// String returns the literal representation of len.
+func (s *Len) String() string {
+	return fmt.Sprintf("LEN(%v)", s.Expr)
 }
