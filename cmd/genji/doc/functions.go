@@ -15,6 +15,7 @@ var builtinDocs = functionDocs{
 	"sum":    "The sum function returns the sum of all values taken by the arg1 expression in a group.",
 	"avg":    "The avg function returns the average of all values taken by the arg1 expression in a group.",
 	"typeof": "The typeof function returns the type of arg1.",
+	"len":    "Then len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
 }
 
 var mathDocs = functionDocs{
