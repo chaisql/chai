@@ -52,6 +52,7 @@ import (
 
     "github.com/genjidb/genji"
     "github.com/genjidb/genji/document"
+    "github.com/genjidb/genji/types"
 )
 
 func main() {
