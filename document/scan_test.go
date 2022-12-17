@@ -292,6 +292,13 @@ func TestScan(t *testing.T) {
 		assert.NoError(t, err)
 		require.Equal(t, &foo{A: &bar{B: 10}}, &f)
 	})
+
+	t.Run("Pointer not to struct", func(t *testing.T) {
+		var b int
+		d := document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
+		err := document.StructScan(d, &b)
+		assert.Error(t, err)
+	})
 }
 
 type documentScanner struct {
