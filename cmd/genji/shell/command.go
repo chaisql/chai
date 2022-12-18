@@ -3,7 +3,6 @@ package shell
 import (
 	"bytes"
 	"context"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
@@ -83,7 +82,7 @@ var commands = []command{
 		Name:        ".import",
 		Options:     "TYPE FILE table",
 		DisplayName: ".import",
-		Description: "Import data from a file. Only supported type is 'csv'",
+		Description: "Import data from a file. Supported types are 'csv' and 'json'.",
 	},
 	{
 		Name:        ".timer",
@@ -201,8 +200,9 @@ func runSaveCmd(ctx context.Context, db *genji.DB, dbPath string) error {
 }
 
 func runImportCmd(db *genji.DB, fileType, path, table string) error {
-	if strings.ToLower(fileType) != "csv" {
-		return errors.New("TYPE should be csv")
+	fileType = strings.ToLower(fileType)
+	if fileType != "csv" && fileType != "json" {
+		return fmt.Errorf("unsupported TYPE: %q, should be csv or json", fileType)
 	}
 
 	f, err := os.Open(path)
@@ -211,37 +211,19 @@ func runImportCmd(db *genji.DB, fileType, path, table string) error {
 	}
 	defer f.Close()
 
-	tx, err := db.Begin(true)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	r := csv.NewReader(f)
-
-	err = tx.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s", table))
+	err = db.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s", table))
 	if err != nil {
 		return err
 	}
 
-	headers, err := r.Read()
-	if err != nil {
-		return err
+	switch fileType {
+	case "csv":
+		return dbutil.InsertCSV(db, table, f)
+	case "json":
+		return dbutil.InsertJSON(db, table, f)
+	default:
+		return fmt.Errorf("unsupported TYPE %q", fileType)
 	}
-
-	for {
-		columns, err := r.Read()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		err = tx.Exec("INSERT INTO "+table+" VALUES ?", document.NewFromCSV(headers, columns))
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit()
 }
+
+// Separated insert csv to

@@ -2,6 +2,7 @@ package dbutil
 
 import (
 	"bufio"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -108,4 +109,37 @@ func readByteIgnoreWhitespace(r *bufio.Reader) (byte, error) {
 	}
 
 	return c, nil
+}
+
+// InsertCSV reads csv documents from r and inserts them into the selected table.
+// The first line of the csv file should contain the field names.
+func InsertCSV(db *genji.DB, table string, r io.Reader) error {
+	tx, err := db.Begin(true)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	rd := csv.NewReader(r)
+
+	headers, err := rd.Read()
+	if err != nil {
+		return err
+	}
+
+	for {
+		columns, err := rd.Read()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		err = tx.Exec("INSERT INTO "+table+" VALUES ?", document.NewFromCSV(headers, columns))
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
