@@ -5,7 +5,7 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-// Common errors returned by the engine implementations.
+// Common errors returned by the engine.
 var (
 	// ErrKeyNotFound is returned when the targeted key doesn't exist.
 	ErrKeyNotFound = errors.New("key not found")

@@ -129,7 +129,7 @@ func TestTableGetDocument(t *testing.T) {
 func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
 		fs := vfs.NewStrictMem()
-		pdb, err := database.OpenPebble("", &pebble.Options{FS: fs})
+		pdb, err := database.OpenPebble("", &pebble.Options{FS: fs}, &database.Options{})
 		assert.NoError(t, err)
 
 		db1 := testutil.NewTestDBWithPebble(t, pdb)
@@ -161,7 +161,7 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// create a new database object
-		pdb, err = database.OpenPebble("", &pebble.Options{FS: fs})
+		pdb, err = database.OpenPebble("", &pebble.Options{FS: fs}, &database.Options{})
 		assert.NoError(t, err)
 		db2 := testutil.NewTestDBWithPebble(t, pdb)
 

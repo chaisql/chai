@@ -46,6 +46,7 @@ type Database struct {
 // how the database is loaded.
 type Options struct {
 	CatalogLoader func(tx *Transaction) (*Catalog, error)
+	EncryptionKey []byte
 }
 
 // CatalogLoader loads the catalog from the disk.
@@ -66,7 +67,7 @@ type TxOptions struct {
 }
 
 func Open(path string, opts *Options) (*Database, error) {
-	popts := pebble.Options{
+	popts := &pebble.Options{
 		Comparer: DefaultComparer,
 	}
 
@@ -75,7 +76,7 @@ func Open(path string, opts *Options) (*Database, error) {
 		path = ""
 	}
 
-	pdb, err := OpenPebble(path, &popts)
+	pdb, err := OpenPebble(path, popts, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,15 +85,25 @@ func Open(path string, opts *Options) (*Database, error) {
 }
 
 // Open a database with a custom comparer.
-func OpenPebble(path string, opts *pebble.Options) (*pebble.DB, error) {
-	if opts == nil {
-		opts = &pebble.Options{}
+func OpenPebble(path string, popts *pebble.Options, opts *Options) (*pebble.DB, error) {
+	if popts == nil {
+		popts = &pebble.Options{}
 	}
 
-	if opts.Comparer == nil {
-		opts.Comparer = DefaultComparer
+	if popts.Comparer == nil {
+		popts.Comparer = DefaultComparer
 	}
-	return pebble.Open(path, opts)
+
+	popts = popts.EnsureDefaults()
+	if path != "" && opts.EncryptionKey != nil {
+		if err := validateEncryptionKey(opts.EncryptionKey); err != nil {
+			return nil, err
+		}
+
+		popts.FS = NewEncryptedFS(popts.FS, opts.EncryptionKey)
+	}
+
+	return pebble.Open(path, popts)
 }
 
 // DefaultComparer is the default implementation of the Comparer interface for Genji.
