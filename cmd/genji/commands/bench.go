@@ -90,7 +90,7 @@ in the same transaction, use -t`,
 
 		path := c.String("path")
 
-		db, err := dbutil.OpenDB(c.Context, path)
+		db, err := dbutil.OpenDB(c.Context, path, c.String("encryption-key"))
 		if err != nil {
 			return err
 		}

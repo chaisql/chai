@@ -65,7 +65,8 @@ type Shell struct {
 type Options struct {
 	// Path of the database directory that will be created.
 	// If empty, the database will be in-memory.
-	DBPath string
+	DBPath        string
+	EncryptionKey string
 }
 
 // Run a shell.
@@ -78,7 +79,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath)
+	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath, sh.opts.EncryptionKey)
 	if err != nil {
 		return err
 	}

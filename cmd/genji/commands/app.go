@@ -27,6 +27,15 @@ func NewApp() *cli.App {
 		NewPebbleCommand(),
 	}
 
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:    "encryption-key",
+			Aliases: []string{"k"},
+			Usage: `Encryption key to use to encrypt/decrypt the database.
+			The key must be a 32, 48 or 64 bytes long hexadecimal string.`,
+		},
+	}
+
 	// inject cancelable context to all commands (except the shell command)
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
@@ -51,7 +60,7 @@ func NewApp() *cli.App {
 		dbpath := c.Args().First()
 
 		if dbutil.CanReadFromStandardInput() {
-			db, err := dbutil.OpenDB(c.Context, dbpath)
+			db, err := dbutil.OpenDB(c.Context, dbpath, c.String("encryption-key"))
 			if err != nil {
 				return err
 			}
@@ -61,7 +70,8 @@ func NewApp() *cli.App {
 		}
 
 		return shell.Run(c.Context, &shell.Options{
-			DBPath: dbpath,
+			DBPath:        dbpath,
+			EncryptionKey: c.String("encryption-key"),
 		})
 	}
 
