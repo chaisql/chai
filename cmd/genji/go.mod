@@ -1,6 +1,6 @@
 module github.com/genjidb/genji/cmd/genji
 
-go 1.18
+go 1.19
 
 require (
 	github.com/agnivade/levenshtein v1.1.1
@@ -55,5 +55,3 @@ require (
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/genjidb/genji v0.16.0 => ../../
