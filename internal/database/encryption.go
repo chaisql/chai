@@ -36,6 +36,14 @@ type encryptedFS struct {
 	secret []byte
 }
 
+func (fs *encryptedFS) getKey(iv []byte) (key [32]byte, err error) {
+	kdf := hkdf.New(sha256.New, fs.secret, iv, nil)
+	if _, err = io.ReadFull(kdf, key[:]); err != nil {
+		return key, fmt.Errorf("failed to derive encryption key: %v", err)
+	}
+	return key, nil
+}
+
 func (fs *encryptedFS) Rename(oldname, newname string) error {
 	err := fs.FS.Rename(oldname, newname)
 	if err != nil {
@@ -43,6 +51,76 @@ func (fs *encryptedFS) Rename(oldname, newname string) error {
 	}
 	// rename the IV file
 	return fs.FS.Rename(oldname+".iv", newname+".iv")
+}
+
+func (fs *encryptedFS) Link(oldname, newname string) error {
+	err := fs.FS.Link(oldname, newname)
+	if err != nil {
+		return err
+	}
+
+	// link the IV file
+	return fs.FS.Link(oldname+".iv", newname+".iv")
+}
+
+func (fs *encryptedFS) ReuseForWrite(oldname, newname string) (vfs.File, error) {
+	f, err := fs.FS.ReuseForWrite(oldname, newname)
+	if err != nil {
+		return nil, err
+	}
+
+	// reuse the IV file
+	ivf, err := fs.FS.Open(oldname + ".iv")
+	if err != nil {
+		return nil, err
+	}
+	defer ivf.Close()
+
+	iv, err := io.ReadAll(ivf)
+	if err != nil {
+		return nil, err
+	}
+
+	ivf2, err := fs.FS.Create(newname + ".iv")
+	if err != nil {
+		return nil, err
+	}
+	defer ivf2.Close()
+
+	_, err = ivf2.Write(iv)
+	if err != nil {
+		return nil, err
+	}
+
+	key, err := fs.getKey(iv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &encryptedFile{
+		file: f,
+		key:  key,
+	}, nil
+}
+
+func (fs *encryptedFS) Remove(name string) error {
+	err := fs.FS.Remove(name)
+	if err != nil {
+		return err
+	}
+
+	// remove the IV file
+	return fs.FS.Remove(name + ".iv")
+}
+
+func (fs *encryptedFS) RemoveAll(dir string) error {
+	err := fs.FS.RemoveAll(dir)
+	if err != nil {
+		return err
+	}
+
+	// remove all IV files
+	return fs.FS.RemoveAll(dir + ".iv")
 }
 
 func (fs *encryptedFS) List(dir string) ([]string, error) {
@@ -97,10 +175,9 @@ func (fs *encryptedFS) Create(name string) (vfs.File, error) {
 	}
 
 	// derive an encryption key from the master key and the iv
-	var key [32]byte
-	kdf := hkdf.New(sha256.New, fs.secret, iv[:], nil)
-	if _, err = io.ReadFull(kdf, key[:]); err != nil {
-		return nil, fmt.Errorf("failed to derive encryption key: %v", err)
+	key, err := fs.getKey(iv[:])
+	if err != nil {
+		return nil, err
 	}
 
 	return &encryptedFile{
@@ -119,6 +196,11 @@ func (fs *encryptedFS) Open(name string, opts ...vfs.OpenOption) (vfs.File, erro
 	// open the IV file
 	ivFile, err := fs.FS.Open(name+".iv", opts...)
 	if err != nil {
+		// if the IV file does not exist, the file is not encrypted
+		if os.IsNotExist(errors.UnwrapAll(err)) {
+			return file, nil
+		}
+
 		return nil, err
 	}
 	defer ivFile.Close()
@@ -130,10 +212,9 @@ func (fs *encryptedFS) Open(name string, opts ...vfs.OpenOption) (vfs.File, erro
 	}
 
 	// derive an encryption key from the master key and the iv
-	var key [32]byte
-	kdf := hkdf.New(sha256.New, fs.secret, iv[:], nil)
-	if _, err = io.ReadFull(kdf, key[:]); err != nil {
-		return nil, fmt.Errorf("failed to derive encryption key: %v", err)
+	key, err := fs.getKey(iv[:])
+	if err != nil {
+		return nil, err
 	}
 
 	return &encryptedFile{
@@ -178,7 +259,6 @@ func (e *encryptedFile) ReadAt(p []byte, off int64) (n int, err error) {
 
 func (e *encryptedFile) Write(p []byte) (n int, err error) {
 	if e.writeCloser == nil {
-		var err error
 		e.writeCloser, err = sio.EncryptWriter(e.file, sio.Config{Key: e.key[:]})
 		if err != nil {
 			return 0, err
@@ -188,9 +268,17 @@ func (e *encryptedFile) Write(p []byte) (n int, err error) {
 	return e.writeCloser.Write(p)
 }
 
+func (e *encryptedFile) Sync() error {
+	return e.file.Sync()
+}
+
 func (e *encryptedFile) Close() error {
 	if e.writeCloser != nil {
-		return e.writeCloser.Close()
+		err := e.writeCloser.Close()
+		e.writeCloser = nil
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -203,10 +291,6 @@ func (e *encryptedFile) Stat() (os.FileInfo, error) {
 	}
 
 	return &encryptedFileInfo{fi}, nil
-}
-
-func (e *encryptedFile) Sync() error {
-	return e.file.Sync()
 }
 
 func (e *encryptedFile) Fd() uintptr {
