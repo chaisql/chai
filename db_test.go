@@ -227,6 +227,47 @@ func TestPrepareThreadSafe(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestIterateDeepCopy(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	assert.NoError(t, err)
+	defer db.Close()
+
+	err = db.Exec(`
+	CREATE TABLE foo (
+		a integer primary key,
+		b text not null
+	);
+
+	INSERT INTO foo (a, b) VALUES
+		(1, 'sample text 1'),
+		(2, 'sample text 2');
+	`)
+	assert.NoError(t, err)
+
+	res, err := db.Query(`SELECT * FROM foo ORDER BY a DESC`)
+	assert.NoError(t, err)
+
+	type item struct {
+		A int
+		B string
+	}
+
+	var items []*item
+	err = res.Iterate(func(d types.Document) error {
+		var i item
+		err := document.StructScan(d, &i)
+		assert.NoError(t, err)
+
+		items = append(items, &i)
+		return nil
+	})
+	assert.NoError(t, err)
+
+	require.Equal(t, len(items), 2)
+	require.Equal(t, &item{A: 2, B: "sample text 2"}, items[0])
+	require.Equal(t, &item{A: 1, B: "sample text 1"}, items[1])
+}
+
 func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
