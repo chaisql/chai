@@ -275,7 +275,11 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		ref.SetString(string(types.As[string](v)))
+		// copy the string to avoid
+		// keeping a reference to the underlying buffer
+		// which could be reused
+		cp := strings.Clone(types.As[string](v))
+		ref.SetString(cp)
 		return nil
 	case reflect.Bool:
 		v, err := CastAsBool(v)
