@@ -3,7 +3,6 @@ package genji_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -75,7 +74,7 @@ func ExampleTx() {
 }
 
 func TestOpen(t *testing.T) {
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "genji")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 

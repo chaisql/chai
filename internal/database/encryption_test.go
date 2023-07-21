@@ -2,7 +2,6 @@ package database_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +32,7 @@ func TestEncryptionKeySize(t *testing.T) {
 		{name: "invalid", key: []byte("12345678901234567890123456789012345678901234567890123456789012345"), fails: true},
 	}
 
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "genji")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
@@ -56,7 +55,7 @@ func TestEncryptionKeySize(t *testing.T) {
 }
 
 func TestEncryption(t *testing.T) {
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "genji")
 	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 

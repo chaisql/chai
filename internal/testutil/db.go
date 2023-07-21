@@ -2,7 +2,6 @@ package testutil
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +21,7 @@ import (
 )
 
 func TempDir(t testing.TB) string {
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "genji")
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
