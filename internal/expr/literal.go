@@ -169,7 +169,7 @@ func (kvp *KVPairs) String() string {
 		if i > 0 {
 			b.WriteString(", ")
 		}
-		b.WriteString(fmt.Sprintf("%s", p))
+		b.WriteString(p.String())
 	}
 	b.WriteRune('}')
 

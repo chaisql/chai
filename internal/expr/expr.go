@@ -101,7 +101,7 @@ func (e *NamedExpr) Name() string {
 }
 
 func (e *NamedExpr) String() string {
-	return fmt.Sprintf("%s", e.Expr)
+	return e.Expr.String()
 }
 
 // A Function is an expression whose evaluation calls a function previously defined.
