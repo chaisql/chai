@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
+
 	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
@@ -20,16 +22,82 @@ type SelectCoreStmt struct {
 	ProjectionExprs []expr.Expr
 }
 
-func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
+// TODO: for draft placed here
+func checkSchemaPathConstraints(tableInfo *database.TableInfo, src expr.Expr) error {
+	var pathErr error
+	expr.Walk(src, func(e expr.Expr) bool {
+		epath, ok := e.(expr.Path)
+		if !ok {
+			return true
+		}
+		path := (document.Path)(epath)
+		f := tableInfo.FieldConstraints
+		for i := range path {
+			fc, ok := f.ByField[path[i].FieldName]
+			if !ok {
+				if !f.AllowExtraFields {
+					pathErr = fmt.Errorf("field name %q for path %q does not exists", path[i].FieldName, path)
+					return false
+				}
+				return true
+			}
+			if fc.AnonymousType != nil {
+				f = fc.AnonymousType.FieldConstraints
+			}
+			// if we encountered composite path, where some part before last
+			// resolved in scalar type
+			if fc.AnonymousType == nil && i != len(path)-1 {
+				pathErr = fmt.Errorf("field name %q for path %q resolved in scalar type", path[i].FieldName, path)
+				return false
+			}
+		}
+		return true
+	})
+	return pathErr
+}
+
+func (stmt *SelectCoreStmt) Prepare(c *Context) (*StreamStmt, error) {
 	isReadOnly := true
 
 	var s *stream.Stream
+	var tableInfo *database.TableInfo
 
 	if stmt.TableName != "" {
+		info, err := c.DB.Catalog.GetTableInfo(stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+		if !info.FieldConstraints.AllowExtraFields {
+			tableInfo = info
+		}
 		s = s.Pipe(table.Scan(stmt.TableName))
 	}
 
+	if tableInfo != nil {
+		for _, pe := range stmt.ProjectionExprs {
+			ne, ok := pe.(*expr.NamedExpr)
+			if !ok {
+				// TODO: I didn't find other cases except NamedExpr, probably this should be exception?
+				continue
+			}
+			if pathErr := checkSchemaPathConstraints(tableInfo, ne); pathErr != nil {
+				return nil, pathErr
+			}
+			// TODO: see commennts in issue
+			/*
+				if ne.Name() != "" {
+					// ...
+				}
+			*/
+		}
+	}
+
 	if stmt.WhereExpr != nil {
+		if tableInfo != nil {
+			if pathErr := checkSchemaPathConstraints(tableInfo, stmt.WhereExpr); pathErr != nil {
+				return nil, pathErr
+			}
+		}
 		s = s.Pipe(docs.Filter(stmt.WhereExpr))
 	}
 
