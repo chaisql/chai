@@ -48,7 +48,7 @@ func NewPebble(t testing.TB) *pebble.DB {
 func NewMemPebble(t testing.TB) *pebble.DB {
 	t.Helper()
 
-	pdb, err := database.OpenPebble("", &pebble.Options{FS: vfs.NewStrictMem()}, &database.Options{})
+	pdb, err := database.OpenPebble("", &pebble.Options{FS: vfs.NewStrictMem()})
 	assert.NoError(t, err)
 
 	return pdb

@@ -32,27 +32,8 @@ type DB struct {
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database.
 func Open(path string) (*DB, error) {
-	return OpenWith(path, nil)
-}
-
-type Options struct {
-	// Experimental options. These options are subject to change and should not be used in production.
-	Experimental struct {
-		EncryptionKey []byte
-	}
-}
-
-// Open creates a Genji database at the given path.
-// If path is equal to ":memory:" it will open an in-memory database,
-// otherwise it will create an on-disk database.
-func OpenWith(path string, opts *Options) (*DB, error) {
-	if opts == nil {
-		opts = &Options{}
-	}
-
 	db, err := database.Open(path, &database.Options{
 		CatalogLoader: catalogstore.LoadCatalog,
-		EncryptionKey: opts.Experimental.EncryptionKey,
 	})
 	if err != nil {
 		return nil, err
