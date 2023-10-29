@@ -165,7 +165,10 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		LowerBound: start,
 		UpperBound: end,
 	}
-	it := t.Session.Iterator(&opts)
+	it, err := t.Session.Iterator(&opts)
+	if err != nil {
+		return err
+	}
 	defer it.Close()
 
 	if !reverse {

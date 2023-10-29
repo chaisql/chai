@@ -71,6 +71,6 @@ func (s *SnapshotSession) DeleteRange(start []byte, end []byte) error {
 	return errors.New("cannot delete range in read-only mode")
 }
 
-func (s *SnapshotSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
+func (s *SnapshotSession) Iterator(opts *pebble.IterOptions) (*pebble.Iterator, error) {
 	return s.Snapshot.snapshot.NewIter(opts)
 }

@@ -109,7 +109,7 @@ func (s *TransientSession) DeleteRange(start []byte, end []byte) error {
 	return s.batch.DeleteRange(start, end, nil)
 }
 
-func (s *TransientSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
+func (s *TransientSession) Iterator(opts *pebble.IterOptions) (*pebble.Iterator, error) {
 	if s.batch == nil {
 		return s.db.NewIter(opts)
 	}
