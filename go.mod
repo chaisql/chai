@@ -7,9 +7,7 @@ require (
 	github.com/cockroachdb/errors v1.9.1
 	github.com/cockroachdb/pebble v0.0.0-20230126224944-0a21ab1b22f5
 	github.com/google/go-cmp v0.5.9
-	github.com/minio/sio v0.3.0
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/crypto v0.5.0
 	golang.org/x/sync v0.1.0
 )
 

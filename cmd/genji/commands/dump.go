@@ -52,7 +52,7 @@ $ genji dump -f dump.sql my.db`,
 			return errors.New(cmd.UsageText)
 		}
 
-		db, err := dbutil.OpenDB(c.Context, dbPath, c.String("encryption-key"))
+		db, err := dbutil.OpenDB(c.Context, dbPath)
 		if err != nil {
 			return err
 		}

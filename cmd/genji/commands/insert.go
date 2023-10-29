@@ -66,12 +66,12 @@ $ curl https://api.github.com/repos/genjidb/genji/issues | genji insert --db myd
 			dbPath := c.String("db")
 			table := c.String("table")
 			args := c.Args().Slice()
-			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), args, c.String("encryption-key"))
+			return runInsertCommand(c.Context, dbPath, table, c.Bool("auto"), args)
 		},
 	}
 }
 
-func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, args []string, encKey string) error {
+func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, args []string) error {
 	generatedName := "data_" + strconv.FormatInt(time.Now().Unix(), 10)
 	createTable := false
 	if table == "" && auto {
@@ -83,7 +83,7 @@ func runInsertCommand(ctx context.Context, dbPath, table string, auto bool, args
 		dbPath = generatedName
 	}
 
-	db, err := dbutil.OpenDB(ctx, dbPath, encKey)
+	db, err := dbutil.OpenDB(ctx, dbPath)
 	if err != nil {
 		return err
 	}

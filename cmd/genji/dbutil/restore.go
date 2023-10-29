@@ -28,7 +28,7 @@ func Restore(ctx context.Context, db *genji.DB, dumpFile, dbPath string) error {
 	defer file.Close()
 
 	if db == nil {
-		db, err = OpenDB(ctx, dbPath, "")
+		db, err = OpenDB(ctx, dbPath)
 		if err != nil {
 			return err
 		}

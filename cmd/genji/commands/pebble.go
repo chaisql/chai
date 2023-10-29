@@ -29,7 +29,7 @@ func NewPebbleCommand() *cli.Command {
 	cmd.Action = func(c *cli.Context) error {
 		path := c.String("path")
 
-		db, err := dbutil.OpenDB(c.Context, path, c.String("encryption-key"))
+		db, err := dbutil.OpenDB(c.Context, path)
 		if err != nil {
 			return err
 		}
