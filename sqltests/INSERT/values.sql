@@ -23,6 +23,11 @@ SELECT pk(), * FROM test;
 }
 */
 
+-- test: VALUES, with too many fields
+CREATE TABLE test (a TEXT, b TEXT, c TEXT);
+INSERT INTO test (b, a, c, d) VALUES ('b', 'a', 'c', 'd');
+-- error: table has no field d
+
 -- test: variadic, VALUES, with all fields
 CREATE TABLE test (a TEXT, b TEXT, c TEXT, ...);
 INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');

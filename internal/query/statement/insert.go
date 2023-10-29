@@ -38,13 +38,13 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
 	if stmt.Values != nil {
+		ti, err := c.Catalog.GetTableInfo(stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+
 		// if no fields have been specified, we need to inject the fields from the defined table info
 		if len(stmt.Fields) == 0 {
-			ti, err := c.Catalog.GetTableInfo(stmt.TableName)
-			if err != nil {
-				return nil, err
-			}
-
 			for i := range stmt.Values {
 				kvs, ok := stmt.Values[i].(*expr.KVPairs)
 				if !ok {
@@ -58,6 +58,15 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 						}
 
 						kvs.Pairs[i].K = ti.FieldConstraints.Ordered[i].Field
+					}
+				}
+			}
+		} else {
+			if !ti.FieldConstraints.AllowExtraFields {
+				for i := range stmt.Fields {
+					_, ok := ti.FieldConstraints.ByField[stmt.Fields[i]]
+					if !ok {
+						return nil, errors.Errorf("table has no field %s", stmt.Fields[i])
 					}
 				}
 			}
