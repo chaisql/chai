@@ -52,6 +52,10 @@ func StructScan(d types.Document, t interface{}) error {
 		return errors.New("target must be pointer to a valid Go type")
 	}
 
+	if ref.Elem().Kind() != reflect.Struct {
+		return errors.New("target must be pointer to a struct")
+	}
+
 	if ref.IsNil() {
 		ref.Set(reflect.New(ref.Type().Elem()))
 	}
