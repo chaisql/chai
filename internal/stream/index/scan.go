@@ -39,20 +39,19 @@ func ScanReverse(name string, ranges ...stream.Range) *ScanOperator {
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	catalog := in.GetCatalog()
 	tx := in.GetTx()
 
-	index, err := catalog.GetIndex(tx, it.IndexName)
+	index, err := tx.Catalog.GetIndex(tx, it.IndexName)
 	if err != nil {
 		return err
 	}
 
-	info, err := catalog.GetIndexInfo(it.IndexName)
+	info, err := tx.Catalog.GetIndexInfo(it.IndexName)
 	if err != nil {
 		return err
 	}
 
-	table, err := catalog.GetTable(tx, info.Owner.TableName)
+	table, err := tx.Catalog.GetTable(tx, info.Owner.TableName)
 	if err != nil {
 		return err
 	}

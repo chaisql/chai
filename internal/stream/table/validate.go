@@ -23,10 +23,9 @@ func Validate(tableName string) *ValidateOperator {
 }
 
 func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	catalog := in.GetCatalog()
 	tx := in.GetTx()
 
-	info, err := catalog.GetTableInfo(op.tableName)
+	info, err := tx.Catalog.GetTableInfo(op.tableName)
 	if err != nil {
 		return err
 	}

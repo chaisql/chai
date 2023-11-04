@@ -18,14 +18,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Transaction, catalog *database.Catalog) error) {
+func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Transaction, catalog *database.CatalogWriter) error) {
 	t.Helper()
 
 	tx, err := db.Begin(true)
 	assert.NoError(t, err)
 	defer tx.Rollback()
 
-	err = fn(tx, db.Catalog)
+	err = fn(tx, tx.CatalogWriter())
 	if errors.Is(err, errDontCommit) {
 		tx.Rollback()
 		return
@@ -34,17 +34,6 @@ func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Tra
 
 	err = tx.Commit()
 	assert.NoError(t, err)
-}
-
-func cloneCatalog(c *database.Catalog) *database.Catalog {
-	var clone database.Catalog
-
-	clone.CatalogTable = c.CatalogTable
-	clone.Locks = c.Locks
-	clone.Cache = c.Cache.Clone()
-	clone.TransientNamespaces = c.TransientNamespaces
-
-	return &clone
 }
 
 // TestCatalogTable tests all basic operations on tables:
@@ -57,11 +46,11 @@ func TestCatalogTable(t *testing.T) {
 	t.Run("Get", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", nil)
 		})
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			table, err := catalog.GetTable(tx, "test")
 			assert.NoError(t, err)
 			require.Equal(t, "test", table.Info.TableName)
@@ -79,13 +68,13 @@ func TestCatalogTable(t *testing.T) {
 	t.Run("Drop", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", nil)
 		})
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropTable(tx, "test")
 			assert.NoError(t, err)
 
@@ -104,7 +93,7 @@ func TestCatalogTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Rename", func(t *testing.T) {
@@ -120,7 +109,7 @@ func TestCatalogTable(t *testing.T) {
 				{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
 			}}
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "foo", ti)
 			assert.NoError(t, err)
 
@@ -145,9 +134,9 @@ func TestCatalogTable(t *testing.T) {
 			return nil
 		})
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.RenameTable(tx, "foo", "zoo")
 			assert.NoError(t, err)
 
@@ -186,7 +175,7 @@ func TestCatalogTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Add field constraint", func(t *testing.T) {
@@ -201,13 +190,13 @@ func TestCatalogTable(t *testing.T) {
 			{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
 		}}
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "foo", ti)
 		})
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 
 			// Add field constraint
 			fieldToAdd := database.FieldConstraint{
@@ -247,7 +236,7 @@ func TestCatalogTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 }
 
@@ -255,9 +244,9 @@ func TestCatalogCreateTable(t *testing.T) {
 	t.Run("Same table name", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "test", nil)
 			assert.NoError(t, err)
 
@@ -268,14 +257,14 @@ func TestCatalogCreateTable(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Create and rollback", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		check := func() {
-			updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+			updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 				err := catalog.CreateTable(tx, "test", nil)
 				assert.NoError(t, err)
 
@@ -292,7 +281,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	t.Run("Should create an index, and return it", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
 					&database.FieldConstraint{Field: "a", Type: types.TextValue},
@@ -303,9 +292,9 @@ func TestCatalogCreateIndex(t *testing.T) {
 			})
 		})
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idx_a", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
@@ -317,13 +306,13 @@ func TestCatalogCreateIndex(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Should fail if it already exists", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
 					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
@@ -331,7 +320,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			})
 		})
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
@@ -347,7 +336,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
@@ -362,7 +351,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	t.Run("Should generate a name if not provided", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
 					&database.FieldConstraint{Field: "foo", Type: types.DocumentValue, AnonymousType: &database.AnonymousType{
@@ -378,7 +367,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			})
 		})
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateIndex(tx, &database.IndexInfo{
 				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
 			})
@@ -404,7 +393,7 @@ func TestTxDropIndex(t *testing.T) {
 	t.Run("Should drop an index", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
 					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
@@ -423,8 +412,8 @@ func TestTxDropIndex(t *testing.T) {
 			return nil
 		})
 
-		clone := cloneCatalog(db.Catalog)
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		clone := db.Catalog().Clone()
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropIndex(tx, "idxFoo")
 			assert.NoError(t, err)
 
@@ -441,13 +430,13 @@ func TestTxDropIndex(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Should fail if it doesn't exist", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropIndex(tx, "idxFoo")
 			assert.ErrorIs(t, err, &errs.NotFoundError{Name: "idxFoo"})
 			return nil
@@ -499,7 +488,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 	t.Run("Should create a sequence and add it to the schema and sequence tables", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, clog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, clog *database.CatalogWriter) error {
 			err := clog.CreateSequence(tx, &database.SequenceInfo{Name: "test1", IncrementBy: 1})
 			if err != nil {
 				return err
@@ -509,13 +498,13 @@ func TestCatalogCreateSequence(t *testing.T) {
 			assert.NoError(t, err)
 			require.NotNil(t, seq)
 
-			tb := db.Catalog.CatalogTable.Table(tx)
+			tb := db.Catalog().CatalogTable.Table(tx)
 			key := tree.NewKey(types.NewTextValue("test1"))
 
 			_, err = tb.GetDocument(key)
 			assert.NoError(t, err)
 
-			tb, err = db.Catalog.GetTable(tx, database.SequenceTableName)
+			tb, err = db.Catalog().GetTable(tx, database.SequenceTableName)
 			assert.NoError(t, err)
 
 			_, err = tb.GetDocument(key)
@@ -523,9 +512,9 @@ func TestCatalogCreateSequence(t *testing.T) {
 			return nil
 		})
 
-		clone := cloneCatalog(db.Catalog)
+		clone := db.Catalog().Clone()
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test2", IncrementBy: 1})
 			if err != nil {
 				return err
@@ -537,13 +526,13 @@ func TestCatalogCreateSequence(t *testing.T) {
 			return errDontCommit
 		})
 
-		require.Equal(t, clone, db.Catalog)
+		require.Equal(t, clone, db.Catalog())
 	})
 
 	t.Run("Should generate a sequence name if not provided", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			for i := 0; i < 10; i++ {
 				seqInfo := &database.SequenceInfo{IncrementBy: 1, Owner: database.Owner{
 					TableName: "foo",
@@ -567,14 +556,79 @@ func TestCatalogCreateSequence(t *testing.T) {
 	t.Run("Should fail if it already exists", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
 		})
 
-		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.Catalog) error {
+		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
 			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
 			return nil
 		})
 	})
+}
+
+func TestCatalogConcurrency(t *testing.T) {
+	db, err := genji.Open(":memory:")
+	assert.NoError(t, err)
+	defer db.Close()
+
+	// create a table
+	err = db.Exec(`
+		CREATE TABLE test (a int);
+		CREATE INDEX idx_test_a ON test(a);
+	`)
+	assert.NoError(t, err)
+
+	// start a transaction rt1
+	rt1, err := db.Begin(false)
+	assert.NoError(t, err)
+	defer rt1.Rollback()
+
+	// start a transaction wt2
+	wt1, err := db.Begin(true)
+	assert.NoError(t, err)
+	defer wt1.Rollback()
+
+	// update the catalog in wt2
+	err = wt1.Exec(`
+		CREATE TABLE test2 (a int);
+		CREATE INDEX idx_test2_a ON test2(a);
+		ALTER TABLE test ADD FIELD b int;
+	`)
+	assert.NoError(t, err)
+
+	// get the table in rt1: should not see the changes made by wt2
+	doc, err := rt1.QueryDocument("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	assert.NoError(t, err)
+	var i int
+	err = document.Scan(doc, &i)
+	assert.NoError(t, err)
+	require.Equal(t, 0, i)
+
+	// get the modified table in rt1: should not see the changes made by wt2
+	doc, err = rt1.QueryDocument("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	assert.NoError(t, err)
+	var s string
+	err = document.Scan(doc, &s)
+	assert.NoError(t, err)
+	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
+
+	// commit wt2
+	err = wt1.Commit()
+	assert.NoError(t, err)
+
+	// get the table in rt1: should not see the changes made by wt2
+	doc, err = rt1.QueryDocument("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	assert.NoError(t, err)
+	err = document.Scan(doc, &i)
+	assert.NoError(t, err)
+	require.Equal(t, 0, i)
+
+	// get the modified table in rt1: should not see the changes made by wt2
+	doc, err = rt1.QueryDocument("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	assert.NoError(t, err)
+	err = document.Scan(doc, &s)
+	assert.NoError(t, err)
+	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 }

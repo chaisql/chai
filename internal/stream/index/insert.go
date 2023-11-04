@@ -23,15 +23,14 @@ func IndexInsert(indexName string) *InsertOperator {
 }
 
 func (op *InsertOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	catalog := in.GetCatalog()
 	tx := in.GetTx()
 
-	idx, err := catalog.GetIndex(tx, op.indexName)
+	idx, err := tx.Catalog.GetIndex(tx, op.indexName)
 	if err != nil {
 		return err
 	}
 
-	info, err := catalog.GetIndexInfo(op.indexName)
+	info, err := tx.Catalog.GetIndexInfo(op.indexName)
 	if err != nil {
 		return err
 	}

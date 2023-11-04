@@ -34,7 +34,7 @@ func (stmt AlterStmt) Run(ctx *Context) (Result, error) {
 		return res, errs.AlreadyExistsError{Name: stmt.NewTableName}
 	}
 
-	err := ctx.Catalog.RenameTable(ctx.Tx, stmt.TableName, stmt.NewTableName)
+	err := ctx.Tx.CatalogWriter().RenameTable(ctx.Tx, stmt.TableName, stmt.NewTableName)
 	return res, err
 }
 
@@ -57,6 +57,6 @@ func (stmt AlterTableAddField) Run(ctx *Context) (Result, error) {
 		fc = stmt.Info.FieldConstraints.Ordered[0]
 	}
 
-	err := ctx.Catalog.AddFieldConstraint(ctx.Tx, stmt.Info.TableName, fc, stmt.Info.TableConstraints)
+	err := ctx.Tx.CatalogWriter().AddFieldConstraint(ctx.Tx, stmt.Info.TableName, fc, stmt.Info.TableConstraints)
 	return res, err
 }

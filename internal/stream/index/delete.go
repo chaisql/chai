@@ -23,20 +23,19 @@ func Delete(indexName string) *DeleteOperator {
 }
 
 func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	catalog := in.GetCatalog()
 	tx := in.GetTx()
 
-	info, err := catalog.GetIndexInfo(op.indexName)
+	info, err := tx.Catalog.GetIndexInfo(op.indexName)
 	if err != nil {
 		return err
 	}
 
-	table, err := catalog.GetTable(tx, info.Owner.TableName)
+	table, err := tx.Catalog.GetTable(tx, info.Owner.TableName)
 	if err != nil {
 		return err
 	}
 
-	idx, err := catalog.GetIndex(tx, op.indexName)
+	idx, err := tx.Catalog.GetIndex(tx, op.indexName)
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *envi
 			return err
 		}
 
-		info, err := catalog.GetIndexInfo(op.indexName)
+		info, err := tx.Catalog.GetIndexInfo(op.indexName)
 		if err != nil {
 			return err
 		}

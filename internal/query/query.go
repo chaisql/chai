@@ -74,9 +74,8 @@ func (q *Query) Prepare(context *Context) error {
 		}
 
 		stmt, err := p.Prepare(&statement.Context{
-			DB:      context.DB,
-			Tx:      tx,
-			Catalog: context.DB.Catalog,
+			DB: context.DB,
+			Tx: tx,
 		})
 		if err != nil {
 			return err
@@ -133,10 +132,9 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		}
 
 		res, err = stmt.Run(&statement.Context{
-			DB:      context.DB,
-			Tx:      q.tx,
-			Catalog: context.DB.Catalog,
-			Params:  context.Params,
+			DB:     context.DB,
+			Tx:     q.tx,
+			Params: context.Params,
 		})
 		if err != nil {
 			if q.autoCommit {

@@ -144,7 +144,6 @@ func TestTableScan(t *testing.T) {
 			op.Reverse = test.reverse
 			var env environment.Environment
 			env.Tx = tx
-			env.Catalog = db.Catalog
 			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int

@@ -37,7 +37,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 				TableName: stmt.Info.TableName,
 			},
 		}
-		err := ctx.Catalog.CreateSequence(ctx.Tx, &seq)
+		err := ctx.Tx.CatalogWriter().CreateSequence(ctx.Tx, &seq)
 		if err != nil {
 			return res, err
 		}
@@ -45,7 +45,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 		stmt.Info.DocidSequenceName = seq.Name
 	}
 
-	err := ctx.Catalog.CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)
+	err := ctx.Tx.CatalogWriter().CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
 			return res, nil
@@ -55,7 +55,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	// create a unique index for every unique constraint
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
-			err = ctx.Catalog.CreateIndex(ctx.Tx, &database.IndexInfo{
+			err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
 				Paths:  tc.Paths,
 				Unique: true,
 				Owner: database.Owner{
@@ -88,7 +88,7 @@ func (stmt *CreateIndexStmt) IsReadOnly() bool {
 func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	err := ctx.Catalog.CreateIndex(ctx.Tx, &stmt.Info)
+	err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
 			return res, nil
@@ -126,7 +126,7 @@ func (stmt *CreateSequenceStmt) IsReadOnly() bool {
 func (stmt *CreateSequenceStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	err := ctx.Catalog.CreateSequence(ctx.Tx, &stmt.Info)
+	err := ctx.Tx.CatalogWriter().CreateSequence(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
 			return res, nil

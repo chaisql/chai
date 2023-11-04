@@ -8,8 +8,7 @@ import (
 )
 
 type ConstraintExpr struct {
-	Expr    Expr
-	Catalog *database.Catalog
+	Expr Expr
 }
 
 func Constraint(e Expr) *ConstraintExpr {
@@ -20,7 +19,6 @@ func Constraint(e Expr) *ConstraintExpr {
 
 func (t *ConstraintExpr) Eval(tx *database.Transaction, d types.Document) (types.Value, error) {
 	var env environment.Environment
-	env.Catalog = t.Catalog
 	env.Tx = tx
 	env.SetDocument(d)
 
@@ -29,10 +27,6 @@ func (t *ConstraintExpr) Eval(tx *database.Transaction, d types.Document) (types
 	}
 
 	return t.Expr.Eval(&env)
-}
-
-func (t *ConstraintExpr) Bind(catalog *database.Catalog) {
-	t.Catalog = catalog
 }
 
 func (t *ConstraintExpr) String() string {

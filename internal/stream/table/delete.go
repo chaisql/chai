@@ -27,7 +27,7 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *envir
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		if table == nil {
 			var err error
-			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
+			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}

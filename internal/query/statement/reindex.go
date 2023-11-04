@@ -31,9 +31,9 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	var indexNames []string
 
 	if stmt.TableOrIndexName == "" {
-		indexNames = ctx.Catalog.Cache.ListObjects(database.RelationIndexType)
-	} else if _, err := ctx.Catalog.GetTable(ctx.Tx, stmt.TableOrIndexName); err == nil {
-		indexNames = ctx.Catalog.ListIndexes(stmt.TableOrIndexName)
+		indexNames = ctx.Tx.Catalog.Cache.ListObjects(database.RelationIndexType)
+	} else if _, err := ctx.Tx.Catalog.GetTable(ctx.Tx, stmt.TableOrIndexName); err == nil {
+		indexNames = ctx.Tx.Catalog.ListIndexes(stmt.TableOrIndexName)
 	} else if !errs.IsNotFoundError(err) {
 		return nil, err
 	} else {
@@ -43,11 +43,11 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	var streams []*stream.Stream
 
 	for _, indexName := range indexNames {
-		idx, err := ctx.Catalog.GetIndex(ctx.Tx, indexName)
+		idx, err := ctx.Tx.Catalog.GetIndex(ctx.Tx, indexName)
 		if err != nil {
 			return nil, err
 		}
-		info, err := ctx.Catalog.GetIndexInfo(indexName)
+		info, err := ctx.Tx.Catalog.GetIndexInfo(indexName)
 		if err != nil {
 			return nil, err
 		}

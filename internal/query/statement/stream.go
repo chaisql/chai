@@ -16,7 +16,7 @@ type StreamStmt struct {
 
 // Prepare implements the Preparer interface.
 func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
-	st, err := planner.Optimize(s.Stream, ctx.Catalog)
+	st, err := planner.Optimize(s.Stream, ctx.Tx.Catalog)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,6 @@ func (s *StreamStmtIterator) Iterate(fn func(d types.Document) error) error {
 	var env environment.Environment
 	env.DB = s.Context.DB
 	env.Tx = s.Context.Tx
-	env.Catalog = s.Context.Catalog
 	env.SetParams(s.Context.Params)
 
 	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {

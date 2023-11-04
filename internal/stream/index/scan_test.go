@@ -420,7 +420,6 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			op := getOp(db, tx, "idx_test_a", test.indexOn, test.reverse, test.ranges...)
 			var env environment.Environment
 			env.Tx = tx
-			env.Catalog = db.Catalog
 			env.DB = db
 			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 

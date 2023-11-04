@@ -19,8 +19,6 @@ type Table struct {
 	// May not represent the most up to date data.
 	// Always get a fresh Table instance before relying on this field.
 	Info *TableInfo
-
-	Catalog *Catalog
 }
 
 // Truncate deletes all the documents from the table.
@@ -183,11 +181,11 @@ func (t *Table) generateKey(info *TableInfo, d types.Document) (*tree.Key, error
 		return tree.NewKey(vs...), nil
 	}
 
-	seq, err := t.Catalog.GetSequence(t.Info.DocidSequenceName)
+	seq, err := t.Tx.Catalog.GetSequence(t.Info.DocidSequenceName)
 	if err != nil {
 		return nil, err
 	}
-	docid, err := seq.Next(t.Tx, t.Catalog)
+	docid, err := seq.Next(t.Tx)
 	if err != nil {
 		return nil, err
 	}

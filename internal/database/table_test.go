@@ -41,42 +41,40 @@ func update(t testing.TB, db *database.Database, fn func(tx *database.Transactio
 func newTestTable(t testing.TB) (*database.Table, func()) {
 	t.Helper()
 
-	db, tx, fn := testutil.NewTestTx(t)
+	_, tx, fn := testutil.NewTestTx(t)
 
 	ti := database.TableInfo{TableName: "test"}
 	ti.FieldConstraints.AllowExtraFields = true
-	return createTable(t, tx, db.Catalog, ti), fn
+	return createTable(t, tx, ti), fn
 }
 
-func createTable(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
+func createTable(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
 	stmt := statement.CreateTableStmt{Info: info}
 
 	res, err := stmt.Run(&statement.Context{
-		Catalog: catalog,
-		Tx:      tx,
+		Tx: tx,
 	})
 	assert.NoError(t, err)
 	res.Close()
 
-	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
+	tb, err := tx.Catalog.GetTable(tx, stmt.Info.TableName)
 	assert.NoError(t, err)
 
 	return tb
 }
 
-func createTableIfNotExists(t testing.TB, tx *database.Transaction, catalog *database.Catalog, info database.TableInfo) *database.Table {
+func createTableIfNotExists(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
 	t.Helper()
 
 	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
 	res, err := stmt.Run(&statement.Context{
-		Catalog: catalog,
-		Tx:      tx,
+		Tx: tx,
 	})
 	assert.NoError(t, err)
 	res.Close()
 
-	tb, err := catalog.GetTable(tx, stmt.Info.TableName)
+	tb, err := tx.Catalog.GetTable(tx, stmt.Info.TableName)
 	assert.NoError(t, err)
 
 	return tb
@@ -143,7 +141,7 @@ func TestTableInsert(t *testing.T) {
 				// create table if not exists
 				ti := database.TableInfo{TableName: "test"}
 				ti.FieldConstraints.AllowExtraFields = true
-				tb := createTableIfNotExists(t, tx, db.Catalog, ti)
+				tb := createTableIfNotExists(t, tx, ti)
 
 				doc := newDocument()
 				key, _, err := tb.Insert(doc)

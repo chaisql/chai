@@ -37,7 +37,7 @@ func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *envir
 
 		var err error
 		if table == nil {
-			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
+			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}

@@ -73,7 +73,6 @@ func TestTempTreeSort(t *testing.T) {
 			var env environment.Environment
 			env.DB = db
 			env.Tx = tx
-			env.Catalog = db.Catalog
 
 			s := stream.New(table.Scan("test"))
 			if test.desc {

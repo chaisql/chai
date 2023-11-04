@@ -11,55 +11,44 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-func LoadCatalog(tx *database.Transaction) (*database.Catalog, error) {
-	c := database.NewCatalog()
+func LoadCatalog(tx *database.Transaction) error {
+	cw := tx.CatalogWriter()
 
-	err := c.Init(tx)
+	err := cw.Init(tx)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	tables, indexes, sequences, err := loadCatalogStore(tx, c.CatalogTable)
+	tables, indexes, sequences, err := loadCatalogStore(tx, tx.Catalog.CatalogTable)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to load catalog store")
-	}
-
-	for _, tb := range tables {
-		// bind default values with catalog
-		for _, fc := range tb.FieldConstraints.Ordered {
-			if fc.DefaultValue == nil {
-				continue
-			}
-
-			fc.DefaultValue.Bind(c)
-		}
+		return errors.Wrap(err, "failed to load catalog store")
 	}
 
 	// add the __genji_catalog table to the list of tables
 	// so that it can be queried
-	ti := c.CatalogTable.Info().Clone()
+	ti := tx.Catalog.CatalogTable.Info().Clone()
 	// make sure that table is read-only
 	ti.ReadOnly = true
 	tables = append(tables, *ti)
 
 	// load tables and indexes first
-	c.Cache.Load(tables, indexes, nil)
+	tx.Catalog.Cache.Load(tables, indexes, nil)
 
 	if len(sequences) > 0 {
 		var seqList []database.Sequence
-		seqList, err = loadSequences(tx, c, sequences)
+		seqList, err = loadSequences(tx, sequences)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to load sequences")
+			return errors.Wrap(err, "failed to load sequences")
 		}
 
-		c.Cache.Load(nil, nil, seqList)
+		tx.Catalog.Cache.Load(nil, nil, seqList)
 	}
 
-	return c, nil
+	return nil
 }
 
-func loadSequences(tx *database.Transaction, c *database.Catalog, info []database.SequenceInfo) ([]database.Sequence, error) {
-	tb, err := c.GetTable(tx, database.SequenceTableName)
+func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]database.Sequence, error) {
+	tb, err := tx.Catalog.GetTable(tx, database.SequenceTableName)
 	if err != nil {
 		return nil, err
 	}

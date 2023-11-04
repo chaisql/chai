@@ -191,7 +191,6 @@ func TestTableInsert(t *testing.T) {
 
 			in := &environment.Environment{}
 			in.Tx = tx
-			in.Catalog = db.Catalog
 
 			s := stream.New(test.in).Pipe(table.Insert("test"))
 
@@ -247,7 +246,6 @@ func TestTableReplace(t *testing.T) {
 
 			in := environment.Environment{}
 			in.Tx = tx
-			in.Catalog = db.Catalog
 
 			s := stream.New(table.Scan("test")).
 				Pipe(test.op).
@@ -322,7 +320,6 @@ func TestTableDelete(t *testing.T) {
 
 			var env environment.Environment
 			env.Tx = tx
-			env.Catalog = db.Catalog
 
 			s := stream.New(table.Scan("test")).Pipe(test.op).Pipe(table.Delete("test"))
 

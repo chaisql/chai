@@ -32,7 +32,7 @@ func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *envi
 
 		if table == nil {
 			var err error
-			table, err = out.GetCatalog().GetTable(out.GetTx(), op.Name)
+			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
 			if err != nil {
 				return err
 			}

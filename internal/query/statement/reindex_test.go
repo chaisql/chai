@@ -42,7 +42,7 @@ func TestReIndex(t *testing.T) {
 			`)
 
 			// truncate all indexes
-			c := db.Catalog
+			c := tx.Catalog
 			for _, idxName := range c.ListIndexes("") {
 				idx, err := c.GetIndex(tx, idxName)
 				assert.NoError(t, err)
@@ -57,10 +57,10 @@ func TestReIndex(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
-			for _, idxName := range db.Catalog.ListIndexes("") {
-				idx, err := db.Catalog.GetIndex(tx, idxName)
+			for _, idxName := range tx.Catalog.ListIndexes("") {
+				idx, err := tx.Catalog.GetIndex(tx, idxName)
 				assert.NoError(t, err)
-				info, err := db.Catalog.GetIndexInfo(idxName)
+				info, err := tx.Catalog.GetIndexInfo(idxName)
 				assert.NoError(t, err)
 
 				shouldBeIndexed := false

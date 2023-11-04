@@ -25,7 +25,9 @@ type isEqualer interface {
 
 // Equal reports whether a and b are equal by first calling IsEqual
 // if they have an IsEqual method with this signature:
-//   IsEqual(Expr) bool
+//
+//	IsEqual(Expr) bool
+//
 // If not, it returns whether a and b values are equal.
 func Equal(a, b Expr) bool {
 	if aa, ok := a.(isEqualer); ok {
@@ -173,19 +175,18 @@ type NextValueFor struct {
 
 // Eval calls the underlying expression Eval method.
 func (n NextValueFor) Eval(env *environment.Environment) (types.Value, error) {
-	catalog := env.GetCatalog()
 	tx := env.GetTx()
 
-	if catalog == nil || tx == nil {
+	if tx == nil {
 		return NullLiteral, fmt.Errorf(`NEXT VALUE FOR cannot be evaluated`)
 	}
 
-	seq, err := catalog.GetSequence(n.SeqName)
+	seq, err := tx.Catalog.GetSequence(n.SeqName)
 	if err != nil {
 		return NullLiteral, err
 	}
 
-	i, err := seq.Next(tx, catalog)
+	i, err := seq.Next(tx)
 	if err != nil {
 		return NullLiteral, err
 	}

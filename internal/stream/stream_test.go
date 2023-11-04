@@ -100,7 +100,6 @@ func TestUnion(t *testing.T) {
 			var env environment.Environment
 			env.Tx = tx
 			env.DB = db
-			env.Catalog = db.Catalog
 
 			var i int
 			var got testutil.Docs

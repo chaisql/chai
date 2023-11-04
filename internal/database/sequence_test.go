@@ -162,14 +162,14 @@ func TestSequence(t *testing.T) {
 			assert.NoError(t, err)
 			defer tx.Rollback()
 
-			err = db.Catalog.CreateSequence(tx, &test.info)
+			err = tx.CatalogWriter().CreateSequence(tx, &test.info)
 			assert.NoError(t, err)
 
 			seq := database.Sequence{
 				Info: &test.info,
 			}
 			seq.CurrentValue = test.currentValue
-			gotV, gotErr := seq.Next(tx, db.Catalog)
+			gotV, gotErr := seq.Next(tx)
 			if !test.expErr {
 				assert.NoError(t, gotErr)
 			} else {
@@ -182,7 +182,7 @@ func TestSequence(t *testing.T) {
 	next := func(seq *database.Sequence, tx *database.Transaction, catalog *database.Catalog, wantV int64, wantLease int64) {
 		t.Helper()
 
-		v, err := seq.Next(tx, catalog)
+		v, err := seq.Next(tx)
 		assert.NoError(t, err)
 		require.Equal(t, int64(wantV), v)
 
@@ -198,7 +198,7 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		err = db.Catalog.CreateSequence(tx, &database.SequenceInfo{
+		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: 1,
 			Min:         1, Max: 5,
@@ -207,23 +207,23 @@ func TestSequence(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		seq, err := db.Catalog.GetSequence("a")
+		seq, err := tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
 		// each call must increase the lease by 1 and store it in the table
-		next(seq, tx, db.Catalog, 1, 1)
-		next(seq, tx, db.Catalog, 2, 2)
-		next(seq, tx, db.Catalog, 3, 3)
-		next(seq, tx, db.Catalog, 4, 4)
-		next(seq, tx, db.Catalog, 5, 5)
+		next(seq, tx, tx.Catalog, 1, 1)
+		next(seq, tx, tx.Catalog, 2, 2)
+		next(seq, tx, tx.Catalog, 3, 3)
+		next(seq, tx, tx.Catalog, 4, 4)
+		next(seq, tx, tx.Catalog, 5, 5)
 		// reaching the max should not modify the cache or the lease
 		cached := seq.Cached
 
-		_, err = seq.Next(tx, db.Catalog)
+		_, err = seq.Next(tx)
 		assert.Error(t, err)
 		require.Equal(t, int64(5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := getLease(t, tx, db.Catalog, "a")
+		got, err := getLease(t, tx, tx.Catalog, "a")
 		assert.NoError(t, err)
 		require.Equal(t, int64(5), *got)
 	})
@@ -235,7 +235,7 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		err = db.Catalog.CreateSequence(tx, &database.SequenceInfo{
+		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: 1,
 			Min:         1, Max: 9,
@@ -244,32 +244,32 @@ func TestSequence(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		seq, err := db.Catalog.GetSequence("a")
+		seq, err := tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
 		// first call to next must increase the lease to 2 and store it in the table
-		next(seq, tx, db.Catalog, 1, 2)
+		next(seq, tx, tx.Catalog, 1, 2)
 		// next call must increase the current value but not touch the lease in the table
-		next(seq, tx, db.Catalog, 2, 2)
+		next(seq, tx, tx.Catalog, 2, 2)
 		// next call must increase the current value and the lease
-		next(seq, tx, db.Catalog, 3, 4)
+		next(seq, tx, tx.Catalog, 3, 4)
 		// some additional checks
-		next(seq, tx, db.Catalog, 4, 4)
-		next(seq, tx, db.Catalog, 5, 6)
-		next(seq, tx, db.Catalog, 6, 6)
-		next(seq, tx, db.Catalog, 7, 8)
-		next(seq, tx, db.Catalog, 8, 8)
+		next(seq, tx, tx.Catalog, 4, 4)
+		next(seq, tx, tx.Catalog, 5, 6)
+		next(seq, tx, tx.Catalog, 6, 6)
+		next(seq, tx, tx.Catalog, 7, 8)
+		next(seq, tx, tx.Catalog, 8, 8)
 		// the lease must not be greater than the max value, but not fail
-		next(seq, tx, db.Catalog, 9, 9)
+		next(seq, tx, tx.Catalog, 9, 9)
 
 		// reaching the max should not modify the cache or the lease
 		cached := seq.Cached
 
-		_, err = seq.Next(tx, db.Catalog)
+		_, err = seq.Next(tx)
 		assert.Error(t, err)
 		require.Equal(t, int64(9), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := getLease(t, tx, db.Catalog, "a")
+		got, err := getLease(t, tx, tx.Catalog, "a")
 		assert.NoError(t, err)
 		require.Equal(t, int64(9), *got)
 	})
@@ -281,7 +281,7 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		err = db.Catalog.CreateSequence(tx, &database.SequenceInfo{
+		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: -1,
 			Min:         -5, Max: 9,
@@ -290,33 +290,33 @@ func TestSequence(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		seq, err := db.Catalog.GetSequence("a")
+		seq, err := tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
 		// first call to next must decrease the lease to 3 and store it in the table
-		next(seq, tx, db.Catalog, 5, 4)
+		next(seq, tx, tx.Catalog, 5, 4)
 		// next call must increase the current value but not touch the lease in the table
-		next(seq, tx, db.Catalog, 4, 4)
+		next(seq, tx, tx.Catalog, 4, 4)
 		// next call must increase the current value and the lease
-		next(seq, tx, db.Catalog, 3, 2)
+		next(seq, tx, tx.Catalog, 3, 2)
 		// some additional checks
-		next(seq, tx, db.Catalog, 2, 2)
-		next(seq, tx, db.Catalog, 1, 0)
-		next(seq, tx, db.Catalog, 0, 0)
-		next(seq, tx, db.Catalog, -1, -2)
-		next(seq, tx, db.Catalog, -2, -2)
-		next(seq, tx, db.Catalog, -3, -4)
-		next(seq, tx, db.Catalog, -4, -4)
-		next(seq, tx, db.Catalog, -5, -5)
+		next(seq, tx, tx.Catalog, 2, 2)
+		next(seq, tx, tx.Catalog, 1, 0)
+		next(seq, tx, tx.Catalog, 0, 0)
+		next(seq, tx, tx.Catalog, -1, -2)
+		next(seq, tx, tx.Catalog, -2, -2)
+		next(seq, tx, tx.Catalog, -3, -4)
+		next(seq, tx, tx.Catalog, -4, -4)
+		next(seq, tx, tx.Catalog, -5, -5)
 
 		// reaching the min should not modify the cache or the lease
 		cached := seq.Cached
 
-		_, err = seq.Next(tx, db.Catalog)
+		_, err = seq.Next(tx)
 		assert.Error(t, err)
 		require.Equal(t, int64(-5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
-		got, err := getLease(t, tx, db.Catalog, "a")
+		got, err := getLease(t, tx, tx.Catalog, "a")
 		assert.NoError(t, err)
 		require.Equal(t, int64(-5), *got)
 	})
@@ -327,7 +327,7 @@ func TestSequence(t *testing.T) {
 		tx, err := db.Begin(true)
 		assert.NoError(t, err)
 
-		err = db.Catalog.CreateSequence(tx, &database.SequenceInfo{
+		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: -1,
 			Min:         -4, Max: 9,
@@ -344,10 +344,10 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		seq, err := db.Catalog.GetSequence("a")
+		seq, err := tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
-		_, err = seq.Next(tx, db.Catalog)
+		_, err = seq.Next(tx)
 		assert.Error(t, err)
 	})
 
@@ -358,7 +358,7 @@ func TestSequence(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		err = db.Catalog.CreateSequence(tx, &database.SequenceInfo{
+		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
 			IncrementBy: 1,
 			Min:         1, Max: 20,
@@ -367,31 +367,30 @@ func TestSequence(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		seq, err := db.Catalog.GetSequence("a")
+		seq, err := tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
-		next(seq, tx, db.Catalog, 3, 7)
-		next(seq, tx, db.Catalog, 4, 7)
+		next(seq, tx, tx.Catalog, 3, 7)
+		next(seq, tx, tx.Catalog, 4, 7)
 
-		got, err := getLease(t, tx, db.Catalog, "a")
+		got, err := getLease(t, tx, tx.Catalog, "a")
 		assert.NoError(t, err)
 		require.Equal(t, int64(7), *got)
 
-		err = seq.Release(tx, db.Catalog)
+		err = seq.Release(tx)
 		assert.NoError(t, err)
 
-		c, err := catalogstore.LoadCatalog(tx)
+		tx.Catalog = database.NewCatalog()
+		err = catalogstore.LoadCatalog(tx)
 		assert.NoError(t, err)
 
-		db.Catalog = c
-
-		seq, err = db.Catalog.GetSequence("a")
+		seq, err = tx.Catalog.GetSequence("a")
 		assert.NoError(t, err)
 
-		got, err = getLease(t, tx, db.Catalog, "a")
+		got, err = getLease(t, tx, tx.Catalog, "a")
 		assert.NoError(t, err)
 		require.Equal(t, int64(4), *got)
 
-		next(seq, tx, db.Catalog, 5, 9)
+		next(seq, tx, tx.Catalog, 5, 9)
 	})
 }

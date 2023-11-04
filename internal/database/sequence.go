@@ -74,8 +74,8 @@ func (s *Sequence) key() *tree.Key {
 	return s.Key
 }
 
-func (s *Sequence) Init(tx *Transaction, catalog *Catalog) error {
-	tb, err := s.GetOrCreateTable(tx, catalog)
+func (s *Sequence) Init(tx *Transaction) error {
+	tb, err := s.GetOrCreateTable(tx)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (s *Sequence) Drop(tx *Transaction, catalog *Catalog) error {
 	return tb.Delete(k)
 }
 
-func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
+func (s *Sequence) Next(tx *Transaction) (int64, error) {
 	if !tx.Writable {
 		return 0, errors.New("cannot increment sequence on read-only transaction")
 	}
@@ -157,7 +157,7 @@ func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
 	}
 
 	// store the new lease
-	err := s.SetLease(tx, catalog, s.Info.Name, newLease)
+	err := s.SetLease(tx, s.Info.Name, newLease)
 	if err != nil {
 		return 0, err
 	}
@@ -166,8 +166,8 @@ func (s *Sequence) Next(tx *Transaction, catalog *Catalog) (int64, error) {
 	return newValue, nil
 }
 
-func (s *Sequence) SetLease(tx *Transaction, catalog *Catalog, name string, v int64) error {
-	tb, err := s.GetOrCreateTable(tx, catalog)
+func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
+	tb, err := s.GetOrCreateTable(tx)
 	if err != nil {
 		return err
 	}
@@ -182,18 +182,18 @@ func (s *Sequence) SetLease(tx *Transaction, catalog *Catalog, name string, v in
 	return err
 }
 
-func (s *Sequence) GetOrCreateTable(tx *Transaction, catalog *Catalog) (*Table, error) {
-	tb, err := catalog.GetTable(tx, SequenceTableName)
+func (s *Sequence) GetOrCreateTable(tx *Transaction) (*Table, error) {
+	tb, err := tx.Catalog.GetTable(tx, SequenceTableName)
 	if err == nil || !errs.IsNotFoundError(err) {
 		return tb, err
 	}
 
-	err = catalog.CreateTable(tx, SequenceTableName, sequenceTableInfo)
+	err = tx.CatalogWriter().CreateTable(tx, SequenceTableName, sequenceTableInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	return catalog.GetTable(tx, SequenceTableName)
+	return tx.Catalog.GetTable(tx, SequenceTableName)
 }
 
 func (s *Sequence) Type() string {
@@ -221,12 +221,12 @@ func (s *Sequence) GenerateBaseName() string {
 
 // Release the sequence by storing the actual current value to the sequence table.
 // If the sequence has cache, the cached value is overwritten.
-func (s *Sequence) Release(tx *Transaction, catalog *Catalog) error {
+func (s *Sequence) Release(tx *Transaction) error {
 	if s.CurrentValue == nil {
 		return nil
 	}
 
-	err := s.SetLease(tx, catalog, s.Info.Name, *s.CurrentValue)
+	err := s.SetLease(tx, s.Info.Name, *s.CurrentValue)
 	if err != nil {
 		return err
 	}
@@ -235,7 +235,7 @@ func (s *Sequence) Release(tx *Transaction, catalog *Catalog) error {
 	return nil
 }
 
-func (s *Sequence) Clone() *Sequence {
+func (s *Sequence) Clone() Relation {
 	return &Sequence{
 		Info:         s.Info.Clone(),
 		CurrentValue: s.CurrentValue,

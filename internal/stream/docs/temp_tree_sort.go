@@ -33,7 +33,7 @@ func TempTreeSortReverse(e expr.Expr) *TempTreeSortOperator {
 func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	db := in.GetDB()
 
-	catalog := in.GetCatalog()
+	catalog := in.GetTx().Catalog
 	tns := catalog.GetFreeTransientNamespace()
 	tr, cleanup, err := tree.NewTransient(db.Store.NewTransientSession(), tns)
 	if err != nil {

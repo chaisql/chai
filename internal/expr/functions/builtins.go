@@ -129,7 +129,7 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return expr.NullLiteral, err
 	}
 
-	info, err := env.GetCatalog().GetTableInfo(types.As[string](tableName))
+	info, err := env.GetTx().Catalog.GetTableInfo(types.As[string](tableName))
 	if err != nil {
 		return nil, err
 	}

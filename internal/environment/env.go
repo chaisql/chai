@@ -25,13 +25,12 @@ type Param struct {
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
-	Params  []Param
-	Vars    *document.FieldBuffer
-	Key     *tree.Key
-	Doc     types.Document
-	DB      *database.Database
-	Catalog *database.Catalog
-	Tx      *database.Transaction
+	Params []Param
+	Vars   *document.FieldBuffer
+	Key    *tree.Key
+	Doc    types.Document
+	DB     *database.Database
+	Tx     *database.Transaction
 
 	Outer *Environment
 }
@@ -162,17 +161,6 @@ func (e *Environment) GetDB() *database.Database {
 
 	if outer := e.GetOuter(); outer != nil {
 		return outer.GetDB()
-	}
-
-	return nil
-}
-
-func (e *Environment) GetCatalog() *database.Catalog {
-	if e.Catalog != nil {
-		return e.Catalog
-	}
-	if outer := e.GetOuter(); outer != nil {
-		return outer.GetCatalog()
 	}
 
 	return nil

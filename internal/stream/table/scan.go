@@ -65,7 +65,7 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	newEnv.SetOuter(in)
 	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
 
-	table, err := in.GetCatalog().GetTable(in.GetTx(), it.TableName)
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
 	if err != nil {
 		return err
 	}

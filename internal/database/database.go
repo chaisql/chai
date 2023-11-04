@@ -17,8 +17,10 @@ const (
 )
 
 type Database struct {
-	DB      *pebble.DB
-	Catalog *Catalog
+	DB *pebble.DB
+
+	catalogMu sync.RWMutex
+	catalog   *Catalog
 
 	// If this is non-nil, the user is running an explicit transaction
 	// using the BEGIN statement.
@@ -27,8 +29,12 @@ type Database struct {
 	attachedTransaction *Transaction
 	attachedTxMu        sync.Mutex
 
+	// This is used to prevent creating a new transaction
+	// during certain operations (commit, close, etc.)
+	txmu sync.RWMutex
+
 	// This limits the number of write transactions to 1.
-	writetxmu *sync.Mutex
+	writetxmu sync.Mutex
 
 	// TransactionIDs is used to assign transaction an ID at runtime.
 	// Since transaction IDs are not persisted and not used for concurrent
@@ -45,7 +51,7 @@ type Database struct {
 // Options are passed to Open to control
 // how the database is loaded.
 type Options struct {
-	CatalogLoader func(tx *Transaction) (*Catalog, error)
+	CatalogLoader func(tx *Transaction) error
 }
 
 // CatalogLoader loads the catalog from the disk.
@@ -113,8 +119,7 @@ var DefaultComparer = &pebble.Comparer{
 
 func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 	db := Database{
-		DB:        pdb,
-		writetxmu: &sync.Mutex{},
+		DB: pdb,
 		Store: kv.NewStore(pdb, kv.Options{
 			RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
 		}),
@@ -133,21 +138,22 @@ func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 	}
 	defer tx.Rollback()
 
-	if opts.CatalogLoader == nil {
-		db.Catalog = NewCatalog()
-	} else {
-		db.Catalog, err = opts.CatalogLoader(tx)
+	db.catalog = NewCatalog()
+	tx.Catalog = db.catalog
+
+	if opts.CatalogLoader != nil {
+		err = opts.CatalogLoader(tx)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to load catalog")
+		}
+	} else {
+		err = tx.CatalogWriter().Init(tx)
+		if err != nil {
+			return nil, err
 		}
 	}
 
 	err = db.cleanupTransientNamespaces(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Catalog.Init(tx)
 	if err != nil {
 		return nil, err
 	}
@@ -187,13 +193,13 @@ func (db *Database) closeDatabase() error {
 	}
 	defer tx.Session.Close()
 
-	for _, seqName := range db.Catalog.ListSequences() {
-		seq, err := db.Catalog.GetSequence(seqName)
+	for _, seqName := range tx.Catalog.ListSequences() {
+		seq, err := tx.Catalog.GetSequence(seqName)
 		if err != nil {
 			return err
 		}
 
-		err = seq.Release(tx, db.Catalog)
+		err = seq.Release(tx)
 		if err != nil {
 			return err
 		}
@@ -232,6 +238,9 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // attached to the database and prevents any other transaction to be opened afterwards
 // until it gets rolled back or commited.
 func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
+	db.txmu.RLock()
+	defer db.txmu.RUnlock()
+
 	if opts == nil {
 		opts = new(TxOptions)
 	}
@@ -264,14 +273,16 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 	}
 
 	tx := Transaction{
+		db:       db,
 		Store:    db.Store,
 		Session:  sess,
 		Writable: !opts.ReadOnly,
 		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
+		Catalog:  db.Catalog(),
 	}
 
 	if !opts.ReadOnly {
-		tx.WriteTxMu = db.writetxmu
+		tx.WriteTxMu = &db.writetxmu
 	}
 
 	if opts.Attached {
@@ -281,6 +292,19 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 	}
 
 	return &tx, nil
+}
+
+func (db *Database) Catalog() *Catalog {
+	db.catalogMu.RLock()
+	c := db.catalog
+	db.catalogMu.RUnlock()
+	return c
+}
+
+func (db *Database) SetCatalog(c *Catalog) {
+	db.catalogMu.Lock()
+	db.catalog = c
+	db.catalogMu.Unlock()
 }
 
 func (db *Database) releaseAttachedTx() {

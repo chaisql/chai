@@ -24,10 +24,9 @@ func Validate(indexName string) *ValidateOperator {
 }
 
 func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	catalog := in.GetCatalog()
 	tx := in.GetTx()
 
-	info, err := catalog.GetIndexInfo(op.indexName)
+	info, err := tx.Catalog.GetIndexInfo(op.indexName)
 	if err != nil {
 		return err
 	}
@@ -36,7 +35,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 		return errors.New("indexValidate can be used only on unique indexes")
 	}
 
-	idx, err := catalog.GetIndex(tx, op.indexName)
+	idx, err := tx.Catalog.GetIndex(tx, op.indexName)
 	if err != nil {
 		return err
 	}

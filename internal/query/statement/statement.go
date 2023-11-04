@@ -33,10 +33,9 @@ func (stmt *basePreparedStatement) Run(ctx *Context) (Result, error) {
 }
 
 type Context struct {
-	DB      *database.Database
-	Tx      *database.Transaction
-	Catalog *database.Catalog
-	Params  []environment.Param
+	DB     *database.Database
+	Tx     *database.Transaction
+	Params []environment.Param
 }
 
 type Preparer interface {

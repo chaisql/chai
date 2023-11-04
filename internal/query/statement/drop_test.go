@@ -77,7 +77,7 @@ func TestDropIndex(t *testing.T) {
 	testutil.MustExec(t, db, tx, "DROP INDEX idx_test2_bar")
 
 	// Assert that the good index has been dropped.
-	indexes := db.Catalog.ListIndexes("")
+	indexes := tx.Catalog.ListIndexes("")
 	require.Len(t, indexes, 2)
 	require.Equal(t, "idx_test1_foo", indexes[0])
 	require.Equal(t, "test1_bar_idx", indexes[1])
@@ -104,9 +104,9 @@ func TestDropSequence(t *testing.T) {
 	testutil.MustExec(t, db, tx, "DROP SEQUENCE seq1")
 
 	// Assert that the good index has been dropped.
-	_, err := db.Catalog.GetSequence("seq1")
+	_, err := tx.Catalog.GetSequence("seq1")
 	require.IsType(t, &errs.NotFoundError{}, errors.Unwrap(err))
-	_, err = db.Catalog.GetSequence("seq2")
+	_, err = tx.Catalog.GetSequence("seq2")
 	assert.NoError(t, err)
 
 	// Dropping a non existing sequence with IF EXISTS should not fail.

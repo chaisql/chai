@@ -38,7 +38,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
 	if stmt.Values != nil {
-		ti, err := c.Catalog.GetTableInfo(stmt.TableName)
+		ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
 		if err != nil {
 			return nil, err
 		}
@@ -106,9 +106,9 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	// check unique constraints
-	indexNames := c.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
-		info, err := c.Catalog.GetIndexInfo(indexName)
+		info, err := c.Tx.Catalog.GetIndexInfo(indexName)
 		if err != nil {
 			return nil, err
 		}

@@ -401,7 +401,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			`)
 
 			sctx := planner.NewStreamContext(test.root)
-			sctx.Catalog = db.Catalog
+			sctx.Catalog = tx.Catalog
 			err := planner.SelectIndex(sctx)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
@@ -454,7 +454,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 				`)
 
 				sctx := planner.NewStreamContext(test.root)
-				sctx.Catalog = db.Catalog
+				sctx.Catalog = tx.Catalog
 				err := planner.PrecalculateExprRule(sctx)
 				assert.NoError(t, err)
 
@@ -714,7 +714,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			`)
 
 			sctx := planner.NewStreamContext(test.root)
-			sctx.Catalog = db.Catalog
+			sctx.Catalog = tx.Catalog
 			err := planner.SelectIndex(sctx)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
@@ -765,7 +765,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 	`)
 
 				sctx := planner.NewStreamContext(test.root)
-				sctx.Catalog = db.Catalog
+				sctx.Catalog = tx.Catalog
 				err := planner.PrecalculateExprRule(sctx)
 				assert.NoError(t, err)
 
@@ -796,7 +796,7 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("foo")).Pipe(docs.Filter(parser.MustParseExpr("c = 1 + 2"))),
 					stream.New(table.Scan("bar")).Pipe(docs.Filter(parser.MustParseExpr("d = 1 + 2"))),
 				)),
-				db.Catalog)
+				tx.Catalog)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -828,7 +828,7 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("foo")).Pipe(docs.Filter(parser.MustParseExpr("12"))),
 					stream.New(table.Scan("bar")).Pipe(docs.Filter(parser.MustParseExpr("13"))),
 				)),
-				db.Catalog)
+				tx.Catalog)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -863,7 +863,7 @@ func TestOptimize(t *testing.T) {
 					Pipe(docs.Filter(parser.MustParseExpr("a = 1"))).
 					Pipe(docs.Filter(parser.MustParseExpr("d = 2"))),
 			)),
-			db.Catalog)
+			tx.Catalog)
 
 		want := stream.New(stream.Concat(
 			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),

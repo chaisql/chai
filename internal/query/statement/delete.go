@@ -55,7 +55,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 		s = s.Pipe(docs.Take(stmt.LimitExpr))
 	}
 
-	indexNames := c.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
 		s = s.Pipe(index.Delete(indexName))
 	}

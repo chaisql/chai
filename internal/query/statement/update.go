@@ -47,7 +47,7 @@ type UpdateSetPair struct {
 
 // Prepare implements the Preparer interface.
 func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
-	ti, err := c.Catalog.GetTableInfo(stmt.TableName)
+	ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	// TODO(asdine): This removes ALL indexed fields for each document
 	// even if the update modified a single field. We should only
 	// update the indexed fields that were modified.
-	indexNames := c.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
 		s = s.Pipe(index.Delete(indexName))
 	}

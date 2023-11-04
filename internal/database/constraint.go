@@ -225,7 +225,6 @@ func (f FieldConstraints) convertArrayAtPath(path document.Path, a types.Array, 
 }
 
 type TableExpression interface {
-	Bind(catalog *Catalog)
 	Eval(tx *Transaction, d types.Document) (types.Value, error)
 	String() string
 }
