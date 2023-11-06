@@ -24,7 +24,26 @@ func EncodeNull(dst []byte) []byte {
 
 func EncodeValue(dst []byte, v types.Value) ([]byte, error) {
 	if v.V() == nil {
-		return append(dst, byte(v.Type())), nil
+		switch v.Type() {
+		case types.NullValue:
+			return EncodeNull(dst), nil
+		case types.BooleanValue:
+			return EncodeBoolean(dst, false), nil
+		case types.IntegerValue:
+			return EncodeInt(dst, 0), nil
+		case types.DoubleValue:
+			return EncodeFloat64(dst, 0), nil
+		case types.TextValue:
+			return EncodeText(dst, ""), nil
+		case types.BlobValue:
+			return EncodeBlob(dst, nil), nil
+		case types.ArrayValue:
+			return EncodeArray(dst, nil)
+		case types.DocumentValue:
+			return EncodeDocument(dst, nil)
+		default:
+			panic(fmt.Sprintf("unsupported type %v", v.Type()))
+		}
 	}
 
 	switch v.Type() {

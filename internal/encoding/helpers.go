@@ -53,7 +53,7 @@ func Skip(b []byte) int {
 		return 2
 	case Int16Value, Uint16Value:
 		return 3
-	case Int32Value, Uint32Value, Float32Value:
+	case Int32Value, Uint32Value:
 		return 5
 	case Int64Value, Uint64Value, Float64Value:
 		return 9
@@ -66,7 +66,7 @@ func Skip(b []byte) int {
 		return 1 + SkipDocument(b[1:])
 	}
 
-	panic("unreachable")
+	return 0
 }
 
 func SkipArray(b []byte) int {
@@ -168,7 +168,7 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 	switch a[0] {
 	case Int64Value, Uint64Value, Float64Value:
 		return bytes.Compare(a[1:9], b[1:9]), 9
-	case Int32Value, Uint32Value, Float32Value:
+	case Int32Value, Uint32Value:
 		return bytes.Compare(a[1:5], b[1:5]), 5
 	case Int16Value, Uint16Value:
 		return bytes.Compare(a[1:3], b[1:3]), 3

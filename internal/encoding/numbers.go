@@ -27,7 +27,7 @@ func EncodeInt(dst []byte, n int64) []byte {
 }
 
 func EncodeUint(dst []byte, n uint64) []byte {
-	if n <= 127 {
+	if n <= 31 {
 		return append(dst, byte(n+uint64(IntSmallValue)+32))
 	}
 
@@ -76,7 +76,7 @@ func EncodeInt64(dst []byte, n int64) []byte {
 }
 
 func DecodeInt(b []byte) (int64, int) {
-	if b[0] >= IntSmallValue && b[0] <= IntSmallValue+0x9F {
+	if b[0] >= IntSmallValue && b[0] < Uint8Value {
 		return int64(int8(b[0] - IntSmallValue - 32)), 1
 	}
 

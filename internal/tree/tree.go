@@ -11,7 +11,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-type Namespace int64
+type Namespace uint64
 
 // A Tree is an abstraction over a k-v store that allows
 // manipulating data using high level keys and values of the
@@ -295,24 +295,24 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 	}
 }
 
-func (t *Tree) NewMaxTypeForType(tp types.ValueType) types.ValueType {
+func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
 	switch tp {
 	case types.NullValue:
-		return 0x06 // NullValue = 0x05
+		return encoding.NullValue + 1
 	case types.BooleanValue:
-		return 0x12 // TrueValue = 0x10, FalseValue = 0x11
+		return encoding.TrueValue + 1
 	case types.IntegerValue:
-		return 0xC8 // Integers go from 0x20 to 0xC7
+		return encoding.Uint64Value + 1
 	case types.DoubleValue:
-		return 0xD2 // Doubles go from 0xD0 to 0xD1
+		return encoding.Float64Value + 1
 	case types.TextValue:
-		return 0xDB // TextValue = 0xDA
+		return encoding.TextValue + 1
 	case types.BlobValue:
-		return 0xE1 // BlobValue = 0xE0
+		return encoding.BlobValue + 1
 	case types.ArrayValue:
-		return 0xE7 // ArrayValue = 0xE6
+		return encoding.ArrayValue + 1
 	case types.DocumentValue:
-		return 0xF1 // DocumentValue = 0xF0
+		return encoding.DocumentValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}

@@ -177,7 +177,7 @@ func TestEncodeDecodeBooleans(t *testing.T) {
 
 func TestEncodeDecodeNull(t *testing.T) {
 	got := encoding.EncodeNull(nil)
-	require.Equal(t, []byte{0x05}, got)
+	require.Equal(t, []byte{0x02}, got)
 }
 
 func mustNewKey(t testing.TB, values ...types.Value) []byte {
