@@ -215,7 +215,7 @@ func (c *CatalogWriter) ensureSequenceExists(tx *Transaction, seq *SequenceInfo)
 	return nil
 }
 
-func (c *CatalogWriter) generateStoreName(tx *Transaction) (tree.Namespace, error) {
+func (c *CatalogWriter) generateStoreNamespace(tx *Transaction) (tree.Namespace, error) {
 	seq, err := c.Catalog.GetSequence(StoreSequence)
 	if err != nil {
 		return 0, err
@@ -249,7 +249,7 @@ func (c *CatalogWriter) CreateTable(tx *Transaction, tableName string, info *Tab
 	}
 
 	if info.StoreNamespace == 0 {
-		info.StoreNamespace, err = c.generateStoreName(tx)
+		info.StoreNamespace, err = c.generateStoreNamespace(tx)
 		if err != nil {
 			return err
 		}
@@ -302,33 +302,38 @@ func (c *CatalogWriter) DropTable(tx *Transaction, tableName string) error {
 
 // CreateIndex creates an index with the given name.
 // If it already exists, returns errs.ErrIndexAlreadyExists.
-func (c *CatalogWriter) CreateIndex(tx *Transaction, info *IndexInfo) error {
+func (c *CatalogWriter) CreateIndex(tx *Transaction, info *IndexInfo) (*IndexInfo, error) {
 	// check if the associated table exists
 	ti, err := c.Catalog.GetTableInfo(info.Owner.TableName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// check if the indexed fields exist
 	for _, p := range info.Paths {
 		fc := ti.GetFieldConstraintForPath(p)
 		if fc == nil {
-			return errors.Errorf("field %q does not exist for table %q", p, ti.TableName)
+			return nil, errors.Errorf("field %q does not exist for table %q", p, ti.TableName)
 		}
 	}
 
-	info.StoreNamespace, err = c.generateStoreName(tx)
+	info.StoreNamespace, err = c.generateStoreNamespace(tx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	rel := IndexInfoRelation{Info: info}
 	err = c.Catalog.Cache.Add(tx, &rel)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return c.Catalog.CatalogTable.Insert(tx, &rel)
+	err = c.Catalog.CatalogTable.Insert(tx, &rel)
+	if err != nil {
+		return nil, err
+	}
+
+	return info, nil
 }
 
 // DropIndex deletes an index from the

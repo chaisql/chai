@@ -57,7 +57,7 @@ func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s := stream.New(table.Scan(info.Owner.TableName)).Pipe(index.IndexInsert(info.IndexName))
+		s := stream.New(table.Scan(info.Owner.TableName)).Pipe(index.Insert(info.IndexName))
 		streams = append(streams, s)
 	}
 

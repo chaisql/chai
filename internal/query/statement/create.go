@@ -55,7 +55,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	// create a unique index for every unique constraint
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
-			err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
+			_, err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
 				Paths:  tc.Paths,
 				Unique: true,
 				Owner: database.Owner{
@@ -88,7 +88,7 @@ func (stmt *CreateIndexStmt) IsReadOnly() bool {
 func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &stmt.Info)
+	_, err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
 			return res, nil
@@ -99,7 +99,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	s := stream.New(table.Scan(stmt.Info.Owner.TableName)).
-		Pipe(index.IndexInsert(stmt.Info.IndexName)).
+		Pipe(index.Insert(stmt.Info.IndexName)).
 		Pipe(stream.Discard())
 
 	ss := PreparedStreamStmt{

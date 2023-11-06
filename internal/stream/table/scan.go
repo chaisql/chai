@@ -18,6 +18,9 @@ type ScanOperator struct {
 	TableName string
 	Ranges    stream.Ranges
 	Reverse   bool
+	// If set, the operator will scan this table.
+	// It not set, it will get the scan from the catalog.
+	Table *database.Table
 }
 
 // Scan creates an iterator that iterates over each document of the given table that match the given ranges.
@@ -31,33 +34,6 @@ func ScanReverse(tableName string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
 }
 
-func (it *ScanOperator) String() string {
-	var s strings.Builder
-
-	s.WriteString("table.Scan")
-	if it.Reverse {
-		s.WriteString("Reverse")
-	}
-
-	s.WriteRune('(')
-
-	s.WriteString(strconv.Quote(it.TableName))
-	if len(it.Ranges) > 0 {
-		s.WriteString(", [")
-		for i, r := range it.Ranges {
-			s.WriteString(r.String())
-			if i+1 < len(it.Ranges) {
-				s.WriteString(", ")
-			}
-		}
-		s.WriteString("]")
-	}
-
-	s.WriteString(")")
-
-	return s.String()
-}
-
 // Iterate over the documents of the table. Each document is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
@@ -65,9 +41,13 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	newEnv.SetOuter(in)
 	newEnv.Set(environment.TableKey, types.NewTextValue(it.TableName))
 
-	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
-	if err != nil {
-		return err
+	table := it.Table
+	var err error
+	if table == nil {
+		table, err = in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
+		if err != nil {
+			return err
+		}
 	}
 
 	var ranges []*database.Range
@@ -97,4 +77,31 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	}
 
 	return nil
+}
+
+func (it *ScanOperator) String() string {
+	var s strings.Builder
+
+	s.WriteString("table.Scan")
+	if it.Reverse {
+		s.WriteString("Reverse")
+	}
+
+	s.WriteRune('(')
+
+	s.WriteString(strconv.Quote(it.TableName))
+	if len(it.Ranges) > 0 {
+		s.WriteString(", [")
+		for i, r := range it.Ranges {
+			s.WriteString(r.String())
+			if i+1 < len(it.Ranges) {
+				s.WriteString(", ")
+			}
+		}
+		s.WriteString("]")
+	}
+
+	s.WriteString(")")
+
+	return s.String()
 }

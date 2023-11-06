@@ -121,7 +121,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	s = s.Pipe(table.Insert(stmt.TableName))
 
 	for _, indexName := range indexNames {
-		s = s.Pipe(index.IndexInsert(indexName))
+		s = s.Pipe(index.Insert(indexName))
 	}
 
 	if len(stmt.Returning) > 0 {

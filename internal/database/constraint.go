@@ -22,7 +22,7 @@ type FieldConstraint struct {
 }
 
 func (f *FieldConstraint) IsEmpty() bool {
-	return f.Type.IsAny() && !f.IsNotNull && f.DefaultValue == nil
+	return f.Field == "" && f.Type.IsAny() && !f.IsNotNull && f.DefaultValue == nil
 }
 
 func (f *FieldConstraint) String() string {
@@ -43,17 +43,12 @@ func (f *FieldConstraint) String() string {
 		s.WriteString(" NOT NULL")
 	}
 
-	if f.HasDefaultValue() {
+	if f.DefaultValue != nil {
 		s.WriteString(" DEFAULT ")
 		s.WriteString(f.DefaultValue.String())
 	}
 
 	return s.String()
-}
-
-// HasDefaultValue returns this field contains a default value constraint.
-func (f *FieldConstraint) HasDefaultValue() bool {
-	return f.DefaultValue != nil
 }
 
 // FieldConstraints is a list of field constraints.

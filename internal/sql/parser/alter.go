@@ -7,8 +7,8 @@ import (
 	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
-func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.AlterStmt, err error) {
-	var stmt statement.AlterStmt
+func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.AlterTableRenameStmt, err error) {
+	var stmt statement.AlterTableRenameStmt
 	stmt.TableName = tableName
 
 	// Parse "TO".
@@ -25,42 +25,27 @@ func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.A
 	return stmt, nil
 }
 
-func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (_ statement.AlterTableAddField, err error) {
-	var stmt statement.AlterTableAddField
-	stmt.Info.TableName = tableName
+func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (*statement.AlterTableAddFieldStmt, error) {
+	var stmt statement.AlterTableAddFieldStmt
+	stmt.TableName = tableName
 
 	// Parse "FIELD".
 	if err := p.parseTokens(scanner.FIELD); err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse new field definition.
-	fc, tcs, err := p.parseFieldDefinition(nil)
+	var err error
+	stmt.FieldConstraint, stmt.TableConstraints, err = p.parseFieldDefinition(nil)
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
-	if fc.IsEmpty() {
-		return stmt, &ParseError{Message: "cannot add a field with no constraint"}
+	if stmt.FieldConstraint.IsEmpty() {
+		return nil, &ParseError{Message: "cannot add a field with no constraint"}
 	}
 
-	err = stmt.Info.AddFieldConstraint(fc)
-	if err != nil {
-		return stmt, err
-	}
-
-	for _, tc := range tcs {
-		err = stmt.Info.AddTableConstraint(tc)
-		if err != nil {
-			return stmt, err
-		}
-	}
-
-	if stmt.Info.GetPrimaryKey() != nil {
-		return stmt, &ParseError{Message: "cannot add a PRIMARY KEY constraint"}
-	}
-
-	return stmt, nil
+	return &stmt, nil
 }
 
 // parseAlterStatement parses a Alter query string and returns a Statement AST object.

@@ -65,7 +65,8 @@ func (t *Table) Insert(d types.Document) (*tree.Key, types.Document, error) {
 
 func (t *Table) encodeDocument(d types.Document) (types.Document, []byte, error) {
 	ed, ok := d.(*EncodedDocument)
-	if ok {
+	// pointer comparison is enough here
+	if ok && ed.fieldConstraints == &t.Info.FieldConstraints {
 		return d, ed.encoded, nil
 	}
 

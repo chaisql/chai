@@ -16,7 +16,7 @@ type InsertOperator struct {
 	indexName string
 }
 
-func IndexInsert(indexName string) *InsertOperator {
+func Insert(indexName string) *InsertOperator {
 	return &InsertOperator{
 		indexName: indexName,
 	}

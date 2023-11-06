@@ -216,7 +216,7 @@ LOOP:
 			fc.IsNotNull = true
 		case scanner.DEFAULT:
 			// if it has already a default value we return an error
-			if fc.HasDefaultValue() {
+			if fc.DefaultValue != nil {
 				return nil, nil, newParseError(scanner.Tokstr(tok, lit), []string{"CONSTRAINT", ")"}, pos)
 			}
 

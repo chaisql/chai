@@ -113,9 +113,9 @@ func TestCatalogTable(t *testing.T) {
 			err := catalog.CreateTable(tx, "foo", ti)
 			assert.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "gender")}, IndexName: "idx_gender", Owner: database.Owner{TableName: "foo"}})
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "gender")}, IndexName: "idx_gender", Owner: database.Owner{TableName: "foo"}})
 			assert.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "city")}, IndexName: "idx_city", Owner: database.Owner{TableName: "foo"}, Unique: true})
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "city")}, IndexName: "idx_city", Owner: database.Owner{TableName: "foo"}, Unique: true})
 			assert.NoError(t, err)
 
 			seq := database.SequenceInfo{
@@ -295,7 +295,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		clone := db.Catalog().Clone()
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idx_a", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
 			})
 			assert.NoError(t, err)
@@ -321,12 +321,12 @@ func TestCatalogCreateIndex(t *testing.T) {
 		})
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			assert.NoError(t, err)
 
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "idxFoo"})
@@ -337,7 +337,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 	t.Run("Should fail if table doesn't exist", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			if !errs.IsNotFoundError(err) {
@@ -368,7 +368,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		})
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
-			err := catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
@@ -377,7 +377,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 			assert.NoError(t, err)
 
 			// create another one
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
@@ -401,11 +401,11 @@ func TestTxDropIndex(t *testing.T) {
 				),
 			})
 			assert.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
 			})
 			assert.NoError(t, err)
-			err = catalog.CreateIndex(tx, &database.IndexInfo{
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxBar", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "bar")},
 			})
 			assert.NoError(t, err)

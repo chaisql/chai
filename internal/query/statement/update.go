@@ -108,7 +108,15 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	for _, indexName := range indexNames {
-		s = s.Pipe(index.IndexInsert(indexName))
+		info, err := c.Tx.Catalog.GetIndexInfo(indexName)
+		if err != nil {
+			return nil, err
+		}
+		if info.Unique {
+			s = s.Pipe(index.Validate(indexName))
+		}
+
+		s = s.Pipe(index.Insert(indexName))
 	}
 
 	s = s.Pipe(stream.Discard())
