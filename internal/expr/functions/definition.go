@@ -7,6 +7,9 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 )
 
+// UNLIMITED represents an unlimited number of arguments.
+const UNLIMITED = -1
+
 // A Definition transforms a list of expressions into a Function.
 type Definition interface {
 	Name() string
@@ -56,7 +59,7 @@ func (fd *definition) Name() string {
 }
 
 func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
-	if len(args) != fd.arity {
+	if fd.arity != UNLIMITED && (len(args) != fd.arity) {
 		return nil, fmt.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}
 	return fd.constructorFn(args...)

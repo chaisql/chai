@@ -67,6 +67,14 @@ var builtinFunctions = Definitions{
 			return &Len{Expr: args[0]}, nil
 		},
 	},
+	"coalesce": &definition{
+		name:  "coalesce",
+		arity: UNLIMITED,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			// FIXME: does it need a slice of expression
+			return &Coalesce{Expr: args[0]}, nil
+		},
+	},
 }
 
 // BuiltinDefinitions returns a map of builtin functions.
@@ -716,4 +724,23 @@ func (s *Len) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 // String returns the literal representation of len.
 func (s *Len) String() string {
 	return fmt.Sprintf("LEN(%v)", s.Expr)
+}
+
+type Coalesce struct {
+	Expr expr.Expr
+}
+
+func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
+	//TODO implement me
+	panic("implement eval")
+}
+
+func (c *Coalesce) String() string {
+	//TODO implement me
+	panic("implement string")
+}
+
+func (c *Coalesce) Params() []expr.Expr {
+	//TODO implement me
+	panic("implement params")
 }

@@ -29,8 +29,9 @@ profile.*
 # Builds
 cmd/genji/genji
 
-# VS Code config
+# IDE config
 .vscode/
+.idea/
 
 # gopls log
 gopls.log
