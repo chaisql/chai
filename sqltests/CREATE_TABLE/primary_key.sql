@@ -18,6 +18,26 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 }
 */
 
+-- test: with ASC order
+CREATE TABLE test(a INT PRIMARY KEY ASC);
+SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
+}
+*/
+
+-- test: with DESC order
+CREATE TABLE test(a INT PRIMARY KEY DESC);
+SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC))"
+}
+*/
+
 -- test: twice
 CREATE TABLE test(a INT PRIMARY KEY PRIMARY KEY);
 -- error:
@@ -53,6 +73,17 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 {
   "name": "test",
   "sql": "CREATE TABLE test (a (b INTEGER NOT NULL), CONSTRAINT test_pk PRIMARY KEY (a.b))"
+}
+*/
+
+
+-- test: table constraint: multiple fields: with order
+CREATE TABLE test(a INT, b INT, c (d INT), PRIMARY KEY(a DESC, b, c.d ASC));
+SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, c (d INTEGER NOT NULL), CONSTRAINT test_pk PRIMARY KEY (a DESC, b, c.d))"
 }
 */
 

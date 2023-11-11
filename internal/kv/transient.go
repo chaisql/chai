@@ -5,10 +5,6 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-const (
-	defaultMaxTransientBatchSize int = 1 << 19 // 512KB
-)
-
 var _ Session = (*TransientSession)(nil)
 
 type TransientSession struct {

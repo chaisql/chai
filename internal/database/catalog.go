@@ -77,7 +77,7 @@ func (c *Catalog) GetTable(tx *Transaction, tableName string) (*Table, error) {
 
 	return &Table{
 		Tx:   tx,
-		Tree: tree.New(tx.Session, ti.StoreNamespace, 0),
+		Tree: tree.New(tx.Session, ti.StoreNamespace, ti.PrimaryKeySortOrder()),
 		Info: ti,
 	}, nil
 }
@@ -99,7 +99,7 @@ func (c *Catalog) GetIndex(tx *Transaction, indexName string) (*Index, error) {
 		return nil, err
 	}
 
-	return NewIndex(tree.New(tx.Session, info.StoreNamespace, 0), *info), nil
+	return NewIndex(tree.New(tx.Session, info.StoreNamespace, info.KeySortOrder), *info), nil
 }
 
 // GetIndexInfo returns an index info by name.
@@ -297,7 +297,7 @@ func (c *CatalogWriter) DropTable(tx *Transaction, tableName string) error {
 		return err
 	}
 
-	return tree.New(tx.Session, ti.StoreNamespace, 0).Truncate()
+	return tree.New(tx.Session, ti.StoreNamespace, ti.PrimaryKeySortOrder()).Truncate()
 }
 
 // CreateIndex creates an index with the given name.
@@ -358,7 +358,7 @@ func (c *CatalogWriter) DropIndex(tx *Transaction, name string) error {
 }
 
 func (c *CatalogWriter) dropIndex(tx *Transaction, info *IndexInfo) error {
-	err := tree.New(tx.Session, info.StoreNamespace, 0).Truncate()
+	err := tree.New(tx.Session, info.StoreNamespace, info.KeySortOrder).Truncate()
 	if err != nil {
 		return err
 	}
@@ -866,7 +866,7 @@ func (s *CatalogStore) Info() *TableInfo {
 func (s *CatalogStore) Table(tx *Transaction) *Table {
 	return &Table{
 		Tx:   tx,
-		Tree: tree.New(tx.Session, CatalogTableNamespace, 0),
+		Tree: tree.New(tx.Session, CatalogTableNamespace, s.info.PrimaryKeySortOrder()),
 		Info: s.info,
 	}
 }

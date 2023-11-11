@@ -216,7 +216,7 @@ func BenchmarkCompositeIndexSet(b *testing.B) {
 				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := fmt.Sprintf("name-%d", j)
-					idx.Set(values(types.NewTextValue(k), types.NewTextValue(k)), []byte(k))
+					_ = idx.Set(values(types.NewTextValue(k), types.NewTextValue(k)), []byte(k))
 				}
 				b.StopTimer()
 				cleanup()

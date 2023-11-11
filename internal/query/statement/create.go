@@ -62,6 +62,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 					TableName: stmt.Info.TableName,
 					Paths:     tc.Paths,
 				},
+				KeySortOrder: tc.SortOrder,
 			})
 			if err != nil {
 				return res, err

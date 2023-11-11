@@ -232,6 +232,7 @@ type TableConstraint struct {
 	Check      TableExpression
 	Unique     bool
 	PrimaryKey bool
+	SortOrder  tree.SortOrder
 }
 
 func (t *TableConstraint) String() string {
@@ -247,11 +248,29 @@ func (t *TableConstraint) String() string {
 		sb.WriteString(")")
 	case t.PrimaryKey:
 		sb.WriteString(" PRIMARY KEY (")
-		sb.WriteString(t.Paths.String())
+		for i, pt := range t.Paths {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(pt.String())
+
+			if t.SortOrder.IsDesc(i) {
+				sb.WriteString(" DESC")
+			}
+		}
 		sb.WriteString(")")
 	case t.Unique:
 		sb.WriteString(" UNIQUE (")
-		sb.WriteString(t.Paths.String())
+		for i, pt := range t.Paths {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(pt.String())
+
+			if t.SortOrder.IsDesc(i) {
+				sb.WriteString(" DESC")
+			}
+		}
 		sb.WriteString(")")
 	}
 

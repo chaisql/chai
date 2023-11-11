@@ -28,30 +28,6 @@ type TableInfo struct {
 	TableConstraints TableConstraints
 }
 
-func NewTableInfo(tableName string, fcs []*FieldConstraint, tcs []*TableConstraint) (*TableInfo, error) {
-	ti := TableInfo{
-		TableName: tableName,
-	}
-
-	// add field constraints first, in the order they were defined
-	for _, fc := range fcs {
-		err := ti.AddFieldConstraint(fc)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// add table constraints
-	for _, tc := range tcs {
-		err := ti.AddTableConstraint(tc)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return &ti, nil
-}
-
 func (ti *TableInfo) AddFieldConstraint(newFc *FieldConstraint) error {
 	if ti.FieldConstraints.ByField == nil {
 		ti.FieldConstraints.ByField = make(map[string]*FieldConstraint)
@@ -151,6 +127,7 @@ func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
 		}
 
 		pk.Paths = tc.Paths
+		pk.SortOrder = tc.SortOrder
 
 		for _, pp := range tc.Paths {
 			fc := ti.GetFieldConstraintForPath(pp)
@@ -165,6 +142,15 @@ func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
 	}
 
 	return nil
+}
+
+func (ti *TableInfo) PrimaryKeySortOrder() tree.SortOrder {
+	pk := ti.GetPrimaryKey()
+	if pk == nil {
+		return 0
+	}
+
+	return pk.SortOrder
 }
 
 func (ti *TableInfo) GetFieldConstraintForPath(p document.Path) *FieldConstraint {
@@ -230,8 +216,9 @@ func (ti *TableInfo) Clone() *TableInfo {
 }
 
 type PrimaryKey struct {
-	Paths document.Paths
-	Types []types.ValueType
+	Paths     document.Paths
+	Types     []types.ValueType
+	SortOrder tree.SortOrder
 }
 
 // IndexInfo holds the configuration of an index.
@@ -240,6 +227,9 @@ type IndexInfo struct {
 	StoreNamespace tree.Namespace
 	IndexName      string
 	Paths          []document.Path
+
+	// Sort order of each indexed field.
+	KeySortOrder tree.SortOrder
 
 	// If set to true, values will be associated with at most one key. False by default.
 	Unique bool
@@ -251,23 +241,27 @@ type IndexInfo struct {
 }
 
 // String returns a SQL representation.
-func (i *IndexInfo) String() string {
+func (idx *IndexInfo) String() string {
 	var s strings.Builder
 
 	s.WriteString("CREATE ")
-	if i.Unique {
+	if idx.Unique {
 		s.WriteString("UNIQUE ")
 	}
 
-	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(i.IndexName, '`'), stringutil.NormalizeIdentifier(i.Owner.TableName, '`'))
+	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(idx.IndexName, '`'), stringutil.NormalizeIdentifier(idx.Owner.TableName, '`'))
 
-	for i, p := range i.Paths {
+	for i, p := range idx.Paths {
 		if i > 0 {
 			s.WriteString(", ")
 		}
 
 		// Path
 		s.WriteString(p.String())
+
+		if idx.KeySortOrder.IsDesc(i) {
+			s.WriteString(" DESC")
+		}
 	}
 
 	s.WriteString(")")

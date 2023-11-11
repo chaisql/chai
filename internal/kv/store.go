@@ -8,6 +8,11 @@ import (
 	"github.com/genjidb/genji/lib/atomic"
 )
 
+const (
+	defaultMaxBatchSize              = 10 * 1024 * 1024 // 10MB
+	defaultMaxTransientBatchSize int = 1 << 19          // 512KB
+)
+
 type Store struct {
 	db              *pebble.DB
 	opts            Options

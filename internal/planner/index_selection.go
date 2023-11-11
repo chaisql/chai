@@ -8,6 +8,7 @@ import (
 	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/stream/table"
+	"github.com/genjidb/genji/internal/tree"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
@@ -17,9 +18,13 @@ import (
 // Compatibility of filter nodes.
 //
 // For a filter node to be selected if must be of the following form:
-//   <path> <compatible operator> <expression>
+//
+//	<path> <compatible operator> <expression>
+//
 // or
-//   <expression> <compatible operator> <path>
+//
+//	<expression> <compatible operator> <path>
+//
 // path: path of a document
 // compatible operator: one of =, >, >=, <, <=, IN
 // expression: any expression
@@ -29,33 +34,45 @@ import (
 // Once we have a list of all compatible filter nodes, we try to associate
 // indexes with them.
 // Given the following index:
-//   CREATE INDEX foo_a_idx ON foo (a)
+//
+//	CREATE INDEX foo_a_idx ON foo (a)
+//
 // and this query:
-//   SELECT * FROM foo WHERE a > 5 AND b > 10
-//   table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(b > 10) | docs.Project(*)
+//
+//	SELECT * FROM foo WHERE a > 5 AND b > 10
+//	table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(b > 10) | docs.Project(*)
+//
 // foo_a_idx matches docs.Filter(a > 5) and can be selected.
 // Now, with a different index:
-//   CREATE INDEX foo_a_b_c_idx ON foo(a, b, c)
+//
+//	CREATE INDEX foo_a_b_c_idx ON foo(a, b, c)
+//
 // and this query:
-//   SELECT * FROM foo WHERE a > 5 AND c > 20
-//   table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(c > 20) | docs.Project(*)
+//
+//	SELECT * FROM foo WHERE a > 5 AND c > 20
+//	table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(c > 20) | docs.Project(*)
+//
 // foo_a_b_c_idx matches with the first filter because a is the leftmost path indexed by it.
 // The second filter is not selected because it is not the second leftmost path.
 // For composite indexes, filter nodes can be selected if they match with one or more indexed path
 // consecutively, from left to right.
 // Now, let's have a look a this query:
-//   SELECT * FROM foo WHERE a = 5 AND b = 10 AND c > 15 AND d > 20
-//   table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b = 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//
+//	SELECT * FROM foo WHERE a = 5 AND b = 10 AND c > 15 AND d > 20
+//	table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b = 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//
 // foo_a_b_c_idx matches with first three filters because they satisfy several conditions:
 // - each of them matches with the first 3 indexed paths, consecutively.
 // - the first 2 filters use the equal operator
 // A counter-example:
-//   SELECT * FROM foo WHERE a = 5 AND b > 10 AND c > 15 AND d > 20
-//   table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b > 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//
+//	SELECT * FROM foo WHERE a = 5 AND b > 10 AND c > 15 AND d > 20
+//	table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b > 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//
 // foo_a_b_c_idx only matches with the first two filter nodes because while the first node uses the equal
 // operator, the second one doesn't, and thus the third node cannot be selected as well.
 //
-// Candidates and cost
+// # Candidates and cost
 //
 // Because a table can have multiple indexes, we need to establish which of these
 // indexes should be used to run the query, if not all of them.
@@ -141,7 +158,7 @@ func (i *indexSelector) selectIndex() error {
 	}
 	pk := tb.GetPrimaryKey()
 	if pk != nil {
-		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Paths, nodes)
+		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Paths, pk.SortOrder, nodes)
 		if selected != nil {
 			cost = selected.Cost()
 		}
@@ -155,7 +172,7 @@ func (i *indexSelector) selectIndex() error {
 			return err
 		}
 
-		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Paths, nodes)
+		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Paths, idxInfo.KeySortOrder, nodes)
 
 		if candidate == nil {
 			continue
@@ -258,13 +275,14 @@ func (i *indexSelector) isTempTreeSortIndexable(n *docs.TempTreeSortOperator) *i
 // - transform all associated nodes into an index range
 // If not all indexed paths have an associated filter node, return whatever has been associated
 // A few examples for this index: CREATE INDEX ON foo(a, b, c)
-//   fitler(a = 3) | docs.Filter(b = 10) | (c > 20)
-//   -> range = {min: [3, 10, 20]}
-//   fitler(a = 3) | docs.Filter(b > 10) | (c > 20)
-//   -> range = {min: [3], exact: true}
-//  docs.Filter(a IN (1, 2))
-//   -> ranges = [1], [2]
-func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, nodes indexableNodes) *candidate {
+//
+//	 fitler(a = 3) | docs.Filter(b = 10) | (c > 20)
+//	 -> range = {min: [3, 10, 20]}
+//	 fitler(a = 3) | docs.Filter(b > 10) | (c > 20)
+//	 -> range = {min: [3], exact: true}
+//	docs.Filter(a IN (1, 2))
+//	 -> ranges = [1], [2]
+func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, sortOrder tree.SortOrder, nodes indexableNodes) *candidate {
 	found := make([]*indexableNode, 0, len(paths))
 	var desc bool
 
@@ -333,6 +351,11 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 			isUnique:   isUnique,
 		}
 
+		// in case the primary key or index is descending, we need to use a reverse the order
+		if sortOrder.IsDesc(0) {
+			desc = !desc
+		}
+
 		if !isIndex {
 			if !desc {
 				c.replaceRootBy = []stream.Operator{
@@ -379,6 +402,13 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 		rangesCost: ranges.Cost(),
 		isIndex:    isIndex,
 		isUnique:   isUnique,
+	}
+
+	// in case the indexed path is descending, we need to reverse the order
+	if found[len(found)-1].orderBy != nil {
+		if sortOrder.IsDesc(len(found) - 1) {
+			desc = !desc
+		}
 	}
 
 	if !isIndex {
@@ -533,7 +563,7 @@ func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []doc
 // It can be used to filter the results of a query or
 // to order the results.
 type indexableNode struct {
-	// associated stream node (either a DocsFilterNode or a DocsTempTreeSortNote)
+	// associated stream node (either a DocsFilterNode or a DocsTempTreeSortNode)
 	node stream.Operator
 
 	// For filter nodes

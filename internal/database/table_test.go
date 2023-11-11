@@ -319,7 +319,7 @@ func BenchmarkTableInsert(b *testing.B) {
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
-					tb.Insert(&fb)
+					_, _, _ = tb.Insert(&fb)
 				}
 				b.StopTimer()
 				cleanup()
@@ -348,7 +348,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
+				_ = tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
 					return nil
 				})
 			}
