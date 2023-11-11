@@ -35,7 +35,7 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 	catalog := in.GetTx().Catalog
 	tns := catalog.GetFreeTransientNamespace()
-	tr, cleanup, err := tree.NewTransient(db.Store.NewTransientSession(), tns)
+	tr, cleanup, err := tree.NewTransient(db.Store.NewTransientSession(), tns, 0)
 	if err != nil {
 		return err
 	}

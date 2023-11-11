@@ -1,7 +1,6 @@
 package encoding_test
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"testing"
@@ -67,7 +66,7 @@ func TestOrdering(t *testing.T) {
 			continue
 		}
 
-		require.True(t, bytes.Compare(prev, x) <= 0, "input %v: %v < %v", i, previnput, test.input)
+		require.True(t, encoding.Compare(prev, x) <= 0, "input %v: %v < %v", i, previnput, test.input)
 	}
 }
 
@@ -140,7 +139,7 @@ func TestEncodeDecode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			buf, err := encoding.EncodeValue(nil, types.NewDocumentValue(test.d))
+			buf, err := encoding.EncodeValue(nil, types.NewDocumentValue(test.d), false)
 			if test.fails {
 				require.Error(t, err)
 				return
@@ -180,10 +179,10 @@ func TestEncodeDecodeNull(t *testing.T) {
 	require.Equal(t, []byte{0x02}, got)
 }
 
-func mustNewKey(t testing.TB, values ...types.Value) []byte {
+func mustNewKey(t testing.TB, namespace tree.Namespace, order tree.SortOrder, values ...types.Value) []byte {
 	k := tree.NewKey(values...)
 
-	b, err := k.Encode(0)
+	b, err := k.Encode(namespace, order)
 	require.NoError(t, err)
 
 	return b

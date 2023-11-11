@@ -27,7 +27,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 		MaxBatchSize:             1 << 7,
 	}).NewBatchSession()
 
-	tr := tree.New(session, 10)
+	tr := tree.New(session, 10, 0)
 
 	var paths []document.Path
 	for i := 0; i < arity; i++ {

@@ -1,9 +1,11 @@
 package kv
 
 import (
+	"math"
 	"sync"
 
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/lib/atomic"
 )
 
 type Store struct {
@@ -54,12 +56,10 @@ func (s *Store) NewSnapshotSession() *SnapshotSession {
 	if sn == nil {
 		sn = &snapshot{
 			snapshot: s.db.NewSnapshot(),
-			refCount: 1,
+			refCount: atomic.NewCounter(0, math.MaxInt64, false),
 		}
-	} else {
-		// if there is a shared snapshot, increment the ref count.
-		sn.Incr()
 	}
+	sn.Incr()
 
 	s.sharedSnapshot.RUnlock()
 
@@ -100,8 +100,9 @@ func (s *Store) LockSharedSnapshot() {
 	s.sharedSnapshot.Lock()
 	s.sharedSnapshot.snapshot = &snapshot{
 		snapshot: s.db.NewSnapshot(),
-		refCount: 1,
+		refCount: atomic.NewCounter(0, math.MaxInt64, false),
 	}
+	s.sharedSnapshot.snapshot.Incr()
 	s.sharedSnapshot.Unlock()
 }
 

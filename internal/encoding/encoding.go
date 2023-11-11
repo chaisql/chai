@@ -22,7 +22,20 @@ func EncodeNull(dst []byte) []byte {
 	return append(dst, byte(NullValue))
 }
 
-func EncodeValue(dst []byte, v types.Value) ([]byte, error) {
+func EncodeValue(dst []byte, v types.Value, desc bool) ([]byte, error) {
+	newDst, err := encodeValueAsc(dst, v)
+	if err != nil {
+		return nil, err
+	}
+
+	if desc {
+		newDst, _ = Desc(newDst, len(newDst)-len(dst))
+	}
+
+	return newDst, nil
+}
+
+func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 	if v.V() == nil {
 		switch v.Type() {
 		case types.NullValue:
@@ -68,8 +81,28 @@ func EncodeValue(dst []byte, v types.Value) ([]byte, error) {
 	return nil, fmt.Errorf("unsupported value type: %s", v.Type())
 }
 
+// Desc changes the type of the encoded value to its descending counterpart.
+// It is meant to be used in combination with one of the Encode* functions.
+//
+//	var buf []byte
+//	buf, n = encoding.Desc(encoding.EncodeInt(buf, 10))
+func Desc(dst []byte, n int) ([]byte, int) {
+	if n == 0 {
+		return dst, 0
+	}
+
+	dst[len(dst)-n] = 255 - dst[len(dst)-n]
+	return dst, n
+}
+
 func DecodeValue(b []byte, intAsDouble bool) (types.Value, int) {
-	if b[0] >= IntSmallValue && b[0] < Uint8Value {
+	t := b[0]
+	// deal with descending values
+	if t > 128 {
+		t = 255 - t
+	}
+
+	if t >= IntSmallValue && t < Uint8Value {
 		x, n := DecodeInt(b)
 		if intAsDouble {
 			return types.NewDoubleValue(float64(x)), n
@@ -77,7 +110,7 @@ func DecodeValue(b []byte, intAsDouble bool) (types.Value, int) {
 		return types.NewIntegerValue(x), n
 	}
 
-	switch b[0] {
+	switch t {
 	case NullValue:
 		return types.NewNullValue(), 1
 	case FalseValue:
@@ -107,5 +140,5 @@ func DecodeValue(b []byte, intAsDouble bool) (types.Value, int) {
 		return types.NewDocumentValue(d), SkipDocument(b[1:]) + 1
 	}
 
-	panic(fmt.Sprintf("unsupported value type: %d", b[0]))
+	panic(fmt.Sprintf("unsupported value type: %d", t))
 }

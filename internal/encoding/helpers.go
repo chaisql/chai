@@ -47,22 +47,22 @@ func Skip(b []byte) int {
 	}
 
 	switch b[0] {
-	case NullValue, FalseValue, TrueValue:
+	case NullValue, FalseValue, TrueValue, DESC_NullValue, DESC_FalseValue, DESC_TrueValue:
 		return 1
-	case Int8Value, Uint8Value:
+	case Int8Value, Uint8Value, DESC_Int8Value, DESC_Uint8Value:
 		return 2
-	case Int16Value, Uint16Value:
+	case Int16Value, Uint16Value, DESC_Int16Value, DESC_Uint16Value:
 		return 3
-	case Int32Value, Uint32Value:
+	case Int32Value, Uint32Value, DESC_Int32Value, DESC_Uint32Value:
 		return 5
-	case Int64Value, Uint64Value, Float64Value:
+	case Int64Value, Uint64Value, Float64Value, DESC_Int64Value, DESC_Uint64Value, DESC_Float64Value:
 		return 9
-	case TextValue, BlobValue:
+	case TextValue, BlobValue, DESC_TextValue, DESC_BlobValue:
 		l, n := binary.Uvarint(b[1:])
 		return n + int(l) + 1
-	case ArrayValue:
+	case ArrayValue, DESC_ArrayValue:
 		return 1 + SkipArray(b[1:])
-	case DocumentValue:
+	case DocumentValue, DESC_DocumentValue:
 		return 1 + SkipDocument(b[1:])
 	}
 
@@ -142,12 +142,14 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 	if a[0] >= IntSmallValue && a[0] < Uint8Value {
 		return 0, 1
 	}
+	if a[0] <= DESC_IntSmallValue && a[0] > DESC_Uint8Value {
+		return 0, 1
+	}
 
 	// then compare values
 	switch a[0] {
-	case NullValue, FalseValue, TrueValue:
-		fallthrough
-	case 0: // tombstone
+	case TombstoneValue, NullValue, FalseValue, TrueValue,
+		DESC_NullValue, DESC_FalseValue, DESC_TrueValue:
 		return 0, 1
 	}
 
@@ -165,7 +167,24 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 	}
 
 	// compare non empty values
-	switch a[0] {
+
+	t := a[0]
+	// if DESC_*, invert the comparison
+	if a[0] > 128 {
+		t = 255 - t
+	}
+
+	cmp, n = compareNonEmptyValues(t, a, b)
+	if a[0] > 128 {
+		return -cmp, n
+	}
+
+	return cmp, n
+}
+
+func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
+	// compare non empty values
+	switch t {
 	case Int64Value, Uint64Value, Float64Value:
 		return bytes.Compare(a[1:9], b[1:9]), 9
 	case Int32Value, Uint32Value:
@@ -306,11 +325,11 @@ func abbreviatedValue(key []byte) uint64 {
 		return 0
 	}
 
+	if len(key) == 1 {
+		return 0
+	}
+
 	switch key[0] {
-	case NullValue:
-		return 0
-	case TrueValue, FalseValue:
-		return 0
 	case Uint8Value, Int8Value:
 		x := DecodeUint8(key[1:])
 		return uint64(x)

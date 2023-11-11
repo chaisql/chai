@@ -48,7 +48,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 				// create a temporary tree
 				db := in.GetDB()
 				tns := in.GetTx().Catalog.GetFreeTransientNamespace()
-				temp, cleanup, err = tree.NewTransient(db.Store.NewTransientSession(), tns)
+				temp, cleanup, err = tree.NewTransient(db.Store.NewTransientSession(), tns, 0)
 				if err != nil {
 					return err
 				}

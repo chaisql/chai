@@ -24,7 +24,7 @@ func EncodeArray(dst []byte, a types.Array) ([]byte, error) {
 	dst = EncodeArrayLength(dst, l)
 
 	err = a.Iterate(func(i int, value types.Value) error {
-		dst, err = EncodeValue(dst, value)
+		dst, err = EncodeValue(dst, value, false)
 		return err
 	})
 	if err != nil {

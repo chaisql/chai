@@ -24,7 +24,7 @@ func NewEncodedKey(enc []byte) *Key {
 	}
 }
 
-func (k *Key) Encode(ns Namespace) ([]byte, error) {
+func (k *Key) Encode(ns Namespace, order SortOrder) ([]byte, error) {
 	if k.Encoded != nil {
 		return k.Encoded, nil
 	}
@@ -36,8 +36,9 @@ func (k *Key) Encode(ns Namespace) ([]byte, error) {
 		buf = encoding.EncodeUint(buf, uint64(ns))
 	}
 
-	for _, v := range k.Values {
-		buf, err = encoding.EncodeValue(buf, v)
+	for i, v := range k.Values {
+		// extract the sort order
+		buf, err = encoding.EncodeValue(buf, v, order.IsDesc(i))
 		if err != nil {
 			return nil, err
 		}

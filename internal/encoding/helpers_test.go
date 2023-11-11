@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -136,20 +136,76 @@ func TestCompare(t *testing.T) {
 			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a1 := v1.V().(*document.ValueBuffer).Values
-			k1 := mustNewKey(t, a1...)
+			k1 := mustNewKey(t, 0, 0, a1...)
 
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a2 := v2.V().(*document.ValueBuffer).Values
-			k2 := mustNewKey(t, a2...)
+			k2 := mustNewKey(t, 0, 0, a2...)
 
 			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
 
 			// compare abbreviated keys
 
 			// prepend namespace
-			kk1 := mustNewKey(t, append([]types.Value{types.NewIntegerValue(1)}, a1...)...)
-			kk2 := mustNewKey(t, append([]types.Value{types.NewIntegerValue(1)}, a2...)...)
+			kk1 := mustNewKey(t, 1, 0, a1...)
+			kk2 := mustNewKey(t, 1, 0, a2...)
+
+			cmp := int64(encoding.AbbreviatedKey(kk1) - encoding.AbbreviatedKey(kk2))
+			if test.cmp < 0 {
+				require.False(t, cmp > 0)
+			} else if test.cmp > 0 {
+				require.False(t, cmp < 0)
+			} else {
+				require.True(t, cmp == 0)
+			}
+		})
+	}
+}
+
+func TestCompareOrder(t *testing.T) {
+	tests := []struct {
+		k1, k2 string
+		cmp    int
+		order  []bool
+	}{
+		// null
+		{`[null]`, `[null]`, 0, []bool{false}},
+		{`[null]`, `[null]`, 0, []bool{true}},
+		{`[1]`, `[2]`, -1, []bool{false}},
+		{`[1]`, `[2]`, 1, []bool{true}},
+		{`[60]`, `[30]`, 2, []bool{false}},
+		{`[60]`, `[30]`, -2, []bool{true}},
+		{`[30, "hello"]`, `[30, "bye"]`, 1, []bool{true, false}},
+		{`[30, "hello"]`, `[30, "bye"]`, -1, []bool{true, true}},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("CompareOrder(%s, %s)", test.k1, test.k2), func(t *testing.T) {
+			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			a1 := v1.V().(*document.ValueBuffer).Values
+			order := tree.SortOrder(0)
+			for i := range a1 {
+				if test.order[i] {
+					order = order.SetDesc(i)
+				}
+			}
+
+			k1 := mustNewKey(t, 0, order, a1...)
+
+			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			a2 := v2.V().(*document.ValueBuffer).Values
+			k2 := mustNewKey(t, 0, order, a2...)
+
+			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
+
+			// compare abbreviated keys
+
+			// prepend namespace
+			kk1 := mustNewKey(t, 1, order, a1...)
+			kk2 := mustNewKey(t, 1, order, a2...)
 
 			cmp := int64(encoding.AbbreviatedKey(kk1) - encoding.AbbreviatedKey(kk2))
 			if test.cmp < 0 {
@@ -237,7 +293,7 @@ func TestAbbreviatedKey(t *testing.T) {
 			v, err := testutil.ParseExpr(t, test.k).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a := v.V().(*document.ValueBuffer).Values
-			k := mustNewKey(t, a...)
+			k := mustNewKey(t, 0, 0, a...)
 
 			require.Equal(t, test.want, encoding.AbbreviatedKey(k))
 		})
@@ -258,8 +314,8 @@ func TestSeparator(t *testing.T) {
 			require.NoError(t, err)
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			k1 := mustNewKey(t, v1.V().(*document.ValueBuffer).Values...)
-			k2 := mustNewKey(t, v2.V().(*document.ValueBuffer).Values...)
+			k1 := mustNewKey(t, 0, 0, v1.V().(*document.ValueBuffer).Values...)
+			k2 := mustNewKey(t, 0, 0, v2.V().(*document.ValueBuffer).Values...)
 			sep := encoding.Separator(nil, k1, k2)
 			require.LessOrEqual(t, encoding.Compare(k1, sep), 0)
 			require.Less(t, encoding.Compare(sep, k2), 0)
