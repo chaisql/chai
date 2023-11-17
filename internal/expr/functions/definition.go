@@ -25,6 +25,7 @@ func DefaultPackages() Packages {
 	return Packages{
 		"":     BuiltinDefinitions(),
 		"math": MathFunctions(),
+		"strings": StringsDefinitions(),
 	}
 }
 
