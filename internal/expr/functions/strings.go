@@ -96,7 +96,7 @@ func (s *Upper) IsEqual(other expr.Expr) bool {
 		return false
 	}
 
-	o, ok := other.(*Lower)
+	o, ok := other.(*Upper)
 	if !ok {
 		return false
 	}
