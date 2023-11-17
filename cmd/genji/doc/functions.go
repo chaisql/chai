@@ -3,6 +3,7 @@ package doc
 type functionDocs map[string]string
 
 var packageDocs = map[string]functionDocs{
+	"strings": stringsDocs,
 	"math": mathDocs,
 	"":     builtinDocs,
 }
@@ -16,7 +17,6 @@ var builtinDocs = functionDocs{
 	"avg":    "The avg function returns the average of all values taken by the arg1 expression in a group.",
 	"typeof": "The typeof function returns the type of arg1.",
 	"len":    "The len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
-	"lower":  "The lower function returns arg1 to lower-case if arg1 evals to string",
 }
 
 var mathDocs = functionDocs{
@@ -28,4 +28,9 @@ var mathDocs = functionDocs{
 	"atan":  "Returns the arctangent, in radians, of arg1.",
 	"atan2": "Returns the arctangent of arg1/arg2, using the signs of the two to determine the quadrant of the return value.",
 	"floor": "Returns the greatest integer value less than or equal to arg1.",
+}
+
+var stringsDocs = functionDocs{
+	"lower":  "The lower function returns arg1 to lower-case if arg1 evals to string",
+	"upper":  "The upper function returns arg1 to upper-case if arg1 evals to string",
 }

@@ -23,7 +23,7 @@ INSERT INTO test (a, b, c, d, e, f) VALUES (
 );
 
 -- test: TEXT value
-SELECT LOWER(a) FROM test;
+SELECT strings.LOWER(a) FROM test;
 /* result:
 {
     "LOWER(a)": "foo" 
@@ -32,7 +32,7 @@ SELECT LOWER(a) FROM test;
 
 
 -- test: INT value
-SELECT LOWER(b) FROM test;
+SELECT strings.LOWER(b) FROM test;
 /* result:
 {
     "LOWER(b)": NULL 
@@ -41,7 +41,7 @@ SELECT LOWER(b) FROM test;
 
 
 -- test: BOOL value
-SELECT LOWER(c) FROM test;
+SELECT strings.LOWER(c) FROM test;
 /* result:
 {
     "LOWER(c)": NULL 
@@ -49,7 +49,7 @@ SELECT LOWER(c) FROM test;
 */
 
 -- test: DOUBLE value
-SELECT LOWER(d) FROM test;
+SELECT strings.LOWER(d) FROM test;
 /* result:
 {
     "LOWER(d)": NULL 
@@ -57,7 +57,7 @@ SELECT LOWER(d) FROM test;
 */
 
 -- test: ARRAY value
-SELECT LOWER(e) FROM test;
+SELECT strings.LOWER(e) FROM test;
 /* result:
 {
     "LOWER(e)": NULL 
@@ -65,7 +65,7 @@ SELECT LOWER(e) FROM test;
 */
 
 -- test: DOCUMENT value
-SELECT LOWER(f) FROM test;
+SELECT strings.LOWER(f) FROM test;
 /* result:
 {
     "LOWER(f)": NULL 
@@ -73,7 +73,7 @@ SELECT LOWER(f) FROM test;
 */
 
 -- test: cast INT
-SELECT LOWER(CAST(b as TEXT)) FROM test;
+SELECT strings.LOWER(CAST(b as TEXT)) FROM test;
 /* result:
 {
     "LOWER(CAST(b AS text))": "42" 
@@ -81,7 +81,7 @@ SELECT LOWER(CAST(b as TEXT)) FROM test;
 */
 
 -- test: cast BOOL
-SELECT LOWER(CAST(c as TEXT)) FROM test;
+SELECT strings.LOWER(CAST(c as TEXT)) FROM test;
 /* result:
 {
     "LOWER(CAST(c AS text))": "true" 
@@ -89,7 +89,7 @@ SELECT LOWER(CAST(c as TEXT)) FROM test;
 */
 
 -- test: cast DOUBLE
-SELECT LOWER(CAST(d as TEXT)) FROM test;
+SELECT strings.LOWER(CAST(d as TEXT)) FROM test;
 /* result:
 {
     "LOWER(CAST(d AS text))": "42.42" 
@@ -97,7 +97,7 @@ SELECT LOWER(CAST(d as TEXT)) FROM test;
 */
 
 -- test: cast ARRAY
-SELECT LOWER(CAST(e as TEXT)) FROM test;
+SELECT strings.LOWER(CAST(e as TEXT)) FROM test;
 /* result:
 {
     "LOWER(CAST(e AS text))": "[\"a\", \"b\", \"c\", \"d\", \"e\"]" 
@@ -105,7 +105,7 @@ SELECT LOWER(CAST(e as TEXT)) FROM test;
 */
 
 -- test: cast DOCUMENT
-SELECT LOWER(CAST(f as TEXT)) FROM test;
+SELECT strings.LOWER(CAST(f as TEXT)) FROM test;
 /* result:
 {
     "LOWER(CAST(f AS text))": "{\"a\": \"hello\", \"b\": \"world\"}" 
