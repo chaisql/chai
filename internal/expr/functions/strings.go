@@ -24,6 +24,27 @@ var stringsFunctions = Definitions{
 			return &Upper{Expr: args[0]}, nil
 		},
 	},
+	"trim": &definition{
+		name:  "trim",
+		arity: -1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
+		},
+	},
+	"ltrim": &definition{
+		name:  "ltrim",
+		arity: -1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
+		},
+	},
+	"rtrim": &definition{
+		name:  "rtrim",
+		arity: -1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
+		},
+	},
 }
 
 func StringsDefinitions() Definitions {
@@ -108,4 +129,73 @@ func (s *Upper) Params() []expr.Expr { return []expr.Expr{s.Expr} }
 
 func (s *Upper) String() string {
 	return fmt.Sprintf("UPPER(%v)", s.Expr)
+}
+
+// TRIM removes leading and trailing characters from a string based on the given input.
+// LTRIM removes leading characters
+// RTRIM removes trailing characters
+// By default remove space " "
+type Trim struct {
+	Expr []expr.Expr
+	TrimFunc TrimFunc
+	Name string
+}
+
+type TrimFunc func(string, string) string
+
+func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
+	if len(s.Expr) > 2 {
+		return nil, fmt.Errorf("misuse of string function %v()", s.Name)
+	}
+	
+	input, err := s.Expr[0].Eval(env)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.Type() != types.TextValue {
+		return types.NewNullValue(), nil
+	}
+
+	var cutset = " "
+
+	if len(s.Expr) == 2 {
+		remove, err := s.Expr[1].Eval(env)
+		if err != nil {
+			return nil, err
+		}
+		if remove.Type() != types.TextValue {
+			return types.NewNullValue(), nil
+		}
+		cutset = types.As[string](remove)
+	}
+
+	trimmed := s.TrimFunc(types.As[string](input), cutset)
+
+	return types.NewTextValue(trimmed), nil
+}
+
+func (s *Trim) IsEqual(other []expr.Expr) bool {
+	if other == nil || len(s.Expr) != len(other){
+		return false
+	}
+
+	for i := range s.Expr {
+		if !expr.Equal(s.Expr[i], other[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (s *Trim) Params() []expr.Expr { 
+	return s.Expr
+}
+
+func (s *Trim) String() string {
+	if (len(s.Expr) == 1){
+		return fmt.Sprintf("%v(%v)", s.Name, s.Expr[0])
+	}
+	return fmt.Sprintf("%v(%v, %v)", s.Name, s.Expr[0], s.Expr[1])
 }
