@@ -136,9 +136,9 @@ func (s *Upper) String() string {
 // RTRIM removes trailing characters
 // By default remove space " "
 type Trim struct {
-	Expr []expr.Expr
+	Expr     []expr.Expr
 	TrimFunc TrimFunc
-	Name string
+	Name     string
 }
 
 type TrimFunc func(string, string) string
@@ -147,7 +147,7 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 	if len(s.Expr) > 2 {
 		return nil, fmt.Errorf("misuse of string function %v()", s.Name)
 	}
-	
+
 	input, err := s.Expr[0].Eval(env)
 	if err != nil {
 		return nil, err
@@ -175,13 +175,20 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 	return types.NewTextValue(trimmed), nil
 }
 
-func (s *Trim) IsEqual(other []expr.Expr) bool {
-	if other == nil || len(s.Expr) != len(other){
+func (s *Trim) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+	o, ok := other.(*Trim)
+	if !ok {
+		return false
+	}
+	if len(s.Expr) != len(o.Expr) {
 		return false
 	}
 
 	for i := range s.Expr {
-		if !expr.Equal(s.Expr[i], other[i]) {
+		if !expr.Equal(s.Expr[i], o.Expr[i]) {
 			return false
 		}
 	}
@@ -189,12 +196,12 @@ func (s *Trim) IsEqual(other []expr.Expr) bool {
 	return true
 }
 
-func (s *Trim) Params() []expr.Expr { 
+func (s *Trim) Params() []expr.Expr {
 	return s.Expr
 }
 
 func (s *Trim) String() string {
-	if (len(s.Expr) == 1){
+	if len(s.Expr) == 1 {
 		return fmt.Sprintf("%v(%v)", s.Name, s.Expr[0])
 	}
 	return fmt.Sprintf("%v(%v, %v)", s.Name, s.Expr[0], s.Expr[1])

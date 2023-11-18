@@ -68,11 +68,12 @@ func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
 }
 
 func (fd *definition) String() string {
-	if fd.arity < 0 {
-		fd.arity = 0
+	arity := fd.arity
+	if arity < 0 {
+		arity = 0
 	}
-	args := make([]string, 0, fd.arity)
-	for i := 0; i < fd.arity; i++ {
+	args := make([]string, 0, arity)
+	for i := 0; i < arity; i++ {
 		args = append(args, fmt.Sprintf("arg%d", i+1))
 	}
 	return fmt.Sprintf("%s(%s)", fd.name, strings.Join(args, ", "))
