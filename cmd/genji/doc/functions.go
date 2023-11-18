@@ -33,4 +33,7 @@ var mathDocs = functionDocs{
 var stringsDocs = functionDocs{
 	"lower":  "The lower function returns arg1 to lower-case if arg1 evals to string",
 	"upper":  "The upper function returns arg1 to upper-case if arg1 evals to string",
+	"trim":   "The trim function returns arg1 with leading and trailing characters removed. space by default or arg2",
+	"ltrim":   "The ltrim function returns arg1 with leading characters removed. space by default or arg2",
+	"rtrim":   "The rtrim function returns arg1 with trailing characters removed. space by default or arg2",
 }
