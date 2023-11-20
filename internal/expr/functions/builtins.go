@@ -72,7 +72,7 @@ var builtinFunctions = Definitions{
 		arity: UNLIMITED,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			// FIXME: does it need a slice of expression
-			return &Coalesce{Expr: args[0]}, nil
+			return &Coalesce{Exprs: args}, nil
 		},
 	},
 }
@@ -727,20 +727,26 @@ func (s *Len) String() string {
 }
 
 type Coalesce struct {
-	Expr expr.Expr
+	Exprs []expr.Expr
 }
 
 func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
-	//TODO implement me
-	panic("implement eval")
+	for _, expr := range c.Exprs {
+		v, err := expr.Eval(e)
+		if err != nil {
+			return nil, err
+		}
+		if v.Type() != types.NullValue {
+			return v, nil
+		}
+	}
+	return nil, nil
 }
 
 func (c *Coalesce) String() string {
-	//TODO implement me
-	panic("implement string")
+	return fmt.Sprintf("COALESCE(%v)", c.Exprs)
 }
 
 func (c *Coalesce) Params() []expr.Expr {
-	//TODO implement me
-	panic("implement params")
+	return c.Exprs
 }
