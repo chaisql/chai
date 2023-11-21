@@ -3,6 +3,7 @@ package document
 import (
 	"encoding/base64"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/genjidb/genji/types"
@@ -85,7 +86,7 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 		return types.NewIntegerValue(0), nil
 	case types.DoubleValue:
 		f := types.As[float64](v)
-		if f > 0 && int64(f) < 0 {
+		if f > 0 && (int64(f) < 0 || f >= math.MaxInt64) {
 			return nil, fmt.Errorf("integer out of range")
 		}
 		return types.NewIntegerValue(int64(f)), nil
