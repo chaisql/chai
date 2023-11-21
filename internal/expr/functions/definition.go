@@ -60,10 +60,6 @@ func (fd *definition) Name() string {
 }
 
 func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
-	//if fd.arity == -1 {
-	//	return fd.constructorFn(args...)
-	//}
-
 	if fd.arity != UNLIMITED && (len(args) != fd.arity) {
 		return nil, fmt.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}

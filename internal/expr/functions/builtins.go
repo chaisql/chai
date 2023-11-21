@@ -71,7 +71,6 @@ var builtinFunctions = Definitions{
 		name:  "coalesce",
 		arity: UNLIMITED,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			// FIXME: does it need a slice of expression
 			return &Coalesce{Exprs: args}, nil
 		},
 	},
@@ -731,8 +730,8 @@ type Coalesce struct {
 }
 
 func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
-	for _, expr := range c.Exprs {
-		v, err := expr.Eval(e)
+	for _, exp := range c.Exprs {
+		v, err := exp.Eval(e)
 		if err != nil {
 			return nil, err
 		}
