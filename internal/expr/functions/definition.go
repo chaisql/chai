@@ -60,6 +60,9 @@ func (fd *definition) Name() string {
 }
 
 func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
+	if fd.arity == UNLIMITED && len(args) == 0 {
+		return nil, fmt.Errorf("%s() requires at least one argument", fd.name)
+	}
 	if fd.arity != UNLIMITED && (len(args) != fd.arity) {
 		return nil, fmt.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}
