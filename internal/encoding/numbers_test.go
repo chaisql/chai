@@ -14,13 +14,12 @@ func TestEncodeDecodeInt(t *testing.T) {
 		input int64
 		want  []byte
 	}{
-		// small numbers from -32 to 127 fit in a single byte
+		// small numbers from -32 to 32 fit in a single byte
 		{-32, []byte{byte(encoding.IntSmallValue)}},
 		{-10, []byte{byte(encoding.IntSmallValue) + 22}},
 		{0, []byte{byte(encoding.IntSmallValue) + 32}},
 		{10, []byte{byte(encoding.IntSmallValue) + 42}},
-		{100, []byte{byte(encoding.IntSmallValue) + 132}},
-		{127, []byte{byte(encoding.IntSmallValue) + 159}},
+		{31, []byte{byte(encoding.IntSmallValue) + 63}},
 
 		// int8
 		{math.MinInt8, []byte{byte(encoding.Int8Value), 0x00}},
@@ -69,8 +68,8 @@ func TestEncodeDecodeFloat(t *testing.T) {
 		input float64
 		want  []byte
 	}{
-		{-3.14, []byte{0xd0, 0x3f, 0xf6, 0xe1, 0x47, 0xae, 0x14, 0x7a, 0xe0}},
-		{-3, []byte{0x41}},
+		{-3.14, []byte{0x5a, 0x3f, 0xf6, 0xe1, 0x47, 0xae, 0x14, 0x7a, 0xe0}},
+		{-3, []byte{0x2d}},
 	}
 
 	for _, test := range tests {

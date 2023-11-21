@@ -26,8 +26,9 @@ type Packages map[string]Definitions
 
 func DefaultPackages() Packages {
 	return Packages{
-		"":     BuiltinDefinitions(),
-		"math": MathFunctions(),
+		"":        BuiltinDefinitions(),
+		"math":    MathFunctions(),
+		"strings": StringsDefinitions(),
 	}
 }
 
@@ -59,6 +60,10 @@ func (fd *definition) Name() string {
 }
 
 func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
+	//if fd.arity == -1 {
+	//	return fd.constructorFn(args...)
+	//}
+
 	if fd.arity != UNLIMITED && (len(args) != fd.arity) {
 		return nil, fmt.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}
@@ -66,8 +71,12 @@ func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
 }
 
 func (fd *definition) String() string {
-	args := make([]string, 0, fd.arity)
-	for i := 0; i < fd.arity; i++ {
+	arity := fd.arity
+	if arity < 0 {
+		arity = 0
+	}
+	args := make([]string, 0, arity)
+	for i := 0; i < arity; i++ {
 		args = append(args, fmt.Sprintf("arg%d", i+1))
 	}
 	return fmt.Sprintf("%s(%s)", fd.name, strings.Join(args, ", "))

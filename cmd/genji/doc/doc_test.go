@@ -28,8 +28,10 @@ func TestFunctions(t *testing.T) {
 				t.Run(fmt.Sprintf("%s.%s is documented and has all its arguments mentioned", pkgname, fname), func(t *testing.T) {
 					str, err := doc.DocString(fmt.Sprintf("%s.%s", pkgname, fname))
 					assert.NoError(t, err)
-					for i := 0; i < def.Arity(); i++ {
-						require.Contains(t, trimDocPromt(str), fmt.Sprintf("arg%d", i+1))
+					if def.Arity() > 0 {
+						for i := 0; i < def.Arity(); i++ {
+							require.Contains(t, trimDocPromt(str), fmt.Sprintf("arg%d", i+1))
+						}
 					}
 				})
 			}

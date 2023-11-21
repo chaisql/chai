@@ -11,7 +11,42 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-type Namespace int64
+type Namespace uint64
+
+// SortOrder is a 64-bit unsigned integer that represents
+// the sort order (ASC or DESC) of each value in a key.
+// By default, all values are sorted in ascending order.
+// Each bit represents the sort order of the corresponding value
+// in the key.
+// SortOrder is used in a tree to encode keys.
+// It can only support up to 64 values.
+type SortOrder uint64
+
+func (o SortOrder) IsDesc(i int) bool {
+	if i > 63 {
+		panic(fmt.Sprintf("cannot get sort order of value %d, only 64 values are supported", i))
+	}
+
+	mask := uint64(1) << (63 - i)
+	return uint64(o)&mask>>(63-i) != 0
+}
+
+func (o SortOrder) SetDesc(i int) SortOrder {
+	if i > 63 {
+		panic(fmt.Sprintf("cannot set sort order of value %d, only 64 values are supported", i))
+	}
+
+	mask := uint64(1) << (63 - i)
+	return SortOrder(uint64(o) | mask)
+}
+
+func (o SortOrder) SetAsc(i int) SortOrder {
+	if i > 63 {
+		panic(fmt.Sprintf("cannot set sort order of value %d, only 64 values are supported", i))
+	}
+	mask := uint64(1) << (63 - i)
+	return SortOrder(uint64(o) &^ mask)
+}
 
 // A Tree is an abstraction over a k-v store that allows
 // manipulating data using high level keys and values of the
@@ -25,19 +60,22 @@ type Namespace int64
 type Tree struct {
 	Session   kv.Session
 	Namespace Namespace
+	Order     SortOrder
 }
 
-func New(session kv.Session, ns Namespace) *Tree {
+func New(session kv.Session, ns Namespace, order SortOrder) *Tree {
 	return &Tree{
 		Namespace: ns,
 		Session:   session,
+		Order:     order,
 	}
 }
 
-func NewTransient(session kv.Session, ns Namespace) (*Tree, func() error, error) {
+func NewTransient(session kv.Session, ns Namespace, order SortOrder) (*Tree, func() error, error) {
 	t := Tree{
 		Namespace: ns,
 		Session:   session,
+		Order:     order,
 	}
 
 	// ensure the namespace is not in use
@@ -59,7 +97,7 @@ func (t *Tree) Insert(key *Key, value []byte) error {
 	if len(value) == 0 {
 		value = defaultValue
 	}
-	k, err := key.Encode(t.Namespace)
+	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return err
 	}
@@ -74,7 +112,7 @@ func (t *Tree) Put(key *Key, value []byte) error {
 	if len(value) == 0 {
 		value = defaultValue
 	}
-	k, err := key.Encode(t.Namespace)
+	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return err
 	}
@@ -85,7 +123,7 @@ func (t *Tree) Put(key *Key, value []byte) error {
 // Get a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
 func (t *Tree) Get(key *Key) ([]byte, error) {
-	k, err := key.Encode(t.Namespace)
+	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +133,7 @@ func (t *Tree) Get(key *Key) ([]byte, error) {
 
 // Exists returns true if the key exists in the tree.
 func (t *Tree) Exists(key *Key) (bool, error) {
-	k, err := key.Encode(t.Namespace)
+	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return false, err
 	}
@@ -106,7 +144,7 @@ func (t *Tree) Exists(key *Key) (bool, error) {
 // Delete a key from the tree. If the key doesn't exist,
 // it returns kv.ErrKeyNotFound.
 func (t *Tree) Delete(key *Key) error {
-	k, err := key.Encode(t.Namespace)
+	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return err
 	}
@@ -128,34 +166,18 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		rng = &Range{}
 	}
 
-	if !rng.Exclusive {
-		if rng.Min == nil {
-			start, err = t.buildMinKeyForType(rng.Max)
-		} else {
-			start, err = t.buildStartKeyInclusive(rng.Min)
-		}
-		if err != nil {
-			return err
-		}
-		if rng.Max == nil {
-			end, err = t.buildMaxKeyForType(rng.Min)
-		} else {
-			end, err = t.buildEndKeyInclusive(rng.Max)
-		}
+	var min, max *Key
+	desc := t.isDescRange(rng)
+	if !desc {
+		min, max = rng.Min, rng.Max
 	} else {
-		if rng.Min == nil {
-			start, err = t.buildMinKeyForType(rng.Max)
-		} else {
-			start, err = t.buildStartKeyExclusive(rng.Min)
-		}
-		if err != nil {
-			return err
-		}
-		if rng.Max == nil {
-			end, err = t.buildMaxKeyForType(rng.Min)
-		} else {
-			end, err = t.buildEndKeyExclusive(rng.Max)
-		}
+		min, max = rng.Max, rng.Min
+	}
+
+	if !rng.Exclusive {
+		start, end, err = t.buildInclusiveBoundaries(min, max, desc)
+	} else {
+		start, end, err = t.buildExclusiveBoundaries(min, max, desc)
 	}
 	if err != nil {
 		return err
@@ -197,48 +219,109 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 	return it.Error()
 }
 
-func (t *Tree) buildFirstKey() ([]byte, error) {
-	k := NewKey()
-	return k.Encode(t.Namespace)
+func (t *Tree) isDescRange(rng *Range) bool {
+	if rng.Min != nil {
+		return t.Order.IsDesc(len(rng.Min.Values) - 1)
+	}
+	if rng.Max != nil {
+		return t.Order.IsDesc(len(rng.Max.Values) - 1)
+	}
+
+	return false
 }
 
-func (t *Tree) buildMinKeyForType(max *Key) ([]byte, error) {
+func (t *Tree) buildInclusiveBoundaries(min, max *Key, desc bool) (start []byte, end []byte, err error) {
+	if min == nil {
+		start, err = t.buildMinKeyForType(max, desc)
+	} else {
+		start, err = t.buildStartKeyInclusive(min, desc)
+	}
+	if err != nil {
+		return
+	}
 	if max == nil {
-		return t.buildFirstKey()
+		end, err = t.buildMaxKeyForType(min, desc)
+	} else {
+		end, err = t.buildEndKeyInclusive(max, desc)
+	}
+	return
+}
+
+func (t *Tree) buildExclusiveBoundaries(min, max *Key, desc bool) (start []byte, end []byte, err error) {
+	if min == nil {
+		start, err = t.buildMinKeyForType(max, desc)
+	} else {
+		start, err = t.buildStartKeyExclusive(min, desc)
+	}
+	if err != nil {
+		return
+	}
+	if max == nil {
+		end, err = t.buildMaxKeyForType(min, desc)
+	} else {
+		end, err = t.buildEndKeyExclusive(max, desc)
+	}
+	return
+}
+
+func (t *Tree) buildFirstKey() ([]byte, error) {
+	k := NewKey()
+	return k.Encode(t.Namespace, t.Order)
+}
+
+func (t *Tree) buildMinKeyForType(max *Key, desc bool) ([]byte, error) {
+	if max == nil {
+		k, err := t.buildFirstKey()
+		if err != nil {
+			return nil, err
+		}
+		return k, nil
 	}
 
 	if len(max.Values) == 1 {
-		return NewKey(t.NewMinValueForType(max.Values[0].Type())).Encode(t.Namespace)
-	}
-
-	var values []types.Value
-	for i := range max.Values {
-		if i < len(max.Values)-1 {
-			values = append(values, max.Values[i])
-			continue
+		buf := encoding.EncodeInt(nil, int64(t.Namespace))
+		if desc {
+			return append(buf, byte(t.NewMinTypeForTypeDesc(max.Values[0].Type()))), nil
 		}
 
-		values = append(values, t.NewMinValueForType(max.Values[i].Type()))
+		return append(buf, byte(t.NewMinTypeForType(max.Values[0].Type()))), nil
 	}
 
-	return NewKey(values...).Encode(t.Namespace)
+	buf, err := NewKey(max.Values[:len(max.Values)-1]...).Encode(t.Namespace, t.Order)
+	if err != nil {
+		return nil, err
+	}
+	i := len(max.Values) - 1
+	if desc {
+		return append(buf, byte(t.NewMinTypeForTypeDesc(max.Values[i].Type()))), nil
+	}
+
+	return append(buf, byte(t.NewMinTypeForType(max.Values[i].Type()))), nil
 }
 
-func (t *Tree) buildMaxKeyForType(min *Key) ([]byte, error) {
+func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
 	if min == nil {
 		return t.buildLastKey(), nil
 	}
 
 	if len(min.Values) == 1 {
 		buf := encoding.EncodeInt(nil, int64(t.Namespace))
+		if desc {
+			return append(buf, byte(t.NewMaxTypeForTypeDesc(min.Values[0].Type()))), nil
+		}
 		return append(buf, byte(t.NewMaxTypeForType(min.Values[0].Type()))), nil
 	}
 
-	buf, err := NewKey(min.Values[:len(min.Values)-1]...).Encode(t.Namespace)
+	buf, err := NewKey(min.Values[:len(min.Values)-1]...).Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
-	return append(buf, byte(t.NewMaxTypeForType(min.Values[len(min.Values)-1].Type()))), nil
+	i := len(min.Values) - 1
+	if desc {
+		return append(buf, byte(t.NewMaxTypeForTypeDesc(min.Values[i].Type()))), nil
+	}
+
+	return append(buf, byte(t.NewMaxTypeForType(min.Values[i].Type()))), nil
 }
 
 func (t *Tree) buildLastKey() []byte {
@@ -246,12 +329,12 @@ func (t *Tree) buildLastKey() []byte {
 	return append(buf, 0xFF)
 }
 
-func (t *Tree) buildStartKeyInclusive(key *Key) ([]byte, error) {
-	return key.Encode(t.Namespace)
+func (t *Tree) buildStartKeyInclusive(key *Key, desc bool) ([]byte, error) {
+	return key.Encode(t.Namespace, t.Order)
 }
 
-func (t *Tree) buildStartKeyExclusive(key *Key) ([]byte, error) {
-	b, err := key.Encode(t.Namespace)
+func (t *Tree) buildStartKeyExclusive(key *Key, desc bool) ([]byte, error) {
+	b, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +342,8 @@ func (t *Tree) buildStartKeyExclusive(key *Key) ([]byte, error) {
 	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildEndKeyInclusive(key *Key) ([]byte, error) {
-	b, err := key.Encode(t.Namespace)
+func (t *Tree) buildEndKeyInclusive(key *Key, desc bool) ([]byte, error) {
+	b, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
@@ -268,8 +351,8 @@ func (t *Tree) buildEndKeyInclusive(key *Key) ([]byte, error) {
 	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildEndKeyExclusive(key *Key) ([]byte, error) {
-	return key.Encode(t.Namespace)
+func (t *Tree) buildEndKeyExclusive(key *Key, desc bool) ([]byte, error) {
+	return key.Encode(t.Namespace, t.Order)
 }
 
 func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
@@ -295,24 +378,116 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 	}
 }
 
-func (t *Tree) NewMaxTypeForType(tp types.ValueType) types.ValueType {
+func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 	switch tp {
 	case types.NullValue:
-		return 0x06 // NullValue = 0x05
+		return encoding.NullValue
 	case types.BooleanValue:
-		return 0x12 // TrueValue = 0x10, FalseValue = 0x11
+		return encoding.FalseValue
 	case types.IntegerValue:
-		return 0xC8 // Integers go from 0x20 to 0xC7
+		return encoding.Int64Value
 	case types.DoubleValue:
-		return 0xD2 // Doubles go from 0xD0 to 0xD1
+		return encoding.Float64Value
 	case types.TextValue:
-		return 0xDB // TextValue = 0xDA
+		return encoding.TextValue
 	case types.BlobValue:
-		return 0xE1 // BlobValue = 0xE0
+		return encoding.BlobValue
 	case types.ArrayValue:
-		return 0xE7 // ArrayValue = 0xE6
+		return encoding.ArrayValue
 	case types.DocumentValue:
-		return 0xF1 // DocumentValue = 0xF0
+		return encoding.DocumentValue
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
+	switch tp {
+	case types.NullValue:
+		return encoding.DESC_NullValue
+	case types.BooleanValue:
+		return encoding.DESC_TrueValue
+	case types.IntegerValue:
+		return encoding.DESC_Uint64Value
+	case types.DoubleValue:
+		return encoding.DESC_Float64Value
+	case types.TextValue:
+		return encoding.DESC_TextValue
+	case types.BlobValue:
+		return encoding.DESC_BlobValue
+	case types.ArrayValue:
+		return encoding.DESC_ArrayValue
+	case types.DocumentValue:
+		return encoding.DESC_DocumentValue
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
+	switch tp {
+	case types.NullValue:
+		return encoding.DESC_NullValue + 1
+	case types.BooleanValue:
+		return encoding.DESC_FalseValue + 1
+	case types.IntegerValue:
+		return encoding.DESC_Int64Value + 1
+	case types.DoubleValue:
+		return encoding.DESC_Float64Value + 1
+	case types.TextValue:
+		return encoding.DESC_TextValue + 1
+	case types.BlobValue:
+		return encoding.DESC_BlobValue + 1
+	case types.ArrayValue:
+		return encoding.DESC_ArrayValue + 1
+	case types.DocumentValue:
+		return encoding.DESC_DocumentValue + 1
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
+	switch tp {
+	case types.NullValue:
+		return types.NewNullValue()
+	case types.BooleanValue:
+		return types.NewBoolValue(true)
+	case types.IntegerValue:
+		return types.NewIntegerValue(math.MaxInt64)
+	case types.DoubleValue:
+		return types.NewDoubleValue(math.MaxFloat64)
+	case types.TextValue:
+		return types.NewTextValue("")
+	case types.BlobValue:
+		return types.NewBlobValue(nil)
+	case types.ArrayValue:
+		return types.NewArrayValue(nil)
+	case types.DocumentValue:
+		return types.NewDocumentValue(nil)
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
+	switch tp {
+	case types.NullValue:
+		return encoding.NullValue + 1
+	case types.BooleanValue:
+		return encoding.TrueValue + 1
+	case types.IntegerValue:
+		return encoding.Uint64Value + 1
+	case types.DoubleValue:
+		return encoding.Float64Value + 1
+	case types.TextValue:
+		return encoding.TextValue + 1
+	case types.BlobValue:
+		return encoding.BlobValue + 1
+	case types.ArrayValue:
+		return encoding.ArrayValue + 1
+	case types.DocumentValue:
+		return encoding.DocumentValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}

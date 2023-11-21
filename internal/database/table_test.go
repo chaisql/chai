@@ -92,7 +92,7 @@ func TestTableGetDocument(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		r, err := tb.GetDocument(tree.NewEncodedKey([]byte("id")))
+		r, err := tb.GetDocument(tree.NewKey(types.NewIntegerValue(10)))
 		require.True(t, errs.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
@@ -182,8 +182,7 @@ func TestTableDelete(t *testing.T) {
 	t.Run("Should not fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
-
-		err := tb.Delete(tree.NewEncodedKey([]byte("id")))
+		err := tb.Delete(tree.NewKey(types.NewIntegerValue(10)))
 		assert.NoError(t, err)
 	})
 
@@ -223,7 +222,7 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		_, err := tb.Replace(tree.NewEncodedKey([]byte("id")), newDocument())
+		_, err := tb.Replace(tree.NewKey(types.NewIntegerValue(10)), newDocument())
 		require.True(t, errs.IsNotFoundError(err))
 	})
 
@@ -320,7 +319,7 @@ func BenchmarkTableInsert(b *testing.B) {
 
 				b.StartTimer()
 				for j := 0; j < size; j++ {
-					tb.Insert(&fb)
+					_, _, _ = tb.Insert(&fb)
 				}
 				b.StopTimer()
 				cleanup()
@@ -349,7 +348,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
+				_ = tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
 					return nil
 				})
 			}

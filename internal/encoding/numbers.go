@@ -27,7 +27,7 @@ func EncodeInt(dst []byte, n int64) []byte {
 }
 
 func EncodeUint(dst []byte, n uint64) []byte {
-	if n <= 127 {
+	if n <= 31 {
 		return append(dst, byte(n+uint64(IntSmallValue)+32))
 	}
 
@@ -76,11 +76,16 @@ func EncodeInt64(dst []byte, n int64) []byte {
 }
 
 func DecodeInt(b []byte) (int64, int) {
-	if b[0] >= IntSmallValue && b[0] <= IntSmallValue+0x9F {
-		return int64(int8(b[0] - IntSmallValue - 32)), 1
+	t := b[0]
+	if t > 128 {
+		t = 255 - t
 	}
 
-	switch b[0] {
+	if t >= IntSmallValue && t < Uint8Value {
+		return int64(int8(t - IntSmallValue - 32)), 1
+	}
+
+	switch t {
 	case Uint8Value:
 		return int64(DecodeUint8(b[1:])), 2
 	case Uint16Value:
@@ -99,7 +104,7 @@ func DecodeInt(b []byte) (int64, int) {
 		return DecodeInt64(b[1:]), 9
 	}
 
-	panic(fmt.Sprintf("invalid type %0x", b[0]))
+	panic(fmt.Sprintf("invalid type %d", b[0]))
 }
 
 func DecodeUint8(b []byte) uint8 {
@@ -172,7 +177,7 @@ func EncodeFloat64(dst []byte, x float64) []byte {
 
 func DecodeFloat(b []byte) (float64, int) {
 	switch b[0] {
-	case Float64Value:
+	case Float64Value, DESC_Float64Value:
 		return DecodeFloat64(b[1:]), 9
 	default:
 		x, n := DecodeInt(b)

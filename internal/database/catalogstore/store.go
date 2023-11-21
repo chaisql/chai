@@ -192,24 +192,24 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) {
 	s, err := d.GetByField("sql")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get sql field")
 	}
 
 	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse sql")
 	}
 
 	i := stmt.(*statement.CreateSequenceStmt).Info
 
 	v, err := d.GetByField("owner")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to get owner field")
 	}
 	if err == nil && v.Type() != types.NullValue {
 		owner, err := ownerFromDocument(types.As[types.Document](v))
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "failed to get owner")
 		}
 		i.Owner = *owner
 	}

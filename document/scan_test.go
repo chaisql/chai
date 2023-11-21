@@ -34,7 +34,7 @@ func TestScan(t *testing.T) {
 		Add("foo", types.NewDocumentValue(simpleDoc))
 
 	var buf []byte
-	buf, err := encoding.EncodeValue(buf, types.NewDocumentValue(nestedDoc))
+	buf, err := encoding.EncodeValue(buf, types.NewDocumentValue(nestedDoc), false)
 	assert.NoError(t, err)
 
 	dec, _ := encoding.DecodeValue(buf, false)

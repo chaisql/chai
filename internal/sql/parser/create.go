@@ -9,6 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/types"
 )
 
@@ -198,10 +199,27 @@ LOOP:
 				return nil, nil, err
 			}
 
-			tcs = append(tcs, &database.TableConstraint{
+			tc := database.TableConstraint{
 				PrimaryKey: true,
 				Paths:      document.Paths{path},
-			})
+			}
+
+			// if ASC is set, we ignore it, otherwise we check for DESC
+			ok, err := p.parseOptional(scanner.ASC)
+			if err != nil {
+				return nil, nil, err
+			}
+			if !ok {
+				ok, err = p.parseOptional(scanner.DESC)
+				if err != nil {
+					return nil, nil, err
+				}
+				if ok {
+					tc.SortOrder = tree.SortOrder(0).SetDesc(0)
+				}
+			}
+
+			tcs = append(tcs, &tc)
 		case scanner.NOT:
 			// Parse "NULL"
 			if err := p.parseTokens(scanner.NULL); err != nil {
@@ -340,6 +358,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*databas
 
 	var tc database.TableConstraint
 	var requiresTc bool
+	var order tree.SortOrder
 
 	if ok, _ := p.parseOptional(scanner.CONSTRAINT); ok {
 		tok, pos, lit := p.ScanIgnoreWhitespace()
@@ -364,7 +383,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*databas
 
 		tc.PrimaryKey = true
 
-		tc.Paths, err = p.parsePathList()
+		tc.Paths, order, err = p.parsePathList()
 		if err != nil {
 			return nil, err
 		}
@@ -372,9 +391,10 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*databas
 			tok, pos, lit := p.ScanIgnoreWhitespace()
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
+		tc.SortOrder = order
 	case scanner.UNIQUE:
 		tc.Unique = true
-		tc.Paths, err = p.parsePathList()
+		tc.Paths, order, err = p.parsePathList()
 		if err != nil {
 			return nil, err
 		}
@@ -382,6 +402,7 @@ func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*databas
 			tok, pos, lit := p.ScanIgnoreWhitespace()
 			return nil, newParseError(scanner.Tokstr(tok, lit), []string{"PATHS"}, pos)
 		}
+		tc.SortOrder = order
 	case scanner.CHECK:
 		e, paths, err := p.parseCheckConstraint()
 		if err != nil {
@@ -437,7 +458,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (*statement.CreateIndexS
 		return nil, err
 	}
 
-	paths, err := p.parsePathList()
+	paths, order, err := p.parsePathList()
 	if err != nil {
 		return nil, err
 	}
@@ -447,6 +468,7 @@ func (p *Parser) parseCreateIndexStatement(unique bool) (*statement.CreateIndexS
 	}
 
 	stmt.Info.Paths = paths
+	stmt.Info.KeySortOrder = order
 
 	return &stmt, nil
 }

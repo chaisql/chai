@@ -32,7 +32,7 @@ func EncodeDocument(dst []byte, d types.Document) ([]byte, error) {
 
 		dst = EncodeText(dst, k)
 
-		dst, err = EncodeValue(dst, v)
+		dst, err = EncodeValue(dst, v, false)
 		return err
 	})
 	if err != nil {

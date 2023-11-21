@@ -21,23 +21,15 @@ type ValueType uint8
 // List of supported value types.
 const (
 	// AnyValue denotes the absence of type
-	AnyValue ValueType = 0x00
-
-	NullValue ValueType = 0x05
-
-	BooleanValue ValueType = 0x10
-
-	IntegerValue ValueType = 0x20
-
-	DoubleValue ValueType = 0xD0
-
-	TextValue ValueType = 0xDA
-
-	BlobValue ValueType = 0xE0
-
-	ArrayValue ValueType = 0xE6
-
-	DocumentValue ValueType = 0xF0
+	AnyValue ValueType = iota
+	NullValue
+	BooleanValue
+	IntegerValue
+	DoubleValue
+	TextValue
+	BlobValue
+	ArrayValue
+	DocumentValue
 )
 
 func (t ValueType) String() string {

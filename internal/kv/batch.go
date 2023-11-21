@@ -7,11 +7,6 @@ import (
 
 var _ Session = (*BatchSession)(nil)
 
-const (
-	// 10MB
-	defaultMaxBatchSize = 10 * 1024 * 1024
-)
-
 var (
 	tombStone = []byte{0}
 )

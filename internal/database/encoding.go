@@ -69,7 +69,7 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 			dst = encoding.EncodeArrayLength(dst, mlen)
 			dst, err = encodeDocument(tx, dst, &fc.AnonymousType.FieldConstraints, types.As[types.Document](v))
 		} else {
-			dst, err = encoding.EncodeValue(dst, v)
+			dst, err = encoding.EncodeValue(dst, v, false)
 		}
 		if err != nil {
 			return nil, err
@@ -126,7 +126,7 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]b
 		dst = encoding.EncodeText(dst, field)
 
 		// then encode the value
-		dst, err = encoding.EncodeValue(dst, value)
+		dst, err = encoding.EncodeValue(dst, value, false)
 		return err
 	})
 	if err != nil {

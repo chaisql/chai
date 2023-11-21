@@ -69,7 +69,7 @@ func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 		pdb.Close()
 	})
 
-	return tree.New(session, namespace)
+	return tree.New(session, namespace, 0)
 }
 
 func NewTestDB(t testing.TB) *database.Database {

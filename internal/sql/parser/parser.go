@@ -12,6 +12,7 @@ import (
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/internal/tree"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -158,23 +159,41 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 }
 
 // parsePathList parses a list of paths in the form: (path, path, ...), if exists
-func (p *Parser) parsePathList() ([]document.Path, error) {
+func (p *Parser) parsePathList() ([]document.Path, tree.SortOrder, error) {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	var paths []document.Path
 	var err error
 	var path document.Path
+	var order tree.SortOrder
+
 	// Parse first (required) path.
 	if path, err = p.parsePath(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	paths = append(paths, path)
 
+	// Parse optional ASC/DESC token.
+	ok, err := p.parseOptional(scanner.DESC)
+	if err != nil {
+		return nil, 0, err
+	}
+	if ok {
+		order = order.SetDesc(0)
+	} else {
+		// ignore ASC if set
+		_, err := p.parseOptional(scanner.ASC)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
 	// Parse remaining (optional) paths.
+	i := 0
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
@@ -183,18 +202,35 @@ func (p *Parser) parsePathList() ([]document.Path, error) {
 
 		vp, err := p.parsePath()
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 
 		paths = append(paths, vp)
+
+		i++
+
+		// Parse optional ASC/DESC token.
+		ok, err := p.parseOptional(scanner.DESC)
+		if err != nil {
+			return nil, 0, err
+		}
+		if ok {
+			order = order.SetDesc(i)
+		} else {
+			// ignore ASC if set
+			_, err := p.parseOptional(scanner.ASC)
+			if err != nil {
+				return nil, 0, err
+			}
+		}
 	}
 
 	// Parse required ) token.
 	if err := p.parseTokens(scanner.RPAREN); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return paths, nil
+	return paths, order, nil
 }
 
 // Scan returns the next token from the underlying scanner.

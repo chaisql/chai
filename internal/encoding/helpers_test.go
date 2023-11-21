@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestCompare(t *testing.T) {
 		{`[1]`, `[1]`, 0},
 		{`[1]`, `[2]`, -1},
 		{`[2]`, `[1]`, 1},
-		{`[1000000000]`, `[1]`, 129},
+		{`[1000000000]`, `[1]`, 33},
 		{`[254]`, `[255]`, -1},                             // 2x uint8
 		{`[255]`, `[254]`, 1},                              // 2x uint8
 		{`[10000]`, `[10001]`, -1},                         // 2x uint16
@@ -55,15 +55,15 @@ func TestCompare(t *testing.T) {
 		{`[-1000000000000000]`, `[-1000000000000001]`, 1},  // 2x int64
 		{`[-1000000000000001]`, `[-1000000000000000]`, -1}, // 2x int64
 		{`[-1]`, `[1]`, -2},                                // neg fixint < fixuint
-		{`[1]`, `[200]`, -127},                             // neg fixint < fixuint
+		{`[1]`, `[31]`, -30},                               // neg fixint < fixuint
 		{`[-127]`, `[1]`, -34},                             // int8 < fixuint
 		{`[-10000]`, `[1]`, -35},                           // int16 < fixuint
 		{`[-1000000]`, `[1]`, -36},                         // int32 < fixuint
 		{`[-1000000000000000]`, `[1]`, -37},                // int64 < fixuint
-		{`[-127]`, `[255]`, -161},                          // int8 < uint8
-		{`[-60000]`, `[255]`, -163},                        // int16 < uint8
-		{`[-1000000]`, `[255]`, -163},                      // int32 < uint8
-		{`[-1000000000000000]`, `[255]`, -164},             // int64 < uint8
+		{`[-127]`, `[255]`, -65},                           // int8 < uint8
+		{`[-60000]`, `[255]`, -67},                         // int16 < uint8
+		{`[-1000000]`, `[255]`, -67},                       // int32 < uint8
+		{`[-1000000000000000]`, `[255]`, -68},              // int64 < uint8
 
 		// floats
 		{`[1.0]`, `[1.0]`, 0},
@@ -115,12 +115,12 @@ func TestCompare(t *testing.T) {
 		{`[{"a": {"c": []}}]`, `[{"a": {"c": [1, 2]}}]`, -1},
 
 		// different types
-		{`[null]`, `[true]`, -12},
-		{`[true]`, `[1]`, -52},
-		{`[1]`, `[1.0]`, -139},
-		{`[1.0]`, `["a"]`, -10},
-		{`["a"]`, `["\x00"]`, -6},
-		{`["\x00"]`, `[[]]`, -6},
+		{`[null]`, `[true]`, -4},
+		{`[true]`, `[1]`, -43},
+		{`[1]`, `[1.0]`, -41},
+		{`[1.0]`, `["a"]`, -8},
+		{`["a"]`, `["\x00"]`, -5},
+		{`["\x00"]`, `[[]]`, -7},
 		{`[[]]`, `[{}]`, -10},
 
 		// consecutive values
@@ -136,20 +136,76 @@ func TestCompare(t *testing.T) {
 			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a1 := v1.V().(*document.ValueBuffer).Values
-			k1 := mustNewKey(t, a1...)
+			k1 := mustNewKey(t, 0, 0, a1...)
 
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a2 := v2.V().(*document.ValueBuffer).Values
-			k2 := mustNewKey(t, a2...)
+			k2 := mustNewKey(t, 0, 0, a2...)
 
 			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
 
 			// compare abbreviated keys
 
 			// prepend namespace
-			kk1 := mustNewKey(t, append([]types.Value{types.NewIntegerValue(1)}, a1...)...)
-			kk2 := mustNewKey(t, append([]types.Value{types.NewIntegerValue(1)}, a2...)...)
+			kk1 := mustNewKey(t, 1, 0, a1...)
+			kk2 := mustNewKey(t, 1, 0, a2...)
+
+			cmp := int64(encoding.AbbreviatedKey(kk1) - encoding.AbbreviatedKey(kk2))
+			if test.cmp < 0 {
+				require.False(t, cmp > 0)
+			} else if test.cmp > 0 {
+				require.False(t, cmp < 0)
+			} else {
+				require.True(t, cmp == 0)
+			}
+		})
+	}
+}
+
+func TestCompareOrder(t *testing.T) {
+	tests := []struct {
+		k1, k2 string
+		cmp    int
+		order  []bool
+	}{
+		// null
+		{`[null]`, `[null]`, 0, []bool{false}},
+		{`[null]`, `[null]`, 0, []bool{true}},
+		{`[1]`, `[2]`, -1, []bool{false}},
+		{`[1]`, `[2]`, 1, []bool{true}},
+		{`[60]`, `[30]`, 2, []bool{false}},
+		{`[60]`, `[30]`, -2, []bool{true}},
+		{`[30, "hello"]`, `[30, "bye"]`, 1, []bool{true, false}},
+		{`[30, "hello"]`, `[30, "bye"]`, -1, []bool{true, true}},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("CompareOrder(%s, %s)", test.k1, test.k2), func(t *testing.T) {
+			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			a1 := v1.V().(*document.ValueBuffer).Values
+			order := tree.SortOrder(0)
+			for i := range a1 {
+				if test.order[i] {
+					order = order.SetDesc(i)
+				}
+			}
+
+			k1 := mustNewKey(t, 0, order, a1...)
+
+			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
+			require.NoError(t, err)
+			a2 := v2.V().(*document.ValueBuffer).Values
+			k2 := mustNewKey(t, 0, order, a2...)
+
+			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
+
+			// compare abbreviated keys
+
+			// prepend namespace
+			kk1 := mustNewKey(t, 1, order, a1...)
+			kk2 := mustNewKey(t, 1, order, a2...)
 
 			cmp := int64(encoding.AbbreviatedKey(kk1) - encoding.AbbreviatedKey(kk2))
 			if test.cmp < 0 {
@@ -180,17 +236,17 @@ func TestAbbreviatedKey(t *testing.T) {
 		{`[1000000]`, 0b_1111111111111111_00000000_0000000000000000000000000000000000000000}, // > 1 << 16
 
 		// null
-		{`[1, null]`, 0b_0000000000000001_00000101_0000000000000000000000000000000000000000},
+		{`[1, null]`, 1<<48 | uint64(encoding.NullValue)<<40},
 
 		// bool
-		{`[1, false]`, 0b_0000000000000001_00010000_0000000000000000000000000000000000000000},
-		{`[1, true]`, 0b_0000000000000001_00010001_0000000000000000000000000000000000000000},
+		{`[1, false]`, 1<<48 | uint64(encoding.FalseValue)<<40},
+		{`[1, true]`, 1<<48 | uint64(encoding.TrueValue)<<40},
 
 		// int
 		{`[1, 1]`, 1<<48 | (uint64(encoding.IntSmallValue)+32+1)<<40},                                     // positive int -> small value
-		{`[1, 100]`, 1<<48 | (uint64(encoding.IntSmallValue)+32+100)<<40},                                 // positive int -> small value
 		{`[1, -10]`, 1<<48 | (uint64(encoding.IntSmallValue)+32-10)<<40},                                  // negative int -> small value
-		{`[1, 127]`, 1<<48 | (uint64(encoding.IntSmallValue)+32+127)<<40},                                 // positive int -> small value
+		{`[1, 31]`, 1<<48 | (uint64(encoding.IntSmallValue)+32+31)<<40},                                   // positive int -> small value
+		{`[1, 100]`, 1<<48 | uint64(encoding.Uint8Value)<<40 | 100},                                       // positive int -> uint8
 		{`[1, 128]`, 1<<48 | uint64(encoding.Uint8Value)<<40 | 128},                                       // positive int -> uint8
 		{`[1, 255]`, 1<<48 | uint64(encoding.Uint8Value)<<40 | 255},                                       // positive int -> uint8
 		{`[1, 256]`, 1<<48 | uint64(encoding.Uint16Value)<<40 | 256},                                      // positive int -> uint16
@@ -237,7 +293,7 @@ func TestAbbreviatedKey(t *testing.T) {
 			v, err := testutil.ParseExpr(t, test.k).Eval(&environment.Environment{})
 			require.NoError(t, err)
 			a := v.V().(*document.ValueBuffer).Values
-			k := mustNewKey(t, a...)
+			k := mustNewKey(t, 0, 0, a...)
 
 			require.Equal(t, test.want, encoding.AbbreviatedKey(k))
 		})
@@ -258,8 +314,8 @@ func TestSeparator(t *testing.T) {
 			require.NoError(t, err)
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			k1 := mustNewKey(t, v1.V().(*document.ValueBuffer).Values...)
-			k2 := mustNewKey(t, v2.V().(*document.ValueBuffer).Values...)
+			k1 := mustNewKey(t, 0, 0, v1.V().(*document.ValueBuffer).Values...)
+			k2 := mustNewKey(t, 0, 0, v2.V().(*document.ValueBuffer).Values...)
 			sep := encoding.Separator(nil, k1, k2)
 			require.LessOrEqual(t, encoding.Compare(k1, sep), 0)
 			require.Less(t, encoding.Compare(sep, k2), 0)

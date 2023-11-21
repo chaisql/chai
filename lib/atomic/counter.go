@@ -5,37 +5,68 @@ import (
 )
 
 type Counter struct {
-	max   int64
-	start int64
+	max  int64
+	min  int64
+	wrap bool
 
-	current int64
+	current atomic.Int64
 }
 
-func NewCounter(start, max int64) *Counter {
-	return &Counter{
-		max:     max,
-		start:   start,
-		current: start,
+func NewCounter(min, max int64, wrap bool) *Counter {
+	c := Counter{
+		max:  max,
+		min:  min,
+		wrap: wrap,
 	}
+
+	c.current.Add(min)
+	return &c
 }
 
 func (c *Counter) Get() int64 {
-	return atomic.LoadInt64(&c.current)
+	return c.current.Load()
 }
 
-// Incr increments the counter by 1. If the counter is at the Max value, it wraps around to 0.
+// Incr increments the counter by 1. If the counter is at the Max value, it wraps around to Min.
 func (c *Counter) Incr() int64 {
 	var next int64
 
 	for {
-		prev := atomic.LoadInt64(&c.current)
+		prev := c.current.Load()
 		next = prev + 1
 
 		if next >= c.max {
-			next = c.start
+			if !c.wrap {
+				return prev
+			}
+
+			next = c.min
 		}
 
-		if atomic.CompareAndSwapInt64(&c.current, prev, next) {
+		if c.current.CompareAndSwap(prev, next) {
+			break
+		}
+	}
+
+	return next
+}
+
+func (c *Counter) Decr() int64 {
+	var next int64
+
+	for {
+		prev := c.current.Load()
+		next = prev - 1
+
+		if next < c.min {
+			if !c.wrap {
+				return prev
+			}
+
+			next = c.max
+		}
+
+		if c.current.CompareAndSwap(prev, next) {
 			break
 		}
 	}

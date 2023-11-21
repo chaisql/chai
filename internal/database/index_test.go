@@ -27,7 +27,7 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 		MaxBatchSize:             1 << 7,
 	}).NewBatchSession()
 
-	tr := tree.New(session, 10)
+	tr := tree.New(session, 10, 0)
 
 	var paths []document.Path
 	for i := 0; i < arity; i++ {
@@ -172,7 +172,7 @@ func BenchmarkIndexSet(b *testing.B) {
 				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := fmt.Sprintf("name-%d", j)
-					idx.Set(values(types.NewTextValue(k)), []byte(k))
+					_ = idx.Set(values(types.NewTextValue(k)), []byte(k))
 				}
 				b.StopTimer()
 				cleanup()
@@ -216,7 +216,7 @@ func BenchmarkCompositeIndexSet(b *testing.B) {
 				b.StartTimer()
 				for j := 0; j < size; j++ {
 					k := fmt.Sprintf("name-%d", j)
-					idx.Set(values(types.NewTextValue(k), types.NewTextValue(k)), []byte(k))
+					_ = idx.Set(values(types.NewTextValue(k), types.NewTextValue(k)), []byte(k))
 				}
 				b.StopTimer()
 				cleanup()

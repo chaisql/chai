@@ -1,6 +1,7 @@
 package tree
 
 import (
+	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/types"
@@ -23,7 +24,7 @@ func NewEncodedKey(enc []byte) *Key {
 	}
 }
 
-func (k *Key) Encode(ns Namespace) ([]byte, error) {
+func (k *Key) Encode(ns Namespace, order SortOrder) ([]byte, error) {
 	if k.Encoded != nil {
 		return k.Encoded, nil
 	}
@@ -32,11 +33,12 @@ func (k *Key) Encode(ns Namespace) ([]byte, error) {
 	var err error
 
 	if ns != 0 {
-		buf = encoding.EncodeInt(buf, int64(ns))
+		buf = encoding.EncodeUint(buf, uint64(ns))
 	}
 
-	for _, v := range k.Values {
-		buf, err = encoding.EncodeValue(buf, v)
+	for i, v := range k.Values {
+		// extract the sort order
+		buf, err = encoding.EncodeValue(buf, v, order.IsDesc(i))
 		if err != nil {
 			return nil, err
 		}
@@ -57,6 +59,9 @@ func (key *Key) Decode() ([]types.Value, error) {
 
 	// ignore namespace
 	n := encoding.Skip(key.Encoded)
+	if n == 0 {
+		return nil, errors.Errorf("invalid key %v", key.Encoded)
+	}
 	b = b[n:]
 
 	for {

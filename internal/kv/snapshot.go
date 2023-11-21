@@ -1,23 +1,22 @@
 package kv
 
 import (
-	"sync/atomic"
-
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/genjidb/genji/lib/atomic"
 )
 
 type snapshot struct {
-	refCount int64
+	refCount *atomic.Counter
 	snapshot *pebble.Snapshot
 }
 
 func (s *snapshot) Incr() {
-	atomic.AddInt64(&s.refCount, 1)
+	s.refCount.Incr()
 }
 
 func (s *snapshot) Done() error {
-	if atomic.AddInt64(&s.refCount, -1) == 0 {
+	if s.refCount.Decr() <= 0 {
 		return s.snapshot.Close()
 	}
 	return nil

@@ -97,6 +97,25 @@ WHERE
 }
 */
 
+-- test: table constraint: multiple fields with order
+CREATE TABLE test(a INT, b INT, c INT, UNIQUE(a DESC, b ASC, c));
+SELECT name, sql 
+FROM __genji_catalog 
+WHERE 
+    (type = "table" AND name = "test") 
+  OR
+    (type = "index" AND name = "test_a_b_c_idx");
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER, CONSTRAINT test_a_b_c_unique UNIQUE (a DESC, b, c))"
+}
+{
+  "name": "test_a_b_c_idx",
+  "sql": "CREATE UNIQUE INDEX test_a_b_c_idx ON test (a DESC, b, c)"
+}
+*/
+
 -- test: table constraint: undeclared field
 CREATE TABLE test(a INT, UNIQUE(b));
 -- error:
