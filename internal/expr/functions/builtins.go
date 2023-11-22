@@ -69,7 +69,7 @@ var builtinFunctions = Definitions{
 	},
 	"coalesce": &definition{
 		name:  "coalesce",
-		arity: UNLIMITED,
+		arity: variadicArity,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &Coalesce{Exprs: args}, nil
 		},

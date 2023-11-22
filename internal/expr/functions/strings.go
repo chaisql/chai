@@ -26,21 +26,21 @@ var stringsFunctions = Definitions{
 	},
 	"trim": &definition{
 		name:  "trim",
-		arity: UNLIMITED,
+		arity: variadicArity,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
 		},
 	},
 	"ltrim": &definition{
 		name:  "ltrim",
-		arity: UNLIMITED,
+		arity: variadicArity,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
 		},
 	},
 	"rtrim": &definition{
 		name:  "rtrim",
-		arity: UNLIMITED,
+		arity: variadicArity,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
 		},
