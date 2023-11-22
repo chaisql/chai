@@ -268,9 +268,6 @@ func (p *Parser) parseTokens(tokens ...scanner.Token) error {
 // present, it unscans and return false. If the first is present, all the others
 // must be parsed otherwise an error is returned.
 func (p *Parser) parseOptional(tokens ...scanner.Token) (bool, error) {
-	if len(tokens) == 0 {
-		return false, nil
-	}
 	// Parse optional first token
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok != tokens[0] {
 		p.Unscan()
