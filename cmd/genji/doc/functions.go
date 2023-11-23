@@ -4,19 +4,20 @@ type functionDocs map[string]string
 
 var packageDocs = map[string]functionDocs{
 	"strings": stringsDocs,
-	"math": mathDocs,
-	"":     builtinDocs,
+	"math":    mathDocs,
+	"":        builtinDocs,
 }
 
 var builtinDocs = functionDocs{
-	"pk":     "The pk() function returns the primary key for the current document",
-	"count":  "Returns a count of the number of times that arg1 is not NULL in a group. The count(*) function (with no arguments) returns the total number of rows in the group.",
-	"min":    "Returns the minimum value of the arg1 expression in a group.",
-	"max":    "Returns the maximum value of the arg1 expressein in a group.",
-	"sum":    "The sum function returns the sum of all values taken by the arg1 expression in a group.",
-	"avg":    "The avg function returns the average of all values taken by the arg1 expression in a group.",
-	"typeof": "The typeof function returns the type of arg1.",
-	"len":    "The len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
+	"pk":       "The pk() function returns the primary key for the current document",
+	"count":    "Returns a count of the number of times that arg1 is not NULL in a group. The count(*) function (with no arguments) returns the total number of rows in the group.",
+	"min":      "Returns the minimum value of the arg1 expression in a group.",
+	"max":      "Returns the maximum value of the arg1 expressein in a group.",
+	"sum":      "The sum function returns the sum of all values taken by the arg1 expression in a group.",
+	"avg":      "The avg function returns the average of all values taken by the arg1 expression in a group.",
+	"typeof":   "The typeof function returns the type of arg1.",
+	"len":      "The len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
+	"coalesce": "The coalesce function returns the first non-null argument. NULL is returned if all arguments are null.",
 }
 
 var mathDocs = functionDocs{
@@ -31,9 +32,9 @@ var mathDocs = functionDocs{
 }
 
 var stringsDocs = functionDocs{
-	"lower":  "The lower function returns arg1 to lower-case if arg1 evals to string",
-	"upper":  "The upper function returns arg1 to upper-case if arg1 evals to string",
-	"trim":   "The trim function returns arg1 with leading and trailing characters removed. space by default or arg2",
-	"ltrim":   "The ltrim function returns arg1 with leading characters removed. space by default or arg2",
-	"rtrim":   "The rtrim function returns arg1 with trailing characters removed. space by default or arg2",
+	"lower": "The lower function returns arg1 to lower-case if arg1 evals to string",
+	"upper": "The upper function returns arg1 to upper-case if arg1 evals to string",
+	"trim":  "The trim function returns arg1 with leading and trailing characters removed. space by default or arg2",
+	"ltrim": "The ltrim function returns arg1 with leading characters removed. space by default or arg2",
+	"rtrim": "The rtrim function returns arg1 with trailing characters removed. space by default or arg2",
 }

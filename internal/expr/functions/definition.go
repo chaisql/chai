@@ -7,6 +7,9 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 )
 
+// variadicArity represents an unlimited number of arguments.
+const variadicArity = -1
+
 // A Definition transforms a list of expressions into a Function.
 type Definition interface {
 	Name() string
@@ -57,11 +60,10 @@ func (fd *definition) Name() string {
 }
 
 func (fd *definition) Function(args ...expr.Expr) (expr.Function, error) {
-	if fd.arity == -1 {
-		return fd.constructorFn(args...)
+	if fd.arity == variadicArity && len(args) == 0 {
+		return nil, fmt.Errorf("%s() requires at least one argument", fd.name)
 	}
-
-	if len(args) != fd.arity {
+	if fd.arity != variadicArity && (len(args) != fd.arity) {
 		return nil, fmt.Errorf("%s() takes %d argument(s), not %d", fd.name, fd.arity, len(args))
 	}
 	return fd.constructorFn(args...)

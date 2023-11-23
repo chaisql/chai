@@ -11,7 +11,7 @@ var ErrInvalidResult = errors.New("expression must evaluate to a document")
 
 // An Operator is used to modify a stream.
 // It takes an environment containing the current value as well as any other metadata
-// created by other operatorsand returns a new environment which will be passed to the next operator.
+// created by other operators and returns a new environment which will be passed to the next operator.
 // If it returns a nil environment, the env will be ignored.
 // If it returns an error, the stream will be interrupted and that error will bubble up
 // and returned by this function, unless that error is ErrStreamClosed, in which case
