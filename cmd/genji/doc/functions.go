@@ -18,6 +18,7 @@ var builtinDocs = functionDocs{
 	"typeof":   "The typeof function returns the type of arg1.",
 	"len":      "The len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
 	"coalesce": "The coalesce function returns the first non-null argument. NULL is returned if all arguments are null.",
+	"random":   "The random function returns a random number between math.MinInt64 and math.MaxInt64.",
 }
 
 var mathDocs = functionDocs{

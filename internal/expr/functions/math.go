@@ -3,6 +3,7 @@ package functions
 import (
 	"fmt"
 	"math"
+	"math/rand"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/types"
@@ -14,14 +15,15 @@ func MathFunctions() Definitions {
 }
 
 var mathFunctions = Definitions{
-	"floor": floor,
-	"abs":   abs,
-	"acos":  acos,
-	"acosh": acosh,
-	"asin":  asin,
-	"asinh": asinh,
-	"atan":  atan,
-	"atan2": atan2,
+	"floor":  floor,
+	"abs":    abs,
+	"acos":   acos,
+	"acosh":  acosh,
+	"asin":   asin,
+	"asinh":  asinh,
+	"atan":   atan,
+	"atan2":  atan2,
+	"random": random,
 }
 
 var floor = &ScalarDefinition{
@@ -162,5 +164,17 @@ var atan2 = &ScalarDefinition{
 		vvB := types.As[float64](vB)
 		res := math.Atan2(vvA, vvB)
 		return types.NewDoubleValue(res), nil
+	},
+}
+
+var random = &ScalarDefinition{
+	name:  "random",
+	arity: 0,
+	callFn: func(args ...types.Value) (types.Value, error) {
+		randomNum := rand.Int63()
+		if rand.Int()%2 == 0 {
+			randomNum = -randomNum
+		}
+		return types.NewIntegerValue(randomNum), nil
 	},
 }
