@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/types"
@@ -171,8 +172,11 @@ var random = &ScalarDefinition{
 	name:  "random",
 	arity: 0,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		randomNum := rand.Int63()
-		if rand.Int()%2 == 0 {
+		src := rand.NewSource(time.Now().UnixNano())
+		seededRand := rand.New(src)
+
+		randomNum := seededRand.Int63()
+		if seededRand.Int()%2 == 0 {
 			randomNum = -randomNum
 		}
 		return types.NewIntegerValue(randomNum), nil
