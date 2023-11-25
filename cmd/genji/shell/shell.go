@@ -3,26 +3,23 @@ package shell
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/agnivade/levenshtein"
-	"github.com/c-bata/go-prompt"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cockroachdb/errors"
 	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/types"
 )
 
 const (
@@ -34,8 +31,6 @@ var (
 	errExitCommand = errors.New("exit command")
 	// error returned when the program received a termination signal
 	errExitSignal = errors.New("termination signal received")
-	// error returned when the prompt reads a ctrl d input
-	errExitCtrlD = errors.New("ctrl-d")
 )
 
 // A Shell manages a command line shell program for manipulating a Genji database.
@@ -43,15 +38,9 @@ type Shell struct {
 	db   *genji.DB
 	opts *Options
 
-	query      string
-	livePrefix string
-	multiLine  bool
-
 	showTime bool
 
 	history []string
-
-	cmdSuggestions []prompt.Suggest
 
 	// context used for execution cancellation,
 	// these must not be used manually.
@@ -66,6 +55,12 @@ type Options struct {
 	// Path of the database directory that will be created.
 	// If empty, the database will be in-memory.
 	DBPath string
+}
+
+type queryTask struct {
+	q     string
+	w     *bufio.Writer
+	errCh chan error
 }
 
 // Run a shell.
@@ -108,7 +103,12 @@ func Run(ctx context.Context, opts *Options) error {
 		}
 	}()
 
-	promptExecCh := make(chan string)
+	sh.history, err = sh.loadHistory()
+	if err != nil {
+		return err
+	}
+
+	promptExecCh := make(chan queryTask)
 
 	// from this point, do not use the root context anymore,
 	// instead use our own signal handlers.
@@ -118,28 +118,19 @@ func Run(ctx context.Context, opts *Options) error {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		return sh.runSignalHandlers(ctx)
+		ui := newTUI(&sh, promptExecCh)
+
+		p := tea.NewProgram(ui)
+		_, err = p.Run()
+		if err == nil {
+			return errExitCommand
+		}
+		return err
 	})
 
 	g.Go(func() error {
 		return sh.runExecutor(ctx, promptExecCh)
 	})
-
-	// Because go-prompt doesn't handle cancellation
-	// it is impossible to ask it to stop when the prompt.Input function
-	// is running.
-	// We run it in a non-managed goroutine with no graceful shutdown
-	// so that if the prompt.Input function is running when we want to quit the program
-	// we simply don't wait for this goroutine to end.
-	// This goroutine must not manage any resource.
-	go func() {
-		defer cancel()
-
-		err := sh.runPrompt(promptExecCh)
-		if err != nil && !errors.Is(err, errExitCtrlD) {
-			fmt.Fprintln(os.Stderr, err.Error())
-		}
-	}()
 
 	err = g.Wait()
 	if errors.Is(err, errExitCommand) || errors.Is(err, errExitSignal) || errors.Is(err, context.Canceled) {
@@ -149,31 +140,9 @@ func Run(ctx context.Context, opts *Options) error {
 	return err
 }
 
-// runSignalHandlers handles two different signals.
-// On SIGINT, it cancels any query execution using sh.cancelExecution.
-// On SIGTERM, it triggers graceful shutdown by returning errExitSignal.
-func (sh *Shell) runSignalHandlers(ctx context.Context) error {
-	interruptC := make(chan os.Signal, 1)
-	termC := make(chan os.Signal, 1)
-	signal.Notify(interruptC, os.Interrupt)
-	signal.Notify(termC, syscall.SIGTERM)
-
-	for {
-		select {
-		case <-interruptC:
-			sh.cancelExecution()
-		case <-termC:
-			fmt.Fprintf(os.Stderr, "\nTermination signal received. Quitting...\n")
-			return errExitSignal
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-}
-
 // runExecutor manages execution. It reads user input from promptExecCh, executes any
 // command or query and writes back an empty string to that channel once it's done.
-func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) error {
+func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan queryTask) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -181,111 +150,32 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan string) erro
 		case input := <-promptExecCh:
 			showTime := sh.showTime
 			start := time.Now().UTC()
-			err := sh.executeInput(sh.getExecContext(ctx), input)
-			// if the context has been canceled
-			// there is no way to tell at this point
-			// if this is because of a user interruption
-			// or a termination signal.
-			// If it's the latter, it will be detected by the Select statement.
+			err := sh.executeInput(sh.getExecContext(ctx), input.q, input.w)
 			if errors.Is(err, context.Canceled) {
 				// Print a newline for cleanliness
-				fmt.Println()
+				fmt.Fprintln(input.w)
+				input.w.Flush()
 				continue
 			}
 			if errors.Is(err, errExitCommand) {
+				input.w.Flush()
+				close(input.errCh)
 				return err
 			}
 			if err != nil {
-				fmt.Println(err)
+				input.w.Flush()
+				input.errCh <- err
 				continue
 			}
 
 			// if showtime is true, ensure it's a query, and it was executed.
-			if showTime && !strings.HasPrefix(input, ".") && strings.HasSuffix(input, ";") {
-				fmt.Printf("Time: %s\n", time.Since(start))
+			if showTime && !strings.HasPrefix(input.q, ".") && strings.HasSuffix(input.q, ";") {
+				fmt.Fprintf(input.w, "Time: %s\n", time.Since(start))
 			}
-		case promptExecCh <- "":
+
+			input.w.Flush()
+			close(input.errCh)
 		}
-	}
-}
-
-// runPrompt is a stateless function that displays a prompt to the user.
-// User input is sent to the execCh channel which must deal with parsing and error handling.
-// Once the execution of the user input is done by the reader of the channel, it must
-// send a string back to execCh so that this function will display another prompt.
-func (sh *Shell) runPrompt(execCh chan (string)) error {
-	sh.loadCommandSuggestions()
-	history, err := sh.loadHistory()
-	if err != nil {
-		return err
-	}
-
-	// we store the last key stroke to
-	// determine if ctrl D was pressed by the user.
-	var lastKeyStroke prompt.Key
-
-	promptOpts := []prompt.Option{
-		prompt.OptionPrefix("genji> "),
-		prompt.OptionTitle("Genji"),
-		prompt.OptionLivePrefix(sh.changelivePrefix),
-		prompt.OptionHistory(history),
-		prompt.OptionBreakLineCallback(func(d *prompt.Document) {
-			lastKeyStroke = d.LastKeyStroke()
-		}),
-	}
-
-	// If NO_COLOR env var is present, disable color. See https://no-color.org
-	if _, ok := os.LookupEnv("NO_COLOR"); ok {
-		// A list of color options we have to reset.
-		colorOpts := []func(prompt.Color) prompt.Option{
-			prompt.OptionPrefixTextColor,
-			prompt.OptionPreviewSuggestionTextColor,
-			prompt.OptionSuggestionTextColor,
-			prompt.OptionSuggestionBGColor,
-			prompt.OptionSelectedSuggestionTextColor,
-			prompt.OptionSelectedSuggestionBGColor,
-			prompt.OptionDescriptionTextColor,
-			prompt.OptionDescriptionBGColor,
-			prompt.OptionSelectedDescriptionTextColor,
-			prompt.OptionSelectedDescriptionBGColor,
-			prompt.OptionScrollbarThumbColor,
-			prompt.OptionScrollbarBGColor,
-		}
-		for _, opt := range colorOpts {
-			resetColor := opt(prompt.DefaultColor)
-			promptOpts = append(promptOpts, resetColor)
-		}
-	}
-
-	pt := prompt.New(
-		func(in string) {},
-		sh.completer,
-		promptOpts...,
-	)
-
-	for {
-		// Input() captures ctrl D and ctrl C.
-		// It never returns when ctrl C is pressed but does on CTRL D
-		// under specific conditions.
-		input := pt.Input()
-
-		// go-prompt ignores ctrl D if it was pressed while the line is not empty.
-		// However, it returns if the line is empty and sets lastKeyStroke to prompt.ControlD.
-		// if so, we must stop the program.
-		if lastKeyStroke == prompt.ControlD {
-			return errExitCtrlD
-		}
-
-		input = strings.TrimSpace(input)
-
-		if len(input) == 0 {
-			continue
-		}
-
-		// delegate execution to the sh.runExecutor goroutine
-		execCh <- input
-		// and wait for it to finish to display another prompt.
-		<-execCh
 	}
 }
 
@@ -317,22 +207,6 @@ func (sh *Shell) getExecContext(ctx context.Context) context.Context {
 	return sh.execContext
 }
 
-func (sh *Shell) loadCommandSuggestions() {
-	suggestions := make([]prompt.Suggest, 0, len(commands))
-	for _, c := range commands {
-		suggestions = append(suggestions, prompt.Suggest{
-			Text: c.Name,
-		})
-
-		for _, alias := range c.Aliases {
-			suggestions = append(suggestions, prompt.Suggest{
-				Text: alias,
-			})
-		}
-	}
-	sh.cmdSuggestions = suggestions
-}
-
 func (sh *Shell) loadHistory() ([]string, error) {
 	if _, ok := os.LookupEnv("NO_HISTORY"); ok {
 		return nil, nil
@@ -358,7 +232,11 @@ func (sh *Shell) loadHistory() ([]string, error) {
 	var history []string
 	s := bufio.NewScanner(f)
 	for s.Scan() {
-		history = append(history, s.Text())
+		line, err := base64.StdEncoding.DecodeString(s.Text())
+		if err != nil {
+			continue
+		}
+		history = append(history, string(line))
 	}
 
 	return history, s.Err()
@@ -375,7 +253,7 @@ func (sh *Shell) dumpHistory() error {
 
 	fname := filepath.Join(homeDir, historyFilename)
 
-	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+	f, err := os.Create(fname)
 	if err != nil {
 		return err
 	}
@@ -383,7 +261,7 @@ func (sh *Shell) dumpHistory() error {
 
 	w := bufio.NewWriter(f)
 	for _, h := range sh.history {
-		_, err = w.WriteString(h + "\n")
+		_, err = w.WriteString(base64.StdEncoding.EncodeToString([]byte(h)) + "\n")
 		if err != nil {
 			return err
 		}
@@ -392,40 +270,41 @@ func (sh *Shell) dumpHistory() error {
 	return w.Flush()
 }
 
+func (sh *Shell) getHistoryLine(offset int) string {
+	if len(sh.history) == 0 {
+		return ""
+	}
+
+	offset--
+
+	if offset >= len(sh.history) {
+		return sh.history[0]
+	}
+
+	return sh.history[len(sh.history)-1-offset]
+}
+
 // executeInput stores user input in the history and executes it.
-func (sh *Shell) executeInput(ctx context.Context, in string) error {
+func (sh *Shell) executeInput(ctx context.Context, in string, out io.Writer) error {
 	sh.history = append(sh.history, in)
 
 	switch {
 	// if it starts with a "." it's a command
-	// if the input is "help" or "exit", then it's a command.
-	// it must not be in the middle of a multi line query though
-	case !sh.multiLine && strings.HasPrefix(in, "."), in == "help", in == "exit":
-		return sh.runCommand(ctx, in)
+	case strings.HasPrefix(in, "."):
+		return sh.runCommand(ctx, in, out)
 	// If it ends with a ";" we can run a query
 	case strings.HasSuffix(in, ";"):
-		sh.query = sh.query + in
-		sh.multiLine = false
-		sh.livePrefix = in
-		err := sh.runQuery(ctx, sh.query)
-		sh.query = ""
+		err := sh.runQuery(ctx, in, out)
 		return err
 	// If the input is empty we ignore it
 	case in == "":
 		return nil
-
-	// If we reach this case, it means the user is in the middle of a
-	// multi line query. We change the prompt and set the multiLine var to true.
-	default:
-		sh.query = sh.query + in + " "
-		sh.livePrefix = "... "
-		sh.multiLine = true
 	}
 
 	return nil
 }
 
-func (sh *Shell) runCommand(ctx context.Context, in string) error {
+func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error {
 	in = strings.TrimSuffix(in, ";")
 	cmd := strings.Fields(in)
 	switch cmd[0] {
@@ -436,20 +315,14 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 
 		sh.showTime = cmd[1] == "on"
 		return nil
-	case ".help", "help":
-		return runHelpCmd()
+	case ".help":
+		return runHelpCmd(out)
 	case ".tables":
 		if len(cmd) > 1 {
 			return fmt.Errorf(getUsage(".tables"))
 		}
 
-		return runTablesCmd(sh.db, os.Stdout)
-	case ".exit", "exit":
-		if len(cmd) > 1 {
-			return fmt.Errorf(getUsage(".exit"))
-		}
-
-		return errExitCommand
+		return runTablesCmd(sh.db, out)
 	case ".indexes":
 		if len(cmd) > 2 {
 			return fmt.Errorf(getUsage(".indexes"))
@@ -460,16 +333,16 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 			tableName = cmd[0]
 		}
 
-		return runIndexesCmd(sh.db, tableName, os.Stdout)
+		return runIndexesCmd(sh.db, tableName, out)
 	case ".dump":
-		return dbutil.Dump(sh.db, os.Stdout, cmd[1:]...)
+		return dbutil.Dump(sh.db, out, cmd[1:]...)
 	case ".save":
 		if len(cmd) != 2 {
 			return fmt.Errorf("cannot save without output path")
 		}
 		return runSaveCmd(ctx, sh.db, cmd[1])
 	case ".schema":
-		return dbutil.DumpSchema(sh.db, os.Stdout, cmd[1:]...)
+		return dbutil.DumpSchema(sh.db, out, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
 			return fmt.Errorf(getUsage(".import"))
@@ -480,98 +353,24 @@ func (sh *Shell) runCommand(ctx context.Context, in string) error {
 		if len(cmd) != 2 {
 			return fmt.Errorf(getUsage(".doc"))
 		}
-		return runDocCmd(cmd[1])
+		return runDocCmd(cmd[1], out)
 	case ".restore":
 		if len(cmd) != 2 {
 			return fmt.Errorf(getUsage(".restore"))
 		}
 		return dbutil.Restore(ctx, sh.db, cmd[1], "./")
 	default:
-		return displaySuggestions(in)
+		return displaySuggestions(in, out)
 	}
 }
 
-func (sh *Shell) runQuery(ctx context.Context, q string) error {
-	err := dbutil.ExecSQL(ctx, sh.db, strings.NewReader(q), os.Stdout)
+func (sh *Shell) runQuery(ctx context.Context, q string, out io.Writer) error {
+	err := dbutil.ExecSQL(ctx, sh.db, strings.NewReader(q), out)
 	if errors.Is(err, context.Canceled) {
 		return errors.New("interrupted")
 	}
 
 	return err
-}
-
-func (sh *Shell) changelivePrefix() (string, bool) {
-	return sh.livePrefix, sh.multiLine
-}
-
-// listTables returns all the tables of the database, except the system ones.
-func (sh *Shell) listTables() ([]string, error) {
-	var tables []string
-
-	res, err := sh.db.Query("SELECT name FROM __genji_catalog WHERE type = 'table' AND name NOT LIKE '__genji%'")
-	if err != nil {
-		return nil, err
-	}
-	defer res.Close()
-
-	err = res.Iterate(func(d types.Document) error {
-		var tableName string
-		err = document.Scan(d, &tableName)
-		if err != nil {
-			return err
-		}
-		tables = append(tables, tableName)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// if there is no table return table as a suggestion
-	if len(tables) == 0 {
-		tables = append(tables, "table_name")
-	}
-
-	return tables, nil
-}
-
-func (sh *Shell) completer(in prompt.Document) []prompt.Suggest {
-	suggestions := prompt.FilterHasPrefix(sh.cmdSuggestions, in.Text, true)
-
-	_, err := parser.ParseQuery(in.Text)
-	if err != nil {
-		e, ok := err.(*parser.ParseError)
-		if !ok || len(e.Expected) < 1 {
-			return suggestions
-		}
-		expected := e.Expected
-		switch expected[0] {
-		case "table_name":
-			expected, err = sh.listTables()
-			if err != nil {
-				return suggestions
-			}
-		case "index_name":
-			expected, err = dbutil.ListIndexes(sh.db, "")
-			if err != nil {
-				return suggestions
-			}
-		}
-		for _, e := range expected {
-			suggestions = append(suggestions, prompt.Suggest{
-				Text: e,
-			})
-		}
-
-		w := in.GetWordBeforeCursor()
-		if w == "" {
-			return suggestions
-		}
-
-		return prompt.FilterHasPrefix(suggestions, w, true)
-	}
-
-	return []prompt.Suggest{}
 }
 
 func shouldDisplaySuggestion(name, in string) bool {
@@ -581,7 +380,7 @@ func shouldDisplaySuggestion(name, in string) bool {
 }
 
 // displaySuggestions shows suggestions.
-func displaySuggestions(in string) error {
+func displaySuggestions(in string, out io.Writer) error {
 	var suggestions []string
 	for _, c := range commands {
 		if shouldDisplaySuggestion(c.Name, in) {
@@ -599,15 +398,15 @@ func displaySuggestions(in string) error {
 		return fmt.Errorf("Unknown command %q. Enter \".help\" for help.", in)
 	}
 
-	fmt.Printf("\"%s\" is not a command. Did you mean: ", in)
+	fmt.Fprintf(out, "\"%s\" is not a command. Did you mean: ", in)
 	for i := range suggestions {
 		if i > 0 {
-			fmt.Printf(", ")
+			fmt.Fprintf(out, ", ")
 		}
 
-		fmt.Printf("%q", suggestions[i])
+		fmt.Fprintf(out, "%q", suggestions[i])
 	}
 
-	fmt.Println()
+	fmt.Fprintf(out, "?")
 	return nil
 }

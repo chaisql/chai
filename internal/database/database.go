@@ -10,6 +10,7 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
+	"github.com/genjidb/genji/lib/pebbleutil"
 )
 
 const (
@@ -74,6 +75,7 @@ type TxOptions struct {
 func Open(path string, opts *Options) (*Database, error) {
 	popts := &pebble.Options{
 		Comparer: DefaultComparer,
+		Logger:   pebbleutil.NoopLoggerAndTracer{},
 	}
 
 	if path == ":memory:" {

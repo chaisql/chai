@@ -2,7 +2,7 @@ package dbutil
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/cockroachdb/errors"
@@ -35,5 +35,5 @@ func Restore(ctx context.Context, db *genji.DB, dumpFile, dbPath string) error {
 		defer db.Close()
 	}
 
-	return ExecSQL(ctx, db, file, ioutil.Discard)
+	return ExecSQL(ctx, db, file, io.Discard)
 }

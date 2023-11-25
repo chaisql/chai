@@ -110,24 +110,24 @@ func getUsage(cmdName string) string {
 }
 
 // runHelpCmd shows all available commands.
-func runHelpCmd() error {
+func runHelpCmd(out io.Writer) error {
 	for _, c := range commands {
 		// indentation for readability.
 		spaces := 25
 		indent := spaces - len(c.DisplayName) - len(c.Options)
-		fmt.Printf("%s %s %*s %s\n", c.DisplayName, c.Options, indent, "", c.Description)
+		fmt.Fprintf(out, "%s %s %*s %s\n", c.DisplayName, c.Options, indent, "", c.Description)
 	}
 
 	return nil
 }
 
 // runDocCommand prints the docstring for a given function
-func runDocCmd(expr string) error {
+func runDocCmd(expr string, out io.Writer) error {
 	doc, err := doc.DocString(expr)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s\n", doc)
+	fmt.Fprintf(out, "%s\n", doc)
 	return nil
 }
 

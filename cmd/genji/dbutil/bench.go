@@ -30,11 +30,13 @@ type execer func(q string, args ...interface{}) error
 // Bench takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
 func Bench(db *genji.DB, query string, opt BenchOptions) error {
+	var tx *genji.Tx
 	var p preparer = db
 	var e execer = db.Exec
+	var err error
 
 	if opt.SameTx {
-		tx, err := db.Begin(true)
+		tx, err = db.Begin(true)
 		if err != nil {
 			return err
 		}
@@ -91,6 +93,13 @@ func Bench(db *genji.DB, query string, opt BenchOptions) error {
 			"queriesPerSecond": qps,
 			"totalDuration":    totalDuration,
 		})
+		if err != nil {
+			return err
+		}
+	}
+
+	if opt.SameTx {
+		err = tx.Commit()
 		if err != nil {
 			return err
 		}

@@ -39,3 +39,5 @@ gopls.log
 # go.work
 go.work
 go.work.sum
+
+lab/
