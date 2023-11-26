@@ -204,7 +204,11 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		k.Encoded = it.Key()
 		k.Values = nil
 
-		err := fn(&k, it.Value())
+		v, err := it.ValueAndErr()
+		if err != nil {
+			return err
+		}
+		err = fn(&k, v)
 		if err != nil {
 			return err
 		}
