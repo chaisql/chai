@@ -27,13 +27,13 @@ func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
 	// Parse limit: "LIMIT expr"
 	stmt.LimitExpr, err = p.parseLimit()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse LIMIT clause")
 	}
 
 	// Parse offset: "OFFSET expr"
 	stmt.OffsetExpr, err = p.parseOffset()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to parse OFFSET clause")
 	}
 
 	return stmt, nil

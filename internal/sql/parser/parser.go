@@ -80,28 +80,37 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 
 // ParseQuery parses a Genji SQL string and returns a Query.
 func (p *Parser) Parse(fn func(statement.Statement) error) error {
-	semi := true
-
 	for {
-		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.EOF {
+		err := p.skipMany(scanner.SEMICOLON)
+		if err != nil {
+			return err
+		}
+
+		end, err := p.parseOptional(scanner.EOF)
+		if err != nil {
+			return err
+		}
+		if end {
 			return nil
-		} else if tok == scanner.SEMICOLON {
-			semi = true
-		} else {
-			if !semi {
-				return newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
-			}
-			p.Unscan()
-			s, err := p.ParseStatement()
-			if err != nil {
-				return err
-			}
+		}
+
+		s, err := p.ParseStatement()
+		if err != nil {
+			return err
+		}
+
+		tok, pos, lit := p.ScanIgnoreWhitespace()
+		switch tok {
+		case scanner.EOF:
+			return fn(s)
+		case scanner.SEMICOLON:
 			err = fn(s)
 			if err != nil {
 				return err
 			}
-
-			semi = false
+		default:
+			p.Unscan()
+			return newParseError(scanner.Tokstr(tok, lit), []string{";"}, pos)
 		}
 	}
 }
@@ -140,6 +149,16 @@ func (p *Parser) ParseStatement() (statement.Statement, error) {
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{
 		"ALTER", "BEGIN", "COMMIT", "SELECT", "DELETE", "UPDATE", "INSERT", "CREATE", "DROP", "EXPLAIN", "REINDEX", "ROLLBACK",
 	}, pos)
+}
+
+func (p *Parser) skipMany(tok scanner.Token) error {
+	for {
+		t, _, _ := p.ScanIgnoreWhitespace()
+		if t != tok {
+			p.Unscan()
+			return nil
+		}
+	}
 }
 
 // parseCondition parses the "WHERE" clause of the query, if it exists.
