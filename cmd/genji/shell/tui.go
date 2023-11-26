@@ -3,6 +3,7 @@ package shell
 import (
 	"bufio"
 	"bytes"
+	"strconv"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/cursor"
@@ -64,23 +65,25 @@ func (m model) View() string {
 }
 
 type queryInputModel struct {
+	debug         bool
 	shell         *Shell
 	textArea      textarea.Model
 	disabled      bool
 	err           error
 	historyOffset int
-	currentQuery  string
+	currentQuery  *string
 }
 
 func newQueryInputModel(shell *Shell) queryInputModel {
 	ta := textarea.New()
 	ta.Prompt = "... "
 	ta.Placeholder = ""
-	ta.MaxWidth = 0
 	ta.ShowLineNumbers = false
 	ta.FocusedStyle.Prompt = lipgloss.NewStyle()
 	ta.FocusedStyle.CursorLine = ta.FocusedStyle.CursorLine.UnsetBackground()
 	ta.FocusedStyle.Text = ta.FocusedStyle.Text.UnsetBackground()
+	ta.Cursor.SetMode(cursor.CursorStatic)
+	ta.MaxWidth = 0
 	ta.SetHeight(1)
 	ta.SetPromptFunc(7, func(lineIdx int) string {
 		if lineIdx == 0 {
@@ -98,7 +101,7 @@ func newQueryInputModel(shell *Shell) queryInputModel {
 }
 
 func (m queryInputModel) Init() tea.Cmd {
-	return textarea.Blink
+	return nil
 }
 
 func (m queryInputModel) Update(msg tea.Msg) (queryInputModel, tea.Cmd) {
@@ -119,6 +122,8 @@ func (m queryInputModel) Update(msg tea.Msg) (queryInputModel, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.textArea.SetWidth(msg.Width - 1)
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -131,15 +136,16 @@ func (m queryInputModel) Update(msg tea.Msg) (queryInputModel, tea.Cmd) {
 		case tea.KeyUp:
 			if m.textArea.Line() == 0 {
 				if m.historyOffset == 0 {
-					m.currentQuery = m.textArea.Value()
+					v := m.textArea.Value()
+					m.currentQuery = &v
 				}
 				if m.historyOffset < len(m.shell.history) {
 					m.historyOffset++
 				}
 				line := m.shell.getHistoryLine(m.historyOffset)
 				m.textArea.SetValue(line)
-				m.textArea.SetHeight(strings.Count(line, "\n") + 1)
-				for m.textArea.Line() != 0 {
+				m.textArea.SetHeight(m.textArea.LineCount())
+				for m.textArea.Line() > 0 {
 					m.textArea.CursorUp()
 				}
 			}
@@ -149,20 +155,23 @@ func (m queryInputModel) Update(msg tea.Msg) (queryInputModel, tea.Cmd) {
 					m.historyOffset--
 				}
 				if m.historyOffset == 0 {
-					m.textArea.SetValue(m.currentQuery)
-					m.textArea.SetCursor(len(m.currentQuery))
+					if m.currentQuery != nil {
+						m.textArea.SetValue(*m.currentQuery)
+						m.textArea.SetHeight(m.textArea.LineCount())
+					}
 				} else {
 					line := m.shell.getHistoryLine(m.historyOffset)
 					m.textArea.SetValue(line)
-					m.textArea.SetHeight(strings.Count(line, "\n") + 1)
-					for m.textArea.Line() != m.textArea.Height()-1 {
-						m.textArea.CursorDown()
-					}
+					m.textArea.SetHeight(m.textArea.LineCount())
 				}
+				for m.textArea.Line() < m.textArea.LineCount()-1 {
+					m.textArea.CursorDown()
+				}
+
 			}
 		case tea.KeyEnter:
 			m.historyOffset = 0
-			m.currentQuery = ""
+			m.currentQuery = nil
 			query := m.textArea.Value()
 			clean := strings.TrimSpace(query)
 			if clean == "" {
@@ -213,7 +222,24 @@ func (m queryInputModel) View() string {
 	if m.err != nil {
 		return "Error: " + m.err.Error() + "\n" + m.textArea.View() + "\n"
 	}
-	return m.textArea.View() + "\n"
+	if !m.debug {
+		return m.textArea.View() + "\n"
+	}
+
+	return m.textArea.View() + "\n" +
+		"Width: " + strconv.Itoa(m.textArea.Width()) + "\n" +
+		"Height: " + strconv.Itoa(m.textArea.Height()) + "\n" +
+		"Line: " + strconv.Itoa(m.textArea.Line()) + "\n" +
+		"LineCount: " + strconv.Itoa(m.textArea.LineCount()) + "\n" +
+		"Len: " + strconv.Itoa(m.textArea.Length()) + "\n" +
+		"Line W: " + strconv.Itoa(m.textArea.LineInfo().Width) + "\n" +
+		"Line H: " + strconv.Itoa(m.textArea.LineInfo().Height) + "\n" +
+		"Line CharOffset: " + strconv.Itoa(m.textArea.LineInfo().CharOffset) + "\n" +
+		"Line CharWidth: " + strconv.Itoa(m.textArea.LineInfo().CharWidth) + "\n" +
+		"Line StartColumn: " + strconv.Itoa(m.textArea.LineInfo().StartColumn) + "\n" +
+		"Line ColumnOffset: " + strconv.Itoa(m.textArea.LineInfo().ColumnOffset) + "\n" +
+		"Line RowOffset: " + strconv.Itoa(m.textArea.LineInfo().RowOffset) + "\n" +
+		"HistoryOffset: " + strconv.Itoa(m.historyOffset) + "\n"
 }
 
 func (m *queryInputModel) freezeAndReset() string {
@@ -221,7 +247,7 @@ func (m *queryInputModel) freezeAndReset() string {
 	freeze := strings.TrimSuffix(m.View(), "\n")
 	m.textArea.SetValue("")
 	m.textArea.SetHeight(1)
-	m.textArea.Cursor.SetMode(cursor.CursorBlink)
+	m.textArea.Cursor.SetMode(cursor.CursorStatic)
 	m.err = nil
 
 	return freeze
