@@ -2,6 +2,7 @@ package database
 
 import (
 	"encoding/binary"
+	"strings"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
@@ -188,6 +189,11 @@ func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Valu
 		if err != nil {
 			return nil, 0, err
 		}
+	}
+
+	if v.Type() == types.TextValue {
+		s := strings.Clone(types.As[string](v))
+		v = types.NewTextValue(s)
 	}
 
 	return v, n, nil
