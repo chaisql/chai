@@ -112,6 +112,7 @@ func TestMarshalTextIndent(t *testing.T) {
 }
 
 func TestValueMarshalJSON(t *testing.T) {
+	now := time.Now()
 	tests := []struct {
 		name     string
 		value    types.Value
@@ -123,7 +124,7 @@ func TestValueMarshalJSON(t *testing.T) {
 		{"bool", types.NewBoolValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},
 		{"double", types.NewDoubleValue(10.1), "10.1"},
-		{"time", types.NewTimestampValue(time.Now()), `"` + time.Now().UTC().Format(time.RFC3339Nano) + `"`},
+		{"time", types.NewTimestampValue(now), `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"double with no decimal", types.NewDoubleValue(10), "10"},
 		{"big double", types.NewDoubleValue(1e15), "1e+15"},
 		{"document", types.NewDocumentValue(document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))), "{\"a\": 10}"},
