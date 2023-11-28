@@ -26,6 +26,7 @@ const (
 	BooleanValue
 	IntegerValue
 	DoubleValue
+	TimestampValue
 	TextValue
 	BlobValue
 	ArrayValue
@@ -42,6 +43,8 @@ func (t ValueType) String() string {
 		return "integer"
 	case DoubleValue:
 		return "double"
+	case TimestampValue:
+		return "timestamp"
 	case BlobValue:
 		return "blob"
 	case TextValue:
@@ -55,9 +58,14 @@ func (t ValueType) String() string {
 	return "any"
 }
 
-// IsNumber returns true if t is either an integer of a float.
+// IsNumber returns true if t is either an integer or a float.
 func (t ValueType) IsNumber() bool {
 	return t == IntegerValue || t == DoubleValue
+}
+
+// IsTimestampCompatible returns true if t is either a timestamp, an integer, or a text.
+func (t ValueType) IsTimestampCompatible() bool {
+	return t == TimestampValue || t == TextValue
 }
 
 // IsAny returns whether this is type is Any or a real type

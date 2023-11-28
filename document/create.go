@@ -200,13 +200,13 @@ func newFromStruct(ref reflect.Value) (types.Document, error) {
 }
 
 // NewValue creates a value whose type is infered from x.
-func NewValue(x interface{}) (types.Value, error) {
+func NewValue(x any) (types.Value, error) {
 	// Attempt exact matches first:
 	switch v := x.(type) {
 	case time.Duration:
 		return types.NewIntegerValue(v.Nanoseconds()), nil
 	case time.Time:
-		return types.NewTextValue(v.Format(time.RFC3339Nano)), nil
+		return types.NewTimestampValue(v), nil
 	case nil:
 		return types.NewNullValue(), nil
 	case types.Document:

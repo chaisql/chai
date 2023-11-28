@@ -141,7 +141,7 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, 
 
 	return t.Tree.IterateOnRange(r, reverse, func(k *tree.Key, enc []byte) error {
 		e.encoded = enc
-		return fn(k, NewEncodedDocument(&t.Info.FieldConstraints, enc))
+		return fn(k, &e)
 	})
 }
 

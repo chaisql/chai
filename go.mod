@@ -6,6 +6,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/cockroachdb/errors v1.11.1
 	github.com/cockroachdb/pebble v0.0.0-20231027194153-ed45a7767175
+	github.com/golang-module/carbon/v2 v2.2.13
 	github.com/google/go-cmp v0.6.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.4.0

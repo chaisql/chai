@@ -345,13 +345,17 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	// test with supported stdlib types
 	switch ref.Type().String() {
 	case "time.Time":
-		if v.Type() == types.TextValue {
+		switch v.Type() {
+		case types.TextValue:
 			parsed, err := time.Parse(time.RFC3339Nano, types.As[string](v))
 			if err != nil {
 				return err
 			}
 
 			ref.Set(reflect.ValueOf(parsed))
+			return nil
+		case types.TimestampValue:
+			ref.Set(reflect.ValueOf(types.As[time.Time](v)))
 			return nil
 		}
 	}

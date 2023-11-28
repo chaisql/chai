@@ -426,7 +426,7 @@ func TestNewFromStruct(t *testing.T) {
 			case 25:
 				require.EqualValues(t, types.IntegerValue, v.Type())
 			case 26:
-				require.EqualValues(t, types.TextValue, v.Type())
+				require.EqualValues(t, types.TimestampValue, v.Type())
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}
@@ -518,11 +518,9 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err = doc.GetByField("bb")
 		assert.NoError(t, err)
-		var timeStr string
-		assert.NoError(t, document.ScanValue(v, &timeStr))
-		parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
-		assert.NoError(t, err)
-		require.Equal(t, u.BB, parsedTime)
+		var tm time.Time
+		assert.NoError(t, document.ScanValue(v, &tm))
+		require.Equal(t, u.BB, tm)
 	})
 
 	t.Run("pointers", func(t *testing.T) {

@@ -452,6 +452,8 @@ func (p *Parser) parseType() (types.ValueType, error) {
 		return types.IntegerValue, nil
 	case scanner.TYPETEXT:
 		return types.TextValue, nil
+	case scanner.TYPETIMESTAMP:
+		return types.TimestampValue, nil
 	case scanner.TYPEVARCHAR, scanner.TYPECHARACTER:
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)

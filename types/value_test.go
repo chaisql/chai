@@ -18,7 +18,7 @@ func TestValueMarshalText(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		value    interface{}
+		value    any
 		expected string
 	}{
 		{"bytes", []byte("bar"), `"\x626172"`},
@@ -28,6 +28,7 @@ func TestValueMarshalText(t *testing.T) {
 		{"float64", 10.0, "10.0"},
 		{"float64", 10.1, "10.1"},
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
+		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"null", nil, "NULL"},
 		{"document", document.NewFieldBuffer().
 			Add("a", types.NewIntegerValue(10)).
@@ -36,7 +37,7 @@ func TestValueMarshalText(t *testing.T) {
 			"{a: 10, \"b c\": \"foo\", `\"d e\"`: \"foo\"}",
 		},
 		{"array", document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")), `[10, "foo"]`},
-		{"time", now, `"` + now.Format(time.RFC3339Nano) + `"`},
+		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 	}
 
 	for _, test := range tests {
@@ -70,6 +71,7 @@ func TestMarshalTextIndent(t *testing.T) {
 		{"int", int64(10), "10"},
 		{"float64", 10.0, "10.0"},
 		{"float64", 10.1, "10.1"},
+		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
 		{"null", nil, "NULL"},
 		{"document",
@@ -89,7 +91,7 @@ func TestMarshalTextIndent(t *testing.T) {
   "foo"
 ]`,
 		},
-		{"time", now, `"` + now.Format(time.RFC3339Nano) + `"`},
+		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 	}
 
 	for _, test := range tests {
@@ -121,6 +123,7 @@ func TestValueMarshalJSON(t *testing.T) {
 		{"bool", types.NewBoolValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},
 		{"double", types.NewDoubleValue(10.1), "10.1"},
+		{"time", types.NewTimestampValue(time.Now()), `"` + time.Now().UTC().Format(time.RFC3339Nano) + `"`},
 		{"double with no decimal", types.NewDoubleValue(10), "10"},
 		{"big double", types.NewDoubleValue(1e15), "1e+15"},
 		{"document", types.NewDocumentValue(document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))), "{\"a\": 10}"},

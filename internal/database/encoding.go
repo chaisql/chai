@@ -58,6 +58,13 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 			if err != nil {
 				return nil, err
 			}
+		} else if v.Type() == types.TimestampValue {
+			// without a type constraint, timestamp values must
+			// always be stored as text to avoid mixed representations.
+			v, err = document.CastAsText(v)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		// Encode the value only.
@@ -127,6 +134,15 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]b
 		dst = encoding.EncodeText(dst, field)
 
 		// then encode the value
+		if value.Type() == types.TimestampValue {
+			// without a type constraint, timestamp values must
+			// always be stored as text to avoid mixed representations.
+			value, err = document.CastAsText(value)
+			if err != nil {
+				return err
+			}
+		}
+
 		dst, err = encoding.EncodeValue(dst, value, false)
 		return err
 	})
@@ -181,6 +197,10 @@ func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Valu
 	}
 
 	v, n := encoding.DecodeValue(b, fc.Type == types.AnyValue || fc.Type == types.ArrayValue /* intAsDouble */)
+
+	if fc.Type == types.TimestampValue && v.Type() == types.IntegerValue {
+		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.As[int64](v)))
+	}
 
 	// ensure the returned value is of the correct type
 	if fc.Type != types.AnyValue {

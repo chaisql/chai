@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
@@ -68,7 +69,23 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 			panic("missing document")
 		}
 
-		tableName, _ := out.Get(environment.TableKey)
+		tableName, ok := out.Get(environment.TableKey)
+		if ok {
+			info, err := catalog.GetTableInfo(types.As[string](tableName))
+			if err != nil {
+				return err
+			}
+
+			buf, err = info.EncodeDocument(in.GetTx(), buf, doc)
+			if err != nil {
+				return err
+			}
+		} else {
+			buf, err = encoding.EncodeDocument(buf, doc)
+			if err != nil {
+				return err
+			}
+		}
 
 		var encKey []byte
 		key, ok := out.GetKey()
@@ -80,10 +97,6 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 		counter++
 
-		buf, err = encoding.EncodeDocument(buf, doc)
-		if err != nil {
-			return err
-		}
 		return tr.Put(tk, buf)
 	})
 	if err != nil {
@@ -109,7 +122,16 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 			newEnv.SetKey(tree.NewEncodedKey(types.As[[]byte](docKey)))
 		}
 
-		newEnv.SetDocument(encoding.DecodeDocument(data, false /* intAsDouble */))
+		if tableName.Type() != types.NullValue {
+			info, err := catalog.GetTableInfo(types.As[string](tableName))
+			if err != nil {
+				return err
+			}
+
+			newEnv.SetDocument(database.NewEncodedDocument(&info.FieldConstraints, data))
+		} else {
+			newEnv.SetDocument(encoding.DecodeDocument(data, false /* intAsDouble */))
+		}
 
 		return fn(&newEnv)
 	})

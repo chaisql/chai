@@ -3,6 +3,7 @@ package document
 import (
 	"math"
 	"testing"
+	"time"
 
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -14,10 +15,12 @@ func TestCastAs(t *testing.T) {
 		v, want types.Value
 		fails   bool
 	}
+	now := time.Now()
 
 	boolV := types.NewBoolValue(true)
 	integerV := types.NewIntegerValue(10)
 	doubleV := types.NewDoubleValue(10.5)
+	tsV := types.NewTimestampValue(now)
 	textV := types.NewTextValue("foo")
 	blobV := types.NewBlobValue([]byte("asdine"))
 	arrayV := types.NewArrayValue(NewValueBuffer().
@@ -84,6 +87,18 @@ func TestCastAs(t *testing.T) {
 			{textV, nil, true},
 			{types.NewTextValue("10"), types.NewDoubleValue(10), false},
 			{types.NewTextValue("10.5"), doubleV, false},
+			{blobV, nil, true},
+			{arrayV, nil, true},
+			{docV, nil, true},
+		})
+	})
+
+	t.Run("ts", func(t *testing.T) {
+		check(t, types.TimestampValue, []test{
+			{boolV, nil, true},
+			{integerV, nil, true},
+			{doubleV, nil, true},
+			{types.NewTextValue(now.Format(time.RFC3339Nano)), tsV, false},
 			{blobV, nil, true},
 			{arrayV, nil, true},
 			{docV, nil, true},

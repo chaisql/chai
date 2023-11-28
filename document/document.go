@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
@@ -323,6 +324,8 @@ func CloneValue(v types.Value) (types.Value, error) {
 		return types.NewIntegerValue(types.As[int64](v)), nil
 	case types.DoubleValue:
 		return types.NewDoubleValue(types.As[float64](v)), nil
+	case types.TimestampValue:
+		return types.NewTimestampValue(types.As[time.Time](v)), nil
 	case types.TextValue:
 		return types.NewTextValue(strings.Clone(types.As[string](v))), nil
 	case types.BlobValue:

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"sort"
 	"strings"
+	"time"
 )
 
 type operator uint8
@@ -94,6 +95,10 @@ func compare(op operator, l, r Value) (bool, error) {
 	case l.Type().IsNumber() && r.Type().IsNumber():
 		return compareNumbers(op, l, r), nil
 
+	// compare timestamps together
+	case l.Type() == TimestampValue && r.Type() == TimestampValue:
+		return compareTimes(op, As[time.Time](l), As[time.Time](r)), nil
+
 	// compare arrays together
 	case l.Type() == ArrayValue && r.Type() == ArrayValue:
 		return compareArrays(op, As[Array](l), As[Array](r))
@@ -101,6 +106,13 @@ func compare(op operator, l, r Value) (bool, error) {
 	// compare documents together
 	case l.Type() == DocumentValue && r.Type() == DocumentValue:
 		return compareDocuments(op, As[Document](l), As[Document](r))
+	}
+
+	// compare compatible timestamps
+	if l.Type() == TimestampValue && r.Type().IsTimestampCompatible() {
+		return compareTimestamps(op, l, r)
+	} else if r.Type() == TimestampValue && l.Type().IsTimestampCompatible() {
+		return compareTimestamps(op, l, r)
 	}
 
 	return false, nil
@@ -208,6 +220,36 @@ func compareNumbers(op operator, l, r Value) bool {
 	}
 
 	return ok
+}
+
+func compareTimes(op operator, l, r time.Time) bool {
+	switch op {
+	case operatorEq:
+		return l.Equal(r)
+	case operatorGt:
+		return l.After(r)
+	case operatorGte:
+		return l.After(r) || l.Equal(r)
+	case operatorLt:
+		return l.Before(r)
+	case operatorLte:
+		return l.Before(r) || l.Equal(r)
+	}
+
+	return false
+}
+
+func compareTimestamps(op operator, l, r Value) (bool, error) {
+	t1, err := convertToTime(l)
+	if err != nil {
+		return false, err
+	}
+	t2, err := convertToTime(r)
+	if err != nil {
+		return false, err
+	}
+
+	return compareTimes(op, t1, t2), nil
 }
 
 func compareArrays(op operator, l Array, r Array) (bool, error) {

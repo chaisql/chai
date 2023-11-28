@@ -63,6 +63,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p document
 	// ensure the operand satisfies all the constraints, index can work only on exact types.
 	// if a number is encountered, try to convert it to the right type if and only if the conversion
 	// is lossless.
+	// if a timestamp is encountered, ensure the field constraint is also a timestamp, otherwise convert it to text.
 	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
 		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
 			return document.CastAsDouble(v)
@@ -101,6 +102,10 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p document
 				// and thus have to set exclusive to false.
 				r.Exclusive = r.Min == nil || len(r.Min) == 0
 			}
+		}
+
+		if v.Type() == types.TimestampValue && targetType == types.TextValue {
+			return document.CastAsText(v)
 		}
 
 		return v, nil

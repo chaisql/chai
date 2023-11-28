@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 // Add u to v and return the result.
@@ -60,10 +61,6 @@ func BitwiseXor(v1, v2 Value) (res Value, err error) {
 
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
 	if a.Type() == NullValue || b.Type() == NullValue {
-		return NewNullValue(), nil
-	}
-
-	if a.Type() == BooleanValue || b.Type() == BooleanValue {
 		return NewNullValue(), nil
 	}
 
@@ -198,5 +195,16 @@ func convertNumberToDouble(v Value) Value {
 		return v
 	default:
 		return NewDoubleValue(float64(As[int64](v)))
+	}
+}
+
+func convertToTime(v Value) (time.Time, error) {
+	switch v.Type() {
+	case TimestampValue:
+		return As[time.Time](v), nil
+	case TextValue:
+		return ParseTimestamp(As[string](v))
+	default:
+		panic(fmt.Sprintf("cannot convert %v to time", v.Type()))
 	}
 }

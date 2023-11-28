@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/genjidb/genji/types"
 )
@@ -22,6 +23,8 @@ func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
 		return CastAsInteger(v)
 	case types.DoubleValue:
 		return CastAsDouble(v)
+	case types.TimestampValue:
+		return CastAsTimestamp(v)
 	case types.BlobValue:
 		return CastAsBlob(v)
 	case types.TextValue:
@@ -133,6 +136,30 @@ func CastAsDouble(v types.Value) (types.Value, error) {
 	return nil, fmt.Errorf("cannot cast %s as double", v.Type())
 }
 
+// CastAsTimestamp casts according to the following rules:
+// Text: uses carbon.Parse to determine the timestamp value
+// it fails if the text doesn't contain a valid timestamp.
+// Any other type is considered an invalid cast.
+func CastAsTimestamp(v types.Value) (types.Value, error) {
+	// Null values always remain null.
+	if v.Type() == types.NullValue {
+		return v, nil
+	}
+
+	switch v.Type() {
+	case types.TimestampValue:
+		return v, nil
+	case types.TextValue:
+		t, err := types.ParseTimestamp(types.As[string](v))
+		if err != nil {
+			return nil, fmt.Errorf(`cannot cast %q as timestamp: %w`, v.V(), err)
+		}
+		return types.NewTimestampValue(t), nil
+	}
+
+	return nil, fmt.Errorf("cannot cast %s as timestamp", v.Type())
+}
+
 // CastAsText returns a JSON representation of v.
 // If the representation is a string, it gets unquoted.
 func CastAsText(v types.Value) (types.Value, error) {
@@ -146,6 +173,8 @@ func CastAsText(v types.Value) (types.Value, error) {
 		return v, nil
 	case types.BlobValue:
 		return types.NewTextValue(base64.StdEncoding.EncodeToString(types.As[[]byte](v))), nil
+	case types.TimestampValue:
+		return types.NewTextValue(types.As[time.Time](v).Format(time.RFC3339Nano)), nil
 	}
 
 	d, err := v.MarshalJSON()

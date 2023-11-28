@@ -141,6 +141,7 @@ func (f FieldConstraints) ConvertValueAtPath(path document.Path, v types.Value, 
 // convert the value using field constraints type information.
 // if there is a type constraint on a path, apply it.
 // if a value is an integer and has no constraint, convert it to double.
+// if a value is a timestamp and has no constraint, convert it to text.
 func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	fc := f.GetFieldConstraintForPath(path)
 	if fc != nil {
@@ -160,6 +161,11 @@ func (f FieldConstraints) convertScalarAtPath(path document.Path, v types.Value,
 	// check if this is an integer and convert it to double.
 	if v.Type() == types.IntegerValue {
 		newV, _ := document.CastAsDouble(v)
+		return newV, nil
+	}
+
+	if v.Type() == types.TimestampValue {
+		newV, _ := document.CastAsText(v)
 		return newV, nil
 	}
 

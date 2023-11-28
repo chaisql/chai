@@ -57,7 +57,7 @@ func TestNewValue(t *testing.T) {
 		{"null", nil, nil},
 		{"document", document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)), document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))},
 		{"array", document.NewValueBuffer(types.NewIntegerValue(10)), document.NewValueBuffer(types.NewIntegerValue(10))},
-		{"time", now, now.Format(time.RFC3339Nano)},
+		{"time", now, now.UTC()},
 		{"bytes", myBytes("bar"), []byte("bar")},
 		{"string", myString("bar"), "bar"},
 		{"myUint", myUint(10), int64(10)},

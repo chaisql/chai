@@ -40,4 +40,5 @@ gopls.log
 go.work
 go.work.sum
 
+# Local experiments
 lab/

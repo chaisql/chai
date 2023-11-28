@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
+	"github.com/golang-module/carbon/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,6 +27,16 @@ func jsonToDouble(t testing.TB, x string) types.Value {
 	assert.NoError(t, err)
 
 	return types.NewDoubleValue(f)
+}
+
+func textToTimestamp(t testing.TB, x string) types.Value {
+	t.Helper()
+
+	var v time.Time
+	v, err := time.Parse(time.RFC3339Nano, x)
+	assert.NoError(t, err)
+
+	return types.NewTimestampValue(v)
 }
 
 func jsonToBoolean(t testing.TB, x string) types.Value {
@@ -58,6 +70,9 @@ func jsonToDocument(t testing.TB, x string) types.Value {
 
 	return types.NewDocumentValue(&fb)
 }
+
+var now = time.Now().Format(time.RFC3339Nano)
+var nowPlusOne = time.Now().Add(time.Second).Format(time.RFC3339Nano)
 
 func TestCompare(t *testing.T) {
 	tests := []struct {
@@ -119,6 +134,25 @@ func TestCompare(t *testing.T) {
 		{"<=", "2", "1", false, jsonToDouble},
 		{"<=", "1", "2", true, jsonToDouble},
 		{"<=", "2", "2", true, jsonToDouble},
+
+		// timestamp
+		{"=", nowPlusOne, now, false, textToTimestamp},
+		{"=", nowPlusOne, nowPlusOne, true, textToTimestamp},
+		{"!=", nowPlusOne, now, true, textToTimestamp},
+		{"!=", nowPlusOne, nowPlusOne, false, textToTimestamp},
+		{">", nowPlusOne, now, true, textToTimestamp},
+		{">", now, nowPlusOne, false, textToTimestamp},
+		{">", nowPlusOne, nowPlusOne, false, textToTimestamp},
+		{">=", nowPlusOne, now, true, textToTimestamp},
+		{">=", now, nowPlusOne, false, textToTimestamp},
+		{">=", nowPlusOne, nowPlusOne, true, textToTimestamp},
+		{"<", nowPlusOne, now, false, textToTimestamp},
+		{"<", now, nowPlusOne, true, textToTimestamp},
+		{"<", nowPlusOne, nowPlusOne, false, textToTimestamp},
+		{"<=", nowPlusOne, now, false, textToTimestamp},
+		{"<=", now, nowPlusOne, true, textToTimestamp},
+		{"<=", nowPlusOne, nowPlusOne, true, textToTimestamp},
+		{"<=", nowPlusOne, nowPlusOne, true, textToTimestamp},
 
 		// text
 		{"=", "b", "a", false, toText},
@@ -232,6 +266,59 @@ func TestCompare(t *testing.T) {
 		t.Run(fmt.Sprintf("%s/%v%v%v", a.Type().String(), test.a, test.op, test.b), func(t *testing.T) {
 			var ok bool
 			var err error
+
+			switch test.op {
+			case "=":
+				ok, err = types.IsEqual(a, b)
+			case "!=":
+				ok, err = types.IsNotEqual(a, b)
+			case ">":
+				ok, err = types.IsGreaterThan(a, b)
+			case ">=":
+				ok, err = types.IsGreaterThanOrEqual(a, b)
+			case "<":
+				ok, err = types.IsLesserThan(a, b)
+			case "<=":
+				ok, err = types.IsLesserThanOrEqual(a, b)
+			}
+			assert.NoError(t, err)
+			require.Equal(t, test.ok, ok)
+		})
+	}
+}
+
+func TestCompareValues(t *testing.T) {
+	text := func(s string) types.Value {
+		return types.NewTextValue(s)
+	}
+
+	ts := func(tm time.Time) types.Value {
+		return types.NewTimestampValue(tm)
+	}
+
+	tests := []struct {
+		op   string
+		a, b types.Value
+		ok   bool
+	}{
+		// timestamp with text
+		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), text("2021-01-01 10:05:59.123456"), true},
+		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), text("2021-01-01T12:05:59.123456+02:00"), true},
+
+		// text with timestamp
+		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), true},
+		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), true},
+		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").ToStdTime()), true},
+		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").ToStdTime()), true},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%s/%v%v%v", test.a.Type().String(), test.a, test.op, test.b), func(t *testing.T) {
+			var ok bool
+			var err error
+
+			a := test.a
+			b := test.b
 
 			switch test.op {
 			case "=":

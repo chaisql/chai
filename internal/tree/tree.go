@@ -3,6 +3,7 @@ package tree
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
@@ -369,6 +370,8 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 		return types.NewIntegerValue(math.MinInt64)
 	case types.DoubleValue:
 		return types.NewDoubleValue(-math.MaxFloat64)
+	case types.TimestampValue:
+		return types.NewTimestampValue(time.Time{})
 	case types.TextValue:
 		return types.NewTextValue("")
 	case types.BlobValue:
@@ -392,6 +395,8 @@ func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 		return encoding.Int64Value
 	case types.DoubleValue:
 		return encoding.Float64Value
+	case types.TimestampValue:
+		return encoding.Int64Value
 	case types.TextValue:
 		return encoding.TextValue
 	case types.BlobValue:
@@ -415,6 +420,8 @@ func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
 		return encoding.DESC_Uint64Value
 	case types.DoubleValue:
 		return encoding.DESC_Float64Value
+	case types.TimestampValue:
+		return encoding.DESC_Uint64Value
 	case types.TextValue:
 		return encoding.DESC_TextValue
 	case types.BlobValue:
@@ -438,6 +445,8 @@ func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
 		return encoding.DESC_Int64Value + 1
 	case types.DoubleValue:
 		return encoding.DESC_Float64Value + 1
+	case types.TimestampValue:
+		return encoding.DESC_Int64Value + 1
 	case types.TextValue:
 		return encoding.DESC_TextValue + 1
 	case types.BlobValue:
@@ -461,6 +470,8 @@ func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 		return types.NewIntegerValue(math.MaxInt64)
 	case types.DoubleValue:
 		return types.NewDoubleValue(math.MaxFloat64)
+	case types.TimestampValue:
+		return types.NewIntegerValue(math.MaxInt64)
 	case types.TextValue:
 		return types.NewTextValue("")
 	case types.BlobValue:
@@ -484,6 +495,8 @@ func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
 		return encoding.Uint64Value + 1
 	case types.DoubleValue:
 		return encoding.Float64Value + 1
+	case types.TimestampValue:
+		return encoding.Uint64Value + 1
 	case types.TextValue:
 		return encoding.TextValue + 1
 	case types.BlobValue:

@@ -193,6 +193,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "DOUBLE", tok: TYPEDOUBLE},
 		{s: "INTEGER", tok: TYPEINTEGER},
 		{s: "TEXT", tok: TYPETEXT},
+		{s: "TIMESTAMP", tok: TYPETIMESTAMP},
 	}
 
 	for i, tt := range tests {

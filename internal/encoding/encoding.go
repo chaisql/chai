@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/genjidb/genji/types"
 )
@@ -46,6 +47,8 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 			return EncodeInt(dst, 0), nil
 		case types.DoubleValue:
 			return EncodeFloat64(dst, 0), nil
+		case types.TimestampValue:
+			return EncodeTimestamp(dst, time.Time{}), nil
 		case types.TextValue:
 			return EncodeText(dst, ""), nil
 		case types.BlobValue:
@@ -68,6 +71,8 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 		return EncodeInt(dst, types.As[int64](v)), nil
 	case types.DoubleValue:
 		return EncodeFloat64(dst, types.As[float64](v)), nil
+	case types.TimestampValue:
+		return EncodeTimestamp(dst, types.As[time.Time](v)), nil
 	case types.TextValue:
 		return EncodeText(dst, types.As[string](v)), nil
 	case types.BlobValue:

@@ -118,7 +118,8 @@ func TestScan(t *testing.T) {
 				Add("baz", types.NewTextValue("baz")).
 				Add("bat", types.NewTextValue("bat")).
 				Add("-", types.NewTextValue("bat")),
-		))
+		)).
+		Add("z", types.NewTimestampValue(now))
 
 	type foo struct {
 		Foo string
@@ -153,8 +154,9 @@ func TestScan(t *testing.T) {
 		Pub string `genji:"bar"`
 		Bat string
 	}
+	var z time.Time
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x, &y)
+	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x, &y, &z)
 	assert.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -187,6 +189,7 @@ func TestScan(t *testing.T) {
 	require.Equal(t, []*foo{{Foo: "a", Pub: strPtr("b")}, {Foo: "c", Pub: strPtr("d")}}, v)
 	require.Equal(t, [4]int{1, 2, 3, 4}, w)
 	require.Equal(t, [4]uint8{1, 2, 3, 4}, x)
+	require.Equal(t, now.UTC(), z)
 
 	t.Run("DocumentScanner", func(t *testing.T) {
 		var ds documentScanner
@@ -202,14 +205,14 @@ func TestScan(t *testing.T) {
 		m := make(map[string]interface{})
 		err := document.MapScan(doc, m)
 		assert.NoError(t, err)
-		require.Len(t, m, 23)
+		require.Len(t, m, 24)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := document.MapScan(doc, &m)
 		assert.NoError(t, err)
-		require.Len(t, m, 23)
+		require.Len(t, m, 24)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {

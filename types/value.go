@@ -8,9 +8,17 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/golang-module/carbon/v2"
+)
+
+var (
+	epoch   = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC).UnixMicro()
+	maxTime = math.MaxInt64 - epoch
+	minTime = math.MinInt64 + epoch
 )
 
 // A Value stores encoded data alongside its type.
@@ -21,14 +29,14 @@ type value[T any] struct {
 
 var _ Value = &value[bool]{}
 
-// NewNullValue returns a Null value.
+// NewNullValue returns a SQL NULL value.
 func NewNullValue() Value {
 	return &value[struct{}]{
 		tp: NullValue,
 	}
 }
 
-// NewBoolValue encodes x and returns a value.
+// NewBoolValue returns a SQL BOOL value.
 func NewBoolValue(x bool) Value {
 	return &value[bool]{
 		tp: BooleanValue,
@@ -36,8 +44,7 @@ func NewBoolValue(x bool) Value {
 	}
 }
 
-// NewIntegerValue encodes x and returns a value whose type depends on the
-// magnitude of x.
+// NewIntegerValue returns a SQL INTEGER value.
 func NewIntegerValue(x int64) Value {
 	return &value[int64]{
 		tp: IntegerValue,
@@ -45,7 +52,7 @@ func NewIntegerValue(x int64) Value {
 	}
 }
 
-// NewDoubleValue encodes x and returns a value.
+// NewDoubleValue returns a SQL DOUBLE value.
 func NewDoubleValue(x float64) Value {
 	return &value[float64]{
 		tp: DoubleValue,
@@ -53,7 +60,15 @@ func NewDoubleValue(x float64) Value {
 	}
 }
 
-// NewBlobValue encodes x and returns a value.
+// NewTimestampValue returns a SQL TIMESTAMP value.
+func NewTimestampValue(x time.Time) Value {
+	return &value[time.Time]{
+		tp: TimestampValue,
+		v:  x.UTC(),
+	}
+}
+
+// NewBlobValue returns a SQL BLOB value.
 func NewBlobValue(x []byte) Value {
 	return &value[[]byte]{
 		tp: BlobValue,
@@ -61,7 +76,7 @@ func NewBlobValue(x []byte) Value {
 	}
 }
 
-// NewTextValue encodes x and returns a value.
+// NewTextValue returns a SQL TEXT value.
 func NewTextValue(x string) Value {
 	return &value[string]{
 		tp: TextValue,
@@ -69,7 +84,7 @@ func NewTextValue(x string) Value {
 	}
 }
 
-// NewArrayValue returns a value of type Array.
+// NewArrayValue returns a SQL ARRAY value.
 func NewArrayValue(a Array) Value {
 	return &value[Array]{
 		tp: ArrayValue,
@@ -77,7 +92,7 @@ func NewArrayValue(a Array) Value {
 	}
 }
 
-// NewDocumentValue returns a value of type Document.
+// NewDocumentValue returns a SQL DOCUMENT value.
 func NewDocumentValue(d Document) Value {
 	return &value[Document]{
 		tp: DocumentValue,
@@ -148,6 +163,8 @@ func IsZeroValue(v Value) (bool, error) {
 		return As[int64](v) == int64(0), nil
 	case DoubleValue:
 		return As[float64](v) == float64(0), nil
+	case TimestampValue:
+		return As[time.Time](v).IsZero(), nil
 	case BlobValue:
 		return As[[]byte](v) == nil, nil
 	case TextValue:
@@ -238,6 +255,9 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		}
 		dst.WriteString(strconv.FormatFloat(As[float64](v), fmt, prec, 64))
 		return nil
+	case TimestampValue:
+		dst.WriteString(strconv.Quote(As[time.Time](v).Format(time.RFC3339Nano)))
+		return nil
 	case TextValue:
 		dst.WriteString(strconv.Quote(As[string](v)))
 		return nil
@@ -315,7 +335,7 @@ func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
 // MarshalJSON implements the json.Marshaler interface.
 func (v *value[T]) MarshalJSON() ([]byte, error) {
 	switch v.Type() {
-	case BooleanValue, IntegerValue, TextValue:
+	case BooleanValue, IntegerValue, TextValue, TimestampValue:
 		return v.MarshalText()
 	case NullValue:
 		return []byte("null"), nil
@@ -411,4 +431,19 @@ func (j jsonDocument) MarshalJSON() ([]byte, error) {
 	buf.WriteByte('}')
 
 	return buf.Bytes(), nil
+}
+
+func ParseTimestamp(s string) (time.Time, error) {
+	c := carbon.Parse(s, "UTC")
+	if c.Error != nil {
+		return time.Time{}, errors.New("invalid timestamp")
+	}
+
+	ts := c.ToStdTime()
+	m := ts.UnixMicro()
+	if m > maxTime || m < minTime {
+		return time.Time{}, errors.New("timestamp out of range")
+	}
+
+	return ts, nil
 }

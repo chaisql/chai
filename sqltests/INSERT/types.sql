@@ -242,3 +242,34 @@ SELECT a FROM test;
   "a": 1
 }
 */
+
+-- test: timestamp / no type
+CREATE TABLE test_e (a);
+INSERT INTO test_e VALUES {a: "2023-01-01T00:00:00Z"};
+SELECT typeof(a) FROM test_e;
+/* result:
+{
+  "typeof(a)": "text"
+}
+*/
+
+-- test: timestamp / text
+CREATE TABLE test_e (a TEXT);
+INSERT INTO test_e VALUES {a: "2023-01-01T00:00:00Z"};
+SELECT typeof(a) FROM test_e;
+/* result:
+{
+  "typeof(a)": "text"
+}
+*/
+
+-- test: timestamp / timestamp
+CREATE TABLE test_e (a TIMESTAMP);
+INSERT INTO test_e VALUES {a: "2023-01-01T00:00:00Z"};
+SELECT typeof(a), a FROM test_e;
+/* result:
+{
+  "typeof(a)": "timestamp",
+  "a": "2023-01-01T00:00:00Z"
+}
+*/
