@@ -121,3 +121,17 @@ NULL
 2.356194490192345
 ! math.atan2('foo', 1)
 'cannot cast "foo" as double'
+
+-- test: math.sqrt
+> math.sqrt(NULL)
+NULL
+> math.sqrt(4)
+2.0
+> math.sqrt(81)
+9.0
+> math.sqrt(15)
+3.872983346207417
+> math.sqrt(1.1)
+1.0488088481701516
+> math.sqrt('foo')
+NULL
