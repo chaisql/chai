@@ -33,3 +33,7 @@
 
 > typeof(NULL)
 'null'
+
+-- test: now
+> typeof(now())
+'timestamp'

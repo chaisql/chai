@@ -2,6 +2,7 @@ package functions
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/document"
@@ -72,6 +73,13 @@ var builtinFunctions = Definitions{
 		arity: variadicArity,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &Coalesce{Exprs: args}, nil
+		},
+	},
+	"now": &definition{
+		name:  "now",
+		arity: 0,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Now{}, nil
 		},
 	},
 }
@@ -748,4 +756,25 @@ func (c *Coalesce) String() string {
 
 func (c *Coalesce) Params() []expr.Expr {
 	return c.Exprs
+}
+
+type Now struct{}
+
+func (n *Now) Eval(env *environment.Environment) (types.Value, error) {
+	return types.NewTimestampValue(time.Now()), nil
+}
+
+func (n *Now) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	_, ok := other.(*Now)
+	return ok
+}
+
+func (n *Now) Params() []expr.Expr { return nil }
+
+func (n *Now) String() string {
+	return "NOW()"
 }
