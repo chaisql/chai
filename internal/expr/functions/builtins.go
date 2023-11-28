@@ -81,6 +81,25 @@ var builtinFunctions = Definitions{
 			return &Now{}, nil
 		},
 	},
+
+	// strings alias
+	"lower": stringsFunctions["lower"],
+	"upper": stringsFunctions["upper"],
+	"trim":  stringsFunctions["trim"],
+	"ltrim": stringsFunctions["ltrim"],
+	"rtrim": stringsFunctions["rtrim"],
+
+	// math alias
+	"floor":  mathFunctions["floor"],
+	"abs":    mathFunctions["abs"],
+	"acos":   mathFunctions["acos"],
+	"acosh":  mathFunctions["acosh"],
+	"asin":   mathFunctions["asin"],
+	"asinh":  mathFunctions["asinh"],
+	"atan":   mathFunctions["atan"],
+	"atan2":  mathFunctions["atan2"],
+	"random": mathFunctions["random"],
+	"sqrt":   mathFunctions["sqrt"],
 }
 
 // BuiltinDefinitions returns a map of builtin functions.

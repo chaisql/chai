@@ -114,7 +114,7 @@ func main() {
 }
 ```
 
-Checkout the [SQL documentation](https://chaisql.com/docs/essentials/sql-introduction/), the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
+Checkout the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
 
 ### In-memory database
 
@@ -177,4 +177,4 @@ A big thanks to our [contributors](https://github.com/chaisql/chai/graphs/contri
 
 Made with [contrib.rocks](https://contrib.rocks).
 
-For any questions or discussions, join our [Gophers Slack channel](https://gophers.slack.com/messages/CKPCYQFE0) or open an [issue](https://github.com/chaisql/chai/issues/new).
+For any questions or discussions, open an [issue](https://github.com/chaisql/chai/issues/new).

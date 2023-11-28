@@ -3,6 +3,7 @@ package doc_test
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/chaisql/chai/cmd/chai/doc"
@@ -17,13 +18,24 @@ func TestFunctions(t *testing.T) {
 	for pkgname, pkg := range packages {
 		for fname, def := range pkg {
 			if pkgname == "" {
-				t.Run(fmt.Sprintf("%s is documented and has all its arguments mentioned", fname), func(t *testing.T) {
-					str, err := doc.DocString(fname)
-					assert.NoError(t, err)
-					for i := 0; i < def.Arity(); i++ {
-						require.Contains(t, trimDocPromt(str), fmt.Sprintf("arg%d", i+1))
+				var isAlias = false
+				for pkgname2, pkg2 := range packages {
+					if pkgname2 != "" {
+						_, ok := pkg2[strings.ToLower(fname)]
+						if ok {
+							isAlias = true
+						}
 					}
-				})
+				}
+				if !isAlias {
+					t.Run(fmt.Sprintf("%s is documented and has all its arguments mentioned", fname), func(t *testing.T) {
+						str, err := doc.DocString(fname)
+						assert.NoError(t, err)
+						for i := 0; i < def.Arity(); i++ {
+							require.Contains(t, trimDocPromt(str), fmt.Sprintf("arg%d", i+1))
+						}
+					})
+				}
 			} else {
 				t.Run(fmt.Sprintf("%s.%s is documented and has all its arguments mentioned", pkgname, fname), func(t *testing.T) {
 					str, err := doc.DocString(fmt.Sprintf("%s.%s", pkgname, fname))

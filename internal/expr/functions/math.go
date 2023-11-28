@@ -184,7 +184,7 @@ var sqrt = &ScalarDefinition{
 		if args[0].Type() != types.DoubleValue && args[0].Type() != types.IntegerValue {
 			return types.NewNullValue(), nil
 		}
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil {
 			return nil, err
 		}
