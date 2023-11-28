@@ -19,18 +19,19 @@ var builtinDocs = functionDocs{
 	"typeof":   "The typeof function returns the type of arg1.",
 	"len":      "The len function returns length of the arg1 expression if arg1 evals to string, array or object, either returns NULL.",
 	"coalesce": "The coalesce function returns the first non-null argument. NULL is returned if all arguments are null.",
-	"random":   "The random function returns a random number between math.MinInt64 and math.MaxInt64.",
 }
 
 var mathDocs = functionDocs{
-	"abs":   "Returns the absolute value of arg1.",
-	"acos":  "Returns the arcosine, in radiant, of arg1.",
-	"acosh": "Returns the inverse hyperbolic cosine of arg1.",
-	"asin":  "Returns the arsine, in radiant, of arg1.",
-	"asinh": "Returns the inverse hyperbolic sine of arg1.",
-	"atan":  "Returns the arctangent, in radians, of arg1.",
-	"atan2": "Returns the arctangent of arg1/arg2, using the signs of the two to determine the quadrant of the return value.",
-	"floor": "Returns the greatest integer value less than or equal to arg1.",
+	"abs":    "Returns the absolute value of arg1.",
+	"acos":   "Returns the arcosine, in radiant, of arg1.",
+	"acosh":  "Returns the inverse hyperbolic cosine of arg1.",
+	"asin":   "Returns the arsine, in radiant, of arg1.",
+	"asinh":  "Returns the inverse hyperbolic sine of arg1.",
+	"atan":   "Returns the arctangent, in radians, of arg1.",
+	"atan2":  "Returns the arctangent of arg1/arg2, using the signs of the two to determine the quadrant of the return value.",
+	"floor":  "Returns the greatest integer value less than or equal to arg1.",
+	"random": "The random function returns a random number between math.MinInt64 and math.MaxInt64.",
+	"sqrt":   "The sqrt function returns the square root of arg1.",
 }
 
 var stringsDocs = functionDocs{
