@@ -24,6 +24,7 @@ var mathFunctions = Definitions{
 	"atan":   atan,
 	"atan2":  atan2,
 	"random": random,
+	"sqrt":   sqrt,
 }
 
 var floor = &ScalarDefinition{
@@ -173,5 +174,21 @@ var random = &ScalarDefinition{
 	callFn: func(args ...types.Value) (types.Value, error) {
 		randomNum := rand.Int63()
 		return types.NewIntegerValue(randomNum), nil
+	},
+}
+
+var sqrt = &ScalarDefinition{
+	name:  "sqrt",
+	arity: 1,
+	callFn: func(args ...types.Value) (types.Value, error) {
+		if args[0].Type() != types.DoubleValue && args[0].Type() != types.IntegerValue {
+			return types.NewNullValue(), nil
+		}
+		v, err := document.CastAs(args[0], types.DoubleValue)
+		if err != nil {
+			return nil, err
+		}
+		res := math.Sqrt(types.As[float64](v))
+		return types.NewDoubleValue(res), nil
 	},
 }
