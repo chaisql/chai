@@ -3,11 +3,12 @@ package functions_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -38,11 +39,12 @@ func TestScalarFunctionDef(t *testing.T) {
 	})
 
 	t.Run("Function()", func(t *testing.T) {
-		fb := document.NewFieldBuffer()
+		fb := object.NewFieldBuffer()
 		fb = fb.Add("a", types.NewIntegerValue(2))
-		env := environment.New(fb)
+		r := database.NewBasicRow(fb)
+		env := environment.New(r)
 		expr1 := expr.Add(expr.LiteralValue{Value: types.NewIntegerValue(1)}, expr.LiteralValue{Value: types.NewIntegerValue(0)})
-		expr2 := expr.Path(document.NewPath("a"))
+		expr2 := expr.Path(object.NewPath("a"))
 		expr3 := expr.Div(expr.LiteralValue{Value: types.NewIntegerValue(6)}, expr.LiteralValue{Value: types.NewIntegerValue(2)})
 
 		t.Run("OK", func(t *testing.T) {

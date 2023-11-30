@@ -27,7 +27,7 @@ SELECT a, b FROM test ORDER BY a;
 EXPLAIN SELECT a FROM test ORDER BY a;
 /* result:
 {
-    plan: "table.ScanReverse(\"test\") | docs.Project(a)"
+    plan: "table.ScanReverse(\"test\") | rows.Project(a)"
 }
 */
 
@@ -77,7 +77,7 @@ SELECT a, b FROM test ORDER BY b DESC;
 EXPLAIN SELECT a, b FROM test ORDER BY b DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\") | docs.Project(a, b) | docs.TempTreeSortReverse(b)"
+    plan: "table.Scan(\"test\") | rows.Project(a, b) | rows.TempTreeSortReverse(b)"
 }
 */
 
@@ -106,7 +106,7 @@ SELECT a, b FROM test ORDER BY a DESC;
 EXPLAIN SELECT a, b FROM test ORDER BY a DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\") | docs.Project(a, b)"
+    plan: "table.Scan(\"test\") | rows.Project(a, b)"
 }
 */
 
@@ -127,7 +127,7 @@ SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 EXPLAIN SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\", [{\"min\": [100], \"exact\": true}]) | docs.Project(a, b)"
+    plan: "table.Scan(\"test\", [{\"min\": [100], \"exact\": true}]) | rows.Project(a, b)"
 }
 */
 

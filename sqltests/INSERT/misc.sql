@@ -28,7 +28,7 @@ SELECT pk() AS pk, `pk()` from test;
 CREATE TABLE test_tc(
     b bool, db double,
     i integer, bb blob, byt bytes,
-    t text, a array, d document
+    t text, a array, d object
 );
 
 INSERT INTO test_tc
@@ -197,5 +197,5 @@ INSERT INTO test VALUES (1);
 CREATE TABLE test (a int);
 EXPLAIN INSERT INTO test (a) VALUES (1);
 /* result:
-{plan: "docs.Emit({a: 1}) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
+{plan: "rows.Emit({a: 1}) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
 */

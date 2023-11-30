@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -83,7 +83,7 @@ func TestFieldConstraintsAdd(t *testing.T) {
 			false,
 		},
 		{
-			"Default value on nested document field",
+			"Default value on nested object column",
 			nil,
 			database.FieldConstraint{Field: "a.b", DefaultValue: expr.Constraint(testutil.IntegerValue(5))},
 			[]*database.FieldConstraint{
@@ -110,34 +110,34 @@ func TestFieldConstraintsAdd(t *testing.T) {
 func TestFieldConstraintsConvert(t *testing.T) {
 	tests := []struct {
 		constraints []*database.FieldConstraint
-		path        document.Path
+		path        object.Path
 		in, want    types.Value
 		fails       bool
 	}{
 		{
 			nil,
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewIntegerValue(10),
 			types.NewDoubleValue(10),
 			false,
 		},
 		{
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewIntegerValue(10),
 			types.NewIntegerValue(10),
 			false,
 		},
 		{
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewDoubleValue(10.5),
 			types.NewIntegerValue(10),
 			false,
 		},
 		{
 			[]*database.FieldConstraint{{Field: "a", Type: types.ArrayValue}},
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewArrayValue(testutil.MakeArray(t, `[10.5, 10.5]`)),
 			types.NewArrayValue(testutil.MakeArray(t, `[10.5, 10.5]`)),
 			false,
@@ -145,27 +145,27 @@ func TestFieldConstraintsConvert(t *testing.T) {
 		{
 			[]*database.FieldConstraint{{
 				Field: "a",
-				Type:  types.DocumentValue,
+				Type:  types.ObjectValue,
 				AnonymousType: &database.AnonymousType{
 					FieldConstraints: database.MustNewFieldConstraints(&database.FieldConstraint{
 						Field: "b",
 						Type:  types.IntegerValue,
 					})}}},
-			document.NewPath("a"),
-			types.NewDocumentValue(testutil.MakeDocument(t, `{"b": 10.5, "c": 10.5}`)),
-			types.NewDocumentValue(testutil.MakeDocument(t, `{"b": 10, "c": 10.5}`)),
+			object.NewPath("a"),
+			types.NewObjectValue(testutil.MakeObject(t, `{"b": 10.5, "c": 10.5}`)),
+			types.NewObjectValue(testutil.MakeObject(t, `{"b": 10, "c": 10.5}`)),
 			false,
 		},
 		{
 			[]*database.FieldConstraint{{Field: "a", Type: types.IntegerValue}},
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewTextValue("foo"),
 			types.NewTextValue("foo"),
 			true,
 		},
 		{
 			[]*database.FieldConstraint{{Field: "a", DefaultValue: expr.Constraint(testutil.IntegerValue(10))}},
-			document.NewPath("a"),
+			object.NewPath("a"),
 			types.NewTextValue("foo"),
 			types.NewTextValue("foo"),
 			false,

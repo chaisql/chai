@@ -1,14 +1,15 @@
-package docs
+package rows
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -25,21 +26,26 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 
 // Iterate implements the Operator interface.
 func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var mask MaskDocument
+	var mask RowMask
 	var newEnv environment.Environment
 
 	if op.Prev == nil {
 		mask.Env = in
 		mask.Exprs = op.Exprs
-		newEnv.SetDocument(&mask)
+		newEnv.SetRow(&mask)
 		newEnv.SetOuter(in)
 		return f(&newEnv)
 	}
 
 	return op.Prev.Iterate(in, func(env *environment.Environment) error {
+		row, ok := env.GetRow()
+		if ok {
+			mask.tableName = row.TableName()
+			mask.key = row.Key()
+		}
 		mask.Env = env
 		mask.Exprs = op.Exprs
-		newEnv.SetDocument(&mask)
+		newEnv.SetRow(&mask)
 		newEnv.SetOuter(env)
 		return f(&newEnv)
 	})
@@ -48,7 +54,7 @@ func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *envi
 func (op *ProjectOperator) String() string {
 	var b strings.Builder
 
-	b.WriteString("docs.Project(")
+	b.WriteString("rows.Project(")
 	for i, e := range op.Exprs {
 		b.WriteString(e.(fmt.Stringer).String())
 		if i+1 < len(op.Exprs) {
@@ -59,20 +65,38 @@ func (op *ProjectOperator) String() string {
 	return b.String()
 }
 
-type MaskDocument struct {
-	Env   *environment.Environment
-	Exprs []expr.Expr
+type RowMask struct {
+	Env       *environment.Environment
+	Exprs     []expr.Expr
+	key       *tree.Key
+	tableName string
 }
 
-func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
-	for _, e := range d.Exprs {
+func (m *RowMask) Key() *tree.Key {
+	return m.key
+}
+
+func (m *RowMask) Object() types.Object {
+	return m
+}
+
+func (m *RowMask) TableName() string {
+	return m.tableName
+}
+
+func (m *RowMask) Get(column string) (v types.Value, err error) {
+	return m.GetByField(column)
+}
+
+func (m *RowMask) GetByField(field string) (v types.Value, err error) {
+	for _, e := range m.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
-			d, ok := d.Env.GetDocument()
+			r, ok := m.Env.GetRow()
 			if !ok {
 				continue
 			}
 
-			v, err = d.GetByField(field)
+			v, err = r.Get(field)
 			if errors.Is(err, types.ErrFieldNotFound) {
 				continue
 			}
@@ -80,11 +104,11 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 		}
 
 		if ne, ok := e.(*expr.NamedExpr); ok && ne.Name() == field {
-			return e.Eval(d.Env)
+			return e.Eval(m.Env)
 		}
 
 		if e.(fmt.Stringer).String() == field {
-			return e.Eval(d.Env)
+			return e.Eval(m.Env)
 		}
 	}
 
@@ -92,15 +116,15 @@ func (d *MaskDocument) GetByField(field string) (v types.Value, err error) {
 	return
 }
 
-func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) error {
-	for _, e := range d.Exprs {
+func (m *RowMask) Iterate(fn func(field string, value types.Value) error) error {
+	for _, e := range m.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
-			d, ok := d.Env.GetDocument()
+			r, ok := m.Env.GetRow()
 			if !ok {
 				return nil
 			}
 
-			err := d.Iterate(fn)
+			err := r.Iterate(fn)
 			if err != nil {
 				return err
 			}
@@ -108,19 +132,19 @@ func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) e
 			continue
 		}
 
-		var field string
+		var col string
 		if ne, ok := e.(*expr.NamedExpr); ok {
-			field = ne.Name()
+			col = ne.Name()
 		} else {
-			field = e.(fmt.Stringer).String()
+			col = e.(fmt.Stringer).String()
 		}
 
-		v, err := e.Eval(d.Env)
+		v, err := e.Eval(m.Env)
 		if err != nil {
 			return err
 		}
 
-		err = fn(field, v)
+		err = fn(col, v)
 		if err != nil {
 			return err
 		}
@@ -129,11 +153,11 @@ func (d *MaskDocument) Iterate(fn func(field string, value types.Value) error) e
 	return nil
 }
 
-func (d *MaskDocument) String() string {
-	b, _ := types.NewDocumentValue(d).MarshalText()
+func (m *RowMask) String() string {
+	b, _ := types.NewObjectValue(m).MarshalText()
 	return string(b)
 }
 
-func (d *MaskDocument) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSON(d)
+func (d *RowMask) MarshalJSON() ([]byte, error) {
+	return object.MarshalJSON(d)
 }

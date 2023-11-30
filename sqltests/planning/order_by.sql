@@ -18,7 +18,7 @@ VALUES
 EXPLAIN SELECT * FROM test ORDER BY c;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSort(c)'
+    "plan": 'table.Scan("test") | rows.TempTreeSort(c)'
 }
 */
 
@@ -26,7 +26,7 @@ EXPLAIN SELECT * FROM test ORDER BY c;
 EXPLAIN SELECT * FROM test ORDER BY c DESC;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSortReverse(c)'
+    "plan": 'table.Scan("test") | rows.TempTreeSortReverse(c)'
 }
 */
 

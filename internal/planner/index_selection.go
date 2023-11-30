@@ -1,14 +1,14 @@
 package planner
 
 import (
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/index"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
@@ -25,7 +25,7 @@ import (
 //
 //	<expression> <compatible operator> <path>
 //
-// path: path of a document
+// path: path of an object
 // compatible operator: one of =, >, >=, <, <=, IN
 // expression: any expression
 //
@@ -40,9 +40,9 @@ import (
 // and this query:
 //
 //	SELECT * FROM foo WHERE a > 5 AND b > 10
-//	table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(b > 10) | docs.Project(*)
+//	table.Scan('foo') | rows.Filter(a > 5) | rows.Filter(b > 10) | rows.Project(*)
 //
-// foo_a_idx matches docs.Filter(a > 5) and can be selected.
+// foo_a_idx matches rows.Filter(a > 5) and can be selected.
 // Now, with a different index:
 //
 //	CREATE INDEX foo_a_b_c_idx ON foo(a, b, c)
@@ -50,7 +50,7 @@ import (
 // and this query:
 //
 //	SELECT * FROM foo WHERE a > 5 AND c > 20
-//	table.Scan('foo') | docs.Filter(a > 5) | docs.Filter(c > 20) | docs.Project(*)
+//	table.Scan('foo') | rows.Filter(a > 5) | rows.Filter(c > 20) | rows.Project(*)
 //
 // foo_a_b_c_idx matches with the first filter because a is the leftmost path indexed by it.
 // The second filter is not selected because it is not the second leftmost path.
@@ -59,7 +59,7 @@ import (
 // Now, let's have a look a this query:
 //
 //	SELECT * FROM foo WHERE a = 5 AND b = 10 AND c > 15 AND d > 20
-//	table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b = 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//	table.Scan('foo') | rows.Filter(a = 5) | rows.Filter(b = 10) | rows.Filter(c > 15) | rows.Filter(d > 20) | rows.Project(*)
 //
 // foo_a_b_c_idx matches with first three filters because they satisfy several conditions:
 // - each of them matches with the first 3 indexed paths, consecutively.
@@ -67,7 +67,7 @@ import (
 // A counter-example:
 //
 //	SELECT * FROM foo WHERE a = 5 AND b > 10 AND c > 15 AND d > 20
-//	table.Scan('foo') | docs.Filter(a = 5) | docs.Filter(b > 10) | docs.Filter(c > 15) | docs.Filter(d > 20) | docs.Project(*)
+//	table.Scan('foo') | rows.Filter(a = 5) | rows.Filter(b > 10) | rows.Filter(c > 15) | rows.Filter(d > 20) | rows.Project(*)
 //
 // foo_a_b_c_idx only matches with the first two filter nodes because while the first node uses the equal
 // operator, the second one doesn't, and thus the third node cannot be selected as well.
@@ -199,12 +199,12 @@ func (i *indexSelector) selectIndex() error {
 	// remove the filter nodes from the tree
 	for _, f := range selected.nodes {
 		switch tp := f.node.(type) {
-		case *docs.FilterOperator:
+		case *rows.FilterOperator:
 			i.sctx.removeFilterNode(tp)
 			if f.orderBy != nil {
-				i.sctx.removeTempTreeNodeNode(f.orderBy.node.(*docs.TempTreeSortOperator))
+				i.sctx.removeTempTreeNodeNode(f.orderBy.node.(*rows.TempTreeSortOperator))
 			}
-		case *docs.TempTreeSortOperator:
+		case *rows.TempTreeSortOperator:
 			i.sctx.removeTempTreeNodeNode(tp)
 		}
 	}
@@ -224,7 +224,7 @@ func (i *indexSelector) selectIndex() error {
 	return nil
 }
 
-func (i *indexSelector) isFilterIndexable(f *docs.FilterOperator) *indexableNode {
+func (i *indexSelector) isFilterIndexable(f *rows.FilterOperator) *indexableNode {
 	// only operators can associate this node to an index
 	op, ok := f.Expr.(expr.Operator)
 	if !ok {
@@ -252,7 +252,7 @@ func (i *indexSelector) isFilterIndexable(f *docs.FilterOperator) *indexableNode
 	return &node
 }
 
-func (i *indexSelector) isTempTreeSortIndexable(n *docs.TempTreeSortOperator) *indexableNode {
+func (i *indexSelector) isTempTreeSortIndexable(n *rows.TempTreeSortOperator) *indexableNode {
 	// only paths can be associated with an index
 	path, ok := n.Expr.(expr.Path)
 	if !ok {
@@ -261,7 +261,7 @@ func (i *indexSelector) isTempTreeSortIndexable(n *docs.TempTreeSortOperator) *i
 
 	return &indexableNode{
 		node:     n,
-		path:     document.Path(path),
+		path:     object.Path(path),
 		desc:     n.Desc,
 		operator: scanner.ORDER,
 	}
@@ -276,13 +276,13 @@ func (i *indexSelector) isTempTreeSortIndexable(n *docs.TempTreeSortOperator) *i
 // If not all indexed paths have an associated filter node, return whatever has been associated
 // A few examples for this index: CREATE INDEX ON foo(a, b, c)
 //
-//	 fitler(a = 3) | docs.Filter(b = 10) | (c > 20)
+//	 fitler(a = 3) | rows.Filter(b = 10) | (c > 20)
 //	 -> range = {min: [3, 10, 20]}
-//	 fitler(a = 3) | docs.Filter(b > 10) | (c > 20)
+//	 fitler(a = 3) | rows.Filter(b > 10) | (c > 20)
 //	 -> range = {min: [3], exact: true}
-//	docs.Filter(a IN (1, 2))
+//	rows.Filter(a IN (1, 2))
 //	 -> ranges = [1], [2]
-func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []document.Path, sortOrder tree.SortOrder, nodes indexableNodes) *candidate {
+func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []object.Path, sortOrder tree.SortOrder, nodes indexableNodes) *candidate {
 	found := make([]*indexableNode, 0, len(paths))
 	var desc bool
 
@@ -436,9 +436,9 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 	return &c
 }
 
-func (i *indexSelector) buildRangesFromFilterNodes(paths []document.Path, filters []*indexableNode) stream.Ranges {
+func (i *indexSelector) buildRangesFromFilterNodes(paths []object.Path, filters []*indexableNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
-	// so that: docs.Filter(a IN (10, 11)) | docs.Filter(b = 20) | docs.Filter(c IN (30, 31))
+	// so that: rows.Filter(a IN (10, 11)) | rows.Filter(b = 20) | rows.Filter(c IN (30, 31))
 	// becomes:
 	// [10, 11]
 	// [20]
@@ -497,7 +497,7 @@ func (i *indexSelector) walkExpr(l [][]expr.Expr, fn func(row []expr.Expr)) {
 
 func (i *indexSelector) buildRangeFromFilterNodes(filters ...*indexableNode) stream.Range {
 	// first, generate a list of paths and a list of expressions
-	paths := make([]document.Path, 0, len(filters))
+	paths := make([]object.Path, 0, len(filters))
 	el := make(expr.LiteralExprList, 0, len(filters))
 	for i := range filters {
 		paths = append(paths, filters[i].path)
@@ -510,7 +510,7 @@ func (i *indexSelector) buildRangeFromFilterNodes(filters ...*indexableNode) str
 	return i.buildRangeFromOperator(filter.operator, paths, el...)
 }
 
-func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []document.Path, operands ...expr.Expr) stream.Range {
+func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []object.Path, operands ...expr.Expr) stream.Range {
 	rng := stream.Range{
 		Paths: paths,
 	}
@@ -537,7 +537,7 @@ func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []doc
 		CREATE INDEX on test(a, b, c, d);
 		EXPLAIN SELECT * FROM test WHERE a = 1 AND b = 10 AND c = 100 AND d BETWEEN 1000 AND 2000 AND e > 10000;
 		{
-		    "plan": 'index.Scan("test_a_b_c_d_idx", [{"min": [1, 10, 100, 1000], "max": [1, 10, 100, 2000]}]) | docs.Filter(e > 10000)'
+		    "plan": 'index.Scan("test_a_b_c_d_idx", [{"min": [1, 10, 100, 1000], "max": [1, 10, 100, 2000]}]) | rows.Filter(e > 10000)'
 		}
 		*/
 		rng.Min = make(expr.LiteralExprList, len(el))
@@ -583,7 +583,7 @@ type indexableNode struct {
 	// Gives:
 	// - path: a.b[0]
 	// - desc: false
-	path     document.Path
+	path     object.Path
 	operator scanner.Token
 	operand  expr.Expr
 	desc     bool
@@ -598,7 +598,7 @@ type indexableNodes []*indexableNode
 // getByPath returns all indexable nodes for the given path.
 // TODO(asdine): add a rule that merges nodes that point to the
 // same path.
-func (n indexableNodes) getByPath(p document.Path) []*indexableNode {
+func (n indexableNodes) getByPath(p object.Path) []*indexableNode {
 	var nodes []*indexableNode
 	for _, fn := range n {
 		if fn.path.IsEqual(p) {
@@ -654,7 +654,7 @@ func operatorIsIndexCompatible(op expr.Operator) bool {
 	return false
 }
 
-func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
+func operatorCanUseIndex(op expr.Operator) (bool, object.Path, expr.Expr) {
 	lf, leftIsPath := op.LeftHand().(expr.Path)
 	rf, rightIsPath := op.RightHand().(expr.Path)
 
@@ -669,7 +669,7 @@ func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 			if _, ok := rh.(expr.LiteralExprList); !ok {
 				return false, nil, nil
 			}
-			return true, document.Path(lf), rh
+			return true, object.Path(lf), rh
 		}
 
 		return false, nil, nil
@@ -684,17 +684,17 @@ func operatorCanUseIndex(op expr.Operator) (bool, document.Path, expr.Expr) {
 			return false, nil, nil
 		}
 
-		return true, document.Path(x), expr.LiteralExprList{bt.LeftHand(), bt.RightHand()}
+		return true, object.Path(x), expr.LiteralExprList{bt.LeftHand(), bt.RightHand()}
 	}
 
 	// path OP expr
 	if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
-		return true, document.Path(lf), op.RightHand()
+		return true, object.Path(lf), op.RightHand()
 	}
 
 	// expr OP path
 	if rightIsPath && !leftIsPath && !exprContainsPath(op.LeftHand()) {
-		return true, document.Path(rf), op.LeftHand()
+		return true, object.Path(rf), op.LeftHand()
 	}
 
 	return false, nil, nil

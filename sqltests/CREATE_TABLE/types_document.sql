@@ -9,7 +9,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: with keyword
-CREATE TABLE test (a DOCUMENT (b int));
+CREATE TABLE test (a OBJECT (b int));
 SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
@@ -19,7 +19,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: with ellipsis
-CREATE TABLE test (a DOCUMENT (b int, ...));
+CREATE TABLE test (a OBJECT (b int, ...));
 SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {

@@ -9,13 +9,13 @@ import (
 	"github.com/genjidb/genji/internal/stream"
 )
 
-// A ReplaceOperator replaces documents in the table
+// A ReplaceOperator replaces objects in the table
 type ReplaceOperator struct {
 	stream.BaseOperator
 	Name string
 }
 
-// Replace replaces documents in the table. Incoming documents must implement the document.Keyer interface.
+// Replace replaces objects in the table.
 func Replace(tableName string) *ReplaceOperator {
 	return &ReplaceOperator{Name: tableName}
 }
@@ -25,9 +25,9 @@ func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *envi
 	var table *database.Table
 
 	it := func(out *environment.Environment) error {
-		d, ok := out.GetDocument()
+		r, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document")
+			return errors.New("missing row")
 		}
 
 		if table == nil {
@@ -38,12 +38,7 @@ func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *envi
 			}
 		}
 
-		key, ok := out.GetKey()
-		if !ok {
-			return errors.New("missing key")
-		}
-
-		_, err := table.Replace(key, d)
+		_, err := table.Replace(r.Key(), r.Object())
 		if err != nil {
 			return err
 		}

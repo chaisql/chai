@@ -9,10 +9,10 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/object"
 )
 
-// InsertJSON reads json documents from r and inserts them into the selected table.
+// InsertJSON reads json objects from r and inserts them into the selected table.
 // The reader can be either a stream of json objects or an array of objects.
 func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 	tx, err := db.Begin(true)
@@ -39,7 +39,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 
 		dec := json.NewDecoder(rd)
 		for {
-			var fb document.FieldBuffer
+			var fb object.FieldBuffer
 			err := dec.Decode(&fb)
 			if errors.Is(err, io.EOF) {
 				break
@@ -65,7 +65,7 @@ func InsertJSON(db *genji.DB, table string, r io.Reader) error {
 		}
 
 		for dec.More() {
-			var fb document.FieldBuffer
+			var fb object.FieldBuffer
 			err := dec.Decode(&fb)
 			if err != nil && !errors.Is(err, io.EOF) {
 				return err

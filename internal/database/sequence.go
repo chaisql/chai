@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -30,8 +30,8 @@ var sequenceTableInfo = &TableInfo{
 	TableConstraints: []*TableConstraint{
 		{
 			Name: SequenceTableName + "_pk",
-			Paths: []document.Path{
-				document.NewPath("name"),
+			Paths: []object.Path{
+				object.NewPath("name"),
 			},
 			PrimaryKey: true,
 		},
@@ -80,7 +80,7 @@ func (s *Sequence) Init(tx *Transaction) error {
 		return err
 	}
 
-	_, _, err = tb.Insert(document.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
+	_, _, err = tb.Insert(object.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
 	return err
 }
 
@@ -175,7 +175,7 @@ func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
 	k := s.key()
 
 	_, err = tb.Replace(k,
-		document.NewFieldBuffer().
+		object.NewFieldBuffer().
 			Add("name", types.NewTextValue(name)).
 			Add("seq", types.NewIntegerValue(v)),
 	)

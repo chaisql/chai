@@ -6,10 +6,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,9 +19,9 @@ func TestInsertJSON(t *testing.T) {
 	}{
 		{"Simple Json", `{"a": 1}`, `[{"a": 1}]`, false},
 		{"JSON object", `{"a": {"b": [1, 2, 3]}}`, `[{"a": {"b": [1, 2, 3]}}]`, false},
-		{"nested document", `{"a": {"b": [1, 2, 3]}}`, `[{"a": {"b": [1, 2, 3]}}]`, false},
+		{"nested object", `{"a": {"b": [1, 2, 3]}}`, `[{"a": {"b": [1, 2, 3]}}]`, false},
 		{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `[{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}]`, false},
-		{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `[{"a": [{"b":"foo"}, 2, 3]}]`, false},
+		{"object in array", `{"a": [{"b":"foo"}, 2, 3]}`, `[{"a": [{"b":"foo"}, 2, 3]}]`, false},
 		{"Non closed json array", `[{"foo":"bar"}`, ``, true},
 		{"Non closed json stream", `{"foo":"bar"`, ``, true},
 	}
@@ -49,7 +46,7 @@ func TestInsertJSON(t *testing.T) {
 			assert.NoError(t, err)
 
 			var buf bytes.Buffer
-			err = testutil.IteratorToJSONArray(&buf, res)
+			err = res.MarshalJSONTo(&buf)
 			assert.NoError(t, err)
 			require.JSONEq(t, tt.want, buf.String())
 		})
@@ -83,8 +80,8 @@ func TestInsertJSON(t *testing.T) {
 		assert.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(func(d types.Document) error {
-			data, err := document.MarshalJSON(d)
+		_ = res.Iterate(func(r *genji.Row) error {
+			data, err := r.MarshalJSON()
 			assert.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
@@ -120,8 +117,8 @@ func TestInsertJSON(t *testing.T) {
 		assert.NoError(t, err)
 
 		i := 0
-		_ = res.Iterate(func(d types.Document) error {
-			data, err := document.MarshalJSON(d)
+		_ = res.Iterate(func(r *genji.Row) error {
+			data, err := r.MarshalJSON()
 			assert.NoError(t, err)
 			require.JSONEq(t, jsonStreamResult[i], string(data))
 			i++
@@ -129,7 +126,7 @@ func TestInsertJSON(t *testing.T) {
 		})
 
 		wantCount := 0
-		err = res.Iterate(func(d types.Document) error {
+		err = res.Iterate(func(r *genji.Row) error {
 			wantCount++
 			return nil
 		})

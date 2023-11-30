@@ -2,19 +2,19 @@ package tree
 
 import (
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
 type Key struct {
-	Values  []types.Value
+	values  []types.Value
 	Encoded []byte
 }
 
 func NewKey(values ...types.Value) *Key {
 	return &Key{
-		Values: values,
+		values: values,
 	}
 }
 
@@ -36,7 +36,7 @@ func (k *Key) Encode(ns Namespace, order SortOrder) ([]byte, error) {
 		buf = encoding.EncodeUint(buf, uint64(ns))
 	}
 
-	for i, v := range k.Values {
+	for i, v := range k.values {
 		// extract the sort order
 		buf, err = encoding.EncodeValue(buf, v, order.IsDesc(i))
 		if err != nil {
@@ -49,8 +49,8 @@ func (k *Key) Encode(ns Namespace, order SortOrder) ([]byte, error) {
 }
 
 func (key *Key) Decode() ([]types.Value, error) {
-	if key.Values != nil {
-		return key.Values, nil
+	if len(key.values) > 0 {
+		return key.values, nil
 	}
 
 	var values []types.Value
@@ -78,7 +78,10 @@ func (key *Key) Decode() ([]types.Value, error) {
 }
 
 func (k *Key) String() string {
+	if k == nil {
+		return ""
+	}
 	values, _ := k.Decode()
 
-	return types.NewArrayValue(document.NewValueBuffer(values...)).String()
+	return types.NewArrayValue(object.NewValueBuffer(values...)).String()
 }

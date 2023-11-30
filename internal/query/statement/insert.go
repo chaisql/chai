@@ -5,9 +5,9 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 )
 
@@ -71,7 +71,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 				}
 			}
 		}
-		s = stream.New(docs.Emit(stmt.Values...))
+		s = stream.New(rows.Emit(stmt.Values...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {
@@ -91,7 +91,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		}
 	}
 
-	// validate document
+	// validate object
 	s = s.Pipe(table.Validate(stmt.TableName))
 
 	if stmt.OnConflict != 0 {
@@ -125,7 +125,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	if len(stmt.Returning) > 0 {
-		s = s.Pipe(docs.Project(stmt.Returning...))
+		s = s.Pipe(rows.Project(stmt.Returning...))
 	} else {
 		s = s.Pipe(stream.Discard())
 	}

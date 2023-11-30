@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// InsertOperator reads the input stream and indexes each document.
+// InsertOperator reads the input stream and indexes each object.
 type InsertOperator struct {
 	stream.BaseOperator
 
@@ -35,27 +35,32 @@ func (op *InsertOperator) Iterate(in *environment.Environment, fn func(out *envi
 		return err
 	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		d, ok := out.GetDocument()
-		if !ok {
-			return errors.New("missing document")
-		}
+	tinfo, err := tx.Catalog.GetTableInfo(info.Owner.TableName)
+	if err != nil {
+		return err
+	}
 
-		key, ok := out.GetKey()
+	return op.Prev.Iterate(in, func(out *environment.Environment) error {
+		r, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document key")
+			return errors.New("missing row")
 		}
 
 		vs := make([]types.Value, 0, len(info.Paths))
 		for _, path := range info.Paths {
-			v, err := path.GetValueFromDocument(d)
+			v, err := path.GetValueFromObject(r.Object())
 			if err != nil {
 				v = types.NewNullValue()
 			}
 			vs = append(vs, v)
 		}
 
-		err = idx.Set(vs, key.Encoded)
+		encKey, err := tinfo.EncodeKey(r.Key())
+		if err != nil {
+			return err
+		}
+
+		err = idx.Set(vs, encKey)
 		if err != nil {
 			return fmt.Errorf("error while inserting index value: %w", err)
 		}

@@ -3,9 +3,9 @@ package expr
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -158,7 +158,7 @@ func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
 			return FalseLiteral, nil
 		}
 
-		ok, err := document.ArrayContains(types.As[types.Array](b), a)
+		ok, err := object.ArrayContains(types.As[types.Array](b), a)
 		if err != nil {
 			return NullLiteral, err
 		}

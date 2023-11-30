@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"github.com/buger/jsonparser"
@@ -101,7 +101,7 @@ func (vb *ValueBuffer) ScanArray(a types.Array) error {
 }
 
 // Copy deep copies all the values from the given array.
-// If a value is a document or an array, it will be stored as a *FieldBuffer or *ValueBuffer respectively.
+// If a value is an object or an array, it will be stored as a *FieldBuffer or *ValueBuffer respectively.
 func (vb *ValueBuffer) Copy(a types.Array) error {
 	return a.Iterate(func(i int, value types.Value) error {
 		v, err := CloneValue(value)
@@ -113,6 +113,11 @@ func (vb *ValueBuffer) Copy(a types.Array) error {
 	})
 }
 
+// Reset the buffer.
+func (vb *ValueBuffer) Reset() {
+	vb.Values = vb.Values[:0]
+}
+
 // Apply a function to all the values of the buffer.
 func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)) error {
 	path := Path{PathFragment{}}
@@ -121,11 +126,11 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 		path[0].ArrayIndex = i
 
 		switch v.Type() {
-		case types.DocumentValue:
+		case types.ObjectValue:
 			buf, ok := types.Is[*FieldBuffer](v)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(types.As[types.Document](v))
+				err := buf.Copy(types.As[types.Object](v))
 				if err != nil {
 					return err
 				}
@@ -137,7 +142,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			if err != nil {
 				return err
 			}
-			vb.Values[i] = types.NewDocumentValue(buf)
+			vb.Values[i] = types.NewObjectValue(buf)
 		case types.ArrayValue:
 			buf, ok := types.Is[*ValueBuffer](v)
 			if !ok {

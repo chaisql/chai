@@ -1,12 +1,12 @@
-package document_test
+package object_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -55,8 +55,8 @@ func TestNewValue(t *testing.T) {
 		{"int64", int64(10), int64(10)},
 		{"float64", 10.1, float64(10.1)},
 		{"null", nil, nil},
-		{"document", document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)), document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))},
-		{"array", document.NewValueBuffer(types.NewIntegerValue(10)), document.NewValueBuffer(types.NewIntegerValue(10))},
+		{"object", object.NewFieldBuffer().Add("a", types.NewIntegerValue(10)), object.NewFieldBuffer().Add("a", types.NewIntegerValue(10))},
+		{"array", object.NewValueBuffer(types.NewIntegerValue(10)), object.NewValueBuffer(types.NewIntegerValue(10))},
 		{"time", now, now.UTC()},
 		{"bytes", myBytes("bar"), []byte("bar")},
 		{"string", myString("bar"), "bar"},
@@ -69,13 +69,13 @@ func TestNewValue(t *testing.T) {
 		{"myInt16", myInt16(500), int64(500)},
 		{"myInt64", myInt64(10), int64(10)},
 		{"myFloat64", myFloat64(10.1), float64(10.1)},
-		{"map[string]any", mapAny, document.NewFromMap(mapAny)},
-		{"map[string]int", mapInt, document.NewFromMap(mapInt)},
+		{"map[string]any", mapAny, object.NewFromMap(mapAny)},
+		{"map[string]int", mapInt, object.NewFromMap(mapInt)},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			v, err := document.NewValue(test.value)
+			v, err := object.NewValue(test.value)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected, v.V())
 		})
@@ -86,34 +86,34 @@ func TestNewFromJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		data     string
-		expected *document.FieldBuffer
+		expected *object.FieldBuffer
 		fails    bool
 	}{
-		{"empty object", "{}", document.NewFieldBuffer(), false},
+		{"empty object", "{}", object.NewFieldBuffer(), false},
 		{"empty object, missing closing bracket", "{", nil, true},
 		{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
-			document.NewFieldBuffer().
+			object.NewFieldBuffer().
 				Add("a", types.NewIntegerValue(1)).
 				Add("b", types.NewBoolValue(true)).
 				Add("c", types.NewTextValue("hello")).
-				Add("d", types.NewArrayValue(document.NewValueBuffer().
+				Add("d", types.NewArrayValue(object.NewValueBuffer().
 					Append(types.NewIntegerValue(1)).
 					Append(types.NewIntegerValue(2)).
 					Append(types.NewIntegerValue(3)))).
-				Add("e", types.NewDocumentValue(document.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
+				Add("e", types.NewObjectValue(object.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
 			false},
-		{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
-		{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
-		{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
-		{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
-		{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
-		{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
-		{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", types.NewArrayValue(document.NewValueBuffer())), false},
-		{"nested arrays", `{"a": [[1,  2]]}`, document.NewFieldBuffer().
+		{"string values", `{"a": "hello ciao"}`, object.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
+		{"+integer values", `{"a": 1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
+		{"-integer values", `{"a": -1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
+		{"+float values", `{"a": 10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
+		{"-float values", `{"a": -10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
+		{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+		{"empty arrays", `{"a": []}`, object.NewFieldBuffer().Add("a", types.NewArrayValue(object.NewValueBuffer())), false},
+		{"nested arrays", `{"a": [[1,  2]]}`, object.NewFieldBuffer().
 			Add("a", types.NewArrayValue(
-				document.NewValueBuffer().
+				object.NewValueBuffer().
 					Append(types.NewArrayValue(
-						document.NewValueBuffer().
+						object.NewValueBuffer().
 							Append(types.NewIntegerValue(1)).
 							Append(types.NewIntegerValue(2)))))), false},
 		{"missing comma", `{"a": 1 "b": 2}`, nil, true},
@@ -122,9 +122,9 @@ func TestNewFromJSON(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			d := document.NewFromJSON([]byte(test.data))
+			d := object.NewFromJSON([]byte(test.data))
 
-			fb := document.NewFieldBuffer()
+			fb := object.NewFieldBuffer()
 			err := fb.Copy(d)
 
 			if test.fails {
@@ -137,7 +137,7 @@ func TestNewFromJSON(t *testing.T) {
 	}
 
 	t.Run("GetByField", func(t *testing.T) {
-		d := document.NewFromJSON([]byte(`{"a": 1000}`))
+		d := object.NewFromJSON([]byte(`{"a": 1000}`))
 
 		v, err := d.GetByField("a")
 		assert.NoError(t, err)
@@ -155,7 +155,7 @@ func TestNewFromMap(t *testing.T) {
 		"nilField": nil,
 	}
 
-	doc := document.NewFromMap(m)
+	doc := object.NewFromMap(m)
 
 	t.Run("Iterate", func(t *testing.T) {
 		counter := make(map[string]int)
@@ -195,12 +195,12 @@ func TestNewFromMap(t *testing.T) {
 	})
 }
 
-func BenchmarkJSONToDocument(b *testing.B) {
+func BenchmarkJSONToObject(b *testing.B) {
 	data := []byte(`{"_id":"5f8aefb8e443c6c13afdb305","index":0,"guid":"42c2719e-3371-4b2f-b855-d302a8b7eab0","isActive":true,"balance":"$1,064.79","picture":"http://placehold.it/32x32","age":40,"eyeColor":"blue","name":"Adele Webb","gender":"female","company":"EXTRAGEN","email":"adelewebb@extragen.com","phone":"+1 (964) 409-2397","address":"970 Charles Place, Watrous, Texas, 2522","about":"Amet non do ullamco duis velit sunt esse et cillum nisi mollit ea magna. Tempor ut occaecat proident laborum velit nisi et excepteur exercitation non est labore. Laboris pariatur enim proident et. Qui minim enim et incididunt incididunt adipisicing tempor. Occaecat adipisicing sint ex ut exercitation exercitation voluptate. Laboris adipisicing ut cillum eu cillum est sunt amet Lorem quis pariatur.\r\n","registered":"2016-05-25T10:36:44 -04:00","latitude":64.57112,"longitude":176.136138,"tags":["velit","minim","eiusmod","est","eu","voluptate","deserunt"],"friends":[{"id":0,"name":"Mathis Robertson"},{"id":1,"name":"Cecilia Donaldson"},{"id":2,"name":"Joann Goodwin"}],"greeting":"Hello, Adele Webb! You have 2 unread messages.","favoriteFruit":"apple"}`)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		d := document.NewFromJSON(data)
+		d := object.NewFromJSON(data)
 		d.Iterate(func(string, types.Value) error {
 			return nil
 		})
@@ -211,6 +211,6 @@ func TestNewFromCSV(t *testing.T) {
 	headers := []string{"a", "b", "c"}
 	columns := []string{"A", "B", "C"}
 
-	d := document.NewFromCSV(headers, columns)
-	testutil.RequireDocJSONEq(t, d, `{"a": "A", "b": "B", "c": "C"}`)
+	d := object.NewFromCSV(headers, columns)
+	testutil.RequireJSONEq(t, d, `{"a": "A", "b": "B", "c": "C"}`)
 }

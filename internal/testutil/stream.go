@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -21,7 +21,7 @@ type ResultStream struct {
 }
 
 func (ds *ResultStream) Next() (types.Value, error) {
-	exp, err := ds.Parser.ParseDocument()
+	exp, err := ds.Parser.ParseObject()
 	if err != nil {
 		return nil, err
 	}
@@ -41,14 +41,14 @@ func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
 	RequireStreamEqf(t, raw, res, sorted, "")
 }
 
-func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, msg string, args ...interface{}) {
+func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, msg string, args ...any) {
 	t.Helper()
-	docs := ParseResultStream(raw)
+	objs := ParseResultStream(raw)
 
-	want := document.NewValueBuffer()
+	want := object.NewValueBuffer()
 
 	for {
-		v, err := docs.Next()
+		v, err := objs.Next()
 		if err != nil {
 			if perr, ok := err.(*parser.ParseError); ok {
 				if perr.Found == "EOF" {
@@ -60,22 +60,21 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 				}
 			}
 		}
-		require.NoError(t, err, append([]interface{}{msg}, args...)...)
+		require.NoError(t, err, append([]any{msg}, args...)...)
 
-		v, err = document.CloneValue(v)
-		require.NoError(t, err, append([]interface{}{msg}, args...)...)
+		v, err = object.CloneValue(v)
+		require.NoError(t, err, append([]any{msg}, args...)...)
 		want.Append(v)
 	}
 
-	got := document.NewValueBuffer()
+	got := object.NewValueBuffer()
 
-	err := res.Iterate(func(d types.Document) error {
-		var fb document.FieldBuffer
-		err := fb.Copy(d)
-		if err != nil {
-			return err
-		}
-		got.Append(types.NewDocumentValue(&fb))
+	err := res.Iterate(func(r *genji.Row) error {
+		var fb object.FieldBuffer
+		err := fb.Copy(r.Object())
+		assert.NoError(t, err)
+
+		got.Append(types.NewObjectValue(&fb))
 		return nil
 	})
 	assert.NoError(t, err)
@@ -94,13 +93,13 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 	assert.NoError(t, err)
 
 	if msg != "" {
-		require.Equal(t, string(expected), string(actual), append([]interface{}{msg}, args...)...)
+		require.Equal(t, string(expected), string(actual), append([]any{msg}, args...)...)
 	} else {
 		require.Equal(t, string(expected), string(actual))
 	}
 }
 
-type sortableValueBuffer document.ValueBuffer
+type sortableValueBuffer object.ValueBuffer
 
 func (vb *sortableValueBuffer) Len() int {
 	return len(vb.Values)
@@ -113,7 +112,7 @@ func (vb *sortableValueBuffer) Swap(i, j int) {
 func (vb *sortableValueBuffer) Less(i, j int) (ok bool) {
 	it, jt := vb.Values[i].Type(), vb.Values[j].Type()
 	if it == jt || (it.IsNumber() && jt.IsNumber()) {
-		// TODO(asdine) make the types package work with static documents
+		// TODO(asdine) make the types package work with static objects
 		// to avoid having to deal with errors?
 		ok, _ = types.IsLesserThan(vb.Values[i], vb.Values[j])
 		return

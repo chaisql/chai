@@ -94,14 +94,14 @@ func (p *Parser) parseFieldList() ([]string, error) {
 // parseValues parses the "VALUES" clause of the query, if it exists.
 func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
 	if len(fields) > 0 {
-		return p.parseDocumentsWithFields(fields)
+		return p.parseObjectsWithFields(fields)
 	}
 
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	p.Unscan()
 	switch tok {
 	case scanner.LPAREN:
-		return p.parseDocumentsWithFields(fields)
+		return p.parseObjectsWithFields(fields)
 	case scanner.LBRACKET, scanner.NAMEDPARAM, scanner.POSITIONALPARAM:
 		return p.parseLiteralDocOrParamList()
 	}
@@ -110,7 +110,7 @@ func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
 }
 
 // parseExprListValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseDocumentsWithFields(fields []string) ([]expr.Expr, error) {
+func (p *Parser) parseObjectsWithFields(fields []string) ([]expr.Expr, error) {
 	var docs []expr.Expr
 
 	// Parse first (required) value list.
@@ -139,7 +139,6 @@ func (p *Parser) parseDocumentsWithFields(fields []string) ([]expr.Expr, error) 
 	return docs, nil
 }
 
-// parseParamOrDocument parses either a parameter or a document.
 func (p *Parser) parseExprListWithFields(fields []string) (*expr.KVPairs, error) {
 	list, err := p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 	if err != nil {
@@ -172,7 +171,7 @@ func (p *Parser) parseLiteralDocOrParamList() ([]expr.Expr, error) {
 	var docs []expr.Expr
 
 	// Parse first (required) value list.
-	doc, err := p.parseParamOrDocument()
+	doc, err := p.parseParamOrObject()
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +185,7 @@ func (p *Parser) parseLiteralDocOrParamList() ([]expr.Expr, error) {
 			break
 		}
 
-		doc, err := p.parseParamOrDocument()
+		doc, err := p.parseParamOrObject()
 		if err != nil {
 			return nil, err
 		}
@@ -197,8 +196,8 @@ func (p *Parser) parseLiteralDocOrParamList() ([]expr.Expr, error) {
 	return docs, nil
 }
 
-// parseParamOrDocument parses either a parameter or a document.
-func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
+// parseParamOrObject parses either a parameter or an object.
+func (p *Parser) parseParamOrObject() (expr.Expr, error) {
 	// Parse a param first
 	prm, err := p.parseParam()
 	if err != nil {
@@ -211,8 +210,8 @@ func (p *Parser) parseParamOrDocument() (expr.Expr, error) {
 	// If not a param, start over
 	p.Unscan()
 
-	// Expect a document
-	return p.ParseDocument()
+	// Expect an object
+	return p.ParseObject()
 }
 
 func (p *Parser) parseOnConflictClause() (database.OnConflictAction, error) {

@@ -26,7 +26,7 @@ func (stmt *CreateTableStmt) IsReadOnly() bool {
 func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
-	// if there is no primary key, create a docid sequence
+	// if there is no primary key, create a rowid sequence
 	if stmt.Info.GetPrimaryKey() == nil {
 		seq := database.SequenceInfo{
 			IncrementBy: 1,
@@ -42,7 +42,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 			return res, err
 		}
 
-		stmt.Info.DocidSequenceName = seq.Name
+		stmt.Info.RowidSequenceName = seq.Name
 	}
 
 	err := ctx.Tx.CatalogWriter().CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)

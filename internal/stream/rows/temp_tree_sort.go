@@ -1,4 +1,4 @@
-package docs
+package rows
 
 import (
 	"fmt"
@@ -54,7 +54,7 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 		}
 
 		if types.IsNull(v) {
-			// the expression might be pointing to the original document.
+			// the expression might be pointing to the original row.
 			v, err = op.Expr.Eval(out.Outer)
 			if err != nil {
 				// the only valid error here is a missing field.
@@ -64,36 +64,39 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 			}
 		}
 
-		doc, ok := out.GetDocument()
+		row, ok := out.GetRow()
 		if !ok {
-			panic("missing document")
+			return errors.New("missing row")
 		}
 
-		tableName, ok := out.Get(environment.TableKey)
-		if ok {
-			info, err := catalog.GetTableInfo(types.As[string](tableName))
+		var info *database.TableInfo
+		if row.TableName() != "" {
+			info, err = catalog.GetTableInfo(row.TableName())
 			if err != nil {
 				return err
 			}
 
-			buf, err = info.EncodeDocument(in.GetTx(), buf, doc)
+			buf, err = info.EncodeObject(in.GetTx(), buf, row.Object())
 			if err != nil {
 				return err
 			}
 		} else {
-			buf, err = encoding.EncodeDocument(buf, doc)
+			buf, err = encoding.EncodeObject(buf, row.Object())
 			if err != nil {
 				return err
 			}
 		}
 
 		var encKey []byte
-		key, ok := out.GetKey()
-		if ok {
-			encKey = key.Encoded
+		key := row.Key()
+		if key != nil {
+			encKey, err = info.EncodeKey(key)
+			if err != nil {
+				return err
+			}
 		}
 
-		tk := tree.NewKey(v, tableName, types.NewBlobValue(encKey), types.NewIntegerValue(counter))
+		tk := tree.NewKey(v, types.NewTextValue(row.TableName()), types.NewBlobValue(encKey), types.NewIntegerValue(counter))
 
 		counter++
 
@@ -105,33 +108,40 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
-
+	var br database.BasicRow
 	return tr.IterateOnRange(nil, op.Desc, func(k *tree.Key, data []byte) error {
 		kv, err := k.Decode()
 		if err != nil {
 			return err
 		}
 
-		tableName := kv[1]
-		if tableName.Type() != types.NullValue {
-			newEnv.Set(environment.TableKey, tableName)
+		var tableName string
+		tf := kv[1]
+		if tf.Type() != types.NullValue {
+			tableName = types.As[string](tf)
 		}
 
-		docKey := kv[2]
-		if docKey.Type() != types.NullValue {
-			newEnv.SetKey(tree.NewEncodedKey(types.As[[]byte](docKey)))
+		var key *tree.Key
+		kf := kv[2]
+		if kf.Type() != types.NullValue {
+			key = tree.NewEncodedKey(types.As[[]byte](kf))
 		}
 
-		if tableName.Type() != types.NullValue {
-			info, err := catalog.GetTableInfo(types.As[string](tableName))
+		var obj types.Object
+
+		if tableName != "" {
+			info, err := catalog.GetTableInfo(tableName)
 			if err != nil {
 				return err
 			}
-
-			newEnv.SetDocument(database.NewEncodedDocument(&info.FieldConstraints, data))
+			obj = database.NewEncodedObject(&info.FieldConstraints, data)
 		} else {
-			newEnv.SetDocument(encoding.DecodeDocument(data, false /* intAsDouble */))
+			obj = encoding.DecodeObject(data, false /* intAsDouble */)
 		}
+
+		br.ResetWith(tableName, key, obj)
+
+		newEnv.SetRow(&br)
 
 		return fn(&newEnv)
 	})
@@ -139,8 +149,8 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 func (op *TempTreeSortOperator) String() string {
 	if op.Desc {
-		return fmt.Sprintf("docs.TempTreeSortReverse(%s)", op.Expr)
+		return fmt.Sprintf("rows.TempTreeSortReverse(%s)", op.Expr)
 	}
 
-	return fmt.Sprintf("docs.TempTreeSort(%s)", op.Expr)
+	return fmt.Sprintf("rows.TempTreeSort(%s)", op.Expr)
 }

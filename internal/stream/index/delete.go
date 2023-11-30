@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// DeleteOperator reads the input stream and deletes the document from the specified index.
+// DeleteOperator reads the input stream and deletes the object from the specified index.
 type DeleteOperator struct {
 	stream.BaseOperator
 
@@ -41,31 +41,31 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *envi
 	}
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		key, ok := out.GetKey()
+		row, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document key")
+			return errors.New("missing row")
 		}
 
-		old, err := table.GetDocument(key)
-		if err != nil {
-			return err
-		}
-
-		info, err := tx.Catalog.GetIndexInfo(op.indexName)
+		old, err := table.GetRow(row.Key())
 		if err != nil {
 			return err
 		}
 
 		vs := make([]types.Value, 0, len(info.Paths))
 		for _, path := range info.Paths {
-			v, err := path.GetValueFromDocument(old)
+			v, err := path.GetValueFromObject(old.Object())
 			if err != nil {
 				v = types.NewNullValue()
 			}
 			vs = append(vs, v)
 		}
 
-		err = idx.Delete(vs, key.Encoded)
+		key, err := table.Info.EncodeKey(old.Key())
+		if err != nil {
+			return err
+		}
+
+		err = idx.Delete(vs, key)
 		if err != nil {
 			return err
 		}

@@ -29,7 +29,7 @@
 'array'
 
 > typeof({})
-'document'
+'object'
 
 > typeof(NULL)
 'null'

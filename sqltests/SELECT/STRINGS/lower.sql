@@ -64,7 +64,7 @@ SELECT strings.LOWER(e) FROM test;
 }
 */
 
--- test: DOCUMENT value
+-- test: OBJECT value
 SELECT strings.LOWER(f) FROM test;
 /* result:
 {
@@ -104,7 +104,7 @@ SELECT strings.LOWER(CAST(e as TEXT)) FROM test;
 }
 */
 
--- test: cast DOCUMENT
+-- test: cast OBJECT
 SELECT strings.LOWER(CAST(f as TEXT)) FROM test;
 /* result:
 {

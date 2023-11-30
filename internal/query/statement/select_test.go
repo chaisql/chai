@@ -8,10 +8,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -33,7 +30,7 @@ func TestSelectStmt(t *testing.T) {
 		// {"No table, function pk()", "SELECT pk()", false, `[{"pk()":[n]ull}]`, nil},
 		// {"No table, field", "SELECT a", true, ``, nil},
 		// {"No table, wildcard", "SELECT *", true, ``, nil},
-		// {"No table, document", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},
+		// {"No table, object", "SELECT {a: 1, b: 2 + 1}", false, `[{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}]`, nil},
 		// {"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square"},{"k":2,"color":"blue","size":10,"weight":100},{"k":3,"height":100,"weight":200}]`, nil},
 		// {"No cond Multiple wildcards", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","k":1,"color":"red","size":10,"shape":"square","color":"red"},{"k":2,"color":"blue","size":10,"weight":100,"k":2,"color":"blue","size":10,"weight":100,"color":"blue"},{"k":3,"height":100,"weight":200,"k":3,"height":100,"weight":200,"color":null}]`, nil},
 		// {"With fields", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
@@ -153,7 +150,7 @@ func TestSelectStmt(t *testing.T) {
 				assert.NoError(t, err)
 
 				var buf bytes.Buffer
-				err = testutil.IteratorToJSONArray(&buf, st)
+				err = st.MarshalJSONTo(&buf)
 				assert.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -184,12 +181,12 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = testutil.IteratorToJSONArray(&buf, st)
+		err = st.MarshalJSONTo(&buf)
 		assert.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
 
-	t.Run("with documents", func(t *testing.T) {
+	t.Run("with objects", func(t *testing.T) {
 		db, err := genji.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
@@ -206,8 +203,8 @@ func TestSelectStmt(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d types.Document) error {
-				data, err := document.MarshalJSON(d)
+			err = st.Iterate(func(r *genji.Row) error {
+				data, err := r.MarshalJSON()
 				assert.NoError(t, err)
 				require.JSONEq(t, res[i], string(data))
 				i++
@@ -247,7 +244,7 @@ func TestSelectStmt(t *testing.T) {
 		defer st.Close()
 
 		var buf bytes.Buffer
-		err = testutil.IteratorToJSONArray(&buf, st)
+		err = st.MarshalJSONTo(&buf)
 		assert.NoError(t, err)
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
@@ -261,7 +258,7 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec("CREATE TABLE test; INSERT INTO test (a) VALUES ([1, 2, 3]);")
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument("SELECT MAX(a) from test GROUP BY a")
+		d, err := db.QueryRow("SELECT MAX(a) from test GROUP BY a")
 		assert.NoError(t, err)
 
 		enc, err := json.Marshal(d)
@@ -278,7 +275,7 @@ func TestSelectStmt(t *testing.T) {
 		err = db.Exec("CREATE TABLE test;")
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
+		d, err := db.QueryRow("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
 		assert.NoError(t, err)
 
 		enc, err := json.Marshal(d)
@@ -301,7 +298,7 @@ func TestSelectStmt(t *testing.T) {
 		check := func() {
 			t.Helper()
 
-			d, err := db.QueryDocument("SELECT * FROM test WHERE a = [1,2,3];")
+			d, err := db.QueryRow("SELECT * FROM test WHERE a = [1,2,3];")
 			assert.NoError(t, err)
 
 			enc, err := json.Marshal(d)
@@ -331,18 +328,18 @@ func TestSelectStmt(t *testing.T) {
 		assert.NoError(t, err)
 
 		// normal query
-		d, err := db.QueryDocument("SELECT a, NEXT VALUE FOR seq FROM test")
+		r, err := db.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test")
 		assert.NoError(t, err)
 		var a, seq int
-		err = document.Scan(d, &a, &seq)
+		err = r.Scan(&a, &seq)
 		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 1, seq)
 
 		// query with no table
-		d, err = db.QueryDocument("SELECT NEXT VALUE FOR seq")
+		r, err = db.QueryRow("SELECT NEXT VALUE FOR seq")
 		assert.NoError(t, err)
-		err = document.Scan(d, &seq)
+		err = r.Scan(&seq)
 		assert.NoError(t, err)
 		require.Equal(t, 2, seq)
 	})
@@ -358,10 +355,10 @@ func TestSelectStmt(t *testing.T) {
 		`)
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
+		r, err := db.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
 		assert.NoError(t, err)
 		var a int
-		err = document.Scan(d, &a)
+		err = r.Scan(&a)
 		assert.NoError(t, err)
 		require.Equal(t, 2, a)
 	})
@@ -399,7 +396,7 @@ func TestDistinct(t *testing.T) {
 			assert.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", doc DOCUMENT, nullable " + typ.name + ");")
+			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", doc OBJECT, nullable " + typ.name + ");")
 			assert.NoError(t, err)
 
 			err = tx.Exec("CREATE UNIQUE INDEX test_doc_index ON test(doc);")
@@ -420,7 +417,7 @@ func TestDistinct(t *testing.T) {
 			}{
 				{`unique`, `SELECT DISTINCT a FROM test`, total},
 				{`non-unique`, `SELECT DISTINCT b FROM test`, notUnique},
-				{`documents`, `SELECT DISTINCT doc FROM test`, total},
+				{`objects`, `SELECT DISTINCT doc FROM test`, total},
 				{`null`, `SELECT DISTINCT nullable FROM test`, 1},
 				{`wildcard`, `SELECT DISTINCT * FROM test`, total},
 				{`literal`, `SELECT DISTINCT 'a' FROM test`, 1},
@@ -434,7 +431,7 @@ func TestDistinct(t *testing.T) {
 					defer q.Close()
 
 					var i int
-					err = q.Iterate(func(d types.Document) error {
+					err = q.Iterate(func(r *genji.Row) error {
 						i++
 						return nil
 					})

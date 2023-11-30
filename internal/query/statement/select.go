@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
+	"github.com/genjidb/genji/object"
 )
 
 type SelectCoreStmt struct {
@@ -30,7 +30,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 	}
 
 	if stmt.WhereExpr != nil {
-		s = s.Pipe(docs.Filter(stmt.WhereExpr))
+		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
@@ -57,7 +57,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 				// if so, replace the expression with a path expression
 				stmt.ProjectionExprs[i] = &expr.NamedExpr{
 					ExprName: ne.ExprName,
-					Expr:     expr.Path(document.NewPath(e.String())),
+					Expr:     expr.Path(object.NewPath(e.String())),
 				}
 				continue
 			}
@@ -71,8 +71,8 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			return nil, fmt.Errorf("field %q must appear in the GROUP BY clause or be used in an aggregate function", invalidProjectedField)
 		}
 		// add Aggregation node
-		s = s.Pipe(docs.TempTreeSort(stmt.GroupByExpr))
-		s = s.Pipe(docs.GroupAggregate(stmt.GroupByExpr, aggregators...))
+		s = s.Pipe(rows.TempTreeSort(stmt.GroupByExpr))
+		s = s.Pipe(rows.GroupAggregate(stmt.GroupByExpr, aggregators...))
 	} else if stmt.TableName != "" {
 		// if there is no GROUP BY clause, check if there are any aggregation function
 		// and if so add an aggregation node
@@ -93,7 +93,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 
 		// add Aggregation node
 		if len(aggregators) > 0 {
-			s = s.Pipe(docs.GroupAggregate(nil, aggregators...))
+			s = s.Pipe(rows.GroupAggregate(nil, aggregators...))
 		}
 	}
 
@@ -116,7 +116,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 			}
 		}
 	}
-	s = s.Pipe(docs.Project(stmt.ProjectionExprs...))
+	s = s.Pipe(rows.Project(stmt.ProjectionExprs...))
 
 	// SELECT is read-only most of the time, unless it's using some expressions
 	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
@@ -213,18 +213,18 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 
 	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
-			s = s.Pipe(docs.TempTreeSortReverse(stmt.OrderBy))
+			s = s.Pipe(rows.TempTreeSortReverse(stmt.OrderBy))
 		} else {
-			s = s.Pipe(docs.TempTreeSort(stmt.OrderBy))
+			s = s.Pipe(rows.TempTreeSort(stmt.OrderBy))
 		}
 	}
 
 	if stmt.OffsetExpr != nil {
-		s = s.Pipe(docs.Skip(stmt.OffsetExpr))
+		s = s.Pipe(rows.Skip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
-		s = s.Pipe(docs.Take(stmt.LimitExpr))
+		s = s.Pipe(rows.Take(stmt.LimitExpr))
 	}
 
 	st := StreamStmt{

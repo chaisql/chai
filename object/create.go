@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"fmt"
@@ -12,19 +12,19 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// NewFromJSON creates a document from raw JSON data.
-// The returned document will lazily decode the data.
+// NewFromJSON creates an object from raw JSON data.
+// The returned object will lazily decode the data.
 // If data is not a valid json object, calls to Iterate or GetByField will
 // return an error.
-func NewFromJSON(data []byte) types.Document {
-	return &jsonEncodedDocument{data}
+func NewFromJSON(data []byte) types.Object {
+	return &jsonEncodedObject{data}
 }
 
-type jsonEncodedDocument struct {
+type jsonEncodedObject struct {
 	data []byte
 }
 
-func (j jsonEncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (j jsonEncodedObject) Iterate(fn func(field string, value types.Value) error) error {
 	return jsonparser.ObjectEach(j.data, func(key, value []byte, dataType jsonparser.ValueType, offset int) error {
 		v, err := parseJSONValue(dataType, value)
 		if err != nil {
@@ -35,7 +35,7 @@ func (j jsonEncodedDocument) Iterate(fn func(field string, value types.Value) er
 	})
 }
 
-func (j jsonEncodedDocument) GetByField(field string) (types.Value, error) {
+func (j jsonEncodedObject) GetByField(field string) (types.Value, error) {
 	v, dt, _, err := jsonparser.Get(j.data, field)
 	if dt == jsonparser.NotExist {
 		return nil, types.ErrFieldNotFound
@@ -47,21 +47,21 @@ func (j jsonEncodedDocument) GetByField(field string) (types.Value, error) {
 	return parseJSONValue(dt, v)
 }
 
-func (j jsonEncodedDocument) MarshalJSON() ([]byte, error) {
+func (j jsonEncodedObject) MarshalJSON() ([]byte, error) {
 	return j.data, nil
 }
 
-// NewFromMap creates a document from a map.
+// NewFromMap creates an object from a map.
 // Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap[T any](m map[string]T) types.Document {
-	return mapDocument[T](m)
+func NewFromMap[T any](m map[string]T) types.Object {
+	return mapObject[T](m)
 }
 
-type mapDocument[T any] map[string]T
+type mapObject[T any] map[string]T
 
-var _ types.Document = (*mapDocument[any])(nil)
+var _ types.Object = (*mapObject[any])(nil)
 
-func (m mapDocument[T]) Iterate(fn func(field string, value types.Value) error) error {
+func (m mapObject[T]) Iterate(fn func(field string, value types.Value) error) error {
 	for k, v := range m {
 		v, err := NewValue(v)
 		if err != nil {
@@ -76,7 +76,7 @@ func (m mapDocument[T]) Iterate(fn func(field string, value types.Value) error) 
 	return nil
 }
 
-func (m mapDocument[T]) GetByField(field string) (types.Value, error) {
+func (m mapObject[T]) GetByField(field string) (types.Value, error) {
 	v, ok := m[field]
 	if !ok {
 		return nil, types.ErrFieldNotFound
@@ -86,15 +86,15 @@ func (m mapDocument[T]) GetByField(field string) (types.Value, error) {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (m mapDocument[T]) MarshalJSON() ([]byte, error) {
+func (m mapObject[T]) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(m)
 }
 
-type reflectMapDocument reflect.Value
+type reflectMapObject reflect.Value
 
-var _ types.Document = (*reflectMapDocument)(nil)
+var _ types.Object = (*reflectMapObject)(nil)
 
-func (m reflectMapDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (m reflectMapObject) Iterate(fn func(field string, value types.Value) error) error {
 	M := reflect.Value(m)
 	it := M.MapRange()
 
@@ -112,7 +112,7 @@ func (m reflectMapDocument) Iterate(fn func(field string, value types.Value) err
 	return nil
 }
 
-func (m reflectMapDocument) GetByField(field string) (types.Value, error) {
+func (m reflectMapObject) GetByField(field string) (types.Value, error) {
 	M := reflect.Value(m)
 	v := M.MapIndex(reflect.ValueOf(field))
 	if v == (reflect.Value{}) {
@@ -122,12 +122,12 @@ func (m reflectMapDocument) GetByField(field string) (types.Value, error) {
 }
 
 // MarshalJSON implements the json.Marshaler interface.
-func (m reflectMapDocument) MarshalJSON() ([]byte, error) {
+func (m reflectMapObject) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(m)
 }
 
-// NewFromStruct creates a document from a struct using reflection.
-func NewFromStruct(s interface{}) (types.Document, error) {
+// NewFromStruct creates an object from a struct using reflection.
+func NewFromStruct(s interface{}) (types.Object, error) {
 	ref := reflect.Indirect(reflect.ValueOf(s))
 
 	if !ref.IsValid() || ref.Kind() != reflect.Struct {
@@ -137,7 +137,7 @@ func NewFromStruct(s interface{}) (types.Document, error) {
 	return newFromStruct(ref)
 }
 
-func newFromStruct(ref reflect.Value) (types.Document, error) {
+func newFromStruct(ref reflect.Value) (types.Object, error) {
 	var fb FieldBuffer
 	l := ref.NumField()
 	tp := ref.Type()
@@ -209,8 +209,8 @@ func NewValue(x any) (types.Value, error) {
 		return types.NewTimestampValue(v), nil
 	case nil:
 		return types.NewNullValue(), nil
-	case types.Document:
-		return types.NewDocumentValue(v), nil
+	case types.Object:
+		return types.NewObjectValue(v), nil
 	case types.Array:
 		return types.NewArrayValue(v), nil
 	}
@@ -247,7 +247,7 @@ func NewValue(x any) (types.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		return types.NewDocumentValue(doc), nil
+		return types.NewObjectValue(doc), nil
 	case reflect.Array:
 		return types.NewArrayValue(&sliceArray{v}), nil
 	case reflect.Slice:
@@ -266,29 +266,29 @@ func NewValue(x any) (types.Value, error) {
 		// use fast generic map if possible
 		switch v.Type().Elem().Kind() {
 		case reflect.Bool:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]bool))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]bool))), nil
 		case reflect.Int:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]int))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]int))), nil
 		case reflect.Int8:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]int8))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]int8))), nil
 		case reflect.Int16:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]int16))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]int16))), nil
 		case reflect.Int32:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]int32))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]int32))), nil
 		case reflect.Int64:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]int64))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]int64))), nil
 		case reflect.Float32:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]float32))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]float32))), nil
 		case reflect.Float64:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]float64))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]float64))), nil
 		case reflect.String:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]string))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]string))), nil
 		case reflect.Interface:
-			return types.NewDocumentValue(NewFromMap(x.(map[string]any))), nil
+			return types.NewObjectValue(NewFromMap(x.(map[string]any))), nil
 		}
 
 		// use reflect based map for other types
-		return types.NewDocumentValue(reflectMapDocument(v)), nil
+		return types.NewObjectValue(reflectMapObject(v)), nil
 	}
 
 	return nil, &ErrUnsupportedType{x, ""}
@@ -340,10 +340,10 @@ func (s sliceArray) MarshalJSON() ([]byte, error) {
 	return MarshalJSONArray(s)
 }
 
-// NewFromCSV takes a list of headers and columns and returns a document.
+// NewFromCSV takes a list of headers and columns and returns an object.
 // Each header will be assigned as the key and each corresponding column as a text value.
 // The length of headers and columns must be the same.
-func NewFromCSV(headers, columns []string) types.Document {
+func NewFromCSV(headers, columns []string) types.Object {
 	fb := NewFieldBuffer()
 	for i, h := range headers {
 		if i >= len(columns) {

@@ -1,13 +1,13 @@
-package docs
+package rows
 
 import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -33,7 +33,7 @@ func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environ
 		return fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 	}
 
-	v, err = document.CastAsInteger(v)
+	v, err = object.CastAsInteger(v)
 	if err != nil {
 		return err
 	}
@@ -51,5 +51,5 @@ func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environ
 }
 
 func (op *TakeOperator) String() string {
-	return fmt.Sprintf("docs.Take(%s)", op.E)
+	return fmt.Sprintf("rows.Take(%s)", op.E)
 }

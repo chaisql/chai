@@ -63,8 +63,8 @@ const (
 
 	// 111 to 119: 9 types are free
 
-	// Documents
-	DocumentValue byte = 120
+	// Objects
+	ObjectValue byte = 120
 
 	// 121 to 127: 7 types are free
 
@@ -72,7 +72,7 @@ const (
 	// symmetrical to the first 128 values.
 
 	// DESC_ prefix means that the value is encoded in reverse order.
-	DESC_DocumentValue byte = 255 - DocumentValue
+	DESC_ObjectValue   byte = 255 - ObjectValue
 	DESC_ArrayValue    byte = 255 - ArrayValue
 	DESC_BlobValue     byte = 255 - BlobValue
 	DESC_TextValue     byte = 255 - TextValue

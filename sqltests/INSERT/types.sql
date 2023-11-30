@@ -49,17 +49,17 @@ INSERT INTO test_e {a: 42};
 -- error:
 
 -- test: document
-CREATE TABLE test_e (a DOCUMENT);
+CREATE TABLE test_e (a OBJECT);
 INSERT INTO test_e {"a": "foo"};
 -- error:
 
 -- test: document / not null with type constraint
-CREATE TABLE test_e (a DOCUMENT NOT NULL);
+CREATE TABLE test_e (a OBJECT NOT NULL);
 INSERT INTO test_e {};
 -- error:
 
 -- test: document / not null with non-respected type constraint
-CREATE TABLE test_e (a DOCUMENT NOT NULL);
+CREATE TABLE test_e (a OBJECT NOT NULL);
 INSERT INTO test_e {a: false};
 -- error:
 

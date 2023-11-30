@@ -7,11 +7,12 @@ import (
 	"io"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -167,14 +168,14 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 }
 
 // CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
-// it allows types.Document to be passed as parameters.
+// it allows types.Object to be passed as parameters.
 // It implements the driver.NamedValueChecker interface.
 func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
-	if _, ok := nv.Value.(types.Document); ok {
+	if _, ok := nv.Value.(types.Object); ok {
 		return nil
 	}
 
-	if _, ok := nv.Value.(document.Scanner); ok {
+	if _, ok := nv.Value.(object.Scanner); ok {
 		return nil
 	}
 
@@ -231,12 +232,12 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	}
 
 	rs := newRecordStream(res)
-	rs.fields = res.Fields()
+	rs.columns = res.Columns()
 	return rs, nil
 }
 
-func driverNamedValueToParams(args []driver.NamedValue) []interface{} {
-	params := make([]interface{}, len(args))
+func driverNamedValueToParams(args []driver.NamedValue) []any {
+	params := make([]any, len(args))
 	for i, arg := range args {
 		var p environment.Param
 		p.Name = arg.Name
@@ -254,26 +255,26 @@ func (s stmt) Close() error {
 
 var errStop = errors.New("stop")
 
-type documentStream struct {
+type recordStream struct {
 	res      *genji.Result
 	cancelFn func()
-	c        chan doc
+	c        chan row
 	wg       sync.WaitGroup
-	fields   []string
+	columns  []string
 }
 
-type doc struct {
-	d   types.Document
+type row struct {
+	r   *genji.Row
 	err error
 }
 
-func newRecordStream(res *genji.Result) *documentStream {
+func newRecordStream(res *genji.Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ds := documentStream{
+	ds := recordStream{
 		res:      res,
 		cancelFn: cancel,
-		c:        make(chan doc),
+		c:        make(chan row),
 	}
 	ds.wg.Add(1)
 
@@ -282,7 +283,7 @@ func newRecordStream(res *genji.Result) *documentStream {
 	return &ds
 }
 
-func (rs *documentStream) iterate(ctx context.Context) {
+func (rs *recordStream) iterate(ctx context.Context) {
 	defer rs.wg.Done()
 	defer close(rs.c)
 
@@ -292,12 +293,12 @@ func (rs *documentStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(d types.Document) error {
+	err := rs.res.Iterate(func(r *genji.Row) error {
 		select {
 		case <-ctx.Done():
 			return errStop
-		case rs.c <- doc{
-			d: d,
+		case rs.c <- row{
+			r: r,
 		}:
 
 			select {
@@ -313,7 +314,7 @@ func (rs *documentStream) iterate(ctx context.Context) {
 		return
 	}
 	if err != nil {
-		rs.c <- doc{
+		rs.c <- row{
 			err: err,
 		}
 		return
@@ -321,71 +322,127 @@ func (rs *documentStream) iterate(ctx context.Context) {
 }
 
 // Columns returns the fields selected by the SELECT statement.
-func (rs *documentStream) Columns() []string {
-	return rs.res.Fields()
+func (rs *recordStream) Columns() []string {
+	return rs.res.Columns()
 }
 
 // Close closes the rows iterator.
-func (rs *documentStream) Close() error {
+func (rs *recordStream) Close() error {
 	rs.cancelFn()
 	rs.wg.Wait()
 	return rs.res.Close()
 }
 
-func (rs *documentStream) Next(dest []driver.Value) error {
-	rs.c <- doc{}
+func (rs *recordStream) Next(dest []driver.Value) error {
+	rs.c <- row{}
 
-	doc, ok := <-rs.c
+	row, ok := <-rs.c
 	if !ok {
 		return io.EOF
 	}
 
-	if doc.err != nil {
-		return doc.err
+	if row.err != nil {
+		return row.err
 	}
 
-	for i := range rs.fields {
-		if rs.fields[i] == "*" {
-			dest[i] = doc.d
+	for i := range rs.columns {
+		if rs.columns[i] == "*" {
+			dest[i] = row.r
 
 			continue
 		}
 
-		f, err := doc.d.GetByField(rs.fields[i])
+		tp, err := row.r.GetColumnType(rs.columns[i])
 		if err != nil {
 			return err
 		}
-
-		dest[i] = f.V()
+		switch tp {
+		case types.BooleanValue.String():
+			var b bool
+			err = row.r.ScanColumn(rs.columns[i], &b)
+			if err != nil {
+				return err
+			}
+			dest[i] = b
+		case types.IntegerValue.String():
+			var ii int64
+			err = row.r.ScanColumn(rs.columns[i], &ii)
+			if err != nil {
+				return err
+			}
+			dest[i] = ii
+		case types.DoubleValue.String():
+			var d float64
+			err = row.r.ScanColumn(rs.columns[i], &d)
+			if err != nil {
+				return err
+			}
+			dest[i] = d
+		case types.TimestampValue.String():
+			var t time.Time
+			err = row.r.ScanColumn(rs.columns[i], &t)
+			if err != nil {
+				return err
+			}
+			dest[i] = t
+		case types.TextValue.String():
+			var s string
+			err = row.r.ScanColumn(rs.columns[i], &s)
+			if err != nil {
+				return err
+			}
+			dest[i] = s
+		case types.BlobValue.String():
+			var b []byte
+			err = row.r.ScanColumn(rs.columns[i], &b)
+			if err != nil {
+				return err
+			}
+			dest[i] = b
+		case types.ArrayValue.String():
+			var a []any
+			err = row.r.ScanColumn(rs.columns[i], &a)
+			if err != nil {
+				return err
+			}
+			dest[i] = a
+		case types.ObjectValue.String():
+			m := make(map[string]any)
+			err = row.r.ScanColumn(rs.columns[i], &m)
+			if err != nil {
+				return err
+			}
+			dest[i] = m
+		default:
+			err = row.r.ScanColumn(rs.columns[i], dest[i])
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
 type valueScanner struct {
-	dest interface{}
+	dest any
 }
 
-func (v valueScanner) Scan(src interface{}) error {
-	switch t := src.(type) {
-	case types.Document:
-		return document.StructScan(t, v.dest)
-	case types.Array:
-		return document.SliceScan(t, v.dest)
-	case types.Value:
-		return document.ScanValue(t, src)
+func (v valueScanner) Scan(src any) error {
+	if r, ok := src.(*genji.Row); ok {
+		return r.StructScan(v.dest)
 	}
 
-	vv, err := document.NewValue(src)
+	vv, err := object.NewValue(src)
 	if err != nil {
 		return err
 	}
 
-	return document.ScanValue(vv, v.dest)
+	return object.ScanValue(vv, v.dest)
 }
 
 // Scanner turns a variable into a sql.Scanner.
 // x must be a pointer to a valid variable.
-func Scanner(x interface{}) sql.Scanner {
+func Scanner(x any) sql.Scanner {
 	return valueScanner{x}
 }

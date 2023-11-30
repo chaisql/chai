@@ -95,7 +95,7 @@ SELECT strings.RTRIM([1, 2]);
     "RTRIM([1, 2])": NULL
 }
 */
--- test: RTRIM DOCUMENT
+-- test: RTRIM OBJECT
 SELECT strings.RTRIM({a: 1});
 /* result:
 {

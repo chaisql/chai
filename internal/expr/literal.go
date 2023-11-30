@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stringutil"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -79,7 +79,7 @@ func (l LiteralExprList) String() string {
 func (l LiteralExprList) Eval(env *environment.Environment) (types.Value, error) {
 	var err error
 	if len(l) == 0 {
-		return types.NewArrayValue(document.NewValueBuffer()), nil
+		return types.NewArrayValue(object.NewValueBuffer()), nil
 	}
 	values := make([]types.Value, len(l))
 	for i, e := range l {
@@ -89,7 +89,7 @@ func (l LiteralExprList) Eval(env *environment.Environment) (types.Value, error)
 		}
 	}
 
-	return types.NewArrayValue(document.NewValueBuffer(values...)), nil
+	return types.NewArrayValue(object.NewValueBuffer(values...)), nil
 }
 
 // KVPair associates an identifier with an expression.
@@ -139,12 +139,12 @@ func (kvp *KVPairs) IsEqual(other Expr) bool {
 	return true
 }
 
-// Eval turns a list of KVPairs into a document.
+// Eval turns a list of KVPairs into an object.
 func (kvp *KVPairs) Eval(env *environment.Environment) (types.Value, error) {
-	var fb document.FieldBuffer
+	var fb object.FieldBuffer
 	if kvp.SelfReferenced {
-		if _, ok := env.GetDocument(); !ok {
-			env.SetDocument(&fb)
+		if _, ok := env.GetRow(); !ok {
+			env.SetRowFromObject(&fb)
 		}
 	}
 
@@ -157,7 +157,7 @@ func (kvp *KVPairs) Eval(env *environment.Environment) (types.Value, error) {
 		fb.Add(kv.K, v)
 	}
 
-	return types.NewDocumentValue(&fb), nil
+	return types.NewObjectValue(&fb), nil
 }
 
 // String implements the fmt.Stringer interface.

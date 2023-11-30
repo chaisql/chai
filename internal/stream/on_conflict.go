@@ -32,7 +32,14 @@ func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *
 				}
 
 				newEnv.SetOuter(out)
-				newEnv.SetKey(cerr.Key)
+				r, ok := out.GetRow()
+				if !ok {
+					return fmt.Errorf("missing row")
+				}
+
+				var br database.BasicRow
+				br.ResetWith(r.TableName(), cerr.Key, r.Object())
+				newEnv.SetRow(&br)
 
 				err = op.OnConflict.Iterate(&newEnv, func(out *environment.Environment) error { return nil })
 			}

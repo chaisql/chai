@@ -7,11 +7,11 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -294,7 +294,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		return expr.LiteralValue{Value: types.NewNullValue()}, nil
 	case scanner.LBRACKET:
 		p.Unscan()
-		e, err := p.ParseDocument()
+		e, err := p.ParseObject()
 		return e, err
 	case scanner.LSBRACKET:
 		p.Unscan()
@@ -436,8 +436,8 @@ func (p *Parser) parseType() (types.ValueType, error) {
 		return types.BlobValue, nil
 	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
 		return types.BooleanValue, nil
-	case scanner.TYPEDOCUMENT:
-		return types.DocumentValue, nil
+	case scanner.TYPEOBJECT:
+		return types.ObjectValue, nil
 	case scanner.TYPEREAL:
 		return types.DoubleValue, nil
 	case scanner.TYPEDOUBLE:
@@ -474,8 +474,8 @@ func (p *Parser) parseType() (types.ValueType, error) {
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 }
 
-// ParseDocument parses a document
-func (p *Parser) ParseDocument() (*expr.KVPairs, error) {
+// ParseObject parses an object
+func (p *Parser) ParseObject() (*expr.KVPairs, error) {
 	// Parse { token.
 	if err := p.parseTokens(scanner.LBRACKET); err != nil {
 		return nil, err
@@ -537,14 +537,14 @@ func (p *Parser) parseKV() (expr.KVPair, error) {
 }
 
 // parsePath parses a path to a specific value.
-func (p *Parser) parsePath() (document.Path, error) {
-	var path document.Path
+func (p *Parser) parsePath() (object.Path, error) {
+	var path object.Path
 	// parse first mandatory ident
 	chunk, err := p.parseIdent()
 	if err != nil {
 		return nil, err
 	}
-	path = append(path, document.PathFragment{
+	path = append(path, object.PathFragment{
 		FieldName: chunk,
 	})
 
@@ -561,7 +561,7 @@ LOOP:
 			if tok != scanner.IDENT {
 				return nil, newParseError(lit, []string{"identifier"}, pos)
 			}
-			path = append(path, document.PathFragment{
+			path = append(path, object.PathFragment{
 				FieldName: lit,
 			})
 		case scanner.LSBRACKET:
@@ -584,11 +584,11 @@ LOOP:
 				if err != nil {
 					return nil, newParseError(lit, []string{"integer"}, pos)
 				}
-				path = append(path, document.PathFragment{
+				path = append(path, object.PathFragment{
 					ArrayIndex: int(i),
 				})
 			case scanner.STRING:
-				path = append(path, document.PathFragment{
+				path = append(path, object.PathFragment{
 					FieldName: lit,
 				})
 			}

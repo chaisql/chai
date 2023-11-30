@@ -2,10 +2,10 @@ package statement
 
 import (
 	"github.com/cockroachdb/errors"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/types"
 )
 
 // StreamStmt is a StreamStmt using a Stream.
@@ -59,21 +59,21 @@ type StreamStmtIterator struct {
 	Context *Context
 }
 
-func (s *StreamStmtIterator) Iterate(fn func(d types.Document) error) error {
+func (s *StreamStmtIterator) Iterate(fn func(r database.Row) error) error {
 	var env environment.Environment
 	env.DB = s.Context.DB
 	env.Tx = s.Context.Tx
 	env.SetParams(s.Context.Params)
 
 	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {
-		// if there is no doc in this specific environment,
+		// if there is no row in this specific environment,
 		// the last operator is not outputting anything
 		// worth returning to the user.
-		if env.Doc == nil {
+		if env.Row == nil {
 			return nil
 		}
 
-		return fn(env.Doc)
+		return fn(env.Row)
 	})
 	if errors.Is(err, stream.ErrStreamClosed) {
 		err = nil

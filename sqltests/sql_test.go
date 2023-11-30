@@ -11,10 +11,8 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -120,9 +118,9 @@ func TestSQL(t *testing.T) {
 										}
 										defer res.Close()
 
-										return res.Iterate(func(d types.Document) error {
-											var fb document.FieldBuffer
-											return fb.Copy(d)
+										return res.Iterate(func(r *genji.Row) error {
+											_, err := r.MarshalJSON()
+											return err
 										})
 									}
 

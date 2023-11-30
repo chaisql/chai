@@ -114,7 +114,7 @@ type Function interface {
 	Params() []Expr
 }
 
-// An Aggregator is an expression that aggregates documents into one result.
+// An Aggregator is an expression that aggregates objects into one result.
 type Aggregator interface {
 	Expr
 

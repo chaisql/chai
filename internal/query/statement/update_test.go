@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,8 +33,8 @@ func TestUpdateStmt(t *testing.T) {
 		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
 		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},
 		{"SET / Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
-		{"SET / Nested documents on a / Wrong type", "UPDATE test SET a.b = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / Nested documents on a / missing document", "UPDATE test SET g.h.i = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
+		{"SET / Nested objects on a / Wrong type", "UPDATE test SET a.b = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
+		{"SET / Nested objects on a / missing row", "UPDATE test SET g.h.i = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
 
 		// UNSET tests.
 		{"UNSET / No cond", `UPDATE test UNSET b`, false, `[{"a":"foo1","c":"baz1"},{"a":"foo2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
@@ -80,7 +79,7 @@ func TestUpdateStmt(t *testing.T) {
 
 				var buf bytes.Buffer
 
-				err = testutil.IteratorToJSONArray(&buf, st)
+				err = st.MarshalJSONTo(&buf)
 				assert.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -133,7 +132,7 @@ func TestUpdateStmt(t *testing.T) {
 
 				var buf bytes.Buffer
 
-				err = testutil.IteratorToJSONArray(&buf, st)
+				err = st.MarshalJSONTo(&buf)
 				assert.NoError(t, err)
 				require.JSONEq(t, tt.expected, buf.String())
 			})

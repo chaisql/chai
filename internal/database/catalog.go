@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/tree"
 	"github.com/genjidb/genji/lib/atomic"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -589,7 +589,7 @@ func (r *IndexInfoRelation) Clone() Relation {
 	return &clone
 }
 
-func pathsToIndexName(paths []document.Path) string {
+func pathsToIndexName(paths []object.Path) string {
 	var s strings.Builder
 
 	for i, p := range paths {
@@ -801,8 +801,8 @@ func newCatalogStore() *CatalogStore {
 				{
 					Name:       CatalogTableName + "_pk",
 					PrimaryKey: true,
-					Paths: []document.Path{
-						document.NewPath("name"),
+					Paths: []object.Path{
+						object.NewPath("name"),
 					},
 				},
 			},
@@ -831,13 +831,13 @@ func newCatalogStore() *CatalogStore {
 				},
 				&FieldConstraint{
 					Position: 4,
-					Field:    "docid_sequence_name",
+					Field:    "rowid_sequence_name",
 					Type:     types.TextValue,
 				},
 				&FieldConstraint{
 					Position: 5,
 					Field:    "owner",
-					Type:     types.DocumentValue,
+					Type:     types.ObjectValue,
 					AnonymousType: &AnonymousType{
 						FieldConstraints: MustNewFieldConstraints(
 							&FieldConstraint{
@@ -875,7 +875,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
-	_, _, err := tb.Insert(relationToDocument(r))
+	_, _, err := tb.Insert(relationToObject(r))
 	if cerr, ok := err.(*ConstraintViolationError); ok && cerr.Constraint == "PRIMARY KEY" {
 		return errors.WithStack(errs.AlreadyExistsError{Name: r.Name()})
 	}
@@ -888,7 +888,7 @@ func (s *CatalogStore) Replace(tx *Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
 	key := tree.NewKey(types.NewTextValue(name))
-	_, err := tb.Replace(key, relationToDocument(r))
+	_, err := tb.Replace(key, relationToObject(r))
 	return err
 }
 
@@ -900,62 +900,62 @@ func (s *CatalogStore) Delete(tx *Transaction, name string) error {
 	return tb.Delete(key)
 }
 
-func relationToDocument(r Relation) types.Document {
+func relationToObject(r Relation) types.Object {
 	switch t := r.(type) {
 	case *TableInfoRelation:
-		return tableInfoToDocument(t.Info)
+		return tableInfoToObject(t.Info)
 	case *IndexInfoRelation:
-		return indexInfoToDocument(t.Info)
+		return indexInfoToObject(t.Info)
 	case *Sequence:
-		return sequenceInfoToDocument(t.Info)
+		return sequenceInfoToObject(t.Info)
 	}
 
-	panic(fmt.Sprintf("objectToDocument: unknown type %q", r.Type()))
+	panic(fmt.Sprintf("relationToObject: unknown type %q", r.Type()))
 }
 
-func tableInfoToDocument(ti *TableInfo) types.Document {
-	buf := document.NewFieldBuffer()
+func tableInfoToObject(ti *TableInfo) types.Object {
+	buf := object.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(ti.TableName))
 	buf.Add("type", types.NewTextValue(RelationTableType))
 	buf.Add("namespace", types.NewIntegerValue(int64(ti.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(ti.String()))
-	if ti.DocidSequenceName != "" {
-		buf.Add("docid_sequence_name", types.NewTextValue(ti.DocidSequenceName))
+	if ti.RowidSequenceName != "" {
+		buf.Add("rowid_sequence_name", types.NewTextValue(ti.RowidSequenceName))
 	}
 
 	return buf
 }
 
-func indexInfoToDocument(i *IndexInfo) types.Document {
-	buf := document.NewFieldBuffer()
+func indexInfoToObject(i *IndexInfo) types.Object {
+	buf := object.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(i.IndexName))
 	buf.Add("type", types.NewTextValue(RelationIndexType))
 	buf.Add("namespace", types.NewIntegerValue(int64(i.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {
-		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&i.Owner)))
+		buf.Add("owner", types.NewObjectValue(ownerToObject(&i.Owner)))
 	}
 
 	return buf
 }
 
-func sequenceInfoToDocument(seq *SequenceInfo) types.Document {
-	buf := document.NewFieldBuffer()
+func sequenceInfoToObject(seq *SequenceInfo) types.Object {
+	buf := object.NewFieldBuffer()
 	buf.Add("name", types.NewTextValue(seq.Name))
 	buf.Add("type", types.NewTextValue(RelationSequenceType))
 	buf.Add("sql", types.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
-		buf.Add("owner", types.NewDocumentValue(ownerToDocument(&seq.Owner)))
+		buf.Add("owner", types.NewObjectValue(ownerToObject(&seq.Owner)))
 	}
 
 	return buf
 }
 
-func ownerToDocument(owner *Owner) types.Document {
-	buf := document.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
+func ownerToObject(owner *Owner) types.Object {
+	buf := object.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
 	if owner.Paths != nil {
-		vb := document.NewValueBuffer()
+		vb := object.NewValueBuffer()
 		for _, p := range owner.Paths {
 			vb.Append(types.NewTextValue(p.String()))
 		}

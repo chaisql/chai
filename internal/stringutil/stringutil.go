@@ -6,7 +6,7 @@ import (
 )
 
 // NeedsQuotes reports whether s should be wrapped with quote
-// before being used as a document key.
+// before being used as an object key.
 // If it returns true, s must be used with strconv.Quote or
 // using the fmt '%q' formatter.
 func NeedsQuotes(s string) bool {

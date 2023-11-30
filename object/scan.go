@@ -1,6 +1,7 @@
-package document
+package object
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"strings"
@@ -10,13 +11,13 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// A Scanner can iterate over a document and scan all the fields.
+// A Scanner can iterate over an object and scan all the fields.
 type Scanner interface {
-	ScanDocument(types.Document) error
+	ScanObject(types.Object) error
 }
 
-// Scan each field of the document into the given variables.
-func Scan(d types.Document, targets ...interface{}) error {
+// Scan each field of the object into the given variables.
+func Scan(d types.Object, targets ...interface{}) error {
 	var i int
 
 	return d.Iterate(func(f string, v types.Value) error {
@@ -38,14 +39,14 @@ func Scan(d types.Document, targets ...interface{}) error {
 
 // StructScan scans d into t. t is expected to be a pointer to a struct.
 //
-// By default, each struct field name is lowercased and the document's GetByField method
+// By default, each struct field name is lowercased and the object's GetByField method
 // is called with that name. If there is a match, the value is converted to the struct
 // field type when possible, otherwise an error is returned.
 // The decoding of each struct field can be customized by the format string stored
 // under the "genji" key stored in the struct field's tag.
 // The content of the format string is used instead of the struct field name and passed
 // to the GetByField method.
-func StructScan(d types.Document, t interface{}) error {
+func StructScan(d types.Object, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() || ref.Kind() != reflect.Ptr {
@@ -63,9 +64,9 @@ func StructScan(d types.Document, t interface{}) error {
 	return structScan(d, ref)
 }
 
-func structScan(d types.Document, ref reflect.Value) error {
+func structScan(d types.Object, ref reflect.Value) error {
 	if ref.Type().Implements(reflect.TypeOf((*Scanner)(nil)).Elem()) {
-		return ref.Interface().(Scanner).ScanDocument(d)
+		return ref.Interface().(Scanner).ScanObject(d)
 	}
 
 	sref := reflect.Indirect(ref)
@@ -106,7 +107,7 @@ func structScan(d types.Document, ref reflect.Value) error {
 	return nil
 }
 
-// SliceScan scans a document array into a slice or fixed size array. t must be a pointer
+// SliceScan scans an array into a slice or fixed size array. t must be a pointer
 // to a valid slice or array.
 //
 // It t is a slice pointer and its capacity is too low, a new slice will be allocated.
@@ -182,8 +183,8 @@ func sliceScan(a types.Array, ref reflect.Value) error {
 	return nil
 }
 
-// MapScan decodes the document into a map.
-func MapScan(d types.Document, t interface{}) error {
+// MapScan decodes the object into a map.
+func MapScan(d types.Object, t any) error {
 	ref := reflect.ValueOf(t)
 	if !ref.IsValid() {
 		return &ErrUnsupportedType{ref, "t must be a valid reference"}
@@ -200,7 +201,7 @@ func MapScan(d types.Document, t interface{}) error {
 	return mapScan(d, ref)
 }
 
-func mapScan(d types.Document, ref reflect.Value) error {
+func mapScan(d types.Object, ref reflect.Value) error {
 	if ref.Type().Key().Kind() != reflect.String {
 		return &ErrUnsupportedType{ref, "map key must be a string"}
 	}
@@ -223,7 +224,7 @@ func mapScan(d types.Document, ref reflect.Value) error {
 }
 
 // ScanValue scans v into t.
-func ScanValue(v types.Value, t interface{}) error {
+func ScanValue(v types.Value, t any) error {
 	return scanValue(v, reflect.ValueOf(t))
 }
 
@@ -322,11 +323,11 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return scanValue(v, ref.Elem())
 		}
 		switch v.Type() {
-		case types.DocumentValue:
-			m := make(map[string]interface{})
+		case types.ObjectValue:
+			m := make(map[string]any)
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
-			return mapScan(types.As[types.Document](v), vm)
+			return mapScan(types.As[types.Object](v), vm)
 		case types.ArrayValue:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
@@ -335,6 +336,20 @@ func scanValue(v types.Value, ref reflect.Value) error {
 				return err
 			}
 			ref.Set(vs.Elem())
+			return nil
+		case types.TextValue:
+			// copy the string to avoid
+			// keeping a reference to the underlying buffer
+			// which could be reused
+			cp := strings.Clone(types.As[string](v))
+			ref.Set(reflect.ValueOf(cp))
+			return nil
+		case types.BlobValue:
+			// copy the byte slice to avoid
+			// keeping a reference to the underlying buffer
+			// which could be reused
+			b := bytes.Clone(types.As[[]byte](v))
+			ref.Set(reflect.ValueOf(b))
 			return nil
 		}
 
@@ -362,12 +377,12 @@ func scanValue(v types.Value, ref reflect.Value) error {
 
 	switch ref.Kind() {
 	case reflect.Struct:
-		v, err := CastAsDocument(v)
+		v, err := CastAsObject(v)
 		if err != nil {
 			return err
 		}
 
-		return structScan(types.As[types.Document](v), ref)
+		return structScan(types.As[types.Object](v), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
@@ -401,19 +416,19 @@ func scanValue(v types.Value, ref reflect.Value) error {
 
 		return sliceScan(types.As[types.Array](v), ref.Addr())
 	case reflect.Map:
-		v, err := CastAsDocument(v)
+		v, err := CastAsObject(v)
 		if err != nil {
 			return err
 		}
 
-		return mapScan(types.As[types.Document](v), ref)
+		return mapScan(types.As[types.Object](v), ref)
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}
 }
 
-// ScanDocument scans a document into dest which must be either a struct pointer, a map or a map pointer.
-func ScanDocument(d types.Document, t interface{}) error {
+// ScanRow scans a row into dest which must be either a struct pointer, a map or a map pointer.
+func ScanRow(d types.Object, t interface{}) error {
 	ref := reflect.ValueOf(t)
 
 	if !ref.IsValid() {
@@ -433,7 +448,7 @@ func ScanDocument(d types.Document, t interface{}) error {
 	}
 }
 
-// ScanIterator scans a document iterator into a slice or fixed size array. t must be a pointer
+// ScanIterator scans a row iterator into a slice or fixed size array. t must be a pointer
 // to a valid slice or array.
 //
 // It t is a slice pointer and its capacity is too low, a new slice will be allocated.
@@ -452,8 +467,8 @@ type iteratorArray struct {
 
 func (it *iteratorArray) Iterate(fn func(i int, value types.Value) error) error {
 	count := 0
-	return it.it.Iterate(func(d types.Document) error {
-		err := fn(count, types.NewDocumentValue(d))
+	return it.it.Iterate(func(d types.Object) error {
+		err := fn(count, types.NewObjectValue(d))
 		if err != nil {
 			return err
 		}
@@ -471,7 +486,7 @@ func (it *iteratorArray) MarshalJSON() ([]byte, error) {
 }
 
 // ScanField scans a single field into dest.
-func ScanField(d types.Document, field string, dest interface{}) error {
+func ScanField(d types.Object, field string, dest interface{}) error {
 	v, err := d.GetByField(field)
 	if err != nil {
 		return err
@@ -481,8 +496,8 @@ func ScanField(d types.Document, field string, dest interface{}) error {
 }
 
 // ScanPath scans a single path into dest.
-func ScanPath(d types.Document, path Path, dest interface{}) error {
-	v, err := path.GetValueFromDocument(d)
+func ScanPath(d types.Object, path Path, dest interface{}) error {
+	v, err := path.GetValueFromObject(d)
 	if err != nil {
 		return err
 	}

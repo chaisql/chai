@@ -1,31 +1,31 @@
-package document_test
+package object_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestArrayContains(t *testing.T) {
-	arr := document.NewValueBuffer(
+	arr := object.NewValueBuffer(
 		types.NewIntegerValue(1),
 		types.NewTextValue("foo"),
 		types.NewBlobValue([]byte{1, 2, 3}),
 	)
 
-	ok, err := document.ArrayContains(arr, types.NewDoubleValue(1))
+	ok, err := object.ArrayContains(arr, types.NewDoubleValue(1))
 	assert.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = document.ArrayContains(arr, types.NewTextValue("foo"))
+	ok, err = object.ArrayContains(arr, types.NewTextValue("foo"))
 	assert.NoError(t, err)
 	require.True(t, ok)
 
-	ok, err = document.ArrayContains(arr, types.NewTextValue("bar"))
+	ok, err = object.ArrayContains(arr, types.NewTextValue("bar"))
 	assert.NoError(t, err)
 	require.False(t, ok)
 }
@@ -42,7 +42,7 @@ func TestValueBufferCopy(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var from, to document.ValueBuffer
+			var from, to object.ValueBuffer
 			assert.NoError(t, from.UnmarshalJSON([]byte(test.want)))
 			err := to.Copy(&from)
 			assert.NoError(t, err)
@@ -54,11 +54,11 @@ func TestValueBufferCopy(t *testing.T) {
 }
 
 func TestValueBufferApply(t *testing.T) {
-	var buf document.ValueBuffer
+	var buf object.ValueBuffer
 	err := buf.UnmarshalJSON([]byte(`[1, [1, 3], {"4": 5}]`))
 	assert.NoError(t, err)
 
-	err = buf.Apply(func(p document.Path, v types.Value) (types.Value, error) {
+	err = buf.Apply(func(p object.Path, v types.Value) (types.Value, error) {
 		return types.NewIntegerValue(6), nil
 	})
 	assert.NoError(t, err)

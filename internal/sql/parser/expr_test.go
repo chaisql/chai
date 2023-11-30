@@ -4,12 +4,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -41,9 +41,9 @@ func TestParserExpr(t *testing.T) {
 		{"blob as hex string", `'\xff'`, testutil.BlobValue([]byte{255}), false},
 		{"invalid blob hex string", `'\xzz'`, nil, true},
 
-		// documents
-		{"empty document", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
-		{"document values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
+		// objects
+		{"empty object", `{}`, &expr.KVPairs{SelfReferenced: true}, false},
+		{"object values", `{a: 1, b: 1.0, c: true, d: 'string', e: "string", f: {foo: 'bar'}, g: h.i.j, k: [1, 2, 3]}`,
 			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
 				{K: "a", V: testutil.IntegerValue(1)},
 				{K: "b", V: testutil.DoubleValue(1)},
@@ -57,24 +57,24 @@ func TestParserExpr(t *testing.T) {
 				{K: "k", V: expr.LiteralExprList{testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.IntegerValue(3)}},
 			}},
 			false},
-		{"document keys", `{a: 1, "foo bar __&&))": 1, 'ola ': 1}`,
+		{"object keys", `{a: 1, "foo bar __&&))": 1, 'ola ': 1}`,
 			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
 				{K: "a", V: testutil.IntegerValue(1)},
 				{K: "foo bar __&&))", V: testutil.IntegerValue(1)},
 				{K: "ola ", V: testutil.IntegerValue(1)},
 			}},
 			false},
-		{"document keys: same key", `{a: 1, a: 2, "a": 3}`,
+		{"object keys: same key", `{a: 1, a: 2, "a": 3}`,
 			&expr.KVPairs{SelfReferenced: true, Pairs: []expr.KVPair{
 				{K: "a", V: testutil.IntegerValue(1)},
 				{K: "a", V: testutil.IntegerValue(2)},
 				{K: "a", V: testutil.IntegerValue(3)},
 			}}, false},
-		{"bad document keys: param", `{?: 1}`, nil, true},
-		{"bad document keys: dot", `{a.b: 1}`, nil, true},
-		{"bad document keys: space", `{a b: 1}`, nil, true},
-		{"bad document: missing right bracket", `{a: 1`, nil, true},
-		{"bad document: missing colon", `{a: 1, 'b'}`, nil, true},
+		{"bad object keys: param", `{?: 1}`, nil, true},
+		{"bad object keys: dot", `{a.b: 1}`, nil, true},
+		{"bad object keys: space", `{a b: 1}`, nil, true},
+		{"bad object: missing right bracket", `{a: 1`, nil, true},
+		{"bad object: missing colon", `{a: 1, 'b'}`, nil, true},
 
 		// parentheses
 		{"parentheses: empty", "()", nil, true},
@@ -194,36 +194,36 @@ func TestParsePath(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
-		expected document.Path
+		expected object.Path
 		fails    bool
 	}{
-		{"one fragment", `a`, document.Path{
-			document.PathFragment{FieldName: "a"},
+		{"one fragment", `a`, object.Path{
+			object.PathFragment{FieldName: "a"},
 		}, false},
-		{"one fragment with quotes", "`    \"a\"`", document.Path{
-			document.PathFragment{FieldName: "    \"a\""},
+		{"one fragment with quotes", "`    \"a\"`", object.Path{
+			object.PathFragment{FieldName: "    \"a\""},
 		}, false},
-		{"multiple fragments", `a.b[100].c[1][2]`, document.Path{
-			document.PathFragment{FieldName: "a"},
-			document.PathFragment{FieldName: "b"},
-			document.PathFragment{ArrayIndex: 100},
-			document.PathFragment{FieldName: "c"},
-			document.PathFragment{ArrayIndex: 1},
-			document.PathFragment{ArrayIndex: 2},
+		{"multiple fragments", `a.b[100].c[1][2]`, object.Path{
+			object.PathFragment{FieldName: "a"},
+			object.PathFragment{FieldName: "b"},
+			object.PathFragment{ArrayIndex: 100},
+			object.PathFragment{FieldName: "c"},
+			object.PathFragment{ArrayIndex: 1},
+			object.PathFragment{ArrayIndex: 2},
 		}, false},
-		{"multiple fragments with brackets", `a["b"][100].c[1][2]`, document.Path{
-			document.PathFragment{FieldName: "a"},
-			document.PathFragment{FieldName: "b"},
-			document.PathFragment{ArrayIndex: 100},
-			document.PathFragment{FieldName: "c"},
-			document.PathFragment{ArrayIndex: 1},
-			document.PathFragment{ArrayIndex: 2},
+		{"multiple fragments with brackets", `a["b"][100].c[1][2]`, object.Path{
+			object.PathFragment{FieldName: "a"},
+			object.PathFragment{FieldName: "b"},
+			object.PathFragment{ArrayIndex: 100},
+			object.PathFragment{FieldName: "c"},
+			object.PathFragment{ArrayIndex: 1},
+			object.PathFragment{ArrayIndex: 2},
 		}, false},
-		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", document.Path{
-			document.PathFragment{FieldName: "some ident"},
-			document.PathFragment{FieldName: " with"},
-			document.PathFragment{ArrayIndex: 5},
-			document.PathFragment{FieldName: "  \"quotes"},
+		{"with quotes", "`some ident`.` with`[5].`  \"quotes`", object.Path{
+			object.PathFragment{FieldName: "some ident"},
+			object.PathFragment{FieldName: " with"},
+			object.PathFragment{ArrayIndex: 5},
+			object.PathFragment{FieldName: "  \"quotes"},
 		}, false},
 
 		{"negative index", `a.b[-100].c`, nil, true},

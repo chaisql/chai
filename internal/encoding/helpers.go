@@ -62,8 +62,8 @@ func Skip(b []byte) int {
 		return n + int(l) + 1
 	case ArrayValue, DESC_ArrayValue:
 		return 1 + SkipArray(b[1:])
-	case DocumentValue, DESC_DocumentValue:
-		return 1 + SkipDocument(b[1:])
+	case ObjectValue, DESC_ObjectValue:
+		return 1 + SkipObject(b[1:])
 	}
 
 	return 0
@@ -79,7 +79,7 @@ func SkipArray(b []byte) int {
 	return n
 }
 
-func SkipDocument(b []byte) int {
+func SkipObject(b []byte) int {
 	l, n := binary.Uvarint(b)
 
 	for i := 0; i < int(l); i++ {
@@ -224,7 +224,7 @@ func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
 		}
 
 		return 0, n
-	case DocumentValue:
+	case ObjectValue:
 		la, _ := binary.Uvarint(a[1:])
 		lb, n := binary.Uvarint(b[1:])
 		minl := la
@@ -353,13 +353,13 @@ func abbreviatedValue(key []byte) uint64 {
 			abbv |= uint64(key[i]) << (32 - uint64(i)*8)
 		}
 		return abbv
-	case ArrayValue, DocumentValue:
+	case ArrayValue, ObjectValue:
 		key = key[1:]
 		l, n := binary.Uvarint(key)
 		key = key[n:]
 		if l > 0 {
 			switch key[0] {
-			case ArrayValue, DocumentValue:
+			case ArrayValue, ObjectValue:
 				return uint64(key[0]) << 32
 			default:
 				abbv := uint64(key[0]) << 32

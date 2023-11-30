@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"math"
@@ -26,7 +26,7 @@ func TestCastAs(t *testing.T) {
 	arrayV := types.NewArrayValue(NewValueBuffer().
 		Append(types.NewTextValue("bar")).
 		Append(integerV))
-	docV := types.NewDocumentValue(NewFieldBuffer().
+	docV := types.NewObjectValue(NewFieldBuffer().
 		Add("a", integerV).
 		Add("b", textV))
 
@@ -145,8 +145,8 @@ func TestCastAs(t *testing.T) {
 		})
 	})
 
-	t.Run("document", func(t *testing.T) {
-		check(t, types.DocumentValue, []test{
+	t.Run("object", func(t *testing.T) {
+		check(t, types.ObjectValue, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},

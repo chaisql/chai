@@ -3,13 +3,13 @@ package index_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -60,7 +60,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 	tests := []struct {
 		name                  string
 		indexOn               string
-		docsInTable, expected testutil.Docs
+		docsInTable, expected testutil.Objs
 		ranges                stream.Ranges
 		reverse               bool
 		fails                 bool
@@ -68,338 +68,338 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{name: "empty", indexOn: "a"},
 		{
 			"no range", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			nil, false, false,
 		},
 		{
 			"no range", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
 			nil, false, false,
 		},
 		{
 			"max:2", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			false, false,
 		},
 		{
 			"max:1.2", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[1.2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[1.2]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			false, false,
 		},
 		{
 			"max:[2, 2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[2, 2]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Max: testutil.ExprList(t, `[2, 2]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			false, false,
 		},
 		{
 			"max:[2, 2.2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[2, 2.2]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Max: testutil.ExprList(t, `[2, 2.2]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			false, false,
 		},
 		{
 			"max:1", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[1]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			false, false,
 		},
 		{
 			"max:[1, 2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[1, 2]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Max: testutil.ExprList(t, `[1, 2]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			false, false,
 		},
 		{
 			"max:[1.1, 2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[1.1, 2]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Max: testutil.ExprList(t, `[1.1, 2]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			false, false,
 		},
 		{
 			"min", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			false, false,
 		},
 		{
 			"min:[1],exclusive", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, Exclusive: true},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}, Exclusive: true},
 			},
 			false, false,
 		},
 		{
 			"min:[1],exclusive", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseDocumentPaths(t, "a", "b"), Exclusive: true},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseObjectPaths(t, "a", "b"), Exclusive: true},
 			},
 			false, false,
 		},
 		{
 			"min:[2, 1]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[2, 1]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"min:[2, 1.5]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[2, 1.5]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"min/max", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
-					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
+					Paths: []object.Path{testutil.ParseObjectPath(t, "a")},
 				},
 			},
 			false, false,
 		},
 		{
 			"min:[1, 1], max:[2,2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"min:[1, 1], max:[2,2] bis", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`), // [1, 3] < [2, 2]
+			testutil.MakeObjects(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`), // [1, 3] < [2, 2]
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"reverse/no range", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			nil, true, false,
 		},
 		{
 			"reverse/max", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Max: testutil.ExprList(t, `[2]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			true, false,
 		},
 		{
 			"reverse/max", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`),
 			stream.Ranges{
 				stream.Range{
 					Max:   testutil.ExprList(t, `[2, 2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			true, false,
 		},
 		{
 			"reverse/min", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			true, false,
 		},
 		{
 			"reverse/min neg", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": -2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": -2}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: []object.Path{testutil.ParseObjectPath(t, "a")}},
 			},
 			true, false,
 		},
 		{
 			"reverse/min", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			true, false,
 		},
 		{
 			"reverse/min/max", "a",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
-					Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
+					Paths: []object.Path{testutil.ParseObjectPath(t, "a")},
 				},
 			},
 			true, false,
 		},
 		{
 			"reverse/min/max", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 2}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1, 1]`),
 					Max:   testutil.ExprList(t, `[2, 2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			true, false,
 		},
 		{
 			"max:[1]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 9223372036854775807}`),
 			stream.Ranges{
 				stream.Range{
 					Max:   testutil.ExprList(t, `[1]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"reverse max:[1]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 9223372036854775807}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
 				stream.Range{
 					Max:       testutil.ExprList(t, `[1]`),
 					Exclusive: false,
 					Exact:     false,
-					Paths:     testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths:     testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			true, false,
 		},
 		{
 			"max:[1, 2]", "a, b, c",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.Ranges{
 				stream.Range{
-					Max: testutil.ExprList(t, `[1, 2]`), Paths: testutil.ParseDocumentPaths(t, "a", "b", "c"),
+					Max: testutil.ExprList(t, `[1, 2]`), Paths: testutil.ParseObjectPaths(t, "a", "b", "c"),
 				},
 			},
 			false, false,
 		},
 		{
 			"min:[1]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": 1, "b": 1}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			false, false,
 		},
 		{
 			"min:[1]", "a, b, c",
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseDocumentPaths(t, "a", "b", "c")},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseObjectPaths(t, "a", "b", "c")},
 			},
 			false, false,
 		},
 		{
 			"reverse min:[1]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": -2}`),
 			stream.Ranges{
-				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseDocumentPaths(t, "a", "b")},
+				stream.Range{Min: testutil.ExprList(t, `[1]`), Paths: testutil.ParseObjectPaths(t, "a", "b")},
 			},
 			true, false,
 		},
 		{
 			"min:[1], max[2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": 2, "b": 42}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			false, false,
 		},
 		{
 			"reverse min:[1], max[2]", "a, b",
-			testutil.MakeDocuments(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
-			testutil.MakeDocuments(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
+			testutil.MakeObjects(t, `{"a": 2, "b": 42}`, `{"a": 1, "b": -2}`),
 			stream.Ranges{
 				stream.Range{
 					Min:   testutil.ExprList(t, `[1]`),
 					Max:   testutil.ExprList(t, `[2]`),
-					Paths: testutil.ParseDocumentPaths(t, "a", "b"),
+					Paths: testutil.ParseObjectPaths(t, "a", "b"),
 				},
 			},
 			true, false,
@@ -424,13 +424,13 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int
-			var got testutil.Docs
+			var got testutil.Objs
 			err := op.Iterate(&env, func(env *environment.Environment) error {
-				d, ok := env.GetDocument()
+				r, ok := env.GetRow()
 				require.True(t, ok)
-				var fb document.FieldBuffer
+				var fb object.FieldBuffer
 
-				err := fb.Copy(d)
+				err := fb.Copy(r.Object())
 				assert.NoError(t, err)
 
 				got = append(got, &fb)

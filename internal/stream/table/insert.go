@@ -7,16 +7,15 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/types"
 )
 
-// A InsertOperator inserts incoming documents to the table.
+// A InsertOperator inserts incoming rows to the table.
 type InsertOperator struct {
 	stream.BaseOperator
 	Name string
 }
 
-// Insert inserts incoming documents to the table.
+// Insert inserts incoming rows to the table.
 func Insert(tableName string) *InsertOperator {
 	return &InsertOperator{Name: tableName}
 }
@@ -24,15 +23,14 @@ func Insert(tableName string) *InsertOperator {
 // Iterate implements the Operator interface.
 func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
-	newEnv.Set(environment.TableKey, types.NewTextValue(op.Name))
 
 	var table *database.Table
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		newEnv.SetOuter(out)
 
-		d, ok := out.GetDocument()
+		r, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document")
+			return errors.New("missing row")
 		}
 
 		var err error
@@ -43,13 +41,12 @@ func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		key, d, err := table.Insert(d)
+		_, r, err = table.Insert(r.Object())
 		if err != nil {
 			return err
 		}
 
-		newEnv.SetKey(key)
-		newEnv.SetDocument(d)
+		newEnv.SetRow(r)
 
 		return f(&newEnv)
 	})

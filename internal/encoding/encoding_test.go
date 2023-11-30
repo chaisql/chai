@@ -5,9 +5,9 @@ import (
 	"math"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -71,41 +71,41 @@ func TestOrdering(t *testing.T) {
 }
 
 func TestEncodeDecode(t *testing.T) {
-	userMapDoc := document.NewFromMap(map[string]any{
+	userMapDoc := object.NewFromMap(map[string]any{
 		"age":  10,
 		"name": "john",
 	})
 
-	addressMapDoc := document.NewFromMap(map[string]any{
+	addressMapDoc := object.NewFromMap(map[string]any{
 		"city":    "Ajaccio",
 		"country": "France",
 	})
 
-	complexArray := document.NewValueBuffer().
+	complexArray := object.NewValueBuffer().
 		Append(types.NewBoolValue(true)).
 		Append(types.NewIntegerValue(-40)).
 		Append(types.NewDoubleValue(-3.14)).
 		Append(types.NewDoubleValue(3)).
 		Append(types.NewBlobValue([]byte("blob"))).
 		Append(types.NewTextValue("hello")).
-		Append(types.NewDocumentValue(addressMapDoc)).
-		Append(types.NewArrayValue(document.NewValueBuffer().Append(types.NewIntegerValue(11))))
+		Append(types.NewObjectValue(addressMapDoc)).
+		Append(types.NewArrayValue(object.NewValueBuffer().Append(types.NewIntegerValue(11))))
 
 	tests := []struct {
 		name     string
-		d        types.Document
+		d        types.Object
 		expected string
 		fails    bool
 	}{
 		{
 			"empty doc",
-			document.NewFieldBuffer(),
+			object.NewFieldBuffer(),
 			`{}`,
 			false,
 		},
 		{
-			"document.FieldBuffer",
-			document.NewFieldBuffer().
+			"object.FieldBuffer",
+			object.NewFieldBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("name", types.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
@@ -119,18 +119,18 @@ func TestEncodeDecode(t *testing.T) {
 		},
 		{
 			"duplicate field name",
-			document.NewFieldBuffer().
+			object.NewFieldBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("age", types.NewIntegerValue(10)),
 			``,
 			true,
 		},
 		{
-			"Nested types.Document",
-			document.NewFieldBuffer().
+			"Nested types.Object",
+			object.NewFieldBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("name", types.NewTextValue("john")).
-				Add("address", types.NewDocumentValue(addressMapDoc)).
+				Add("address", types.NewObjectValue(addressMapDoc)).
 				Add("array", types.NewArrayValue(complexArray)),
 			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, 3, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
 			false,
@@ -139,7 +139,7 @@ func TestEncodeDecode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			buf, err := encoding.EncodeValue(nil, types.NewDocumentValue(test.d), false)
+			buf, err := encoding.EncodeValue(nil, types.NewObjectValue(test.d), false)
 			if test.fails {
 				require.Error(t, err)
 				return

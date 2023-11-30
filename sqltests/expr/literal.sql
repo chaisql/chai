@@ -87,7 +87,7 @@ false
 > typeof([1, true, ['hello'], {a: [1]}])
 'array'
 
--- test: literals/documents
+-- test: literals/objects
 
 > {a: 1}
 {a: 1}
@@ -102,4 +102,4 @@ false
 {a: 1, b: {c: [1, true, ['hello'], {a: [1]}]}}
 
 > typeof({a: 1, b: {c: [1, true, ['hello'], {a: [1]}]}})
-'document'
+'object'

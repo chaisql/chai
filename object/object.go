@@ -1,5 +1,5 @@
-// Package document defines types to manipulate and compare documents and values.
-package document
+// Package object defines types to manipulate and compare objects and values.
+package object
 
 import (
 	"fmt"
@@ -24,16 +24,16 @@ func (e *ErrUnsupportedType) Error() string {
 	return fmt.Sprintf("unsupported type %T. %s", e.Value, e.Msg)
 }
 
-// An Iterator can iterate over documents.
+// An Iterator can iterate over object keys.
 type Iterator interface {
-	// Iterate goes through all the documents and calls the given function by passing each one of them.
+	// Iterate goes through all the objects and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(d types.Document) error) error
+	Iterate(fn func(d types.Object) error) error
 }
 
-// MarshalJSON encodes a document to json.
-func MarshalJSON(d types.Document) ([]byte, error) {
-	return types.NewDocumentValue(d).MarshalJSON()
+// MarshalJSON encodes an object to json.
+func MarshalJSON(d types.Object) ([]byte, error) {
+	return types.NewObjectValue(d).MarshalJSON()
 }
 
 // MarshalJSONArray encodes an array to json.
@@ -41,8 +41,8 @@ func MarshalJSONArray(a types.Array) ([]byte, error) {
 	return types.NewArrayValue(a).MarshalJSON()
 }
 
-// Length returns the length of a document.
-func Length(d types.Document) (int, error) {
+// Length returns the length of an object.
+func Length(d types.Object) (int, error) {
 	if fb, ok := d.(*FieldBuffer); ok {
 		return fb.Len(), nil
 	}
@@ -55,7 +55,7 @@ func Length(d types.Document) (int, error) {
 	return len, err
 }
 
-// FieldBuffer stores a group of fields in memory. It implements the Document interface.
+// FieldBuffer stores a group of fields in memory. It implements the object interface.
 type FieldBuffer struct {
 	fields []fieldValue
 }
@@ -99,8 +99,8 @@ func (fb *FieldBuffer) Add(field string, v types.Value) *FieldBuffer {
 	return fb
 }
 
-// ScanDocument copies all the fields of d to the buffer.
-func (fb *FieldBuffer) ScanDocument(d types.Document) error {
+// ScanObject copies all the fields of d to the buffer.
+func (fb *FieldBuffer) ScanObject(d types.Object) error {
 	return d.Iterate(func(f string, v types.Value) error {
 		fb.Add(f, v)
 		return nil
@@ -136,19 +136,19 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue types.Value) error {
 // setValueAtPath deep replaces or creates a field at the given path
 func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, error) {
 	switch v.Type() {
-	case types.DocumentValue:
+	case types.ObjectValue:
 		var buf FieldBuffer
-		err := buf.ScanDocument(types.As[types.Document](v))
+		err := buf.ScanObject(types.As[types.Object](v))
 		if err != nil {
 			return v, err
 		}
 
 		if len(p) == 1 {
 			err = buf.setFieldValue(p[0].FieldName, newValue)
-			return types.NewDocumentValue(&buf), err
+			return types.NewObjectValue(&buf), err
 		}
 
-		// the field is a document but the path expects an array,
+		// the field is an object but the path expects an array,
 		// return an error
 		if p[0].FieldName == "" {
 			return nil, types.ErrFieldNotFound
@@ -165,7 +165,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		}
 
 		err = buf.setFieldValue(p[0].FieldName, va)
-		return types.NewDocumentValue(&buf), err
+		return types.NewObjectValue(&buf), err
 	case types.ArrayValue:
 		var vb ValueBuffer
 		err := vb.ScanArray(types.As[types.Array](v))
@@ -224,7 +224,7 @@ func (fb *FieldBuffer) Set(path Path, v types.Value) error {
 	return nil
 }
 
-// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
+// Iterate goes through all the fields of the object and calls the given function by passing each one of them.
 // If the given function returns an error, the iteration stops.
 func (fb FieldBuffer) Iterate(fn func(field string, value types.Value) error) error {
 	for _, fv := range fb.fields {
@@ -252,15 +252,15 @@ func (fb *FieldBuffer) Delete(path Path) error {
 	lastFragment := path[len(path)-1]
 
 	// get parent doc or array
-	v, err := parentPath.GetValueFromDocument(fb)
+	v, err := parentPath.GetValueFromObject(fb)
 	if err != nil {
 		return err
 	}
 	switch v.Type() {
-	case types.DocumentValue:
+	case types.ObjectValue:
 		subBuf, ok := types.Is[*FieldBuffer](v)
 		if !ok {
-			return errors.New("Delete doesn't support non buffered document")
+			return errors.New("delete doesn't support non buffered object")
 		}
 
 		for i := range subBuf.fields {
@@ -274,7 +274,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 	case types.ArrayValue:
 		subBuf, ok := types.Is[*ValueBuffer](v)
 		if !ok {
-			return errors.New("Delete doesn't support non buffered array")
+			return errors.New("delete doesn't support non buffered array")
 		}
 
 		idx := path[len(path)-1].ArrayIndex
@@ -301,9 +301,9 @@ func (fb *FieldBuffer) Replace(field string, v types.Value) error {
 	return types.ErrFieldNotFound
 }
 
-// Copy deep copies every value of the document to the buffer.
-// If a value is a document or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
-func (fb *FieldBuffer) Copy(d types.Document) error {
+// Copy deep copies every value of the object to the buffer.
+// If a value is an object or an array, it will be stored as a FieldBuffer or ValueBuffer respectively.
+func (fb *FieldBuffer) Copy(d types.Object) error {
 	return d.Iterate(func(field string, value types.Value) error {
 		v, err := CloneValue(value)
 		if err != nil {
@@ -337,13 +337,13 @@ func CloneValue(v types.Value) (types.Value, error) {
 			return nil, err
 		}
 		return types.NewArrayValue(vb), nil
-	case types.DocumentValue:
+	case types.ObjectValue:
 		fb := NewFieldBuffer()
-		err := fb.Copy(types.As[types.Document](v))
+		err := fb.Copy(types.As[types.Object](v))
 		if err != nil {
 			return nil, err
 		}
-		return types.NewDocumentValue(fb), nil
+		return types.NewObjectValue(fb), nil
 	}
 
 	panic(fmt.Sprintf("Unsupported value type: %s", v.Type()))
@@ -364,11 +364,11 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 		fb.fields[i].Value = f.Value
 
 		switch f.Value.Type() {
-		case types.DocumentValue:
+		case types.ObjectValue:
 			buf, ok := types.Is[*FieldBuffer](f.Value)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(types.As[types.Document](f.Value))
+				err := buf.Copy(types.As[types.Object](f.Value))
 				if err != nil {
 					return err
 				}
@@ -380,7 +380,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			if err != nil {
 				return err
 			}
-			fb.fields[i].Value = types.NewDocumentValue(buf)
+			fb.fields[i].Value = types.NewObjectValue(buf)
 		case types.ArrayValue:
 			buf, ok := types.Is[*ValueBuffer](f.Value)
 			if !ok {
@@ -414,17 +414,17 @@ func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
 }
 
-// MaskFields returns a new document that masks the given fields.
-func MaskFields(d types.Document, fields ...string) types.Document {
-	return &maskDocument{d, fields}
+// MaskFields returns a new object that masks the given fields.
+func MaskFields(d types.Object, fields ...string) types.Object {
+	return &maskObject{d, fields}
 }
 
-type maskDocument struct {
-	d    types.Document
+type maskObject struct {
+	d    types.Object
 	mask []string
 }
 
-func (m *maskDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (m *maskObject) Iterate(fn func(field string, value types.Value) error) error {
 	return m.d.Iterate(func(field string, value types.Value) error {
 		if !stringutil.Contains(m.mask, field) {
 			return fn(field, value)
@@ -434,7 +434,7 @@ func (m *maskDocument) Iterate(fn func(field string, value types.Value) error) e
 	})
 }
 
-func (m *maskDocument) GetByField(field string) (types.Value, error) {
+func (m *maskObject) GetByField(field string) (types.Value, error) {
 	if !stringutil.Contains(m.mask, field) {
 		return m.d.GetByField(field)
 	}
@@ -442,21 +442,21 @@ func (m *maskDocument) GetByField(field string) (types.Value, error) {
 	return nil, types.ErrFieldNotFound
 }
 
-func (m *maskDocument) MarshalJSON() ([]byte, error) {
+func (m *maskObject) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(m)
 }
 
-// OnlyFields returns a new document that only contains the given fields.
-func OnlyFields(d types.Document, fields ...string) types.Document {
-	return &onlyDocument{d, fields}
+// OnlyFields returns a new object that only contains the given fields.
+func OnlyFields(d types.Object, fields ...string) types.Object {
+	return &onlyObject{d, fields}
 }
 
-type onlyDocument struct {
-	d      types.Document
+type onlyObject struct {
+	d      types.Object
 	fields []string
 }
 
-func (o *onlyDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (o *onlyObject) Iterate(fn func(field string, value types.Value) error) error {
 	for _, f := range o.fields {
 		v, err := o.d.GetByField(f)
 		if err != nil {
@@ -471,7 +471,7 @@ func (o *onlyDocument) Iterate(fn func(field string, value types.Value) error) e
 	return nil
 }
 
-func (o *onlyDocument) GetByField(field string) (types.Value, error) {
+func (o *onlyObject) GetByField(field string) (types.Value, error) {
 	if stringutil.Contains(o.fields, field) {
 		return o.d.GetByField(field)
 	}
@@ -479,22 +479,22 @@ func (o *onlyDocument) GetByField(field string) (types.Value, error) {
 	return nil, types.ErrFieldNotFound
 }
 
-func (o *onlyDocument) MarshalJSON() ([]byte, error) {
+func (o *onlyObject) MarshalJSON() ([]byte, error) {
 	return MarshalJSON(o)
 }
 
-func WithSortedFields(d types.Document) types.Document {
-	return &sortedDocument{d}
+func WithSortedFields(d types.Object) types.Object {
+	return &sortedObject{d}
 }
 
-type sortedDocument struct {
-	types.Document
+type sortedObject struct {
+	types.Object
 }
 
-func (s *sortedDocument) Iterate(fn func(field string, value types.Value) error) error {
+func (s *sortedObject) Iterate(fn func(field string, value types.Value) error) error {
 	// iterate first to get the list of fields
 	var fields []string
-	err := s.Document.Iterate(func(field string, value types.Value) error {
+	err := s.Object.Iterate(func(field string, value types.Value) error {
 		fields = append(fields, field)
 		return nil
 	})
@@ -507,7 +507,7 @@ func (s *sortedDocument) Iterate(fn func(field string, value types.Value) error)
 
 	// iterate again
 	for _, f := range fields {
-		v, err := s.Document.GetByField(f)
+		v, err := s.Object.GetByField(f)
 		if err != nil {
 			continue
 		}

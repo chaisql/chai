@@ -131,8 +131,8 @@ SELECT pk(), * FROM test;
 }
 */
 
--- test: VALUES, generic document
-CREATE TABLE test (a TEXT, b TEXT, c DOCUMENT);
+-- test: VALUES, generic object
+CREATE TABLE test (a TEXT, b TEXT, c OBJECT);
 INSERT INTO test (a, b, c) VALUES ("a", 'b', {c: 1, d: c + 1});
 SELECT pk(), * FROM test;
 /* result:

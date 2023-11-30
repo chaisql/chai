@@ -130,7 +130,7 @@ func TestComparisonISNOTExpr(t *testing.T) {
 	}
 }
 
-func TestComparisonExprNodocument(t *testing.T) {
+func TestComparisonExprNoObject(t *testing.T) {
 	tests := []struct {
 		expr  string
 		res   types.Value

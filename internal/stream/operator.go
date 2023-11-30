@@ -5,9 +5,9 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 )
 
-// ErrInvalidResult is returned when an expression supposed to evaluate to a document
+// ErrInvalidResult is returned when an expression supposed to evaluate to an object
 // returns something else.
-var ErrInvalidResult = errors.New("expression must evaluate to a document")
+var ErrInvalidResult = errors.New("expression must evaluate to an object")
 
 // An Operator is used to modify a stream.
 // It takes an environment containing the current value as well as any other metadata

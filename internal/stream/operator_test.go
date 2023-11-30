@@ -7,16 +7,17 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -25,13 +26,13 @@ func TestFilter(t *testing.T) {
 	tests := []struct {
 		e     expr.Expr
 		in    []expr.Expr
-		out   []types.Document
+		out   []types.Object
 		fails bool
 	}{
 		{
 			parser.MustParseExpr("1"),
 			testutil.ParseExprs(t, `{"a": 1}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			false,
 		},
 		{
@@ -43,7 +44,7 @@ func TestFilter(t *testing.T) {
 		{
 			parser.MustParseExpr("a >= 1"),
 			testutil.ParseExprs(t, `{"a": 1}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			false,
 		},
 		{
@@ -56,11 +57,11 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.e.String(), func(t *testing.T) {
-			s := stream.New(docs.Emit(test.in...)).Pipe(docs.Filter(test.e))
+			s := stream.New(rows.Emit(test.in...)).Pipe(rows.Filter(test.e))
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				d, _ := out.GetDocument()
-				require.Equal(t, test.out[i], d)
+				r, _ := out.GetRow()
+				require.Equal(t, test.out[i], r.Object())
 				i++
 				return nil
 			})
@@ -74,7 +75,7 @@ func TestFilter(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, docs.Filter(parser.MustParseExpr("1")).String(), "docs.Filter(1)")
+		require.Equal(t, rows.Filter(parser.MustParseExpr("1")).String(), "rows.Filter(1)")
 	})
 }
 
@@ -98,8 +99,8 @@ func TestTake(t *testing.T) {
 				ds = append(ds, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(docs.Emit(ds...))
-			s = s.Pipe(docs.Take(parser.MustParseExpr(strconv.Itoa(test.n))))
+			s := stream.New(rows.Emit(ds...))
+			s = s.Pipe(rows.Take(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -119,7 +120,7 @@ func TestTake(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "docs.Take(1)", docs.Take(parser.MustParseExpr("1")).String())
+		require.Equal(t, "rows.Take(1)", rows.Take(parser.MustParseExpr("1")).String())
 	})
 }
 
@@ -143,8 +144,8 @@ func TestSkip(t *testing.T) {
 				ds = append(ds, testutil.ParseExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(docs.Emit(ds...))
-			s = s.Pipe(docs.Skip(parser.MustParseExpr(strconv.Itoa(test.n))))
+			s := stream.New(rows.Emit(ds...))
+			s = s.Pipe(rows.Skip(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
 			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
@@ -161,7 +162,7 @@ func TestSkip(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, "docs.Skip(1)", docs.Skip(parser.MustParseExpr("1")).String())
+		require.Equal(t, "rows.Skip(1)", rows.Skip(parser.MustParseExpr("1")).String())
 	})
 }
 
@@ -169,14 +170,14 @@ func TestTableInsert(t *testing.T) {
 	tests := []struct {
 		name  string
 		in    stream.Operator
-		out   []types.Document
-		docid int
+		out   []types.Object
+		rowid int
 		fails bool
 	}{
 		{
 			"doc with no key",
-			docs.Emit(testutil.ParseExpr(t, `{"a": 10}`), testutil.ParseExpr(t, `{"a": 11}`)),
-			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`), testutil.MakeDocument(t, `{"a": 11}`)},
+			rows.Emit(testutil.ParseExpr(t, `{"a": 10}`), testutil.ParseExpr(t, `{"a": 11}`)),
+			[]types.Object{testutil.MakeObject(t, `{"a": 10}`), testutil.MakeObject(t, `{"a": 11}`)},
 			1,
 			false,
 		},
@@ -196,10 +197,10 @@ func TestTableInsert(t *testing.T) {
 
 			var i int
 			err := s.Iterate(in, func(out *environment.Environment) error {
-				d, ok := out.GetDocument()
+				r, ok := out.GetRow()
 				require.True(t, ok)
 
-				testutil.RequireDocEqual(t, test.out[i], d)
+				testutil.RequireObjEqual(t, test.out[i], r.Object())
 				i++
 				return nil
 			})
@@ -219,16 +220,16 @@ func TestTableInsert(t *testing.T) {
 func TestTableReplace(t *testing.T) {
 	tests := []struct {
 		name        string
-		docsInTable testutil.Docs
+		docsInTable testutil.Objs
 		op          stream.Operator
-		expected    testutil.Docs
+		expected    testutil.Objs
 		fails       bool
 	}{
 		{
 			"doc with key",
-			testutil.MakeDocuments(t, `{"a": 1, "b": 1}`),
-			path.Set(testutil.ParseDocumentPath(t, "b"), testutil.ParseExpr(t, "2")),
-			testutil.MakeDocuments(t, `{"a": 1, "b": 2}`),
+			testutil.MakeObjects(t, `{"a": 1, "b": 1}`),
+			path.Set(testutil.ParseObjectPath(t, "b"), testutil.ParseExpr(t, "2")),
+			testutil.MakeObjects(t, `{"a": 1, "b": 2}`),
 			false,
 		},
 	}
@@ -253,10 +254,10 @@ func TestTableReplace(t *testing.T) {
 
 			var i int
 			err := s.Iterate(&in, func(out *environment.Environment) error {
-				d, ok := out.GetDocument()
+				r, ok := out.GetRow()
 				require.True(t, ok)
 
-				got, err := json.Marshal(d)
+				got, err := json.Marshal(r)
 				assert.NoError(t, err)
 				want, err := json.Marshal(test.expected[i])
 				assert.NoError(t, err)
@@ -273,10 +274,10 @@ func TestTableReplace(t *testing.T) {
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
-			var got []types.Document
-			err = res.Iterate(func(d types.Document) error {
-				var fb document.FieldBuffer
-				fb.Copy(d)
+			var got []types.Object
+			err = res.Iterate(func(row database.Row) error {
+				var fb object.FieldBuffer
+				fb.Copy(row.Object())
 				got = append(got, &fb)
 				return nil
 			})
@@ -293,16 +294,16 @@ func TestTableReplace(t *testing.T) {
 func TestTableDelete(t *testing.T) {
 	tests := []struct {
 		name        string
-		docsInTable testutil.Docs
+		docsInTable testutil.Objs
 		op          stream.Operator
-		expected    testutil.Docs
+		expected    testutil.Objs
 		fails       bool
 	}{
 		{
 			"doc with key",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
-			docs.Filter(testutil.ParseExpr(t, `a > 1`)),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`, `{"a": 3}`),
+			rows.Filter(testutil.ParseExpr(t, `a > 1`)),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			false,
 		},
 	}
@@ -335,10 +336,10 @@ func TestTableDelete(t *testing.T) {
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
 
-			var got []types.Document
-			err = res.Iterate(func(d types.Document) error {
-				var fb document.FieldBuffer
-				fb.Copy(d)
+			var got []types.Object
+			err = res.Iterate(func(row database.Row) error {
+				var fb object.FieldBuffer
+				fb.Copy(row.Object())
 				got = append(got, &fb)
 				return nil
 			})
@@ -356,13 +357,13 @@ func TestPathsRename(t *testing.T) {
 	tests := []struct {
 		fieldNames []string
 		in         []expr.Expr
-		out        []types.Document
+		out        []types.Object
 		fails      bool
 	}{
 		{
 			[]string{"c", "d"},
 			testutil.ParseExprs(t, `{"a": 10, "b": 20}`),
-			testutil.MakeDocuments(t, `{"c": 10, "d": 20}`),
+			testutil.MakeObjects(t, `{"c": 10, "d": 20}`),
 			false,
 		},
 		{
@@ -380,12 +381,12 @@ func TestPathsRename(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		s := stream.New(docs.Emit(test.in...)).Pipe(path.PathsRename(test.fieldNames...))
+		s := stream.New(rows.Emit(test.in...)).Pipe(path.PathsRename(test.fieldNames...))
 		t.Run(s.String(), func(t *testing.T) {
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				d, _ := out.GetDocument()
-				require.Equal(t, test.out[i], d)
+				r, _ := out.GetRow()
+				require.Equal(t, test.out[i], r.Object())
 				i++
 				return nil
 			})

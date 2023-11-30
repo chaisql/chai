@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"encoding/base64"
@@ -31,8 +31,8 @@ func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
 		return CastAsText(v)
 	case types.ArrayValue:
 		return CastAsArray(v)
-	case types.DocumentValue:
-		return CastAsDocument(v)
+	case types.ObjectValue:
+		return CastAsObject(v)
 	}
 
 	return nil, fmt.Errorf("cannot cast %s as %q", v.Type(), t)
@@ -240,16 +240,16 @@ func CastAsArray(v types.Value) (types.Value, error) {
 	return nil, fmt.Errorf("cannot cast %s as array", v.Type())
 }
 
-// CastAsDocument casts according to the following rules:
+// CastAsObject casts according to the following rules:
 // Text: decodes a JSON object, otherwise fails.
 // Any other type is considered an invalid cast.
-func CastAsDocument(v types.Value) (types.Value, error) {
+func CastAsObject(v types.Value) (types.Value, error) {
 	// Null values always remain null.
 	if v.Type() == types.NullValue {
 		return v, nil
 	}
 
-	if v.Type() == types.DocumentValue {
+	if v.Type() == types.ObjectValue {
 		return v, nil
 	}
 
@@ -257,11 +257,11 @@ func CastAsDocument(v types.Value) (types.Value, error) {
 		var fb FieldBuffer
 		err := fb.UnmarshalJSON([]byte(types.As[string](v)))
 		if err != nil {
-			return nil, fmt.Errorf(`cannot cast %q as document: %w`, v.V(), err)
+			return nil, fmt.Errorf(`cannot cast %q as object: %w`, v.V(), err)
 		}
 
-		return types.NewDocumentValue(&fb), nil
+		return types.NewObjectValue(&fb), nil
 	}
 
-	return nil, fmt.Errorf("cannot cast %s as document", v.Type())
+	return nil, fmt.Errorf("cannot cast %s as object", v.Type())
 }

@@ -9,14 +9,14 @@ var packageDocs = map[string]functionDocs{
 }
 
 var builtinDocs = functionDocs{
-	"pk":       "The pk() function returns the primary key for the current document",
+	"pk":       "The pk() function returns the primary key for the current row",
 	"count":    "Returns a count of the number of times that arg1 is not NULL in a group. The count(*) function (with no arguments) returns the total number of rows in the group.",
 	"min":      "Returns the minimum value of the arg1 expression in a group.",
 	"max":      "Returns the maximum value of the arg1 expressein in a group.",
 	"sum":      "The sum function returns the sum of all values taken by the arg1 expression in a group.",
 	"avg":      "The avg function returns the average of all values taken by the arg1 expression in a group.",
 	"typeof":   "The typeof function returns the type of arg1.",
-	"len":      "The len function returns length of the arg1 expression if arg1 evals to string, array or document, either returns NULL.",
+	"len":      "The len function returns length of the arg1 expression if arg1 evals to string, array or object, either returns NULL.",
 	"coalesce": "The coalesce function returns the first non-null argument. NULL is returned if all arguments are null.",
 	"random":   "The random function returns a random number between math.MinInt64 and math.MaxInt64.",
 }

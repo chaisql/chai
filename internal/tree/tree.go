@@ -203,7 +203,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 	var k Key
 	for it.Valid() {
 		k.Encoded = it.Key()
-		k.Values = nil
+		k.values = nil
 
 		v, err := it.ValueAndErr()
 		if err != nil {
@@ -226,10 +226,10 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 
 func (t *Tree) isDescRange(rng *Range) bool {
 	if rng.Min != nil {
-		return t.Order.IsDesc(len(rng.Min.Values) - 1)
+		return t.Order.IsDesc(len(rng.Min.values) - 1)
 	}
 	if rng.Max != nil {
-		return t.Order.IsDesc(len(rng.Max.Values) - 1)
+		return t.Order.IsDesc(len(rng.Max.values) - 1)
 	}
 
 	return false
@@ -283,25 +283,25 @@ func (t *Tree) buildMinKeyForType(max *Key, desc bool) ([]byte, error) {
 		return k, nil
 	}
 
-	if len(max.Values) == 1 {
+	if len(max.values) == 1 {
 		buf := encoding.EncodeInt(nil, int64(t.Namespace))
 		if desc {
-			return append(buf, byte(t.NewMinTypeForTypeDesc(max.Values[0].Type()))), nil
+			return append(buf, byte(t.NewMinTypeForTypeDesc(max.values[0].Type()))), nil
 		}
 
-		return append(buf, byte(t.NewMinTypeForType(max.Values[0].Type()))), nil
+		return append(buf, byte(t.NewMinTypeForType(max.values[0].Type()))), nil
 	}
 
-	buf, err := NewKey(max.Values[:len(max.Values)-1]...).Encode(t.Namespace, t.Order)
+	buf, err := NewKey(max.values[:len(max.values)-1]...).Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
-	i := len(max.Values) - 1
+	i := len(max.values) - 1
 	if desc {
-		return append(buf, byte(t.NewMinTypeForTypeDesc(max.Values[i].Type()))), nil
+		return append(buf, byte(t.NewMinTypeForTypeDesc(max.values[i].Type()))), nil
 	}
 
-	return append(buf, byte(t.NewMinTypeForType(max.Values[i].Type()))), nil
+	return append(buf, byte(t.NewMinTypeForType(max.values[i].Type()))), nil
 }
 
 func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
@@ -309,24 +309,24 @@ func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
 		return t.buildLastKey(), nil
 	}
 
-	if len(min.Values) == 1 {
+	if len(min.values) == 1 {
 		buf := encoding.EncodeInt(nil, int64(t.Namespace))
 		if desc {
-			return append(buf, byte(t.NewMaxTypeForTypeDesc(min.Values[0].Type()))), nil
+			return append(buf, byte(t.NewMaxTypeForTypeDesc(min.values[0].Type()))), nil
 		}
-		return append(buf, byte(t.NewMaxTypeForType(min.Values[0].Type()))), nil
+		return append(buf, byte(t.NewMaxTypeForType(min.values[0].Type()))), nil
 	}
 
-	buf, err := NewKey(min.Values[:len(min.Values)-1]...).Encode(t.Namespace, t.Order)
+	buf, err := NewKey(min.values[:len(min.values)-1]...).Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
 	}
-	i := len(min.Values) - 1
+	i := len(min.values) - 1
 	if desc {
-		return append(buf, byte(t.NewMaxTypeForTypeDesc(min.Values[i].Type()))), nil
+		return append(buf, byte(t.NewMaxTypeForTypeDesc(min.values[i].Type()))), nil
 	}
 
-	return append(buf, byte(t.NewMaxTypeForType(min.Values[i].Type()))), nil
+	return append(buf, byte(t.NewMaxTypeForType(min.values[i].Type()))), nil
 }
 
 func (t *Tree) buildLastKey() []byte {
@@ -378,8 +378,8 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 		return types.NewBlobValue(nil)
 	case types.ArrayValue:
 		return types.NewArrayValue(nil)
-	case types.DocumentValue:
-		return types.NewDocumentValue(nil)
+	case types.ObjectValue:
+		return types.NewObjectValue(nil)
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -403,8 +403,8 @@ func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 		return encoding.BlobValue
 	case types.ArrayValue:
 		return encoding.ArrayValue
-	case types.DocumentValue:
-		return encoding.DocumentValue
+	case types.ObjectValue:
+		return encoding.ObjectValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -428,8 +428,8 @@ func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
 		return encoding.DESC_BlobValue
 	case types.ArrayValue:
 		return encoding.DESC_ArrayValue
-	case types.DocumentValue:
-		return encoding.DESC_DocumentValue
+	case types.ObjectValue:
+		return encoding.DESC_ObjectValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -453,8 +453,8 @@ func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
 		return encoding.DESC_BlobValue + 1
 	case types.ArrayValue:
 		return encoding.DESC_ArrayValue + 1
-	case types.DocumentValue:
-		return encoding.DESC_DocumentValue + 1
+	case types.ObjectValue:
+		return encoding.DESC_ObjectValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -478,8 +478,8 @@ func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 		return types.NewBlobValue(nil)
 	case types.ArrayValue:
 		return types.NewArrayValue(nil)
-	case types.DocumentValue:
-		return types.NewDocumentValue(nil)
+	case types.ObjectValue:
+		return types.NewObjectValue(nil)
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -503,8 +503,8 @@ func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
 		return encoding.BlobValue + 1
 	case types.ArrayValue:
 		return encoding.ArrayValue + 1
-	case types.DocumentValue:
-		return encoding.DocumentValue + 1
+	case types.ObjectValue:
+		return encoding.ObjectValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}

@@ -18,12 +18,12 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	assert.NoError(t, err)
 
 	k := tree.NewKey(types.NewTextValue(name))
-	d, err := tb.GetDocument(k)
+	d, err := tb.GetRow(k)
 	if err != nil {
 		return nil, err
 	}
 
-	v, err := d.GetByField("seq")
+	v, err := d.Get("seq")
 	if errors.Is(err, types.ErrFieldNotFound) {
 		return nil, nil
 	}

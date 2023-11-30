@@ -1,12 +1,12 @@
-package document_test
+package object_test
 
 import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -22,25 +22,25 @@ func boolPtr(b bool) *bool {
 func TestScan(t *testing.T) {
 	now := time.Now()
 
-	simpleDoc := document.NewFieldBuffer().
+	simpleDoc := object.NewFieldBuffer().
 		Add("foo", types.NewTextValue("foo")).
 		Add("bar", types.NewTextValue("bar")).
-		Add("baz", types.NewArrayValue(document.NewValueBuffer(
+		Add("baz", types.NewArrayValue(object.NewValueBuffer(
 			types.NewIntegerValue(10),
 			types.NewDoubleValue(20.5),
 		)))
 
-	nestedDoc := document.NewFieldBuffer().
-		Add("foo", types.NewDocumentValue(simpleDoc))
+	nestedDoc := object.NewFieldBuffer().
+		Add("foo", types.NewObjectValue(simpleDoc))
 
 	var buf []byte
-	buf, err := encoding.EncodeValue(buf, types.NewDocumentValue(nestedDoc), false)
+	buf, err := encoding.EncodeValue(buf, types.NewObjectValue(nestedDoc), false)
 	assert.NoError(t, err)
 
 	dec, _ := encoding.DecodeValue(buf, false)
 	assert.NoError(t, err)
 
-	doc := document.NewFieldBuffer().
+	doc := object.NewFieldBuffer().
 		Add("a", types.NewBlobValue([]byte("foo"))).
 		Add("b", types.NewTextValue("bar")).
 		Add("c", types.NewBoolValue(true)).
@@ -51,68 +51,68 @@ func TestScan(t *testing.T) {
 		Add("h", types.NewIntegerValue(10)).
 		Add("i", types.NewDoubleValue(10.5)).
 		Add("j", types.NewArrayValue(
-			document.NewValueBuffer().
+			object.NewValueBuffer().
 				Append(types.NewBoolValue(true)),
 		)).
-		Add("k", types.NewDocumentValue(
-			document.NewFieldBuffer().
+		Add("k", types.NewObjectValue(
+			object.NewFieldBuffer().
 				Add("foo", types.NewTextValue("foo")).
 				Add("bar", types.NewTextValue("bar")),
 		)).
-		Add("l", types.NewDocumentValue(
-			document.NewFieldBuffer().
+		Add("l", types.NewObjectValue(
+			object.NewFieldBuffer().
 				Add("foo", types.NewTextValue("foo")).
 				Add("bar", types.NewTextValue("bar")),
 		)).
-		Add("m", types.NewDocumentValue(
-			document.NewFieldBuffer().
+		Add("m", types.NewObjectValue(
+			object.NewFieldBuffer().
 				Add("foo", types.NewTextValue("foo")).
 				Add("bar", types.NewTextValue("bar")).
 				Add("baz", types.NewTextValue("baz")).
 				Add("-", types.NewTextValue("bat")),
 		)).
-		Add("n", types.NewDocumentValue(
-			document.NewFieldBuffer().
+		Add("n", types.NewObjectValue(
+			object.NewFieldBuffer().
 				Add("foo", types.NewTextValue("foo")).
 				Add("bar", types.NewTextValue("bar")),
 		)).
 		Add("o", types.NewNullValue()).
 		Add("p", types.NewTextValue(now.Format(time.RFC3339Nano))).
 		Add("r", dec).
-		Add("s", types.NewArrayValue(document.NewValueBuffer(types.NewBoolValue(true), types.NewBoolValue(false)))).
-		Add("u", types.NewArrayValue(document.NewValueBuffer(
-			types.NewDocumentValue(
-				document.NewFieldBuffer().
+		Add("s", types.NewArrayValue(object.NewValueBuffer(types.NewBoolValue(true), types.NewBoolValue(false)))).
+		Add("u", types.NewArrayValue(object.NewValueBuffer(
+			types.NewObjectValue(
+				object.NewFieldBuffer().
 					Add("foo", types.NewTextValue("a")).
 					Add("bar", types.NewTextValue("b")),
 			),
-			types.NewDocumentValue(
-				document.NewFieldBuffer().
+			types.NewObjectValue(
+				object.NewFieldBuffer().
 					Add("foo", types.NewTextValue("c")).
 					Add("bar", types.NewTextValue("d")),
 			),
 		))).
-		Add("v", types.NewArrayValue(document.NewValueBuffer(
-			types.NewDocumentValue(
-				document.NewFieldBuffer().
+		Add("v", types.NewArrayValue(object.NewValueBuffer(
+			types.NewObjectValue(
+				object.NewFieldBuffer().
 					Add("foo", types.NewTextValue("a")).
 					Add("bar", types.NewTextValue("b")),
 			),
-			types.NewDocumentValue(
-				document.NewFieldBuffer().
+			types.NewObjectValue(
+				object.NewFieldBuffer().
 					Add("foo", types.NewTextValue("c")).
 					Add("bar", types.NewTextValue("d")),
 			),
 		))).
-		Add("w", types.NewArrayValue(document.NewValueBuffer(
+		Add("w", types.NewArrayValue(object.NewValueBuffer(
 			types.NewIntegerValue(1),
 			types.NewIntegerValue(2),
 			types.NewIntegerValue(3),
 			types.NewIntegerValue(4),
 		))).
 		Add("x", types.NewBlobValue([]byte{1, 2, 3, 4})).
-		Add("y", types.NewDocumentValue(
-			document.NewFieldBuffer().
+		Add("y", types.NewObjectValue(
+			object.NewFieldBuffer().
 				Add("foo", types.NewTextValue("foo")).
 				Add("bar", types.NewTextValue("bar")).
 				Add("baz", types.NewTextValue("baz")).
@@ -156,7 +156,7 @@ func TestScan(t *testing.T) {
 	}
 	var z time.Time
 
-	err = document.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x, &y, &z)
+	err = object.Scan(doc, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &r, &s, &u, &v, &w, &x, &y, &z)
 	assert.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
@@ -191,34 +191,34 @@ func TestScan(t *testing.T) {
 	require.Equal(t, [4]uint8{1, 2, 3, 4}, x)
 	require.Equal(t, now.UTC(), z)
 
-	t.Run("DocumentScanner", func(t *testing.T) {
-		var ds documentScanner
-		ds.fn = func(d types.Document) error {
+	t.Run("objectcanner", func(t *testing.T) {
+		var ds objectScanner
+		ds.fn = func(d types.Object) error {
 			require.Equal(t, doc, d)
 			return nil
 		}
-		err := document.StructScan(doc, &ds)
+		err := object.StructScan(doc, &ds)
 		assert.NoError(t, err)
 	})
 
 	t.Run("Map", func(t *testing.T) {
 		m := make(map[string]interface{})
-		err := document.MapScan(doc, m)
+		err := object.MapScan(doc, m)
 		assert.NoError(t, err)
 		require.Len(t, m, 24)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
-		err := document.MapScan(doc, &m)
+		err := object.MapScan(doc, &m)
 		assert.NoError(t, err)
 		require.Len(t, m, 24)
 	})
 
 	t.Run("Small Slice", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
-		err := document.SliceScan(arr, &s)
+		arr := object.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
+		err := object.SliceScan(arr, &s)
 		assert.NoError(t, err)
 		require.Len(t, s, 2)
 		require.Equal(t, []int{1, 2}, s)
@@ -226,10 +226,10 @@ func TestScan(t *testing.T) {
 
 	t.Run("Slice overwrite", func(t *testing.T) {
 		s := make([]int, 1)
-		arr := document.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
-		err := document.SliceScan(arr, &s)
+		arr := object.NewValueBuffer().Append(types.NewIntegerValue(1)).Append(types.NewIntegerValue(2))
+		err := object.SliceScan(arr, &s)
 		assert.NoError(t, err)
-		err = document.SliceScan(arr, &s)
+		err = object.SliceScan(arr, &s)
 		assert.NoError(t, err)
 		require.Len(t, s, 2)
 		require.Equal(t, []int{1, 2}, s)
@@ -242,8 +242,8 @@ func TestScan(t *testing.T) {
 
 		b := bar{}
 
-		d := document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
-		err := document.StructScan(d, &b)
+		d := object.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
+		err := object.StructScan(d, &b)
 		assert.NoError(t, err)
 
 		a := 10
@@ -262,8 +262,8 @@ func TestScan(t *testing.T) {
 			C: &c,
 		}
 
-		d := document.NewFieldBuffer().Add("a", types.NewNullValue())
-		err := document.StructScan(d, &b)
+		d := object.NewFieldBuffer().Add("a", types.NewNullValue())
+		err := object.StructScan(d, &b)
 		assert.NoError(t, err)
 		require.Equal(t, bar{}, b)
 	})
@@ -273,8 +273,8 @@ func TestScan(t *testing.T) {
 			A int
 		}
 
-		d := document.NewFieldBuffer().Add("a", types.NewDocumentValue(doc))
-		err := document.StructScan(d, &a)
+		d := object.NewFieldBuffer().Add("a", types.NewObjectValue(doc))
+		err := object.StructScan(d, &a)
 		assert.Error(t, err)
 	})
 
@@ -290,24 +290,24 @@ func TestScan(t *testing.T) {
 		var f foo
 		f.A = &bar{}
 
-		d := document.NewFieldBuffer().Add("a", types.NewDocumentValue(document.NewFieldBuffer().Add("b", types.NewIntegerValue(10))))
-		err := document.StructScan(d, &f)
+		d := object.NewFieldBuffer().Add("a", types.NewObjectValue(object.NewFieldBuffer().Add("b", types.NewIntegerValue(10))))
+		err := object.StructScan(d, &f)
 		assert.NoError(t, err)
 		require.Equal(t, &foo{A: &bar{B: 10}}, &f)
 	})
 
 	t.Run("Pointer not to struct", func(t *testing.T) {
 		var b int
-		d := document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
-		err := document.StructScan(d, &b)
+		d := object.NewFieldBuffer().Add("a", types.NewIntegerValue(10))
+		err := object.StructScan(d, &b)
 		assert.Error(t, err)
 	})
 }
 
-type documentScanner struct {
-	fn func(d types.Document) error
+type objectScanner struct {
+	fn func(d types.Object) error
 }
 
-func (ds documentScanner) ScanDocument(d types.Document) error {
+func (ds objectScanner) ScanObject(d types.Object) error {
 	return ds.fn(d)
 }

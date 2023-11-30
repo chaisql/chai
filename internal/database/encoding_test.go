@@ -3,10 +3,10 @@ package database_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -53,7 +53,7 @@ func TestEncoding(t *testing.T) {
 
 	ti.FieldConstraints.AllowExtraFields = true
 
-	doc := document.NewFromMap(map[string]any{
+	doc := object.NewFromMap(map[string]any{
 		"a":     int64(1),
 		"b":     "hello",
 		"c":     float64(3.14),
@@ -61,17 +61,17 @@ func TestEncoding(t *testing.T) {
 		"f":     int64(1000),
 		"g":     float64(2000),
 		"array": []int{1, 2, 3},
-		"doc":   document.NewFromMap(map[string]int64{"a": 10}),
+		"doc":   object.NewFromMap(map[string]int64{"a": 10}),
 	})
 
 	var buf []byte
-	buf, err = ti.EncodeDocument(nil, buf, doc)
+	buf, err = ti.EncodeObject(nil, buf, doc)
 	require.NoError(t, err)
 
-	d := database.NewEncodedDocument(&ti.FieldConstraints, buf)
+	d := database.NewEncodedObject(&ti.FieldConstraints, buf)
 	require.NoError(t, err)
 
-	want := document.NewFromMap(map[string]any{
+	want := object.NewFromMap(map[string]any{
 		"a":     int64(1),
 		"b":     "hello",
 		"c":     float64(3.14),
@@ -80,19 +80,19 @@ func TestEncoding(t *testing.T) {
 		"f":     float64(1000),
 		"g":     float64(2000),
 		"array": []float64{1, 2, 3},
-		"doc":   document.NewFromMap(map[string]float64{"a": 10}),
+		"doc":   object.NewFromMap(map[string]float64{"a": 10}),
 	})
 
-	testutil.RequireDocEqual(t, want, d)
+	testutil.RequireObjEqual(t, want, d)
 
-	t.Run("with nested documents", func(t *testing.T) {
+	t.Run("with nested objects", func(t *testing.T) {
 		var ti database.TableInfo
 
-		// a DOCUMENT(...)
+		// a OBJECT(...)
 		err := ti.AddFieldConstraint(&database.FieldConstraint{
 			Position: 0,
 			Field:    "a",
-			Type:     types.DocumentValue,
+			Type:     types.ObjectValue,
 			AnonymousType: &database.AnonymousType{
 				FieldConstraints: database.FieldConstraints{
 					AllowExtraFields: true,
@@ -101,7 +101,7 @@ func TestEncoding(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// b DOCUMENT(d TEST)
+		// b OBJECT(d TEST)
 		var subfcs database.FieldConstraints
 		err = subfcs.Add(&database.FieldConstraint{
 			Position: 0,
@@ -114,7 +114,7 @@ func TestEncoding(t *testing.T) {
 		err = ti.AddFieldConstraint(&database.FieldConstraint{
 			Position: 1,
 			Field:    "b",
-			Type:     types.DocumentValue,
+			Type:     types.ObjectValue,
 			AnonymousType: &database.AnonymousType{
 				FieldConstraints: subfcs,
 			},
@@ -129,24 +129,24 @@ func TestEncoding(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		doc := document.NewFromMap(map[string]any{
-			"a": document.WithSortedFields(document.NewFromMap(map[string]any{"w": "hello", "x": int64(1)})),
-			"b": document.WithSortedFields(document.NewFromMap(map[string]any{"d": "bye", "e": int64(2)})),
+		doc := object.NewFromMap(map[string]any{
+			"a": object.WithSortedFields(object.NewFromMap(map[string]any{"w": "hello", "x": int64(1)})),
+			"b": object.WithSortedFields(object.NewFromMap(map[string]any{"d": "bye", "e": int64(2)})),
 			"c": int64(100),
 		})
 
-		got, err := ti.EncodeDocument(nil, nil, doc)
+		got, err := ti.EncodeObject(nil, nil, doc)
 		require.NoError(t, err)
 
-		d := database.NewEncodedDocument(&ti.FieldConstraints, got)
+		d := database.NewEncodedObject(&ti.FieldConstraints, got)
 		require.NoError(t, err)
 
-		want := document.NewFromMap(map[string]any{
-			"a": document.WithSortedFields(document.NewFromMap(map[string]any{"w": "hello", "x": float64(1)})),
-			"b": document.WithSortedFields(document.NewFromMap(map[string]any{"d": "bye", "e": float64(2)})),
+		want := object.NewFromMap(map[string]any{
+			"a": object.WithSortedFields(object.NewFromMap(map[string]any{"w": "hello", "x": float64(1)})),
+			"b": object.WithSortedFields(object.NewFromMap(map[string]any{"d": "bye", "e": float64(2)})),
 			"c": int64(100),
 		})
 
-		testutil.RequireDocEqual(t, want, d)
+		testutil.RequireObjEqual(t, want, d)
 	})
 }

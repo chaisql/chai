@@ -2,10 +2,8 @@ package dbutil
 
 import (
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/types"
 )
 
 func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) error) error {
@@ -20,10 +18,10 @@ func QueryTables(tx *genji.Tx, tables []string, fn func(name, query string) erro
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d types.Document) error {
+	return res.Iterate(func(r *genji.Row) error {
 		// Get table name.
 		var name, query string
-		if err := document.Scan(d, &name, &query); err != nil {
+		if err := r.Scan(&name, &query); err != nil {
 			return err
 		}
 
@@ -43,9 +41,9 @@ func ListIndexes(db *genji.DB, tableName string) ([]string, error) {
 	}
 	defer res.Close()
 
-	err = res.Iterate(func(d types.Document) error {
+	err = res.Iterate(func(r *genji.Row) error {
 		var query string
-		err = document.Scan(d, &query)
+		err = r.Scan(&query)
 		if err != nil {
 			return err
 		}

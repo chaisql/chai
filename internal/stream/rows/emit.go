@@ -1,4 +1,4 @@
-package docs
+package rows
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type EmitOperator struct {
 }
 
 // Emit creates an operator that iterates over the given expressions.
-// Each expression must evaluate to a document.
+// Each expression must evaluate to an object.
 func Emit(exprs ...expr.Expr) *EmitOperator {
 	return &EmitOperator{Exprs: exprs}
 }
@@ -31,11 +31,11 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 		if err != nil {
 			return err
 		}
-		if v.Type() != types.DocumentValue {
+		if v.Type() != types.ObjectValue {
 			return errors.WithStack(stream.ErrInvalidResult)
 		}
 
-		newEnv.SetDocument(types.As[types.Document](v))
+		newEnv.SetRowFromObject(types.As[types.Object](v))
 		err = fn(&newEnv)
 		if err != nil {
 			return err
@@ -48,7 +48,7 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 func (op *EmitOperator) String() string {
 	var sb strings.Builder
 
-	sb.WriteString("docs.Emit(")
+	sb.WriteString("rows.Emit(")
 	for i, e := range op.Exprs {
 		if i > 0 {
 			sb.WriteString(", ")

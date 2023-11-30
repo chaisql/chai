@@ -13,13 +13,13 @@ SELECT * FROM test;
 CREATE TABLE test (a CHECK(a > 10));
 INSERT INTO test (a) VALUES (11);
 UPDATE test SET a = 1;
--- error: document violates check constraint "test_check"
+-- error: row violates check constraint "test_check"
 
 -- test: no type constraint, text
 CREATE TABLE test (a CHECK(a > 10));
 INSERT INTO test (a) VALUES (11);
 UPDATE test SET a = "hello";
--- error: document violates check constraint "test_check"
+-- error: row violates check constraint "test_check"
 
 -- test: no type constraint, null
 CREATE TABLE test (a CHECK(a > 10));

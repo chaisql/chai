@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -37,11 +39,17 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 
 	// iterate over all the streams and insert each key in the temporary table
 	// to deduplicate them
+	fb := object.NewFieldBuffer()
+	var buf []byte
+
 	for _, s := range it.Streams {
 		err := s.Iterate(in, func(out *environment.Environment) error {
-			doc, ok := out.GetDocument()
+			fb.Reset()
+			buf = buf[:0]
+
+			row, ok := out.GetRow()
 			if !ok {
-				return errors.New("missing document")
+				return errors.New("missing row")
 			}
 
 			if temp == nil {
@@ -54,8 +62,28 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 				}
 			}
 
-			key := tree.NewKey(types.NewDocumentValue(doc))
-			err = temp.Put(key, nil)
+			key := tree.NewKey(types.NewObjectValue(row.Object()))
+
+			if row.Key() != nil {
+				// encode the row key and table name as the value
+				info, err := in.GetTx().Catalog.GetTableInfo(row.TableName())
+				if err != nil {
+					return err
+				}
+				encKey, err := info.EncodeKey(row.Key())
+				if err != nil {
+					return err
+				}
+
+				fb.Add("key", types.NewBlobValue(encKey))
+				fb.Add("table", types.NewTextValue(row.TableName()))
+				buf, err = encoding.EncodeObject(buf, fb)
+				if err != nil {
+					return err
+				}
+			}
+
+			err = temp.Put(key, buf)
 			if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
 				return nil
 			}
@@ -74,16 +102,38 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
+	var vb object.ValueBuffer
+	var basicRow database.BasicRow
 	// iterate over the temporary index
-	return temp.IterateOnRange(nil, false, func(key *tree.Key, _ []byte) error {
+	return temp.IterateOnRange(nil, false, func(key *tree.Key, value []byte) error {
+		vb.Reset()
 		kv, err := key.Decode()
 		if err != nil {
 			return err
 		}
 
-		doc := types.As[types.Document](kv[0])
+		var tableName string
+		var pk *tree.Key
 
-		newEnv.SetDocument(doc)
+		obj := types.As[types.Object](kv[0])
+
+		if len(value) > 1 {
+			ser := encoding.DecodeObject(value, false)
+			pkf, err := ser.GetByField("key")
+			if err != nil {
+				return err
+			}
+			pk = tree.NewEncodedKey(types.As[[]byte](pkf))
+			tf, err := ser.GetByField("table")
+			if err != nil {
+				return err
+			}
+			tableName = types.As[string](tf)
+		}
+
+		basicRow.ResetWith(tableName, pk, obj)
+
+		newEnv.SetRow(&basicRow)
 		return fn(&newEnv)
 	})
 }

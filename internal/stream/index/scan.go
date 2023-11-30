@@ -10,10 +10,9 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
 )
 
-// A ScanOperator iterates over the documents of an index.
+// A ScanOperator iterates over the objects of an index.
 type ScanOperator struct {
 	stream.BaseOperator
 
@@ -26,17 +25,17 @@ type ScanOperator struct {
 	Reverse bool
 }
 
-// Scan creates an iterator that iterates over each document of the given table.
+// Scan creates an iterator that iterates over each object of the given table.
 func Scan(name string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{IndexName: name, Ranges: ranges}
 }
 
-// ScanReverse creates an iterator that iterates over each document of the given table in reverse order.
+// ScanReverse creates an iterator that iterates over each object of the given table in reverse order.
 func ScanReverse(name string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
 }
 
-// Iterate over the documents of the table. Each document is stored in the environment
+// Iterate over the objects of the table. Each object is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	tx := in.GetTx()
@@ -58,18 +57,14 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
-	newEnv.Set(environment.TableKey, types.NewTextValue(table.Info.TableName))
 
-	ptr := DocumentPointer{
-		Table: table,
-	}
-	newEnv.SetDocument(&ptr)
+	var ptr database.LazyRow
+
+	newEnv.SetRow(&ptr)
 
 	if len(it.Ranges) == 0 {
 		return index.IterateOnRange(nil, it.Reverse, func(key *tree.Key) error {
-			ptr.key = key
-			ptr.Doc = nil
-			newEnv.SetKey(key)
+			ptr.ResetWith(table, key)
 
 			return fn(&newEnv)
 		})
@@ -87,9 +82,7 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 		}
 
 		err = index.IterateOnRange(r, it.Reverse, func(key *tree.Key) error {
-			ptr.key = key
-			ptr.Doc = nil
-			newEnv.SetKey(key)
+			ptr.ResetWith(table, key)
 
 			return fn(&newEnv)
 		})
@@ -124,48 +117,4 @@ func (it *ScanOperator) String() string {
 	s.WriteString(")")
 
 	return s.String()
-}
-
-// DocumentPointer holds a document key and lazily loads the document on demand when the Iterate or GetByField method is called.
-// It implements the types.Document and the document.Keyer interfaces.
-type DocumentPointer struct {
-	key   *tree.Key
-	Table *database.Table
-	Doc   types.Document
-}
-
-func (d *DocumentPointer) Iterate(fn func(field string, value types.Value) error) error {
-	var err error
-	if d.Doc == nil {
-		d.Doc, err = d.Table.GetDocument(d.key)
-		if err != nil {
-			return err
-		}
-	}
-
-	return d.Doc.Iterate(fn)
-}
-
-func (d *DocumentPointer) GetByField(field string) (types.Value, error) {
-	var err error
-	if d.Doc == nil {
-		d.Doc, err = d.Table.GetDocument(d.key)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return d.Doc.GetByField(field)
-}
-
-func (d *DocumentPointer) MarshalJSON() ([]byte, error) {
-	if d.Doc == nil {
-		var err error
-		d.Doc, err = d.Table.GetDocument(d.key)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return d.Doc.(interface{ MarshalJSON() ([]byte, error) }).MarshalJSON()
 }

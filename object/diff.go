@@ -1,16 +1,16 @@
-package document
+package object
 
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/types"
 )
 
-// Diff returns the operations needed to transform the first document into the second.
-func Diff(d1, d2 types.Document) ([]Op, error) {
+// Diff returns the operations needed to transform the first object into the second.
+func Diff(d1, d2 types.Object) ([]Op, error) {
 	return diff(nil, d1, d2)
 }
 
-func diff(path Path, d1, d2 types.Document) ([]Op, error) {
+func diff(path Path, d1, d2 types.Object) ([]Op, error) {
 	var ops []Op
 	f1, err := types.Fields(d1)
 	if err != nil {
@@ -64,8 +64,8 @@ func diff(path Path, d1, d2 types.Document) ([]Op, error) {
 			ops = append(ops, NewSetOp(path.ExtendField(f2[j]), v))
 		} else {
 			switch v1.Type() {
-			case types.DocumentValue:
-				subOps, err := diff(append(path, PathFragment{FieldName: f1[i]}), types.As[types.Document](v1), types.As[types.Document](v2))
+			case types.ObjectValue:
+				subOps, err := diff(append(path, PathFragment{FieldName: f1[i]}), types.As[types.Object](v1), types.As[types.Object](v2))
 				if err != nil {
 					return nil, err
 				}
@@ -132,8 +132,8 @@ func arrayDiff(path Path, a1, a2 types.Array) ([]Op, error) {
 		}
 
 		switch v1.Type() {
-		case types.DocumentValue:
-			subOps, err := diff(append(path, PathFragment{ArrayIndex: i}), types.As[types.Document](v1), types.As[types.Document](v2))
+		case types.ObjectValue:
+			subOps, err := diff(append(path, PathFragment{ArrayIndex: i}), types.As[types.Object](v1), types.As[types.Object](v2))
 			if err != nil {
 				return nil, err
 			}
@@ -159,7 +159,7 @@ func arrayDiff(path Path, a1, a2 types.Array) ([]Op, error) {
 	return ops, nil
 }
 
-// Op represents a single operation on a document.
+// Op represents a single operation on an object.
 // It is returned by the Diff function.
 type Op struct {
 	Type  string

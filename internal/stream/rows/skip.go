@@ -1,12 +1,12 @@
-package docs
+package rows
 
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -32,7 +32,7 @@ func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environ
 		return fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 	}
 
-	v, err = document.CastAsInteger(v)
+	v, err = object.CastAsInteger(v)
 	if err != nil {
 		return err
 	}
@@ -51,5 +51,5 @@ func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environ
 }
 
 func (op *SkipOperator) String() string {
-	return fmt.Sprintf("docs.Skip(%s)", op.E)
+	return fmt.Sprintf("rows.Skip(%s)", op.E)
 }

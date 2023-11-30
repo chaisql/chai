@@ -8,7 +8,6 @@ import (
 	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,12 +34,13 @@ func TestDropTable(t *testing.T) {
 	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
 	assert.NoError(t, err)
 	var tables []string
-	err = res.Iterate(func(d types.Document) error {
-		v, err := d.GetByField("name")
+	err = res.Iterate(func(r *genji.Row) error {
+		var name string
+		err := r.ScanColumn("name", &name)
 		if err != nil {
 			return err
 		}
-		tables = append(tables, types.As[string](v))
+		tables = append(tables, name)
 		return nil
 	})
 	assert.NoError(t, err)
@@ -50,14 +50,14 @@ func TestDropTable(t *testing.T) {
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_a_idx'")
+	_, err = db.QueryRow("SELECT 1 FROM __genji_catalog WHERE name = 'test1_a_idx'")
 	assert.Error(t, err)
 
-	// Assert the docid sequence test1_seq, created upon the creation of the table,
+	// Assert the rowid sequence test1_seq, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
+	_, err = db.QueryRow("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
 	assert.Error(t, err)
-	_, err = db.QueryDocument("SELECT 1 FROM __genji_sequence WHERE name = 'test1_seq'")
+	_, err = db.QueryRow("SELECT 1 FROM __genji_sequence WHERE name = 'test1_seq'")
 	assert.Error(t, err)
 
 	// Dropping a read-only table should fail.

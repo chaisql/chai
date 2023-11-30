@@ -14,9 +14,8 @@ import (
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/doc"
-	"github.com/genjidb/genji/document"
 	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/object"
 )
 
 type command struct {
@@ -139,9 +138,9 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d types.Document) error {
+	return res.Iterate(func(r *genji.Row) error {
 		var tableName string
-		err = document.Scan(d, &tableName)
+		err = r.Scan(&tableName)
 		if err != nil {
 			return err
 		}
@@ -155,7 +154,7 @@ func runTablesCmd(db *genji.DB, w io.Writer) error {
 func runIndexesCmd(db *genji.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
-		_, err := db.QueryDocument("SELECT 1 FROM __genji_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName)
+		_, err := db.QueryRow("SELECT 1 FROM __genji_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName)
 		if err != nil {
 			if errs.IsNotFoundError(err) {
 				return errors.Wrapf(err, "table %s does not exist", tableName)
@@ -237,7 +236,7 @@ func runImportCmd(db *genji.DB, fileType, path, table string) error {
 		if err != nil {
 			return err
 		}
-		err = tx.Exec("INSERT INTO "+table+" VALUES ?", document.NewFromCSV(headers, columns))
+		err = tx.Exec("INSERT INTO "+table+" VALUES ?", object.NewFromCSV(headers, columns))
 		if err != nil {
 			return err
 		}

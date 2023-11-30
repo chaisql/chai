@@ -103,9 +103,9 @@ func compare(op operator, l, r Value) (bool, error) {
 	case l.Type() == ArrayValue && r.Type() == ArrayValue:
 		return compareArrays(op, As[Array](l), As[Array](r))
 
-	// compare documents together
-	case l.Type() == DocumentValue && r.Type() == DocumentValue:
-		return compareDocuments(op, As[Document](l), As[Document](r))
+	// compare objects together
+	case l.Type() == ObjectValue && r.Type() == ObjectValue:
+		return compareobjects(op, As[Object](l), As[Object](r))
 	}
 
 	// compare compatible timestamps
@@ -315,7 +315,7 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 	}
 }
 
-func compareDocuments(op operator, l, r Document) (bool, error) {
+func compareobjects(op operator, l, r Object) (bool, error) {
 	lf, err := Fields(l)
 	if err != nil {
 		return false, err
@@ -432,9 +432,9 @@ func compareDocuments(op operator, l, r Document) (bool, error) {
 	}
 }
 
-// Fields returns a list of all the fields at the root of the document
+// Fields returns a list of all the fields at the root of the object
 // sorted lexicographically.
-func Fields(d Document) ([]string, error) {
+func Fields(d Object) ([]string, error) {
 	var fields []string
 	err := d.Iterate(func(f string, _ Value) error {
 		fields = append(fields, f)

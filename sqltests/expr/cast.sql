@@ -17,8 +17,8 @@ true
 ! CAST (1 AS ARRAY)
 'cannot cast integer as array'
 
-! CAST (1 AS DOCUMENT)
-'cannot cast integer as document'
+! CAST (1 AS OBJECT)
+'cannot cast integer as object'
 
 -- test: source(DOUBLE)
 > CAST (1.1 AS DOUBLE)
@@ -39,8 +39,8 @@ true
 ! CAST (1.1 AS ARRAY)
 'cannot cast double as array'
 
-! CAST (1.1 AS DOCUMENT)
-'cannot cast double as document'
+! CAST (1.1 AS OBJECT)
+'cannot cast double as object'
 
 -- test: source(BOOL)
 > CAST (true AS BOOL)
@@ -64,8 +64,8 @@ true
 ! CAST (true AS ARRAY)
 'cannot cast boolean as array'
 
-! CAST (true AS DOCUMENT)
-'cannot cast boolean as document'
+! CAST (true AS OBJECT)
+'cannot cast boolean as object'
 
 -- test: source(TEXT)
 > CAST ('a' AS TEXT)
@@ -106,10 +106,10 @@ false
 
 ! CAST ('[1, true, [], {" a": 1}' AS ARRAY)
 
-> CAST ('{"a": 1, "b": [1, true, [], {" a": 1}]}' AS DOCUMENT)
+> CAST ('{"a": 1, "b": [1, true, [], {" a": 1}]}' AS OBJECT)
 {"a": 1, "b": [1, true, [], {" a": 1}]}
 
-! CAST ('{"a": 1' AS DOCUMENT)
+! CAST ('{"a": 1' AS OBJECT)
 
 -- test: source(BLOB)
 > CAST ('\xAF' AS BLOB)
@@ -127,8 +127,8 @@ false
 ! CAST ('\xAF' AS ARRAY)
 'cannot cast blob as array'
 
-! CAST ('\xAF' AS DOCUMENT)
-'cannot cast blob as document'
+! CAST ('\xAF' AS OBJECT)
+'cannot cast blob as object'
 
 -- test: source(ARRAY)
 > CAST ([1] AS ARRAY)
@@ -146,24 +146,24 @@ false
 ! CAST ([1] AS BLOB)
 'cannot cast array as blob'
 
-! CAST ([1] AS DOCUMENT)
-'cannot cast array as document'
+! CAST ([1] AS OBJECT)
+'cannot cast array as object'
 
--- test: source(DOCUMENT)
-> CAST ({a: 1} AS DOCUMENT)
+-- test: source(OBJECT)
+> CAST ({a: 1} AS OBJECT)
 {a: 1}
 
 ! CAST ({a: 1} AS INTEGER)
-'cannot cast document as integer'
+'cannot cast object as integer'
 
 ! CAST ({a: 1} AS DOUBLE)
-'cannot cast document as double'
+'cannot cast object as double'
 
 > CAST ({"a": 1, "b": [1, true, [], {" a": 1}]} AS TEXT)
 '{"a": 1, "b": [1, true, [], {" a": 1}]}'
 
 ! CAST ({a: 1} AS BLOB)
-'cannot cast document as blob'
+'cannot cast object as blob'
 
 ! CAST ({a: 1} AS ARRAY)
-'cannot cast document as array'
+'cannot cast object as array'

@@ -55,8 +55,8 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 			return EncodeBlob(dst, nil), nil
 		case types.ArrayValue:
 			return EncodeArray(dst, nil)
-		case types.DocumentValue:
-			return EncodeDocument(dst, nil)
+		case types.ObjectValue:
+			return EncodeObject(dst, nil)
 		default:
 			panic(fmt.Sprintf("unsupported type %v", v.Type()))
 		}
@@ -79,8 +79,8 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 		return EncodeBlob(dst, types.As[[]byte](v)), nil
 	case types.ArrayValue:
 		return EncodeArray(dst, types.As[types.Array](v))
-	case types.DocumentValue:
-		return EncodeDocument(dst, types.As[types.Document](v))
+	case types.ObjectValue:
+		return EncodeObject(dst, types.As[types.Object](v))
 	}
 
 	return nil, fmt.Errorf("unsupported value type: %s", v.Type())
@@ -140,9 +140,9 @@ func DecodeValue(b []byte, intAsDouble bool) (types.Value, int) {
 	case ArrayValue:
 		a := DecodeArray(b, intAsDouble)
 		return types.NewArrayValue(a), SkipArray(b[1:]) + 1
-	case DocumentValue:
-		d := DecodeDocument(b, intAsDouble)
-		return types.NewDocumentValue(d), SkipDocument(b[1:]) + 1
+	case ObjectValue:
+		d := DecodeObject(b, intAsDouble)
+		return types.NewObjectValue(d), SkipObject(b[1:]) + 1
 	}
 
 	panic(fmt.Sprintf("unsupported value type: %d", t))

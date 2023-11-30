@@ -7,13 +7,13 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -106,16 +106,16 @@ func TestCatalogTable(t *testing.T) {
 				&database.FieldConstraint{Field: "gender", Type: types.TextValue},
 				&database.FieldConstraint{Field: "city", Type: types.TextValue},
 			), TableConstraints: []*database.TableConstraint{
-				{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
+				{Paths: []object.Path{testutil.ParseObjectPath(t, "age")}, PrimaryKey: true},
 			}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "foo", ti)
 			assert.NoError(t, err)
 
-			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "gender")}, IndexName: "idx_gender", Owner: database.Owner{TableName: "foo"}})
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []object.Path{testutil.ParseObjectPath(t, "gender")}, IndexName: "idx_gender", Owner: database.Owner{TableName: "foo"}})
 			assert.NoError(t, err)
-			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []document.Path{testutil.ParseDocumentPath(t, "city")}, IndexName: "idx_city", Owner: database.Owner{TableName: "foo"}, Unique: true})
+			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Paths: []object.Path{testutil.ParseObjectPath(t, "city")}, IndexName: "idx_city", Owner: database.Owner{TableName: "foo"}, Unique: true})
 			assert.NoError(t, err)
 
 			seq := database.SequenceInfo{
@@ -187,7 +187,7 @@ func TestCatalogTable(t *testing.T) {
 			&database.FieldConstraint{Field: "gender", Type: types.TextValue},
 			&database.FieldConstraint{Field: "city", Type: types.TextValue},
 		), TableConstraints: []*database.TableConstraint{
-			{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
+			{Paths: []object.Path{testutil.ParseObjectPath(t, "age")}, PrimaryKey: true},
 		}}
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
@@ -229,7 +229,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Adding a second primary key should return an error
 			err = catalog.AddFieldConstraint(tx, "foo", nil, database.TableConstraints{
-				{Paths: []document.Path{testutil.ParseDocumentPath(t, "age")}, PrimaryKey: true},
+				{Paths: []object.Path{testutil.ParseObjectPath(t, "age")}, PrimaryKey: true},
 			})
 			assert.Error(t, err)
 
@@ -287,7 +287,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 					&database.FieldConstraint{Field: "a", Type: types.TextValue},
 				),
 				TableConstraints: []*database.TableConstraint{
-					{Paths: []document.Path{testutil.ParseDocumentPath(t, "a")}, PrimaryKey: true},
+					{Paths: []object.Path{testutil.ParseObjectPath(t, "a")}, PrimaryKey: true},
 				},
 			})
 		})
@@ -296,7 +296,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idx_a", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "a")},
+				IndexName: "idx_a", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "a")},
 			})
 			assert.NoError(t, err)
 			idx, err := catalog.GetIndex(tx, "idx_a")
@@ -322,12 +322,12 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo")},
 			})
 			assert.NoError(t, err)
 
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo")},
 			})
 			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "idxFoo"})
 			return nil
@@ -338,7 +338,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		db := testutil.NewTestDB(t)
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo")},
 			})
 			if !errs.IsNotFoundError(err) {
 				assert.ErrorIs(t, err, errs.NotFoundError{Name: "test"})
@@ -354,9 +354,9 @@ func TestCatalogCreateIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
-					&database.FieldConstraint{Field: "foo", Type: types.DocumentValue, AnonymousType: &database.AnonymousType{
+					&database.FieldConstraint{Field: "foo", Type: types.ObjectValue, AnonymousType: &database.AnonymousType{
 						FieldConstraints: database.MustNewFieldConstraints(
-							&database.FieldConstraint{Field: "  bar ", Type: types.DocumentValue, AnonymousType: &database.AnonymousType{
+							&database.FieldConstraint{Field: "  bar ", Type: types.ObjectValue, AnonymousType: &database.AnonymousType{
 								FieldConstraints: database.MustNewFieldConstraints(
 									&database.FieldConstraint{Field: "c", Type: types.TextValue},
 								),
@@ -369,7 +369,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
-				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
+				Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
 
@@ -378,7 +378,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 
 			// create another one
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
-				Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo.`  bar `.c")},
+				Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo.`  bar `.c")},
 			})
 			assert.NoError(t, err)
 
@@ -402,11 +402,11 @@ func TestTxDropIndex(t *testing.T) {
 			})
 			assert.NoError(t, err)
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "foo")},
+				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "foo")},
 			})
 			assert.NoError(t, err)
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
-				IndexName: "idxBar", Owner: database.Owner{TableName: "test"}, Paths: []document.Path{testutil.ParseDocumentPath(t, "bar")},
+				IndexName: "idxBar", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{testutil.ParseObjectPath(t, "bar")},
 			})
 			assert.NoError(t, err)
 			return nil
@@ -458,22 +458,22 @@ func TestReadOnlyTables(t *testing.T) {
 	defer res.Close()
 
 	var i int
-	err = res.Iterate(func(d types.Document) error {
+	err = res.Iterate(func(r *genji.Row) error {
 		switch i {
 		case 0:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, docid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
 		case 1:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
 		case 2:
-			testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
 		case 3:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo", "docid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":10, "type":"table"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"foo", "rowid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":10, "type":"table"}`)
 		case 4:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":11, "type":"index"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"foo_b.c_idx", "owner":{"table_name":"foo", "paths":["b.c"]}, "sql":"CREATE UNIQUE INDEX `+"`foo_b.c_idx`"+` ON foo (b.c)", "namespace":11, "type":"index"}`)
 		case 5:
-			testutil.RequireDocJSONEq(t, d, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"foo_seq", "owner":{"table_name":"foo"}, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
 		case 6:
-			testutil.RequireDocJSONEq(t, d, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":12, "type":"index", "owner": {"table_name": "foo"}}`)
+			testutil.RequireJSONEq(t, r, `{"name":"idx_foo_a", "sql":"CREATE INDEX idx_foo_a ON foo (a)", "namespace":12, "type":"index", "owner": {"table_name": "foo"}}`)
 		default:
 			t.Fatalf("count should be 6, got %d", i)
 		}
@@ -501,13 +501,13 @@ func TestCatalogCreateSequence(t *testing.T) {
 			tb := db.Catalog().CatalogTable.Table(tx)
 			key := tree.NewKey(types.NewTextValue("test1"))
 
-			_, err = tb.GetDocument(key)
+			_, err = tb.GetRow(key)
 			assert.NoError(t, err)
 
 			tb, err = db.Catalog().GetTable(tx, database.SequenceTableName)
 			assert.NoError(t, err)
 
-			_, err = tb.GetDocument(key)
+			_, err = tb.GetRow(key)
 			assert.NoError(t, err)
 			return nil
 		})
@@ -599,18 +599,18 @@ func TestCatalogConcurrency(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	doc, err := rt1.QueryDocument("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	row, err := rt1.QueryRow("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
 	assert.NoError(t, err)
 	var i int
-	err = document.Scan(doc, &i)
+	err = row.Scan(&i)
 	assert.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	doc, err = rt1.QueryDocument("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	row, err = rt1.QueryRow("SELECT sql FROM __genji_catalog WHERE name = 'test'")
 	assert.NoError(t, err)
 	var s string
-	err = document.Scan(doc, &s)
+	err = row.Scan(&s)
 	assert.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 
@@ -619,16 +619,16 @@ func TestCatalogConcurrency(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	doc, err = rt1.QueryDocument("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	row, err = rt1.QueryRow("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
 	assert.NoError(t, err)
-	err = document.Scan(doc, &i)
+	err = row.Scan(&i)
 	assert.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	doc, err = rt1.QueryDocument("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	row, err = rt1.QueryRow("SELECT sql FROM __genji_catalog WHERE name = 'test'")
 	assert.NoError(t, err)
-	err = document.Scan(doc, &s)
+	err = row.Scan(&s)
 	assert.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 }

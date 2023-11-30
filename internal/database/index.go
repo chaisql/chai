@@ -43,8 +43,9 @@ var errStop = errors.New("stop")
 //
 // Values are stored in the index following the "index format".
 // Every record is stored like this:
-//   k: <encoded values><primary key>
-//   v: length of the encoded value, as an unsigned varint
+//
+//	k: <encoded values><primary key>
+//	v: length of the encoded value, as an unsigned varint
 func (idx *Index) Set(vs []types.Value, key []byte) error {
 	if key == nil {
 		return errors.New("cannot index value without a key")
@@ -121,7 +122,7 @@ func (idx *Index) Delete(vs []types.Value, key []byte) error {
 		return err
 	}
 
-	return kv.ErrKeyNotFound
+	return errors.WithStack(kv.ErrKeyNotFound)
 }
 
 func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {

@@ -5,29 +5,29 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
-// EncodeDocument validates a document against all the constraints of the table
+// EncodeObject validates a row against all the constraints of the table
 // and encodes it.
-func (t *TableInfo) EncodeDocument(tx *Transaction, dst []byte, d types.Document) ([]byte, error) {
-	if ed, ok := d.(*encoding.EncodedDocument); ok {
+func (t *TableInfo) EncodeObject(tx *Transaction, dst []byte, o types.Object) ([]byte, error) {
+	if ed, ok := o.(*encoding.EncodedObject); ok {
 		return ed.Encoded, nil
 	}
 
-	return encodeDocument(tx, dst, &t.FieldConstraints, d)
+	return encodeObject(tx, dst, &t.FieldConstraints, o)
 }
 
-func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.Document) ([]byte, error) {
+func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Object) ([]byte, error) {
 	var err error
 
 	// loop over all the defined field contraints in order.
 	for _, fc := range fcs.Ordered {
 
-		// get the field from the document
-		v, err := d.GetByField(fc.Field)
+		// get the column from the row
+		v, err := o.GetByField(fc.Field)
 		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 			return nil, err
 		}
@@ -36,7 +36,7 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 		// otherwise return an error
 		if v == nil {
 			if fc.DefaultValue != nil {
-				v, err = fc.DefaultValue.Eval(tx, d)
+				v, err = fc.DefaultValue.Eval(tx, o)
 				if err != nil {
 					return nil, err
 				}
@@ -45,7 +45,7 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 
 		// if the field is not found OR NULL, and the field is required, return an error
 		if fc.IsNotNull && (v == nil || v.Type() == types.NullValue) {
-			return nil, &ConstraintViolationError{Constraint: "NOT NULL", Paths: []document.Path{document.NewPath(fc.Field)}}
+			return nil, &ConstraintViolationError{Constraint: "NOT NULL", Paths: []object.Path{object.NewPath(fc.Field)}}
 		}
 
 		if v == nil {
@@ -54,28 +54,28 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 
 		// ensure the value is of the correct type
 		if fc.Type != types.AnyValue {
-			v, err = document.CastAs(v, fc.Type)
+			v, err = object.CastAs(v, fc.Type)
 			if err != nil {
 				return nil, err
 			}
 		} else if v.Type() == types.TimestampValue {
 			// without a type constraint, timestamp values must
 			// always be stored as text to avoid mixed representations.
-			v, err = document.CastAsText(v)
+			v, err = object.CastAsText(v)
 			if err != nil {
 				return nil, err
 			}
 		}
 
 		// Encode the value only.
-		if v.Type() == types.DocumentValue {
+		if v.Type() == types.ObjectValue {
 			// encode map length
 			mlen := len(fc.AnonymousType.FieldConstraints.Ordered)
 			if fc.AnonymousType.FieldConstraints.AllowExtraFields {
 				mlen += 1
 			}
 			dst = encoding.EncodeArrayLength(dst, mlen)
-			dst, err = encodeDocument(tx, dst, &fc.AnonymousType.FieldConstraints, types.As[types.Document](v))
+			dst, err = encodeObject(tx, dst, &fc.AnonymousType.FieldConstraints, types.As[types.Object](v))
 		} else {
 			dst, err = encoding.EncodeValue(dst, v, false)
 		}
@@ -86,7 +86,7 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 
 	// encode the extra fields, if any.
 	if fcs.AllowExtraFields {
-		dst, err = encodeExtraFields(dst, fcs, d)
+		dst, err = encodeExtraFields(dst, fcs, o)
 		if err != nil {
 			return nil, err
 		}
@@ -95,7 +95,7 @@ func encodeDocument(tx *Transaction, dst []byte, fcs *FieldConstraints, d types.
 	return dst, nil
 }
 
-func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]byte, error) {
+func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Object) ([]byte, error) {
 	// count the number of extra fields
 	extraFields := 0
 	err := d.Iterate(func(field string, value types.Value) error {
@@ -110,8 +110,8 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]b
 		return nil, err
 	}
 
-	// encode document length
-	dst = encoding.EncodeDocumentLength(dst, extraFields)
+	// encode row length
+	dst = encoding.EncodeObjectLength(dst, extraFields)
 	if extraFields == 0 {
 		return dst, nil
 	}
@@ -137,7 +137,7 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]b
 		if value.Type() == types.TimestampValue {
 			// without a type constraint, timestamp values must
 			// always be stored as text to avoid mixed representations.
-			value, err = document.CastAsText(value)
+			value, err = object.CastAsText(value)
 			if err != nil {
 				return err
 			}
@@ -153,13 +153,13 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Document) ([]b
 	return dst, nil
 }
 
-type EncodedDocument struct {
+type EncodedObject struct {
 	encoded          []byte
 	fieldConstraints *FieldConstraints
 }
 
-func NewEncodedDocument(fcs *FieldConstraints, data []byte) *EncodedDocument {
-	e := EncodedDocument{
+func NewEncodedObject(fcs *FieldConstraints, data []byte) *EncodedObject {
+	e := EncodedObject{
 		fieldConstraints: fcs,
 		encoded:          data,
 	}
@@ -167,7 +167,7 @@ func NewEncodedDocument(fcs *FieldConstraints, data []byte) *EncodedDocument {
 	return &e
 }
 
-func (e *EncodedDocument) skipToExtra(b []byte) int {
+func (e *EncodedObject) skipToExtra(b []byte) int {
 	l := len(e.fieldConstraints.Ordered)
 
 	var n int
@@ -179,10 +179,10 @@ func (e *EncodedDocument) skipToExtra(b []byte) int {
 	return n
 }
 
-func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Value, int, error) {
+func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value, int, error) {
 	c := b[0]
 
-	if fc.Type == types.DocumentValue && c == encoding.ArrayValue {
+	if fc.Type == types.ObjectValue && c == encoding.ArrayValue {
 		// skip array
 		after := encoding.SkipArray(b[1:])
 
@@ -193,7 +193,7 @@ func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Valu
 		_, n := binary.Uvarint(b)
 		b = b[n:]
 
-		return types.NewDocumentValue(NewEncodedDocument(&fc.AnonymousType.FieldConstraints, b)), after + 1, nil
+		return types.NewObjectValue(NewEncodedObject(&fc.AnonymousType.FieldConstraints, b)), after + 1, nil
 	}
 
 	v, n := encoding.DecodeValue(b, fc.Type == types.AnyValue || fc.Type == types.ArrayValue /* intAsDouble */)
@@ -205,7 +205,7 @@ func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Valu
 	// ensure the returned value is of the correct type
 	if fc.Type != types.AnyValue {
 		var err error
-		v, err = document.CastAs(v, fc.Type)
+		v, err = object.CastAs(v, fc.Type)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -220,7 +220,7 @@ func (e *EncodedDocument) decodeValue(fc *FieldConstraint, b []byte) (types.Valu
 }
 
 // GetByField decodes the selected field from the buffer.
-func (e *EncodedDocument) GetByField(field string) (v types.Value, err error) {
+func (e *EncodedObject) GetByField(field string) (v types.Value, err error) {
 	b := e.encoded
 
 	// get the field from the list of field constraints
@@ -245,12 +245,12 @@ func (e *EncodedDocument) GetByField(field string) (v types.Value, err error) {
 	n := e.skipToExtra(b)
 	b = b[n:]
 
-	return encoding.DecodeDocument(b, true /* intAsDouble */).GetByField(field)
+	return encoding.DecodeObject(b, true /* intAsDouble */).GetByField(field)
 }
 
-// Iterate decodes each fields one by one and passes them to fn
-// until the end of the document or until fn returns an error.
-func (e *EncodedDocument) Iterate(fn func(field string, value types.Value) error) error {
+// Iterate decodes each columns one by one and passes them to fn
+// until the end of the row or until fn returns an error.
+func (e *EncodedObject) Iterate(fn func(field string, value types.Value) error) error {
 	b := e.encoded
 
 	for _, fc := range e.fieldConstraints.Ordered {
@@ -275,11 +275,11 @@ func (e *EncodedDocument) Iterate(fn func(field string, value types.Value) error
 		return nil
 	}
 
-	return encoding.DecodeDocument(b, true /* intAsDouble */).Iterate(func(field string, value types.Value) error {
+	return encoding.DecodeObject(b, true /* intAsDouble */).Iterate(func(field string, value types.Value) error {
 		return fn(field, value)
 	})
 }
 
-func (e *EncodedDocument) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSON(e)
+func (e *EncodedObject) MarshalJSON() ([]byte, error) {
+	return object.MarshalJSON(e)
 }

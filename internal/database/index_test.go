@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -29,9 +29,9 @@ func getIndex(t testing.TB, arity int) (*database.Index, func()) {
 
 	tr := tree.New(session, 10, 0)
 
-	var paths []document.Path
+	var paths []object.Path
 	for i := 0; i < arity; i++ {
-		paths = append(paths, document.NewPath(fmt.Sprintf("[%d]", i)))
+		paths = append(paths, object.NewPath(fmt.Sprintf("[%d]", i)))
 	}
 	idx := database.NewIndex(tr, database.IndexInfo{Paths: paths})
 

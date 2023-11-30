@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// ValidateOperator reads the input stream and deletes the document from the specified index.
+// ValidateOperator reads the input stream and deletes the object from the specified index.
 type ValidateOperator struct {
 	stream.BaseOperator
 
@@ -41,9 +41,9 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 	}
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		doc, ok := out.GetDocument()
+		r, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document")
+			return errors.New("missing row")
 		}
 
 		vs := make([]types.Value, 0, len(info.Paths))
@@ -53,7 +53,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 		// cf: https://sqlite.org/lang_createindex.html#unique_indexes
 		var hasNull bool
 		for _, path := range info.Paths {
-			v, err := path.GetValueFromDocument(doc)
+			v, err := path.GetValueFromObject(r.Object())
 			if err != nil {
 				hasNull = true
 				v = types.NewNullValue()

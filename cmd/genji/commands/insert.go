@@ -18,12 +18,12 @@ import (
 func NewInsertCommand() *cli.Command {
 	return &cli.Command{
 		Name:      "insert",
-		Usage:     "Insert documents from arguments or standard input",
+		Usage:     "Insert objects from arguments or standard input",
 		UsageText: "genji insert [options] [json...]",
 		Description: `
-The insert command inserts documents into an existing table.
+The insert command inserts objects into an existing table.
 
-Insert can take JSON documents as separate arguments:
+Insert can take JSON objects as separate arguments:
 
 $ genji insert --db mydb -t foo '{"a": 1}' '{"a": 2}'
 

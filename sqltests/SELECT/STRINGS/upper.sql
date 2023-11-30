@@ -64,7 +64,7 @@ SELECT strings.UPPER(e) FROM test;
 }
 */
 
--- test: DOCUMENT value
+-- test: OBJECT value
 SELECT strings.UPPER(f) FROM test;
 /* result:
 {
@@ -104,7 +104,7 @@ SELECT strings.UPPER(CAST(e as TEXT)) FROM test;
 }
 */
 
--- test: cast DOCUMENT
+-- test: cast OBJECT
 SELECT strings.UPPER(CAST(f as TEXT)) FROM test;
 /* result:
 {

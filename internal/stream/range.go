@@ -3,10 +3,10 @@ package stream
 import (
 	"strings"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -14,7 +14,7 @@ import (
 // a given boundary.
 type Range struct {
 	Min, Max expr.LiteralExprList
-	Paths    []document.Path
+	Paths    []object.Path
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -37,7 +37,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 			return nil, err
 		}
 
-		rng.Min = types.As[*document.ValueBuffer](min).Values
+		rng.Min = types.As[*object.ValueBuffer](min).Values
 	}
 
 	if len(r.Max) > 0 {
@@ -45,7 +45,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		if err != nil {
 			return nil, err
 		}
-		rng.Max = types.As[*document.ValueBuffer](max).Values
+		rng.Max = types.As[*object.ValueBuffer](max).Values
 	}
 
 	return &rng, nil

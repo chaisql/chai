@@ -4,17 +4,17 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,19 +27,19 @@ func TestParserSelect(t *testing.T) {
 		mustFail bool
 	}{
 		{"NoTable", "SELECT 1",
-			stream.New(docs.Project(testutil.ParseNamedExpr(t, "1"))),
+			stream.New(rows.Project(testutil.ParseNamedExpr(t, "1"))),
 			true, false,
 		},
 		{"NoTableWithTuple", "SELECT (1, 2)",
-			stream.New(docs.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
+			stream.New(rows.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			true, false,
 		},
 		{"NoTableWithBrackets", "SELECT [1, 2]",
-			stream.New(docs.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
+			stream.New(rows.Project(testutil.ParseNamedExpr(t, "[1, 2]"))),
 			true, false,
 		},
 		{"NoTableWithINOperator", "SELECT 1 in (1, 2), 3",
-			stream.New(docs.Project(
+			stream.New(rows.Project(
 				testutil.ParseNamedExpr(t, "1 IN [1, 2]"),
 				testutil.ParseNamedExpr(t, "3"),
 			)),
@@ -50,88 +50,88 @@ func TestParserSelect(t *testing.T) {
 			true, false,
 		},
 		{"Multiple Wildcards", "SELECT *, * FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(expr.Wildcard{}, expr.Wildcard{})),
+			stream.New(table.Scan("test")).Pipe(rows.Project(expr.Wildcard{}, expr.Wildcard{})),
 			true, false,
 		},
 		{"WithFields", "SELECT a, b FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))),
+			stream.New(table.Scan("test")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))),
 			true, false,
 		},
 		{"WithFieldsWithQuotes", "SELECT `long \"path\"` FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
+			stream.New(table.Scan("test")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "`long \"path\"`", "long \"path\""))),
 			true, false,
 		},
 		{"WithAlias", "SELECT a AS A, b FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "a", "A"), testutil.ParseNamedExpr(t, "b"))),
+			stream.New(table.Scan("test")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "a", "A"), testutil.ParseNamedExpr(t, "b"))),
 			true, false,
 		},
 		{"WithFields and wildcard", "SELECT a, b, * FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"), expr.Wildcard{})),
+			stream.New(table.Scan("test")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"), expr.Wildcard{})),
 			true, false,
 		},
 		{"WithExpr", "SELECT a    > 1 FROM test",
-			stream.New(table.Scan("test")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "a > 1"))),
+			stream.New(table.Scan("test")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "a > 1"))),
 			true, false,
 		},
 		{"WithCond", "SELECT * FROM test WHERE age = 10",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))),
 			true, false,
 		},
 		{"WithGroupBy", "SELECT a.b.c FROM test WHERE age = 10 GROUP BY a.b.c",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.TempTreeSort(parser.MustParseExpr("a.b.c"))).
-				Pipe(docs.GroupAggregate(parser.MustParseExpr("a.b.c"))).
-				Pipe(docs.Project(&expr.NamedExpr{ExprName: "a.b.c", Expr: expr.Path(document.NewPath("a.b.c"))})),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.TempTreeSort(parser.MustParseExpr("a.b.c"))).
+				Pipe(rows.GroupAggregate(parser.MustParseExpr("a.b.c"))).
+				Pipe(rows.Project(&expr.NamedExpr{ExprName: "a.b.c", Expr: expr.Path(object.NewPath("a.b.c"))})),
 			true, false,
 		},
 		{"WithOrderBy", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithOrderBy ASC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c ASC",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithOrderBy DESC", "SELECT * FROM test WHERE age = 10 ORDER BY a.b.c DESC",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.TempTreeSortReverse(testutil.ParsePath(t, "a.b.c"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.TempTreeSortReverse(testutil.ParsePath(t, "a.b.c"))),
 			true, false,
 		},
 		{"WithLimit", "SELECT * FROM test WHERE age = 10 LIMIT 20",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.Take(parser.MustParseExpr("20"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.Take(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithOffset", "SELECT * FROM test WHERE age = 10 OFFSET 20",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.Skip(parser.MustParseExpr("20"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.Skip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithLimitThenOffset", "SELECT * FROM test WHERE age = 10 LIMIT 10 OFFSET 20",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(docs.Skip(parser.MustParseExpr("20"))).
-				Pipe(docs.Take(parser.MustParseExpr("10"))),
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.Skip(parser.MustParseExpr("20"))).
+				Pipe(rows.Take(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(table.Scan("test")).
-				Pipe(docs.GroupAggregate(nil, &functions.Count{Wildcard: true})).
-				Pipe(docs.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
+				Pipe(rows.GroupAggregate(nil, &functions.Count{Wildcard: true})).
+				Pipe(rows.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			true, false},
 		{"With NEXT VALUE FOR", "SELECT NEXT VALUE FOR foo FROM test",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
+				Pipe(rows.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
 			false, false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
@@ -143,7 +143,7 @@ func TestParserSelect(t *testing.T) {
 		{"CondWithUnionAll", "SELECT * FROM test1 WHERE age = 10 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
 				stream.New(table.Scan("test1")).
-					Pipe(docs.Filter(parser.MustParseExpr("age = 10"))),
+					Pipe(rows.Filter(parser.MustParseExpr("age = 10"))),
 				stream.New(table.Scan("test2")),
 			)),
 			true, false,
@@ -164,28 +164,28 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Concat(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a"))),
+			)).Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a"))),
 			true, false,
 		},
 		{"WithUnionAllAndLimit", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 LIMIT 10",
 			stream.New(stream.Concat(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.Take(parser.MustParseExpr("10"))),
+			)).Pipe(rows.Take(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithUnionAllAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 OFFSET 20",
 			stream.New(stream.Concat(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.Skip(parser.MustParseExpr("20"))),
+			)).Pipe(rows.Skip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithUnionAllAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION ALL SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
 			stream.New(stream.Concat(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(docs.Skip(parser.MustParseExpr("20"))).Pipe(docs.Take(parser.MustParseExpr("10"))),
+			)).Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(rows.Skip(parser.MustParseExpr("20"))).Pipe(rows.Take(parser.MustParseExpr("10"))),
 			true, false,
 		},
 
@@ -199,7 +199,7 @@ func TestParserSelect(t *testing.T) {
 		{"CondWithUnion", "SELECT * FROM test1 WHERE age = 10 UNION SELECT * FROM test2",
 			stream.New(stream.Union(
 				stream.New(table.Scan("test1")).
-					Pipe(docs.Filter(parser.MustParseExpr("age = 10"))),
+					Pipe(rows.Filter(parser.MustParseExpr("age = 10"))),
 				stream.New(table.Scan("test2")),
 			)),
 			true, false,
@@ -220,28 +220,28 @@ func TestParserSelect(t *testing.T) {
 			stream.New(stream.Union(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a"))),
+			)).Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a"))),
 			true, false,
 		},
 		{"WithUnionAndLimit", "SELECT * FROM test1 UNION SELECT * FROM test2 LIMIT 10",
 			stream.New(stream.Union(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.Take(parser.MustParseExpr("10"))),
+			)).Pipe(rows.Take(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithUnionAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 OFFSET 20",
 			stream.New(stream.Union(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.Skip(parser.MustParseExpr("20"))),
+			)).Pipe(rows.Skip(parser.MustParseExpr("20"))),
 			true, false,
 		},
 		{"WithUnionAndOrderByAndLimitAndOffset", "SELECT * FROM test1 UNION SELECT * FROM test2 ORDER BY a LIMIT 10 OFFSET 20",
 			stream.New(stream.Union(
 				stream.New(table.Scan("test1")),
 				stream.New(table.Scan("test2")),
-			)).Pipe(docs.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(docs.Skip(parser.MustParseExpr("20"))).Pipe(docs.Take(parser.MustParseExpr("10"))),
+			)).Pipe(rows.TempTreeSort(testutil.ParsePath(t, "a"))).Pipe(rows.Skip(parser.MustParseExpr("20"))).Pipe(rows.Take(parser.MustParseExpr("10"))),
 			true, false,
 		},
 		{"WithMultipleCompoundOps/1", "SELECT * FROM a UNION ALL SELECT * FROM b UNION ALL SELECT * FROM c",
@@ -306,7 +306,7 @@ func TestParserSelect(t *testing.T) {
 					)),
 					stream.New(table.Scan("c")),
 				)),
-				stream.New(table.Scan("d")).Pipe(docs.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
+				stream.New(table.Scan("d")).Pipe(rows.Project(testutil.ParseNamedExpr(t, "NEXT VALUE FOR foo"))),
 			)),
 			false, false,
 		},

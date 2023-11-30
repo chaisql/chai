@@ -9,7 +9,7 @@ import (
 	"github.com/genjidb/genji/internal/stream"
 )
 
-// ValidateOperator validates and converts incoming documents against table and field constraints.
+// ValidateOperator validates and converts incoming rows against table and field constraints.
 type ValidateOperator struct {
 	stream.BaseOperator
 
@@ -37,28 +37,30 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 
 	var newEnv environment.Environment
 
+	var br database.BasicRow
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		buf = buf[:0]
 		newEnv.SetOuter(out)
 
-		doc, ok := out.GetDocument()
+		row, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing document")
+			return errors.New("missing row")
 		}
 
-		// generate default values, validate and encode document
-		buf, err = info.EncodeDocument(tx, buf, doc)
+		// generate default values, validate and encode row
+		buf, err = info.EncodeObject(tx, buf, row.Object())
 		if err != nil {
 			return err
 		}
 
-		// use the encoded document as the new document
-		doc = database.NewEncodedDocument(&info.FieldConstraints, buf)
+		// use the encoded row as the new row
+		o := database.NewEncodedObject(&info.FieldConstraints, buf)
 
-		newEnv.SetDocument(doc)
+		br.ResetWith(row.TableName(), row.Key(), o)
+		newEnv.SetRow(&br)
 
 		// validate CHECK constraints if any
-		err := info.TableConstraints.ValidateDocument(tx, doc)
+		err := info.TableConstraints.ValidateRow(tx, newEnv.Row)
 		if err != nil {
 			return err
 		}

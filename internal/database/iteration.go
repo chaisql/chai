@@ -3,8 +3,8 @@ package database
 import (
 	"math"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -16,7 +16,7 @@ type Range struct {
 	Exact     bool
 }
 
-func (r *Range) ToTreeRange(constraints *FieldConstraints, paths []document.Path) (*tree.Range, error) {
+func (r *Range) ToTreeRange(constraints *FieldConstraints, paths []object.Path) (*tree.Range, error) {
 	var rng tree.Range
 	var err error
 
@@ -59,20 +59,20 @@ func (r *Range) ToTreeRange(constraints *FieldConstraints, paths []document.Path
 	return &rng, nil
 }
 
-func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p document.Path, isMin bool) (types.Value, error) {
+func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.Path, isMin bool) (types.Value, error) {
 	// ensure the operand satisfies all the constraints, index can work only on exact types.
 	// if a number is encountered, try to convert it to the right type if and only if the conversion
 	// is lossless.
 	// if a timestamp is encountered, ensure the field constraint is also a timestamp, otherwise convert it to text.
-	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path document.Path, targetType types.ValueType) (types.Value, error) {
+	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path object.Path, targetType types.ValueType) (types.Value, error) {
 		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
-			return document.CastAsDouble(v)
+			return object.CastAsDouble(v)
 		}
 
 		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
 			f := types.As[float64](v)
 			if float64(int64(f)) == f {
-				return document.CastAsInteger(v)
+				return object.CastAsInteger(v)
 			}
 
 			if r.Exact {
@@ -105,7 +105,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p document
 		}
 
 		if v.Type() == types.TimestampValue && targetType == types.TextValue {
-			return document.CastAsText(v)
+			return object.CastAsText(v)
 		}
 
 		return v, nil

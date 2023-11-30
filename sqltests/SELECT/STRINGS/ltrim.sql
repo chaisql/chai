@@ -95,7 +95,7 @@ SELECT strings.LTRIM([1, 2]);
     "LTRIM([1, 2])": NULL
 }
 */
--- test: LTRIM DOCUMENT
+-- test: LTRIM OBJECT
 SELECT strings.LTRIM({a: 1});
 /* result:
 {

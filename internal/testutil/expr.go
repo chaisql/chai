@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/testutil/genexprtests"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -48,9 +48,9 @@ func NullValue() expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewNullValue()}
 }
 
-// DocumentValue creates a literal value of type Document.
-func DocumentValue(d types.Document) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewDocumentValue(d)}
+// ObjectValue creates a literal value of type Object.
+func ObjectValue(d types.Object) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewObjectValue(d)}
 }
 
 // ArrayValue creates a literal value of type Array.
@@ -71,10 +71,10 @@ func ExprList(t testing.TB, s string) expr.LiteralExprList {
 func ParsePath(t testing.TB, p string) expr.Path {
 	t.Helper()
 
-	return expr.Path(ParseDocumentPath(t, p))
+	return expr.Path(ParseObjectPath(t, p))
 }
 
-func ParseDocumentPath(t testing.TB, p string) document.Path {
+func ParseObjectPath(t testing.TB, p string) object.Path {
 	t.Helper()
 
 	vp, err := parser.ParsePath(p)
@@ -82,10 +82,10 @@ func ParseDocumentPath(t testing.TB, p string) document.Path {
 	return vp
 }
 
-func ParseDocumentPaths(t testing.TB, str ...string) []document.Path {
-	var paths []document.Path
+func ParseObjectPaths(t testing.TB, str ...string) []object.Path {
+	var paths []object.Path
 	for _, s := range str {
-		paths = append(paths, ParseDocumentPath(t, s))
+		paths = append(paths, ParseObjectPath(t, s))
 	}
 
 	return paths

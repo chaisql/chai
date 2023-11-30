@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -124,27 +124,27 @@ func (t *TypeOf) String() string {
 }
 
 // PK represents the pk() function.
-// It returns the primary key of the current document.
+// It returns the primary key of the current object.
 type PK struct{}
 
-// Eval returns the primary key of the current document.
+// Eval returns the primary key of the current object.
 func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
-	tableName, ok := env.Get(environment.TableKey)
+	row, ok := env.GetRow()
 	if !ok {
 		return expr.NullLiteral, nil
 	}
 
-	dpk, ok := env.GetKey()
-	if !ok {
+	key := row.Key()
+	if key == nil {
 		return expr.NullLiteral, nil
 	}
 
-	vs, err := dpk.Decode()
+	vs, err := key.Decode()
 	if err != nil {
 		return expr.NullLiteral, err
 	}
 
-	info, err := env.GetTx().Catalog.GetTableInfo(types.As[string](tableName))
+	info, err := env.GetTx().Catalog.GetTableInfo(row.TableName())
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 	if pk != nil {
 		for i, tp := range pk.Types {
 			if !tp.IsAny() {
-				vs[i], err = document.CastAs(vs[i], tp)
+				vs[i], err = object.CastAs(vs[i], tp)
 				if err != nil {
 					return nil, err
 				}
@@ -161,7 +161,7 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		}
 	}
 
-	vb := document.NewValueBuffer()
+	vb := object.NewValueBuffer()
 
 	for _, v := range vs {
 		vb.Append(v)
@@ -185,7 +185,7 @@ func (k *PK) String() string {
 
 var _ expr.AggregatorBuilder = (*Count)(nil)
 
-// Count is the COUNT aggregator function. It counts the number of documents
+// Count is the COUNT aggregator function. It counts the number of objects
 // in a stream.
 type Count struct {
 	Expr     expr.Expr
@@ -194,12 +194,12 @@ type Count struct {
 }
 
 func (c *Count) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
+	d, ok := env.GetRow()
 	if !ok {
 		return nil, errors.New("misuse of aggregation function COUNT()")
 	}
 
-	return d.GetByField(c.String())
+	return d.Get(c.String())
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -276,14 +276,14 @@ type Min struct {
 	Expr expr.Expr
 }
 
-// Eval extracts the min value from the given document and returns it.
+// Eval extracts the min value from the given object and returns it.
 func (m *Min) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
+	r, ok := env.GetRow()
 	if !ok {
 		return nil, errors.New("misuse of aggregation function MIN()")
 	}
 
-	return d.GetByField(m.String())
+	return r.Get(m.String())
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -334,7 +334,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	// clone the value to avoid it being reused during next aggregation
-	v, err = document.CloneValue(v)
+	v, err = object.CloneValue(v)
 	if err != nil {
 		return err
 	}
@@ -380,14 +380,14 @@ type Max struct {
 	Expr expr.Expr
 }
 
-// Eval extracts the max value from the given document and returns it.
+// Eval extracts the max value from the given object and returns it.
 func (m *Max) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
+	r, ok := env.GetRow()
 	if !ok {
 		return nil, errors.New("misuse of aggregation function MAX()")
 	}
 
-	return d.GetByField(m.String())
+	return r.Get(m.String())
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -438,7 +438,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	// clone the value to avoid it being reused during next aggregation
-	v, err = document.CloneValue(v)
+	v, err = object.CloneValue(v)
 	if err != nil {
 		return err
 	}
@@ -485,14 +485,14 @@ type Sum struct {
 	Expr expr.Expr
 }
 
-// Eval extracts the sum value from the given document and returns it.
+// Eval extracts the sum value from the given object and returns it.
 func (s *Sum) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
+	r, ok := env.GetRow()
 	if !ok {
 		return nil, errors.New("misuse of aggregation function SUM()")
 	}
 
-	return d.GetByField(s.String())
+	return r.Get(s.String())
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -595,14 +595,14 @@ type Avg struct {
 	Expr expr.Expr
 }
 
-// Eval extracts the average value from the given document and returns it.
+// Eval extracts the average value from the given object and returns it.
 func (s *Avg) Eval(env *environment.Environment) (types.Value, error) {
-	d, ok := env.GetDocument()
+	r, ok := env.GetRow()
 	if !ok {
 		return nil, errors.New("misuse of aggregation function AVG()")
 	}
 
-	return d.GetByField(s.String())
+	return r.Get(s.String())
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -676,13 +676,13 @@ func (s *AvgAggregator) String() string {
 }
 
 // Len represents the len() function.
-// It returns the length of string, array or document.
+// It returns the length of string, array or object.
 // For other types len() returns NULL.
 type Len struct {
 	Expr expr.Expr
 }
 
-// Eval extracts the average value from the given document and returns it.
+// Eval extracts the average value from the given object and returns it.
 func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	val, err := s.Expr.Eval(env)
 	if err != nil {
@@ -693,13 +693,13 @@ func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	case types.TextValue:
 		length = len(types.As[string](val))
 	case types.ArrayValue:
-		arrayLen, err := document.ArrayLength(types.As[types.Array](val))
+		arrayLen, err := object.ArrayLength(types.As[types.Array](val))
 		if err != nil {
 			return nil, err
 		}
 		length = arrayLen
-	case types.DocumentValue:
-		docLen, err := document.Length(types.As[types.Document](val))
+	case types.ObjectValue:
+		docLen, err := object.Length(types.As[types.Object](val))
 		if err != nil {
 			return nil, err
 		}

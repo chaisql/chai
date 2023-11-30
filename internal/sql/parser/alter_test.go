@@ -3,12 +3,12 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -76,7 +76,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 			},
 			TableConstraints: database.TableConstraints{
 				&database.TableConstraint{
-					Paths:      document.Paths{document.NewPath("bar")},
+					Paths:      object.Paths{object.NewPath("bar")},
 					PrimaryKey: true,
 				},
 			},

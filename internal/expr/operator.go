@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -117,14 +117,14 @@ type Cast struct {
 	CastAs types.ValueType
 }
 
-// Eval returns the primary key of the current document.
+// Eval returns the primary key of the current object.
 func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
 	}
 
-	return document.CastAs(v, c.CastAs)
+	return object.CastAs(v, c.CastAs)
 }
 
 // IsEqual compares this expression with the other expression and returns

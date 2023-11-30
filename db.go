@@ -1,15 +1,17 @@
 /*
-Package genji implements a document-oriented, embedded SQL database.
+Package genji implements an embedded SQL database.
 */
 package genji
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"io"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/database/catalogstore"
 	"github.com/genjidb/genji/internal/environment"
@@ -18,7 +20,8 @@ import (
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/rows"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -100,7 +103,7 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
+func (db *DB) Query(q string, args ...any) (*Result, error) {
 	stmt, err := db.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -109,19 +112,18 @@ func (db *DB) Query(q string, args ...interface{}) (*Result, error) {
 	return stmt.Query(args...)
 }
 
-// QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (db *DB) QueryDocument(q string, args ...interface{}) (types.Document, error) {
+// QueryRow runs the query and returns the first row.
+func (db *DB) QueryRow(q string, args ...any) (*Row, error) {
 	stmt, err := db.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return stmt.QueryDocument(args...)
+	return stmt.QueryRow(args...)
 }
 
 // Exec a query against the database without returning the result.
-func (db *DB) Exec(q string, args ...interface{}) error {
+func (db *DB) Exec(q string, args ...any) error {
 	stmt, err := db.Prepare(q)
 	if err != nil {
 		return err
@@ -170,7 +172,7 @@ func (tx *Tx) Commit() error {
 
 // Query the database withing the transaction and returns the result.
 // Closing the returned result after usage is not mandatory.
-func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
+func (tx *Tx) Query(q string, args ...any) (*Result, error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return nil, err
@@ -179,19 +181,18 @@ func (tx *Tx) Query(q string, args ...interface{}) (*Result, error) {
 	return stmt.Query(args...)
 }
 
-// QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (tx *Tx) QueryDocument(q string, args ...interface{}) (types.Document, error) {
+// QueryRow runs the query and returns the first row.
+func (tx *Tx) QueryRow(q string, args ...any) (*Row, error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return stmt.QueryDocument(args...)
+	return stmt.QueryRow(args...)
 }
 
 // Exec a query against the database within tx and without returning the result.
-func (tx *Tx) Exec(q string, args ...interface{}) (err error) {
+func (tx *Tx) Exec(q string, args ...any) (err error) {
 	stmt, err := tx.Prepare(q)
 	if err != nil {
 		return err
@@ -231,7 +232,7 @@ type Statement struct {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (s *Statement) Query(args ...interface{}) (*Result, error) {
+func (s *Statement) Query(args ...any) (*Result, error) {
 	var r *statement.Result
 	var err error
 
@@ -271,9 +272,8 @@ func argsToParams(args []interface{}) []environment.Param {
 	return nv
 }
 
-// QueryDocument runs the query and returns the first document.
-// If the query returns no error, QueryDocument returns errs.ErrDocumentNotFound.
-func (s *Statement) QueryDocument(args ...interface{}) (d types.Document, err error) {
+// QueryRow runs the query and returns the first row.
+func (s *Statement) QueryRow(args ...any) (r *Row, err error) {
 	res, err := s.Query(args...)
 	if err != nil {
 		return nil, err
@@ -285,30 +285,11 @@ func (s *Statement) QueryDocument(args ...interface{}) (d types.Document, err er
 		}
 	}()
 
-	return scanDocument(res)
-}
-
-func scanDocument(iter document.Iterator) (types.Document, error) {
-	var d types.Document
-	err := iter.Iterate(func(doc types.Document) error {
-		d = doc
-		return stream.ErrStreamClosed
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if d == nil {
-		return nil, errors.WithStack(errs.NewDocumentNotFoundError())
-	}
-
-	fb := document.NewFieldBuffer()
-	err = fb.Copy(d)
-	return fb, err
+	return res.GetFirst()
 }
 
 // Exec a query against the database without returning the result.
-func (s *Statement) Exec(args ...interface{}) (err error) {
+func (s *Statement) Exec(args ...any) (err error) {
 	res, err := s.Query(args...)
 	if err != nil {
 		return err
@@ -320,7 +301,7 @@ func (s *Statement) Exec(args ...interface{}) (err error) {
 		}
 	}()
 
-	return res.Iterate(func(d types.Document) error {
+	return res.Iterate(func(*Row) error {
 		return nil
 	})
 }
@@ -331,22 +312,44 @@ type Result struct {
 	ctx    context.Context
 }
 
-func (r *Result) Iterate(fn func(d types.Document) error) error {
+func (r *Result) Iterate(fn func(r *Row) error) error {
+	var row Row
 	if r.ctx == nil {
-		return r.result.Iterate(fn)
+		return r.result.Iterate(func(dr database.Row) error {
+			row.row = dr
+			return fn(&row)
+		})
 	}
 
-	return r.result.Iterate(func(d types.Document) error {
+	return r.result.Iterate(func(dr database.Row) error {
 		select {
 		case <-r.ctx.Done():
 			return r.ctx.Err()
 		default:
-			return fn(d)
+			row.row = dr
+			return fn(&row)
 		}
 	})
 }
 
-func (r *Result) Fields() []string {
+func (r *Result) GetFirst() (*Row, error) {
+	var rr *Row
+	err := r.Iterate(func(row *Row) error {
+		rr = row.Clone()
+		return stream.ErrStreamClosed
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if rr == nil {
+		return nil, errors.WithStack(errs.NewRowNotFoundError())
+	}
+
+	return rr, nil
+}
+
+func (r *Result) Columns() []string {
 	if r.result.Iterator == nil {
 		return nil
 	}
@@ -358,7 +361,7 @@ func (r *Result) Fields() []string {
 
 	// Search for the ProjectOperator. If found, extract the projected expression list
 	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*docs.ProjectOperator); ok {
+		if po, ok := op.(*rows.ProjectOperator); ok {
 			// if there are no projected expression, it's a wildcard
 			if len(po.Exprs) == 0 {
 				break
@@ -373,7 +376,7 @@ func (r *Result) Fields() []string {
 		}
 	}
 
-	// the stream will output documents in a single field
+	// the stream will output rows in a single field
 	return []string{"*"}
 }
 
@@ -384,6 +387,45 @@ func (r *Result) Close() (err error) {
 	}
 
 	return r.result.Close()
+}
+
+func (r *Result) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	err := r.MarshalJSONTo(&buf)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (r *Result) MarshalJSONTo(w io.Writer) error {
+	buf := bufio.NewWriter(w)
+
+	buf.WriteByte('[')
+
+	first := true
+	err := r.result.Iterate(func(r database.Row) error {
+		if !first {
+			buf.WriteString(", ")
+		} else {
+			first = false
+		}
+
+		data, err := r.MarshalJSON()
+		if err != nil {
+			return err
+		}
+
+		_, err = buf.Write(data)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	buf.WriteByte(']')
+	return buf.Flush()
 }
 
 func newQueryContext(db *DB, tx *Tx, params []environment.Param) *query.Context {
@@ -398,4 +440,71 @@ func newQueryContext(db *DB, tx *Tx, params []environment.Param) *query.Context 
 	}
 
 	return &ctx
+}
+
+type Row struct {
+	row database.Row
+}
+
+func (r *Row) Clone() *Row {
+	var rr Row
+	fb := object.NewFieldBuffer()
+	err := fb.Copy(r.row.Object())
+	if err != nil {
+		panic(err)
+	}
+	var br database.BasicRow
+	br.ResetWith(r.row.TableName(), r.row.Key(), fb)
+	rr.row = &br
+
+	return &rr
+}
+
+func (r *Row) Columns() ([]string, error) {
+	var cols []string
+	err := r.row.Iterate(func(column string, value types.Value) error {
+		cols = append(cols, column)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return cols, nil
+}
+func (r *Row) GetColumnType(column string) (string, error) {
+	v, err := r.row.Get(column)
+	if errors.Is(err, types.ErrFieldNotFound) {
+		return "", errors.New("column not found")
+	}
+
+	return v.Type().String(), err
+}
+
+func (r *Row) ScanColumn(column string, dest any) error {
+	return object.ScanField(r.row.Object(), column, dest)
+}
+
+func (r *Row) Scan(dest ...any) error {
+	return object.Scan(r.row.Object(), dest...)
+}
+
+func (r *Row) StructScan(dest any) error {
+	return object.StructScan(r.row.Object(), dest)
+}
+
+func (r *Row) MapScan(dest map[string]any) error {
+	return object.MapScan(r.row.Object(), dest)
+}
+
+func (r *Row) MarshalJSON() ([]byte, error) {
+	return r.row.Object().MarshalJSON()
+}
+
+func (r *Row) Iterate(fn func(column string, value types.Value) error) error {
+	return r.row.Object().Iterate(fn)
+}
+
+func (r *Row) Object() types.Object {
+	return r.row.Object()
 }

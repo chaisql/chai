@@ -95,7 +95,7 @@ SELECT strings.TRIM([1, 2]);
     "TRIM([1, 2])": NULL
 }
 */
--- test: TRIM DOCUMENT
+-- test: TRIM OBJECT
 SELECT strings.TRIM({a: 1});
 /* result:
 {

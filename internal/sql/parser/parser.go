@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 )
 
 // Parser represents an Genji SQL Parser.
@@ -42,8 +42,8 @@ func ParseQuery(s string) (query.Query, error) {
 	return NewParser(strings.NewReader(s)).ParseQuery()
 }
 
-// ParsePath parses a path to a value in a document.
-func ParsePath(s string) (document.Path, error) {
+// ParsePath parses a path to a value in an object.
+func ParsePath(s string) (object.Path, error) {
 	return NewParser(strings.NewReader(s)).parsePath()
 }
 
@@ -178,15 +178,15 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 }
 
 // parsePathList parses a list of paths in the form: (path, path, ...), if exists
-func (p *Parser) parsePathList() ([]document.Path, tree.SortOrder, error) {
+func (p *Parser) parsePathList() ([]object.Path, tree.SortOrder, error) {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
 		return nil, 0, err
 	}
 
-	var paths []document.Path
+	var paths []object.Path
 	var err error
-	var path document.Path
+	var path object.Path
 	var order tree.SortOrder
 
 	// Parse first (required) path.

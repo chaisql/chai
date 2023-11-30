@@ -18,7 +18,6 @@ import (
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
 )
 
 func TempDir(t testing.TB) string {
@@ -113,7 +112,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d types.Document) error {
+	return res.Iterate(func(database.Row) error {
 		return nil
 	})
 }

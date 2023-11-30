@@ -9,7 +9,6 @@ import (
 
 	"github.com/genjidb/genji"
 	"github.com/genjidb/genji/cmd/genji/dbutil"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -121,14 +120,14 @@ func TestSaveCommand(t *testing.T) {
 	defer db.Close()
 
 	// ensure that the data is present
-	doc, err := db.QueryDocument("SELECT * FROM test")
+	r, err := db.QueryRow("SELECT * FROM test")
 	assert.NoError(t, err)
 
 	var res struct {
 		A int
 		B int
 	}
-	err = document.StructScan(doc, &res)
+	err = r.StructScan(&res)
 	assert.NoError(t, err)
 
 	require.Equal(t, 1, res.A)

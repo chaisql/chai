@@ -5,12 +5,12 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +29,7 @@ var key2 = func() *tree.Key {
 	)
 }()
 
-var doc = document.NewFromMap(map[string]bool{
+var doc = object.NewFromMap(map[string]bool{
 	"a": true,
 })
 
@@ -37,7 +37,7 @@ func TestTreeGet(t *testing.T) {
 	tests := []struct {
 		name  string
 		key   *tree.Key
-		d     types.Document
+		d     types.Object
 		Fails bool
 	}{
 		{"existing", key1, doc, false},
@@ -183,8 +183,8 @@ func TestTreeIterateOnRange(t *testing.T) {
 	for i := int64(0); i < 10; i++ {
 		for j := int64(0); j < 10; j++ {
 			keys = append(keys, tree.NewKey(
-				types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(i))),
-				types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(j))),
+				types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(i))),
+				types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(j))),
 			))
 		}
 	}
@@ -193,8 +193,8 @@ func TestTreeIterateOnRange(t *testing.T) {
 	for i := int64(0); i < 10; i++ {
 		for j := int64(0); j < 10; j++ {
 			keys = append(keys, tree.NewKey(
-				types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(i))),
-				types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(j))),
+				types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(i))),
+				types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(j))),
 			))
 		}
 	}
@@ -320,32 +320,32 @@ func TestTreeIterateOnRange(t *testing.T) {
 			{"< bar3 desc", nil, tree.NewKey(types.NewBlobValue([]byte("bar3"))), true, 270, 300, tree.SortOrder(0).SetDesc(0)},
 
 			// array
-			{"= [3]", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), false, 1430, 1440, 0},
-			{">= [3]", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), nil, false, 1430, 1500, 0},
-			{"> [3]", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), nil, true, 1440, 1500, 0},
-			{"<= [3]", nil, tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), false, 1400, 1440, 0},
-			{"< [3]", nil, tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), true, 1400, 1430, 0},
+			{"= [3]", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), false, 1430, 1440, 0},
+			{">= [3]", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), nil, false, 1430, 1500, 0},
+			{"> [3]", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), nil, true, 1440, 1500, 0},
+			{"<= [3]", nil, tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), false, 1400, 1440, 0},
+			{"< [3]", nil, tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), true, 1400, 1430, 0},
 
 			// array desc
-			{"= [3] desc", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), false, 160, 170, tree.SortOrder(0).SetDesc(0)},
-			{">= [3] desc", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), nil, false, 100, 170, tree.SortOrder(0).SetDesc(0)},
-			{"> [3] desc", tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), nil, true, 100, 160, tree.SortOrder(0).SetDesc(0)},
-			{"<= [3] desc", nil, tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), false, 160, 200, tree.SortOrder(0).SetDesc(0)},
-			{"< [3] desc", nil, tree.NewKey(types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(3)))), true, 170, 200, tree.SortOrder(0).SetDesc(0)},
+			{"= [3] desc", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), false, 160, 170, tree.SortOrder(0).SetDesc(0)},
+			{">= [3] desc", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), nil, false, 100, 170, tree.SortOrder(0).SetDesc(0)},
+			{"> [3] desc", tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), nil, true, 100, 160, tree.SortOrder(0).SetDesc(0)},
+			{"<= [3] desc", nil, tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), false, 160, 200, tree.SortOrder(0).SetDesc(0)},
+			{"< [3] desc", nil, tree.NewKey(types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(3)))), true, 170, 200, tree.SortOrder(0).SetDesc(0)},
 
-			// document
-			{"= {foo: 3}", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 1530, 1540, 0},
-			{">= {foo: 3}", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, false, 1530, 1600, 0},
-			{"> {foo: 3}", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, true, 1540, 1600, 0},
-			{"<= {foo: 3}", nil, tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 1500, 1540, 0},
-			{"< {foo: 3}", nil, tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), true, 1500, 1530, 0},
+			// object
+			{"= {foo: 3}", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 1530, 1540, 0},
+			{">= {foo: 3}", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, false, 1530, 1600, 0},
+			{"> {foo: 3}", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, true, 1540, 1600, 0},
+			{"<= {foo: 3}", nil, tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 1500, 1540, 0},
+			{"< {foo: 3}", nil, tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), true, 1500, 1530, 0},
 
-			// document desc
-			{"= {foo: 3} desc", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 60, 70, tree.SortOrder(0).SetDesc(0)},
-			{">= {foo: 3} desc", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, false, 0, 70, tree.SortOrder(0).SetDesc(0)},
-			{"> {foo: 3} desc", tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, true, 0, 60, tree.SortOrder(0).SetDesc(0)},
-			{"<= {foo: 3} desc", nil, tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 60, 100, tree.SortOrder(0).SetDesc(0)},
-			{"< {foo: 3} desc", nil, tree.NewKey(types.NewDocumentValue(document.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), true, 70, 100, tree.SortOrder(0).SetDesc(0)},
+			// object desc
+			{"= {foo: 3} desc", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 60, 70, tree.SortOrder(0).SetDesc(0)},
+			{">= {foo: 3} desc", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, false, 0, 70, tree.SortOrder(0).SetDesc(0)},
+			{"> {foo: 3} desc", tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), nil, true, 0, 60, tree.SortOrder(0).SetDesc(0)},
+			{"<= {foo: 3} desc", nil, tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), false, 60, 100, tree.SortOrder(0).SetDesc(0)},
+			{"< {foo: 3} desc", nil, tree.NewKey(types.NewObjectValue(object.NewFieldBuffer().Add("foo", types.NewIntegerValue(3)))), true, 70, 100, tree.SortOrder(0).SetDesc(0)},
 		}
 
 		for _, test := range tests {

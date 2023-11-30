@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -23,10 +24,10 @@ func TestPathExpr(t *testing.T) {
 	}{
 		{"a", types.NewIntegerValue(1), false},
 		{"b", func() types.Value {
-			fb := document.NewFieldBuffer()
+			fb := object.NewFieldBuffer()
 			err := json.Unmarshal([]byte(`{"foo bar": [1, 2]}`), fb)
 			assert.NoError(t, err)
-			return types.NewDocumentValue(fb)
+			return types.NewObjectValue(fb)
 		}(),
 			false},
 		{"b.`foo bar`[0]", types.NewIntegerValue(1), false},
@@ -40,15 +41,15 @@ func TestPathExpr(t *testing.T) {
 		{"d", nullLiteral, false},
 	}
 
-	d := document.NewFromJSON([]byte(`{
+	r := database.NewBasicRow(object.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
 		"c": [1, {"foo": "bar"}, [1, 2]]
-	}`))
+	}`)))
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testutil.TestExpr(t, test.expr, environment.New(d), test.res, test.fails)
+			testutil.TestExpr(t, test.expr, environment.New(r), test.res, test.fails)
 		})
 	}
 
@@ -90,10 +91,10 @@ func TestEnvPathExpr(t *testing.T) {
 	}{
 		{"a", types.NewIntegerValue(1), false},
 		{"b", func() types.Value {
-			fb := document.NewFieldBuffer()
+			fb := object.NewFieldBuffer()
 			err := json.Unmarshal([]byte(`{"foo bar": [1, 2]}`), fb)
 			assert.NoError(t, err)
-			return types.NewDocumentValue(fb)
+			return types.NewObjectValue(fb)
 		}(),
 			false},
 		{"b.`foo bar`[0]", types.NewIntegerValue(1), false},
@@ -107,15 +108,15 @@ func TestEnvPathExpr(t *testing.T) {
 		{"d", nullLiteral, false},
 	}
 
-	d := document.NewFromJSON([]byte(`{
+	r := database.NewBasicRow(object.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
 		"c": [1, {"foo": "bar"}, [1, 2]]
-	}`))
+	}`)))
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testutil.TestExpr(t, test.expr, environment.New(d), test.res, test.fails)
+			testutil.TestExpr(t, test.expr, environment.New(r), test.res, test.fails)
 		})
 	}
 

@@ -10,10 +10,8 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -41,13 +39,13 @@ func ExampleTx() {
 		log.Fatal(err)
 	}
 
-	d, err := tx.QueryDocument("SELECT id, name, age FROM user WHERE name = ?", "foo")
+	r, err := tx.QueryRow("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
 		panic(err)
 	}
 
 	var u User
-	err = document.StructScan(d, &u)
+	err = r.StructScan(&u)
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +56,7 @@ func ExampleTx() {
 	var name string
 	var age uint8
 
-	err = document.Scan(d, &id, &name, &age)
+	err = r.Scan(&id, &name, &age)
 	if err != nil {
 		panic(err)
 	}
@@ -108,42 +106,42 @@ func TestOpen(t *testing.T) {
 
 	var count int
 	want := []string{
-		`{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, docid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
 		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
 		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
 		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
 		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":10, "type":"table"}`,
 		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":11, "type":"index"}`,
 		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":12, "type":"table"}`,
-		`{"name":"tableC", "docid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b BOOLEAN)", "namespace":13, "type":"table"}`,
+		`{"name":"tableC", "rowid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b BOOLEAN)", "namespace":13, "type":"table"}`,
 		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":14, "type":"index"}`,
 		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
-	err = res1.Iterate(func(d types.Document) error {
+	err = res1.Iterate(func(r *genji.Row) error {
 		count++
 		if count > len(want) {
 			return fmt.Errorf("more than %d relations", len(want))
 		}
 
-		testutil.RequireDocJSONEq(t, d, want[count-1])
+		testutil.RequireJSONEq(t, r, want[count-1])
 		return nil
 	})
 	assert.NoError(t, err)
 
-	d, err := db.QueryDocument("SELECT * FROM tableB")
+	d, err := db.QueryRow("SELECT * FROM tableB")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"a": "1"}`)
+	testutil.RequireJSONEq(t, d, `{"a": "1"}`)
 
-	d, err = db.QueryDocument("SELECT * FROM __genji_sequence")
+	d, err = db.QueryRow("SELECT * FROM __genji_sequence")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name":"__genji_store_seq", "seq":14}`)
+	testutil.RequireJSONEq(t, d, `{"name":"__genji_store_seq", "seq":14}`)
 
-	d, err = db.QueryDocument("SELECT * FROM __genji_sequence OFFSET 1")
+	d, err = db.QueryRow("SELECT * FROM __genji_sequence OFFSET 1")
 	assert.NoError(t, err)
-	testutil.RequireDocJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
+	testutil.RequireJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }
 
-func TestQueryDocument(t *testing.T) {
+func TestQueryRow(t *testing.T) {
 	db, err := genji.Open(":memory:")
 	assert.NoError(t, err)
 	require.NoError(t, err)
@@ -158,13 +156,13 @@ func TestQueryDocument(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, tx.Commit())
 
-	t.Run("Should return the first document", func(t *testing.T) {
+	t.Run("Should return the first row", func(t *testing.T) {
 		var a int
 		var b string
 
-		r, err := db.QueryDocument("SELECT * FROM test")
+		r, err := db.QueryRow("SELECT * FROM test")
 		assert.NoError(t, err)
-		err = document.Scan(r, &a, &b)
+		err = r.Scan(&a, &b)
 		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
@@ -173,23 +171,23 @@ func TestQueryDocument(t *testing.T) {
 		assert.NoError(t, err)
 		defer tx.Rollback()
 
-		r, err = tx.QueryDocument("SELECT * FROM test")
+		r, err = tx.QueryRow("SELECT * FROM test")
 		assert.NoError(t, err)
-		err = document.Scan(r, &a, &b)
+		err = r.Scan(&a, &b)
 		assert.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 	})
 
-	t.Run("Should return an error if no document", func(t *testing.T) {
-		r, err := db.QueryDocument("SELECT * FROM test WHERE a > 100")
+	t.Run("Should return an error if no row", func(t *testing.T) {
+		r, err := db.QueryRow("SELECT * FROM test WHERE a > 100")
 		require.True(t, genji.IsNotFoundError(err))
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		assert.NoError(t, err)
 		defer tx.Rollback()
-		r, err = tx.QueryDocument("SELECT * FROM test WHERE a > 100")
+		r, err = tx.QueryRow("SELECT * FROM test WHERE a > 100")
 		require.True(t, genji.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
@@ -217,7 +215,7 @@ func TestPrepareThreadSafe(t *testing.T) {
 			}
 			defer res.Close()
 
-			return res.Iterate(func(d types.Document) error {
+			return res.Iterate(func(d *genji.Row) error {
 				return nil
 			})
 		})
@@ -253,9 +251,9 @@ func TestIterateDeepCopy(t *testing.T) {
 	}
 
 	var items []*item
-	err = res.Iterate(func(d types.Document) error {
+	err = res.Iterate(func(r *genji.Row) error {
 		var i item
-		err := document.StructScan(d, &i)
+		err := r.StructScan(&i)
 		assert.NoError(t, err)
 
 		items = append(items, &i)
@@ -285,7 +283,7 @@ func BenchmarkSelect(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo")
-				res.Iterate(func(d types.Document) error { return nil })
+				res.Iterate(func(d *genji.Row) error { return nil })
 			}
 		})
 	}
@@ -308,7 +306,7 @@ func BenchmarkSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT b FROM foo WHERE a > 0")
-				res.Iterate(func(d types.Document) error { return nil })
+				res.Iterate(func(d *genji.Row) error { return nil })
 			}
 		})
 	}
@@ -332,7 +330,7 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := p.Query()
-				res.Iterate(func(d types.Document) error { return nil })
+				res.Iterate(func(d *genji.Row) error { return nil })
 			}
 		})
 	}
@@ -355,7 +353,7 @@ func BenchmarkSelectPk(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo WHERE a = ?", size-1)
-				res.Iterate(func(d types.Document) error { return nil })
+				res.Iterate(func(d *genji.Row) error { return nil })
 			}
 		})
 	}

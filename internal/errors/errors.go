@@ -34,8 +34,8 @@ type NotFoundError struct {
 	Name string
 }
 
-func NewDocumentNotFoundError() error {
-	return NewNotFoundError("document")
+func NewRowNotFoundError() error {
+	return NewNotFoundError("row")
 }
 
 func NewNotFoundError(name string) error {
@@ -43,8 +43,8 @@ func NewNotFoundError(name string) error {
 }
 
 func (a NotFoundError) Error() string {
-	if a.Name == "document" {
-		return "document not found"
+	if a.Name == "row" {
+		return "row not found"
 	}
 
 	return fmt.Sprintf("%q not found", a.Name)

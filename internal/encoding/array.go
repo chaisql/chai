@@ -3,7 +3,7 @@ package encoding
 import (
 	"encoding/binary"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -13,7 +13,7 @@ func EncodeArray(dst []byte, a types.Array) ([]byte, error) {
 		return dst, nil
 	}
 
-	l, err := document.ArrayLength(a)
+	l, err := object.ArrayLength(a)
 	if err != nil {
 		return nil, err
 	}
@@ -106,5 +106,5 @@ func (e *EncodedArray) GetByIndex(idx int) (v types.Value, err error) {
 }
 
 func (e *EncodedArray) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSONArray(e)
+	return object.MarshalJSONArray(e)
 }

@@ -9,13 +9,13 @@ import (
 	"github.com/genjidb/genji/internal/stream"
 )
 
-// A DeleteOperator replaces documents in the table
+// A DeleteOperator replaces objects in the table
 type DeleteOperator struct {
 	stream.BaseOperator
 	Name string
 }
 
-// Delete deletes documents from the table. Incoming documents must implement the document.Keyer interface.
+// Delete deletes rows from the table.
 func Delete(tableName string) *DeleteOperator {
 	return &DeleteOperator{Name: tableName}
 }
@@ -33,12 +33,12 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		key, ok := out.GetKey()
+		r, ok := out.GetRow()
 		if !ok {
-			return errors.New("missing key")
+			return errors.New("missing row")
 		}
 
-		err := table.Delete(key)
+		err := table.Delete(r.Key())
 		if err != nil {
 			return err
 		}

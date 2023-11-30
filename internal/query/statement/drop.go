@@ -41,9 +41,9 @@ func (stmt DropTableStmt) Run(ctx *Context) (Result, error) {
 		return res, err
 	}
 
-	// if there is no primary key, drop the docid sequence
+	// if there is no primary key, drop the rowid sequence
 	if tb.Info.GetPrimaryKey() == nil {
-		err = ctx.Tx.CatalogWriter().DropSequence(ctx.Tx, tb.Info.DocidSequenceName)
+		err = ctx.Tx.CatalogWriter().DropSequence(ctx.Tx, tb.Info.RowidSequenceName)
 		if err != nil {
 			return res, err
 		}

@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
 
 	errs "github.com/genjidb/genji/internal/errors"
@@ -36,9 +35,9 @@ func TestAlterTable(t *testing.T) {
 		assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
 	}
 
-	d, err := db.QueryDocument("SELECT * FROM bar")
+	r, err := db.QueryRow("SELECT * FROM bar")
 	assert.NoError(t, err)
-	data, err := document.MarshalJSON(d)
+	data, err := r.MarshalJSON()
 	assert.NoError(t, err)
 	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, string(data))
 

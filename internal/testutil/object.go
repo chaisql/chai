@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,7 @@ import (
 func MakeValue(t testing.TB, v interface{}) types.Value {
 	t.Helper()
 
-	vv, err := document.NewValue(v)
+	vv, err := object.NewValue(v)
 	assert.NoError(t, err)
 	return vv
 }
@@ -33,16 +34,16 @@ func MakeArrayValue(t testing.TB, vs ...interface{}) types.Value {
 		vvs = append(vvs, MakeValue(t, v))
 	}
 
-	vb := document.NewValueBuffer(vvs...)
+	vb := object.NewValueBuffer(vvs...)
 
 	return types.NewArrayValue(vb)
 }
 
-// MakeDocument creates a document from a json string.
-func MakeDocument(t testing.TB, jsonDoc string) types.Document {
+// MakeObject creates an object from a json string.
+func MakeObject(t testing.TB, jsonDoc string) types.Object {
 	t.Helper()
 
-	var fb document.FieldBuffer
+	var fb object.FieldBuffer
 
 	err := fb.UnmarshalJSON([]byte(jsonDoc))
 	assert.NoError(t, err)
@@ -50,10 +51,10 @@ func MakeDocument(t testing.TB, jsonDoc string) types.Document {
 	return &fb
 }
 
-// MakeDocuments creates a slice of document from json strings.
-func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
+// MakeObjects creates a slice of objects from json strings.
+func MakeObjects(t testing.TB, jsonDocs ...string) (docs Objs) {
 	for _, jsonDoc := range jsonDocs {
-		docs = append(docs, MakeDocument(t, jsonDoc))
+		docs = append(docs, MakeObject(t, jsonDoc))
 	}
 	return
 }
@@ -62,7 +63,7 @@ func MakeDocuments(t testing.TB, jsonDocs ...string) (docs Docs) {
 func MakeArray(t testing.TB, jsonArray string) types.Array {
 	t.Helper()
 
-	var vb document.ValueBuffer
+	var vb object.ValueBuffer
 
 	err := vb.UnmarshalJSON([]byte(jsonArray))
 	assert.NoError(t, err)
@@ -70,10 +71,10 @@ func MakeArray(t testing.TB, jsonArray string) types.Array {
 	return &vb
 }
 
-func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
+func MakeValueBuffer(t testing.TB, jsonArray string) *object.ValueBuffer {
 	t.Helper()
 
-	var vb document.ValueBuffer
+	var vb object.ValueBuffer
 
 	err := vb.UnmarshalJSON([]byte(jsonArray))
 	assert.NoError(t, err)
@@ -81,15 +82,15 @@ func MakeValueBuffer(t testing.TB, jsonArray string) *document.ValueBuffer {
 	return &vb
 }
 
-type Docs []types.Document
+type Objs []types.Object
 
-func (docs Docs) RequireEqual(t testing.TB, others Docs) {
+func (o Objs) RequireEqual(t testing.TB, others Objs) {
 	t.Helper()
 
-	require.Equal(t, len(docs), len(others), fmt.Sprintf("expected len %d, got %d", len(docs), len(others)))
+	require.Equal(t, len(o), len(others), fmt.Sprintf("expected len %d, got %d", len(o), len(others)))
 
-	for i, d := range docs {
-		RequireDocEqual(t, d, others[i])
+	for i, d := range o {
+		RequireObjEqual(t, d, others[i])
 	}
 }
 
@@ -103,29 +104,29 @@ func Dump(t testing.TB, v interface{}) {
 	assert.NoError(t, err)
 }
 
-func RequireDocJSONEq(t testing.TB, d types.Document, expected string) {
+func RequireJSONEq(t testing.TB, o any, expected string) {
 	t.Helper()
 
-	data, err := json.Marshal(d)
+	data, err := json.Marshal(o)
 	assert.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
 }
 
-// IteratorToJSONArray encodes all the documents of an iterator to a JSON array.
-func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
+// IteratorToJSONArray encodes all the objects of an iterator to a JSON array.
+func IteratorToJSONArray(w io.Writer, s database.RowIterator) error {
 	buf := bufio.NewWriter(w)
 
 	buf.WriteByte('[')
 
 	first := true
-	err := s.Iterate(func(d types.Document) error {
+	err := s.Iterate(func(r database.Row) error {
 		if !first {
 			buf.WriteString(", ")
 		} else {
 			first = false
 		}
 
-		data, err := document.MarshalJSON(d)
+		data, err := r.MarshalJSON()
 		if err != nil {
 			return err
 		}
@@ -141,16 +142,16 @@ func IteratorToJSONArray(w io.Writer, s document.Iterator) error {
 	return buf.Flush()
 }
 
-func RequireDocEqual(t testing.TB, want, got types.Document) {
+func RequireObjEqual(t testing.TB, want, got types.Object) {
 	t.Helper()
 
-	tWant, err := types.MarshalTextIndent(types.NewDocumentValue(document.WithSortedFields(want)), "\n", "  ")
+	tWant, err := types.MarshalTextIndent(types.NewObjectValue(object.WithSortedFields(want)), "\n", "  ")
 	require.NoError(t, err)
-	tGot, err := types.MarshalTextIndent(types.NewDocumentValue(document.WithSortedFields(got)), "\n", "  ")
+	tGot, err := types.MarshalTextIndent(types.NewObjectValue(object.WithSortedFields(got)), "\n", "  ")
 	require.NoError(t, err)
 
 	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
-		require.Failf(t, "mismatched documents, (-want, +got)", "%s", diff)
+		require.Failf(t, "mismatched objects, (-want, +got)", "%s", diff)
 	}
 }
 
@@ -167,10 +168,10 @@ func RequireArrayEqual(t testing.TB, want, got types.Array) {
 	}
 }
 
-func CloneDocument(t testing.TB, d types.Document) *document.FieldBuffer {
+func CloneObject(t testing.TB, d types.Object) *object.FieldBuffer {
 	t.Helper()
 
-	var newFb document.FieldBuffer
+	var newFb object.FieldBuffer
 
 	err := newFb.Copy(d)
 	assert.NoError(t, err)

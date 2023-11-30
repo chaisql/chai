@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,7 +55,7 @@ func TestDeleteStmt(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = testutil.IteratorToJSONArray(&buf, st)
+			err = st.MarshalJSONTo(&buf)
 			assert.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})

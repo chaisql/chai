@@ -5,8 +5,6 @@ import (
 	"io"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/types"
 	"go.uber.org/multierr"
 )
 
@@ -60,8 +58,8 @@ func dumpTable(tx *genji.Tx, w io.Writer, query, tableName string) error {
 
 	// Inserts statements.
 	insert := fmt.Sprintf("INSERT INTO %s VALUES", tableName)
-	return res.Iterate(func(d types.Document) error {
-		data, err := document.MarshalJSON(d)
+	return res.Iterate(func(r *genji.Row) error {
+		data, err := r.MarshalJSON()
 		if err != nil {
 			return err
 		}
@@ -115,10 +113,10 @@ func dumpSchema(tx *genji.Tx, w io.Writer, query string, tableName string) error
 	}
 	defer res.Close()
 
-	return res.Iterate(func(d types.Document) error {
+	return res.Iterate(func(r *genji.Row) error {
 		var q string
 
-		err = document.Scan(d, &q)
+		err = r.Scan(&q)
 		if err != nil {
 			return err
 		}

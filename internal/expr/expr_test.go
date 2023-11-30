@@ -5,23 +5,24 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
-var doc types.Document = func() types.Document {
-	return document.NewFromJSON([]byte(`{
+var row database.Row = func() database.Row {
+	return database.NewBasicRow(object.NewFromJSON([]byte(`{
 		"a": 1,
 		"b": {"foo bar": [1, 2]},
 		"c": [1, {"foo": "bar"}, [1, 2]]
-	}`))
+	}`)))
 }()
 
-var envWithDoc = environment.New(doc)
+var envWithDoc = environment.New(row)
 
 var nullLiteral = types.NewNullValue()
 

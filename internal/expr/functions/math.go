@@ -5,7 +5,7 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -48,13 +48,13 @@ var abs = &ScalarDefinition{
 		if args[0].Type() == types.NullValue {
 			return types.NewNullValue(), nil
 		}
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil {
 			return nil, err
 		}
 		res := math.Abs(types.As[float64](v))
 		if args[0].Type() == types.IntegerValue {
-			return document.CastAs(types.NewDoubleValue(res), types.IntegerValue)
+			return object.CastAs(types.NewDoubleValue(res), types.IntegerValue)
 		}
 		return types.NewDoubleValue(res), nil
 	},
@@ -67,7 +67,7 @@ var acos = &ScalarDefinition{
 		if args[0].Type() == types.NullValue {
 			return types.NewNullValue(), nil
 		}
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +87,7 @@ var acosh = &ScalarDefinition{
 		if args[0].Type() == types.NullValue {
 			return types.NewNullValue(), nil
 		}
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +107,7 @@ var asin = &ScalarDefinition{
 		if args[0].Type() == types.NullValue {
 			return types.NewNullValue(), nil
 		}
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +124,7 @@ var asinh = &ScalarDefinition{
 	name:  "asinh",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil || v.Type() == types.NullValue {
 			return v, err
 		}
@@ -138,7 +138,7 @@ var atan = &ScalarDefinition{
 	name:  "atan",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := document.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil || v.Type() == types.NullValue {
 			return v, err
 		}
@@ -152,12 +152,12 @@ var atan2 = &ScalarDefinition{
 	name:  "atan2",
 	arity: 2,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		vA, err := document.CastAs(args[0], types.DoubleValue)
+		vA, err := object.CastAs(args[0], types.DoubleValue)
 		if err != nil || vA.Type() == types.NullValue {
 			return vA, err
 		}
 		vvA := types.As[float64](vA)
-		vB, err := document.CastAs(args[1], types.DoubleValue)
+		vB, err := object.CastAs(args[1], types.DoubleValue)
 		if err != nil || vB.Type() == types.NullValue {
 			return vB, err
 		}

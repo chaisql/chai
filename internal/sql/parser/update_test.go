@@ -4,16 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,7 +26,7 @@ func TestParserUpdate(t *testing.T) {
 	}{
 		{"SET/No cond", "UPDATE test SET a = 1",
 			stream.New(table.Scan("test")).
-				Pipe(path.Set(document.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
+				Pipe(path.Set(object.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
 				Pipe(table.Validate("test")).
 				Pipe(table.Replace("test")).
 				Pipe(stream.Discard()),
@@ -34,9 +34,9 @@ func TestParserUpdate(t *testing.T) {
 		},
 		{"SET/With cond", "UPDATE test SET a = 1, b = 2 WHERE age = 10",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
-				Pipe(path.Set(document.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
-				Pipe(path.Set(document.Path(testutil.ParsePath(t, "b")), parser.MustParseExpr("2"))).
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(path.Set(object.Path(testutil.ParsePath(t, "a")), testutil.IntegerValue(1))).
+				Pipe(path.Set(object.Path(testutil.ParsePath(t, "b")), parser.MustParseExpr("2"))).
 				Pipe(table.Validate("test")).
 				Pipe(table.Replace("test")).
 				Pipe(stream.Discard()),
@@ -44,7 +44,7 @@ func TestParserUpdate(t *testing.T) {
 		},
 		{"SET/No cond path with backquotes", "UPDATE test SET `   some \"path\" ` = 1",
 			stream.New(table.Scan("test")).
-				Pipe(path.Set(document.Path(testutil.ParsePath(t, "`   some \"path\" `")), testutil.IntegerValue(1))).
+				Pipe(path.Set(object.Path(testutil.ParsePath(t, "`   some \"path\" `")), testutil.IntegerValue(1))).
 				Pipe(table.Validate("test")).
 				Pipe(table.Replace("test")).
 				Pipe(stream.Discard()),
@@ -52,7 +52,7 @@ func TestParserUpdate(t *testing.T) {
 		},
 		{"SET/No cond nested path", "UPDATE test SET a.b = 1",
 			stream.New(table.Scan("test")).
-				Pipe(path.Set(document.Path(testutil.ParsePath(t, "a.b")), testutil.IntegerValue(1))).
+				Pipe(path.Set(object.Path(testutil.ParsePath(t, "a.b")), testutil.IntegerValue(1))).
 				Pipe(table.Validate("test")).
 				Pipe(table.Replace("test")).
 				Pipe(stream.Discard()),
@@ -68,7 +68,7 @@ func TestParserUpdate(t *testing.T) {
 		},
 		{"UNSET/With cond", "UPDATE test UNSET a, b WHERE age = 10",
 			stream.New(table.Scan("test")).
-				Pipe(docs.Filter(parser.MustParseExpr("age = 10"))).
+				Pipe(rows.Filter(parser.MustParseExpr("age = 10"))).
 				Pipe(path.Unset("a")).
 				Pipe(path.Unset("b")).
 				Pipe(table.Validate("test")).

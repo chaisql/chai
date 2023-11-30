@@ -3,14 +3,9 @@ package environment
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
-)
-
-var (
-	TableKey = document.Path{document.PathFragment{FieldName: "$table"}}
 )
 
 // A Param represents a parameter passed by the user to the statement.
@@ -26,19 +21,20 @@ type Param struct {
 // the expression is evaluated.
 type Environment struct {
 	Params []Param
-	Vars   *document.FieldBuffer
-	Key    *tree.Key
-	Doc    types.Document
+	Vars   *object.FieldBuffer
+	Row    database.Row
 	DB     *database.Database
 	Tx     *database.Transaction
+
+	baseRow database.BasicRow
 
 	Outer *Environment
 }
 
-func New(d types.Document, params ...Param) *Environment {
+func New(r database.Row, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
-		Doc:    d,
+		Row:    r,
 	}
 
 	return &env
@@ -52,9 +48,9 @@ func (e *Environment) SetOuter(env *Environment) {
 	e.Outer = env
 }
 
-func (e *Environment) Get(path document.Path) (v types.Value, ok bool) {
+func (e *Environment) Get(path object.Path) (v types.Value, ok bool) {
 	if e.Vars != nil {
-		v, err := path.GetValueFromDocument(e.Vars)
+		v, err := path.GetValueFromObject(e.Vars)
 		if err == nil {
 			return v, true
 		}
@@ -67,44 +63,33 @@ func (e *Environment) Get(path document.Path) (v types.Value, ok bool) {
 	return types.NewNullValue(), false
 }
 
-func (e *Environment) Set(path document.Path, v types.Value) {
+func (e *Environment) Set(path object.Path, v types.Value) {
 	if e.Vars == nil {
-		e.Vars = document.NewFieldBuffer()
+		e.Vars = object.NewFieldBuffer()
 	}
 
 	e.Vars.Set(path, v)
 }
 
-func (e *Environment) GetDocument() (types.Document, bool) {
-	if e.Doc != nil {
-		return e.Doc, true
+func (e *Environment) GetRow() (database.Row, bool) {
+	if e.Row != nil {
+		return e.Row, true
 	}
 
 	if e.Outer != nil {
-		return e.Outer.GetDocument()
+		return e.Outer.GetRow()
 	}
 
 	return nil, false
 }
 
-func (e *Environment) SetDocument(d types.Document) {
-	e.Doc = d
+func (e *Environment) SetRow(d database.Row) {
+	e.Row = d
 }
 
-func (e *Environment) GetKey() (*tree.Key, bool) {
-	if e.Key != nil {
-		return e.Key, true
-	}
-
-	if e.Outer != nil {
-		return e.Outer.GetKey()
-	}
-
-	return nil, false
-}
-
-func (e *Environment) SetKey(k *tree.Key) {
-	e.Key = k
+func (e *Environment) SetRowFromObject(o types.Object) {
+	e.baseRow.ResetWith("", nil, o)
+	e.Row = &e.baseRow
 }
 
 func (e *Environment) SetParams(params []Param) {
@@ -120,7 +105,7 @@ func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 
 	for _, nv := range e.Params {
 		if nv.Name == name {
-			return document.NewValue(nv.Value)
+			return object.NewValue(nv.Value)
 		}
 	}
 
@@ -139,7 +124,7 @@ func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
 		return nil, fmt.Errorf("cannot find param number %d", pos)
 	}
 
-	return document.NewValue(e.Params[idx].Value)
+	return object.NewValue(e.Params[idx].Value)
 }
 
 func (e *Environment) GetTx() *database.Transaction {

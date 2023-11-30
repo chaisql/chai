@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	// ErrFieldNotFound must be returned by Document implementations, when calling the GetByField method and
-	// the field wasn't found in the document.
+	// ErrFieldNotFound must be returned by object implementations, when calling the GetByField method and
+	// the field wasn't found in the object.
 	ErrFieldNotFound = errors.New("field not found")
 	// ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
 	// the index wasn't found in the array.
@@ -30,7 +30,7 @@ const (
 	TextValue
 	BlobValue
 	ArrayValue
-	DocumentValue
+	ObjectValue
 )
 
 func (t ValueType) String() string {
@@ -51,8 +51,8 @@ func (t ValueType) String() string {
 		return "text"
 	case ArrayValue:
 		return "array"
-	case DocumentValue:
-		return "document"
+	case ObjectValue:
+		return "object"
 	}
 
 	return "any"
@@ -81,9 +81,9 @@ type Value interface {
 	MarshalText() ([]byte, error)
 }
 
-// A Document represents a group of key value pairs.
-type Document interface {
-	// Iterate goes through all the fields of the document and calls the given function by passing each one of them.
+// A Object represents a group of key value pairs.
+type Object interface {
+	// Iterate goes through all the fields of the object and calls the given function by passing each one of them.
 	// If the given function returns an error, the iteration stops.
 	Iterate(fn func(field string, value Value) error) error
 	// GetByField returns a value by field name.
@@ -91,7 +91,7 @@ type Document interface {
 	GetByField(field string) (Value, error)
 
 	// MarshalJSON implements the json.Marshaler interface.
-	// It returns a JSON representation of the document.
+	// It returns a JSON representation of the object.
 	MarshalJSON() ([]byte, error)
 }
 

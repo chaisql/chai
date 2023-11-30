@@ -7,13 +7,11 @@ import (
 
 	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -214,7 +212,7 @@ func TestStoreGet(t *testing.T) {
 
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T) {
-	t.Run("Should delete the right document", func(t *testing.T) {
+	t.Run("Should delete the right object", func(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put([]byte("foo"), []byte("FOO"))
@@ -259,14 +257,14 @@ func TestQueries(t *testing.T) {
 		db, err := genji.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument(`
+		r, err := db.QueryRow(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT COUNT(*) FROM test;
 		`)
 		assert.NoError(t, err)
 		var count int
-		err = document.Scan(d, &count)
+		err = r.Scan(&count)
 		assert.NoError(t, err)
 		require.Equal(t, 4, count)
 
@@ -276,9 +274,9 @@ func TestQueries(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(d types.Document) error {
+			err = st.Iterate(func(r *genji.Row) error {
 				var a int
-				err := document.Scan(d, &a)
+				err := r.Scan(&a)
 				assert.NoError(t, err)
 				require.Equal(t, 4-i, a)
 				i++
@@ -316,7 +314,7 @@ func TestQueries(t *testing.T) {
 		assert.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
-		err = testutil.IteratorToJSONArray(&buf, st)
+		err = st.MarshalJSONTo(&buf)
 		assert.NoError(t, err)
 		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
@@ -339,13 +337,13 @@ func TestQueries(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument(`
+		r, err := db.QueryRow(`
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
 		assert.NoError(t, err)
 		var count int
-		err = document.Scan(d, &count)
+		err = r.Scan(&count)
 		assert.NoError(t, err)
 		require.Equal(t, 2, count)
 	})
@@ -360,14 +358,14 @@ func TestQueriesSameTransaction(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			d, err := tx.QueryDocument(`
+			r, err := tx.QueryRow(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`)
 			assert.NoError(t, err)
 			var count int
-			err = document.Scan(d, &count)
+			err = r.Scan(&count)
 			assert.NoError(t, err)
 			require.Equal(t, 4, count)
 			return nil
@@ -408,7 +406,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 			assert.NoError(t, err)
 			defer st.Close()
 			var buf bytes.Buffer
-			err = testutil.IteratorToJSONArray(&buf, st)
+			err = st.MarshalJSONTo(&buf)
 			assert.NoError(t, err)
 			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 			return nil
@@ -423,7 +421,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = db.Update(func(tx *genji.Tx) error {
-			d, err := tx.QueryDocument(`
+			r, err := tx.QueryRow(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
@@ -431,7 +429,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 		`)
 			assert.NoError(t, err)
 			var count int
-			err = document.Scan(d, &count)
+			err = r.Scan(&count)
 			assert.NoError(t, err)
 			require.Equal(t, 2, count)
 			return nil

@@ -92,10 +92,10 @@ func NewArrayValue(a Array) Value {
 	}
 }
 
-// NewDocumentValue returns a SQL DOCUMENT value.
-func NewDocumentValue(d Document) Value {
-	return &value[Document]{
-		tp: DocumentValue,
+// NewObjectValue returns a SQL OBJECT value.
+func NewObjectValue(d Object) Value {
+	return &value[Object]{
+		tp: ObjectValue,
 		v:  d,
 	}
 }
@@ -178,19 +178,19 @@ func IsZeroValue(v Value) (bool, error) {
 			return true, nil
 		}
 		return false, err
-	case DocumentValue:
-		err := As[Document](v).Iterate(func(_ string, _ Value) error {
+	case ObjectValue:
+		err := As[Object](v).Iterate(func(_ string, _ Value) error {
 			// We return an error in the first iteration to stop it.
 			return errors.WithStack(errStop)
 		})
 		if err == nil {
 			// If err is nil, it means that we didn't iterate,
-			// thus the document is empty.
+			// thus the object is empty.
 			return true, nil
 		}
 		if errors.Is(err, errStop) {
 			// If err is errStop, it means that we iterate
-			// at least once, thus the document is not empty.
+			// at least once, thus the object is not empty.
 			return false, nil
 		}
 		// An unexpecting error occurs, let's return it!
@@ -290,10 +290,10 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		}
 		dst.WriteByte(']')
 		return nil
-	case DocumentValue:
+	case ObjectValue:
 		dst.WriteByte('{')
 		var i int
-		err := As[Document](v).Iterate(func(field string, value Value) error {
+		err := As[Object](v).Iterate(func(field string, value Value) error {
 			if i > 0 {
 				dst.WriteByte(',')
 				if prefix == "" {
@@ -362,8 +362,8 @@ func (v *value[T]) MarshalJSON() ([]byte, error) {
 		return dst, nil
 	case ArrayValue:
 		return jsonArray{Array: As[Array](v)}.MarshalJSON()
-	case DocumentValue:
-		return jsonDocument{Document: As[Document](v)}.MarshalJSON()
+	case ObjectValue:
+		return jsonObject{Object: As[Object](v)}.MarshalJSON()
 	default:
 		return nil, fmt.Errorf("unexpected type: %d", v.Type())
 	}
@@ -398,17 +398,17 @@ func (j jsonArray) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-type jsonDocument struct {
-	Document
+type jsonObject struct {
+	Object
 }
 
-func (j jsonDocument) MarshalJSON() ([]byte, error) {
+func (j jsonObject) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 
 	buf.WriteByte('{')
 
 	var notFirst bool
-	err := j.Document.Iterate(func(f string, v Value) error {
+	err := j.Object.Iterate(func(f string, v Value) error {
 		if notFirst {
 			buf.WriteString(", ")
 		}

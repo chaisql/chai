@@ -1,5 +1,5 @@
 -- test: document with no constraint
-CREATE TABLE test (a DOCUMENT, c int);
+CREATE TABLE test (a OBJECT, c int);
 INSERT INTO test (a) VALUES ({ b: 1 }), ({ b: 2 });
 SELECT * FROM test;
 /* result:
@@ -47,7 +47,7 @@ SELECT * FROM test;
 */
 
 -- test: after a document 
-CREATE TABLE test (a DOCUMENT, b INT);
+CREATE TABLE test (a OBJECT, b INT);
 INSERT INTO test (a) VALUES ({ c: 1 }), ({ c: 2 });
 SELECT * FROM test;
 /* result:

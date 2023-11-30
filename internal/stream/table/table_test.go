@@ -3,12 +3,12 @@ package table_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -16,31 +16,31 @@ import (
 func TestTableScan(t *testing.T) {
 	tests := []struct {
 		name                  string
-		docsInTable, expected testutil.Docs
+		docsInTable, expected testutil.Objs
 		ranges                stream.Ranges
 		reverse               bool
 		fails                 bool
 	}{
 		{
 			"no-range",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			nil,
 			false,
 			false,
 		},
 		{
 			"no-range:reverse",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			nil,
 			true,
 			false,
 		},
 		{
 			"max:2",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `[2]`)},
 			},
@@ -48,8 +48,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"max:1",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `[1]`)},
 			},
@@ -57,8 +57,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"max:1.1",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `[1.1]`)},
 			},
@@ -66,8 +66,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"min",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[1]`)},
 			},
@@ -75,8 +75,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"min:0.5",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[0.5]`)},
 			},
@@ -84,8 +84,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"min/max",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
 			},
@@ -93,8 +93,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"min/max:0.5/1.5",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[0.5]`), Max: testutil.ExprList(t, `[1.5]`)},
 			},
@@ -102,8 +102,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"reverse/max",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `[2]`)},
 			},
@@ -111,8 +111,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"reverse/min",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[1]`)},
 			},
@@ -120,8 +120,8 @@ func TestTableScan(t *testing.T) {
 		},
 		{
 			"reverse/min/max",
-			testutil.MakeDocuments(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeDocuments(t, `{"a": 2}`, `{"a": 1}`),
+			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeObjects(t, `{"a": 2}`, `{"a": 1}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `[1]`), Max: testutil.ExprList(t, `[2]`)},
 			},
@@ -147,13 +147,13 @@ func TestTableScan(t *testing.T) {
 			env.Params = []environment.Param{{Name: "foo", Value: 1}}
 
 			var i int
-			var got testutil.Docs
+			var got testutil.Objs
 			err := op.Iterate(&env, func(env *environment.Environment) error {
-				d, ok := env.GetDocument()
+				r, ok := env.GetRow()
 				require.True(t, ok)
-				var fb document.FieldBuffer
+				var fb object.FieldBuffer
 
-				err := fb.Copy(d)
+				err := fb.Copy(r.Object())
 				assert.NoError(t, err)
 
 				got = append(got, &fb)

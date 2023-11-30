@@ -2,10 +2,8 @@ package statement
 
 import (
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/types"
 )
 
 // A Statement represents a unique action that can be executed against the database.
@@ -44,13 +42,13 @@ type Preparer interface {
 
 // Result of a query.
 type Result struct {
-	Iterator document.Iterator
+	Iterator database.RowIterator
 	Tx       *database.Transaction
 	closed   bool
 	err      error
 }
 
-func (r *Result) Iterate(fn func(d types.Document) error) error {
+func (r *Result) Iterate(fn func(database.Row) error) error {
 	if r.Iterator == nil {
 		return nil
 	}

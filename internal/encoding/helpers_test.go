@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -135,12 +135,12 @@ func TestCompare(t *testing.T) {
 		t.Run(fmt.Sprintf("Compare(%s, %s)", test.k1, test.k2), func(t *testing.T) {
 			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			a1 := v1.V().(*document.ValueBuffer).Values
+			a1 := v1.V().(*object.ValueBuffer).Values
 			k1 := mustNewKey(t, 0, 0, a1...)
 
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			a2 := v2.V().(*document.ValueBuffer).Values
+			a2 := v2.V().(*object.ValueBuffer).Values
 			k2 := mustNewKey(t, 0, 0, a2...)
 
 			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
@@ -184,7 +184,7 @@ func TestCompareOrder(t *testing.T) {
 		t.Run(fmt.Sprintf("CompareOrder(%s, %s)", test.k1, test.k2), func(t *testing.T) {
 			v1, err := testutil.ParseExpr(t, test.k1).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			a1 := v1.V().(*document.ValueBuffer).Values
+			a1 := v1.V().(*object.ValueBuffer).Values
 			order := tree.SortOrder(0)
 			for i := range a1 {
 				if test.order[i] {
@@ -196,7 +196,7 @@ func TestCompareOrder(t *testing.T) {
 
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			a2 := v2.V().(*document.ValueBuffer).Values
+			a2 := v2.V().(*object.ValueBuffer).Values
 			k2 := mustNewKey(t, 0, order, a2...)
 
 			require.Equal(t, test.cmp, encoding.Compare(k1, k2))
@@ -283,16 +283,16 @@ func TestAbbreviatedKey(t *testing.T) {
 		{`[1, [1, 1]]`, 1<<48 | uint64(encoding.ArrayValue)<<40 | (uint64(encoding.IntSmallValue)+32+1)<<32},
 		{`[1, [[]]]`, 1<<48 | uint64(encoding.ArrayValue)<<40 | uint64(encoding.ArrayValue)<<32},
 		// doc
-		{`[1, {}]`, 1<<48 | uint64(encoding.DocumentValue)<<40},
-		{`[1, {a: 1}]`, 1<<48 | uint64(encoding.DocumentValue)<<40 | uint64(encoding.TextValue)<<32 | uint64('a')<<24},
-		{`[1, {a: 2}]`, 1<<48 | uint64(encoding.DocumentValue)<<40 | uint64(encoding.TextValue)<<32 | uint64('a')<<24},
+		{`[1, {}]`, 1<<48 | uint64(encoding.ObjectValue)<<40},
+		{`[1, {a: 1}]`, 1<<48 | uint64(encoding.ObjectValue)<<40 | uint64(encoding.TextValue)<<32 | uint64('a')<<24},
+		{`[1, {a: 2}]`, 1<<48 | uint64(encoding.ObjectValue)<<40 | uint64(encoding.TextValue)<<32 | uint64('a')<<24},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("AbbreviatedKey(%s)", test.k), func(t *testing.T) {
 			v, err := testutil.ParseExpr(t, test.k).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			a := v.V().(*document.ValueBuffer).Values
+			a := v.V().(*object.ValueBuffer).Values
 			k := mustNewKey(t, 0, 0, a...)
 
 			require.Equal(t, test.want, encoding.AbbreviatedKey(k))
@@ -314,8 +314,8 @@ func TestSeparator(t *testing.T) {
 			require.NoError(t, err)
 			v2, err := testutil.ParseExpr(t, test.k2).Eval(&environment.Environment{})
 			require.NoError(t, err)
-			k1 := mustNewKey(t, 0, 0, v1.V().(*document.ValueBuffer).Values...)
-			k2 := mustNewKey(t, 0, 0, v2.V().(*document.ValueBuffer).Values...)
+			k1 := mustNewKey(t, 0, 0, v1.V().(*object.ValueBuffer).Values...)
+			k2 := mustNewKey(t, 0, 0, v2.V().(*object.ValueBuffer).Values...)
 			sep := encoding.Separator(nil, k1, k2)
 			require.LessOrEqual(t, encoding.Compare(k1, sep), 0)
 			require.Less(t, encoding.Compare(sep, k2), 0)

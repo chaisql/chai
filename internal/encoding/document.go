@@ -4,23 +4,23 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/genjidb/genji/document"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
-func EncodeDocument(dst []byte, d types.Document) ([]byte, error) {
+func EncodeObject(dst []byte, d types.Object) ([]byte, error) {
 	if d == nil {
-		dst = EncodeDocumentLength(dst, 0)
+		dst = EncodeObjectLength(dst, 0)
 		return dst, nil
 	}
 
-	l, err := document.Length(d)
+	l, err := object.Length(d)
 	if err != nil {
 		return nil, err
 	}
 
 	// encode the length as a varint
-	dst = EncodeDocumentLength(dst, l)
+	dst = EncodeObjectLength(dst, l)
 
 	fields := make(map[string]struct{}, l)
 
@@ -42,27 +42,27 @@ func EncodeDocument(dst []byte, d types.Document) ([]byte, error) {
 	return dst, nil
 }
 
-func EncodeDocumentLength(dst []byte, l int) []byte {
+func EncodeObjectLength(dst []byte, l int) []byte {
 	// encode the length as a varint
 	buf := make([]byte, binary.MaxVarintLen64+1)
-	buf[0] = DocumentValue
+	buf[0] = ObjectValue
 	n := binary.PutUvarint(buf[1:], uint64(l))
 	return append(dst, buf[:n+1]...)
 }
 
-func DecodeDocument(b []byte, intAsDouble bool) types.Document {
-	return &EncodedDocument{
+func DecodeObject(b []byte, intAsDouble bool) types.Object {
+	return &EncodedObject{
 		Encoded:     b[1:],
 		intAsDouble: intAsDouble,
 	}
 }
 
-type EncodedDocument struct {
+type EncodedObject struct {
 	Encoded     []byte
 	intAsDouble bool
 }
 
-func (e *EncodedDocument) Iterate(fn func(k string, v types.Value) error) error {
+func (e *EncodedObject) Iterate(fn func(k string, v types.Value) error) error {
 	l, n := binary.Uvarint(e.Encoded)
 	if l == 0 {
 		return nil
@@ -86,7 +86,7 @@ func (e *EncodedDocument) Iterate(fn func(k string, v types.Value) error) error 
 	return nil
 }
 
-func (e *EncodedDocument) GetByField(field string) (types.Value, error) {
+func (e *EncodedObject) GetByField(field string) (types.Value, error) {
 	l, n := binary.Uvarint(e.Encoded)
 	if l == 0 {
 		return nil, types.ErrFieldNotFound
@@ -110,6 +110,6 @@ func (e *EncodedDocument) GetByField(field string) (types.Value, error) {
 	return nil, types.ErrFieldNotFound
 }
 
-func (e *EncodedDocument) MarshalJSON() ([]byte, error) {
-	return document.MarshalJSON(e)
+func (e *EncodedObject) MarshalJSON() ([]byte, error) {
+	return object.MarshalJSON(e)
 }

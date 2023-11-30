@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -21,8 +21,8 @@ type TableInfo struct {
 	StoreNamespace tree.Namespace
 	ReadOnly       bool
 
-	// Name of the docid sequence if any.
-	DocidSequenceName string
+	// Name of the rowid sequence if any.
+	RowidSequenceName string
 
 	FieldConstraints FieldConstraints
 	TableConstraints TableConstraints
@@ -153,8 +153,17 @@ func (ti *TableInfo) PrimaryKeySortOrder() tree.SortOrder {
 	return pk.SortOrder
 }
 
-func (ti *TableInfo) GetFieldConstraintForPath(p document.Path) *FieldConstraint {
+func (ti *TableInfo) GetFieldConstraintForPath(p object.Path) *FieldConstraint {
 	return ti.FieldConstraints.GetFieldConstraintForPath(p)
+}
+
+func (ti *TableInfo) EncodeKey(key *tree.Key) ([]byte, error) {
+	var order tree.SortOrder
+	pk := ti.GetPrimaryKey()
+	if pk != nil {
+		order = pk.SortOrder
+	}
+	return key.Encode(ti.StoreNamespace, order)
 }
 
 // String returns a SQL representation.
@@ -216,7 +225,7 @@ func (ti *TableInfo) Clone() *TableInfo {
 }
 
 type PrimaryKey struct {
-	Paths     document.Paths
+	Paths     object.Paths
 	Types     []types.ValueType
 	SortOrder tree.SortOrder
 }
@@ -226,7 +235,7 @@ type IndexInfo struct {
 	// namespace of the store associated with the index.
 	StoreNamespace tree.Namespace
 	IndexName      string
-	Paths          []document.Path
+	Paths          []object.Path
 
 	// Sort order of each indexed field.
 	KeySortOrder tree.SortOrder
@@ -273,7 +282,7 @@ func (idx *IndexInfo) String() string {
 func (i IndexInfo) Clone() *IndexInfo {
 	c := i
 
-	c.Paths = make([]document.Path, len(i.Paths))
+	c.Paths = make([]object.Path, len(i.Paths))
 	for i, p := range i.Paths {
 		c.Paths[i] = p.Clone()
 	}
@@ -334,11 +343,11 @@ func (s SequenceInfo) Clone() *SequenceInfo {
 }
 
 // Owner is used to determine who owns a relation.
-// If the relation has been created by a table (for docids for example),
+// If the relation has been created by a table (for rowids for example),
 // only the TableName is filled.
 // If it has been created by a field constraint (for identities for example), the
 // path must also be filled.
 type Owner struct {
 	TableName string
-	Paths     document.Paths
+	Paths     object.Paths
 }

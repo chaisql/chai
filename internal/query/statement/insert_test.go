@@ -22,8 +22,8 @@ func TestInsertStmt(t *testing.T) {
 		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
 		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Documents / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":[1],"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Documents / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":[1],"a":[1,2,3]}]`, nil},
+		{"Objects / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":[1],"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
+		{"Objects / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":[1],"a":[1,2,3]}]`, nil},
 		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 
@@ -57,7 +57,7 @@ func TestInsertStmt(t *testing.T) {
 				defer st.Close()
 
 				var buf bytes.Buffer
-				err = testutil.IteratorToJSONArray(&buf, st)
+				err = st.MarshalJSONTo(&buf)
 				assert.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
@@ -86,10 +86,9 @@ func TestInsertStmt(t *testing.T) {
 		defer res.Close()
 
 		assert.NoError(t, err)
-		var buf bytes.Buffer
-		err = testutil.IteratorToJSONArray(&buf, res)
+		buf, err := res.MarshalJSON()
 		assert.NoError(t, err)
-		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, buf.String())
+		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, string(buf))
 	})
 
 	t.Run("with RETURNING", func(t *testing.T) {
@@ -100,9 +99,9 @@ func TestInsertStmt(t *testing.T) {
 		err = db.Exec(`CREATE TABLE test`)
 		assert.NoError(t, err)
 
-		d, err := db.QueryDocument(`insert into test (a) VALUES (1) RETURNING *, pk(), a AS A`)
+		d, err := db.QueryRow(`insert into test (a) VALUES (1) RETURNING *, pk(), a AS A`)
 		assert.NoError(t, err)
-		testutil.RequireDocJSONEq(t, d, `{"a": 1, "pk()": [1], "A": 1}`)
+		testutil.RequireJSONEq(t, d, `{"a": 1, "pk()": [1], "A": 1}`)
 	})
 
 	t.Run("ensure rollback", func(t *testing.T) {
@@ -139,7 +138,7 @@ func TestInsertStmt(t *testing.T) {
 		defer res.Close()
 
 		var b bytes.Buffer
-		err = testutil.IteratorToJSONArray(&b, res)
+		err = res.MarshalJSONTo(&b)
 		require.NoError(t, err)
 
 		require.JSONEq(t, `
@@ -149,18 +148,6 @@ func TestInsertStmt(t *testing.T) {
 
 		`, b.String())
 	})
-
-	// t.Run("without RETURNING", func(t *testing.T) {
-	// 	db, err := genji.Open(":memory:")
-	// 	assert.NoError(t, err)
-	// 	defer db.Close()
-
-	// 	err = db.Exec(`CREATE TABLE test`)
-	// 	assert.NoError(t, err)
-
-	// 	_, err = db.QueryDocument(`insert into test (a) VALUES (1)`)
-	// 	require.Equal(t, errs.ErrDocumentNotFound, err)
-	// })
 }
 
 func TestInsertSelect(t *testing.T) {
@@ -207,7 +194,7 @@ func TestInsertSelect(t *testing.T) {
 			defer st.Close()
 
 			var buf bytes.Buffer
-			err = testutil.IteratorToJSONArray(&buf, st)
+			err = st.MarshalJSONTo(&buf)
 			assert.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})

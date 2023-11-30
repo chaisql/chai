@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/golang-module/carbon/v2"
 	"github.com/stretchr/testify/require"
@@ -56,19 +56,19 @@ func toBlob(t testing.TB, x string) types.Value {
 }
 
 func jsonToArray(t testing.TB, x string) types.Value {
-	var vb document.ValueBuffer
+	var vb object.ValueBuffer
 	err := json.Unmarshal([]byte(x), &vb)
 	assert.NoError(t, err)
 
 	return types.NewArrayValue(&vb)
 }
 
-func jsonToDocument(t testing.TB, x string) types.Value {
-	var fb document.FieldBuffer
+func jsonToObject(t testing.TB, x string) types.Value {
+	var fb object.FieldBuffer
 	err := json.Unmarshal([]byte(x), &fb)
 	assert.NoError(t, err)
 
-	return types.NewDocumentValue(&fb)
+	return types.NewObjectValue(&fb)
 }
 
 var now = time.Now().Format(time.RFC3339Nano)
@@ -243,22 +243,22 @@ func TestCompare(t *testing.T) {
 		{"<=", `[]`, `[]`, true, jsonToArray},
 		{"<=", `[]`, `[1,2,3]`, true, jsonToArray},
 
-		// document
-		{"=", `{}`, `{}`, true, jsonToDocument},
-		{"=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
-		{"=", `{"a": 1.0}`, `{"a": 1}`, true, jsonToDocument},
-		{"=", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true, jsonToDocument},
-		{"=", `{"a": 1, "b": {"a": 1}}`, `{"b": {"a": 1}, "a": 1}`, true, jsonToDocument},
-		{">", `{"a": 2}`, `{"a": 1}`, true, jsonToDocument},
-		{">", `{"b": 1}`, `{"a": 1}`, true, jsonToDocument},
-		{">", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
-		{">", `{"a": 1}`, `{"a": true}`, true, jsonToDocument},
-		{"<", `{"a": 1}`, `{"a": 2}`, true, jsonToDocument},
-		{"<", `{"a": 1}`, `{"b": 1}`, true, jsonToDocument},
-		{"<", `{"a": 1}`, `{"a": 1}`, false, jsonToDocument},
-		{"<", `{"a": 1}`, `{"a": true}`, false, jsonToDocument},
-		{">=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
-		{"<=", `{"a": 1}`, `{"a": 1}`, true, jsonToDocument},
+		// object
+		{"=", `{}`, `{}`, true, jsonToObject},
+		{"=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
+		{"=", `{"a": 1.0}`, `{"a": 1}`, true, jsonToObject},
+		{"=", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true, jsonToObject},
+		{"=", `{"a": 1, "b": {"a": 1}}`, `{"b": {"a": 1}, "a": 1}`, true, jsonToObject},
+		{">", `{"a": 2}`, `{"a": 1}`, true, jsonToObject},
+		{">", `{"b": 1}`, `{"a": 1}`, true, jsonToObject},
+		{">", `{"a": 1}`, `{"a": 1}`, false, jsonToObject},
+		{">", `{"a": 1}`, `{"a": true}`, true, jsonToObject},
+		{"<", `{"a": 1}`, `{"a": 2}`, true, jsonToObject},
+		{"<", `{"a": 1}`, `{"b": 1}`, true, jsonToObject},
+		{"<", `{"a": 1}`, `{"a": 1}`, false, jsonToObject},
+		{"<", `{"a": 1}`, `{"a": true}`, false, jsonToObject},
+		{">=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
+		{"<=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
 	}
 
 	for _, test := range tests {

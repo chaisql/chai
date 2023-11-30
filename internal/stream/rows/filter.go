@@ -1,4 +1,4 @@
-package docs
+package rows
 
 import (
 	"fmt"
@@ -38,5 +38,5 @@ func (op *FilterOperator) Iterate(in *environment.Environment, f func(out *envir
 }
 
 func (op *FilterOperator) String() string {
-	return fmt.Sprintf("docs.Filter(%s)", op.Expr)
+	return fmt.Sprintf("rows.Filter(%s)", op.Expr)
 }

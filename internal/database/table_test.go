@@ -7,13 +7,13 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	errs "github.com/genjidb/genji/internal/errors"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -80,32 +80,32 @@ func createTableIfNotExists(t testing.TB, tx *database.Transaction, info databas
 	return tb
 }
 
-func newDocument() *document.FieldBuffer {
-	return document.NewFieldBuffer().
+func newObject() *object.FieldBuffer {
+	return object.NewFieldBuffer().
 		Add("fielda", types.NewTextValue("a")).
 		Add("fieldb", types.NewTextValue("b"))
 }
 
-// TestTableGetDocument verifies GetDocument behaviour.
-func TestTableGetDocument(t *testing.T) {
+// TestTableGetObject verifies GetObject behaviour.
+func TestTableGetObject(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		r, err := tb.GetDocument(tree.NewKey(types.NewIntegerValue(10)))
+		r, err := tb.GetRow(tree.NewKey(types.NewIntegerValue(10)))
 		require.True(t, errs.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
 
-	t.Run("Should return the right document", func(t *testing.T) {
+	t.Run("Should return the right object", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two documents, one with an additional field
-		doc1 := newDocument()
+		// create two objects, one with an additional field
+		doc1 := newObject()
 		vc := types.NewDoubleValue(40)
 		doc1.Add("fieldc", vc)
-		doc2 := newDocument()
+		doc2 := newObject()
 
 		key, _, err := tb.Insert(doc1)
 		assert.NoError(t, err)
@@ -113,9 +113,9 @@ func TestTableGetDocument(t *testing.T) {
 		assert.NoError(t, err)
 
 		// fetch doc1 and make sure it returns the right one
-		res, err := tb.GetDocument(key)
+		res, err := tb.GetRow(key)
 		assert.NoError(t, err)
-		fc, err := res.GetByField("fieldc")
+		fc, err := res.Get("fieldc")
 		assert.NoError(t, err)
 		ok, err := types.IsEqual(vc, fc)
 		assert.NoError(t, err)
@@ -125,7 +125,7 @@ func TestTableGetDocument(t *testing.T) {
 
 // TestTableInsert verifies Insert behaviour.
 func TestTableInsert(t *testing.T) {
-	t.Run("Should generate the right docid on existing databases", func(t *testing.T) {
+	t.Run("Should generate the right rowid on existing databases", func(t *testing.T) {
 		fs := vfs.NewStrictMem()
 		pdb, err := database.OpenPebble("", &pebble.Options{FS: fs})
 		assert.NoError(t, err)
@@ -143,7 +143,7 @@ func TestTableInsert(t *testing.T) {
 				ti.FieldConstraints.AllowExtraFields = true
 				tb := createTableIfNotExists(t, tx, ti)
 
-				doc := newDocument()
+				doc := newObject()
 				key, _, err := tb.Insert(doc)
 				assert.NoError(t, err)
 				require.NotEmpty(t, key)
@@ -186,32 +186,32 @@ func TestTableDelete(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("Should delete the right document", func(t *testing.T) {
+	t.Run("Should delete the right object", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two documents, one with an additional field
-		doc1 := newDocument()
+		// create two objects, one with an additional field
+		doc1 := newObject()
 		doc1.Add("fieldc", types.NewIntegerValue(40))
-		doc2 := newDocument()
+		doc2 := newObject()
 
-		key1, _, err := tb.Insert(testutil.CloneDocument(t, doc1))
+		key1, _, err := tb.Insert(testutil.CloneObject(t, doc1))
 		assert.NoError(t, err)
-		key2, _, err := tb.Insert(testutil.CloneDocument(t, doc2))
+		key2, _, err := tb.Insert(testutil.CloneObject(t, doc2))
 		assert.NoError(t, err)
 
-		// delete the document
+		// delete the object
 		err = tb.Delete(key1)
 		assert.NoError(t, err)
 
 		// try again, should fail
-		_, err = tb.GetDocument(key1)
+		_, err = tb.GetRow(key1)
 		require.True(t, errs.IsNotFoundError(err))
 
 		// make sure it didn't also delete the other one
-		res, err := tb.GetDocument(key2)
+		res, err := tb.GetRow(key2)
 		assert.NoError(t, err)
-		_, err = res.GetByField("fieldc")
+		_, err = res.Get("fieldc")
 		assert.Error(t, err)
 	})
 }
@@ -222,17 +222,17 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		_, err := tb.Replace(tree.NewKey(types.NewIntegerValue(10)), newDocument())
+		_, err := tb.Replace(tree.NewKey(types.NewIntegerValue(10)), newObject())
 		require.True(t, errs.IsNotFoundError(err))
 	})
 
-	t.Run("Should replace the right document", func(t *testing.T) {
+	t.Run("Should replace the right object", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two different documents
-		doc1 := newDocument()
-		doc2 := document.NewFieldBuffer().
+		// create two different objects
+		doc1 := newObject()
+		doc2 := object.NewFieldBuffer().
 			Add("fielda", types.NewTextValue("c")).
 			Add("fieldb", types.NewTextValue("d"))
 
@@ -241,8 +241,8 @@ func TestTableReplace(t *testing.T) {
 		key2, _, err := tb.Insert(doc2)
 		assert.NoError(t, err)
 
-		// create a third document
-		doc3 := document.NewFieldBuffer().
+		// create a third object
+		doc3 := object.NewFieldBuffer().
 			Add("fielda", types.NewTextValue("e")).
 			Add("fieldb", types.NewTextValue("f"))
 
@@ -251,18 +251,18 @@ func TestTableReplace(t *testing.T) {
 		assert.NoError(t, err)
 
 		// make sure it replaced it correctly
-		res, err := tb.GetDocument(key1)
+		res, err := tb.GetRow(key1)
 		assert.NoError(t, err)
-		f, err := res.GetByField("fielda")
+		f, err := res.Get("fielda")
 		assert.NoError(t, err)
 		require.Equal(t, "e", f.V().(string))
 
-		testutil.RequireDocEqual(t, d3, res)
+		testutil.RequireObjEqual(t, d3.Object(), res.Object())
 
 		// make sure it didn't also replace the other one
-		res, err = tb.GetDocument(key2)
+		res, err = tb.GetRow(key2)
 		assert.NoError(t, err)
-		f, err = res.GetByField("fielda")
+		f, err = res.Get("fielda")
 		assert.NoError(t, err)
 		require.Equal(t, "c", f.V().(string))
 	})
@@ -282,9 +282,9 @@ func TestTableTruncate(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two documents
-		doc1 := newDocument()
-		doc2 := newDocument()
+		// create two objects
+		doc1 := newObject()
+		doc2 := newObject()
 
 		_, _, err := tb.Insert(doc1)
 		assert.NoError(t, err)
@@ -294,7 +294,7 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		assert.NoError(t, err)
 
-		err = tb.IterateOnRange(nil, false, func(key *tree.Key, _ types.Document) error {
+		err = tb.IterateOnRange(nil, false, func(key *tree.Key, _ database.Row) error {
 			return errors.New("should not iterate")
 		})
 
@@ -306,7 +306,7 @@ func TestTableTruncate(t *testing.T) {
 func BenchmarkTableInsert(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			var fb document.FieldBuffer
+			var fb object.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
 				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
@@ -335,7 +335,7 @@ func BenchmarkTableScan(b *testing.B) {
 			tb, cleanup := newTestTable(b)
 			defer cleanup()
 
-			var fb document.FieldBuffer
+			var fb object.FieldBuffer
 
 			for i := int64(0); i < 10; i++ {
 				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
@@ -348,7 +348,7 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = tb.IterateOnRange(nil, false, func(*tree.Key, types.Document) error {
+				_ = tb.IterateOnRange(nil, false, func(*tree.Key, database.Row) error {
 					return nil
 				})
 			}

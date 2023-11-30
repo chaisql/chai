@@ -53,7 +53,7 @@ SELECT b FROM test ORDER BY a DESC;
 EXPLAIN SELECT b FROM test ORDER BY a DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\") | docs.Project(b)"
+    plan: "table.Scan(\"test\") | rows.Project(b)"
 }
 */
 

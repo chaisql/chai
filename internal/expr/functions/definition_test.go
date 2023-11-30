@@ -3,10 +3,10 @@ package functions_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +20,7 @@ func TestDefinitions(t *testing.T) {
 	})
 
 	t.Run("Function()", func(t *testing.T) {
-		fexpr, err := def.Function(expr.Path(document.NewPath("a")))
+		fexpr, err := def.Function(expr.Path(object.NewPath("a")))
 		assert.NoError(t, err)
 		require.NotNil(t, fexpr)
 	})

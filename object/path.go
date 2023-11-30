@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"strconv"
@@ -8,7 +8,7 @@ import (
 	"github.com/genjidb/genji/types"
 )
 
-// A Path represents the path to a particular value within a document.
+// A Path represents the path to a particular value within an object.
 type Path []PathFragment
 
 // NewPath creates a path from a list of strings representing either a field name
@@ -68,8 +68,8 @@ func (p Path) IsEqual(other Path) bool {
 	return true
 }
 
-// GetValueFromDocument returns the value at path p from d.
-func (p Path) GetValueFromDocument(d types.Document) (types.Value, error) {
+// GetValueFromObject returns the value at path p from d.
+func (p Path) GetValueFromObject(d types.Object) (types.Value, error) {
 	if len(p) == 0 {
 		return nil, errors.WithStack(types.ErrFieldNotFound)
 	}
@@ -142,8 +142,8 @@ func (p Path) ExtendIndex(index int) Path {
 
 func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
-	case types.DocumentValue:
-		return p.GetValueFromDocument(types.As[types.Document](v))
+	case types.ObjectValue:
+		return p.GetValueFromObject(types.As[types.Object](v))
 	case types.ArrayValue:
 		return p.GetValueFromArray(types.As[types.Array](v))
 	}

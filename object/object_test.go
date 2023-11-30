@@ -1,4 +1,4 @@
-package document_test
+package object_test
 
 import (
 	"encoding/json"
@@ -8,17 +8,17 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
-var _ types.Document = new(document.FieldBuffer)
+var _ types.Object = new(object.FieldBuffer)
 
 func TestFieldBuffer(t *testing.T) {
-	var buf document.FieldBuffer
+	var buf object.FieldBuffer
 	buf.Add("a", types.NewIntegerValue(10))
 	buf.Add("b", types.NewTextValue("hello"))
 
@@ -41,7 +41,7 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Add", func(t *testing.T) {
-		var buf document.FieldBuffer
+		var buf object.FieldBuffer
 		buf.Add("a", types.NewIntegerValue(10))
 		buf.Add("b", types.NewTextValue("hello"))
 
@@ -50,8 +50,8 @@ func TestFieldBuffer(t *testing.T) {
 		require.Equal(t, 3, buf.Len())
 	})
 
-	t.Run("ScanDocument", func(t *testing.T) {
-		var buf1, buf2 document.FieldBuffer
+	t.Run("ScanObject", func(t *testing.T) {
+		var buf1, buf2 object.FieldBuffer
 
 		buf1.Add("a", types.NewIntegerValue(10))
 		buf1.Add("b", types.NewTextValue("hello"))
@@ -60,10 +60,10 @@ func TestFieldBuffer(t *testing.T) {
 		buf2.Add("b", types.NewTextValue("bye"))
 		buf2.Add("c", types.NewBoolValue(true))
 
-		err := buf1.ScanDocument(&buf2)
+		err := buf1.ScanObject(&buf2)
 		assert.NoError(t, err)
 
-		var buf document.FieldBuffer
+		var buf object.FieldBuffer
 		buf.Add("a", types.NewIntegerValue(10))
 		buf.Add("b", types.NewTextValue("hello"))
 		buf.Add("a", types.NewIntegerValue(20))
@@ -95,31 +95,31 @@ func TestFieldBuffer(t *testing.T) {
 			{"add field", `{"a": {"b": [1, 2, 3]}}`, `c`, types.NewTextValue("foo"), `{"a": {"b": [1, 2, 3]}, "c": "foo"}`, false},
 			{"non existing doc", `{}`, `a.b.c`, types.NewTextValue("foo"), ``, true},
 			{"wrong type", `{"a": 1}`, `a.b.c`, types.NewTextValue("foo"), ``, true},
-			{"nested doc", `{"a": "foo"}`, `a`, types.NewDocumentValue(document.NewFieldBuffer().
-				Add("b", types.NewArrayValue(document.NewValueBuffer().
+			{"nested doc", `{"a": "foo"}`, `a`, types.NewObjectValue(object.NewFieldBuffer().
+				Add("b", types.NewArrayValue(object.NewValueBuffer().
 					Append(types.NewIntegerValue(1)).
 					Append(types.NewIntegerValue(2)).
 					Append(types.NewIntegerValue(3))))), `{"a": {"b": [1, 2, 3]}}`, false},
-			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, types.NewArrayValue(document.NewValueBuffer().
+			{"nested doc", `{"a": {"b": [1, 2, 3]}}`, `a.b`, types.NewArrayValue(object.NewValueBuffer().
 				Append(types.NewIntegerValue(1)).
 				Append(types.NewIntegerValue(2)).
 				Append(types.NewIntegerValue(3))), `{"a": {"b": [1, 2, 3]}}`, false},
 			{"nested array", `{"a": {"b": [1, 2, 3]}}`, `a.b[1]`, types.NewIntegerValue(1), `{"a": {"b": [1, 1, 3]}}`, false},
 			{"nested array multiple indexes", `{"a": {"b": [1, 2, [1, 2, {"c": "foo"}]]}}`, `a.b[2][2].c`, types.NewTextValue("bar"), `{"a": {"b": [1, 2, [1, 2, {"c": "bar"}]]}}`, false},
 			{"number field", `{"a": {"0": [1, 2, 3]}}`, "a.`0`[0]", types.NewIntegerValue(6), `{"a": {"0": [6, 2, 3]}}`, false},
-			{"document in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, types.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
+			{"object in array", `{"a": [{"b":"foo"}, 2, 3]}`, `a[0].b`, types.NewTextValue("bar"), `{"a": [{"b": "bar"}, 2, 3]}`, false},
 			// with errors or request ignored doc unchanged
 			{"field not found", `{"a": {"b": [1, 2, 3]}}`, `a.b.c`, types.NewIntegerValue(1), `{"a": {"b": [1, 2, 3]}}`, false},
 			{"unknown path", `{"a": {"b": [1, 2, 3]}}`, `a.e.f`, types.NewIntegerValue(1), ``, true},
 			{"index out of range", `{"a": {"b": [1, 2, 3]}}`, `a.b[1000]`, types.NewIntegerValue(1), ``, true},
-			{"document not array", `{"a": {"b": "foo"}}`, `a[0].b`, types.NewTextValue("bar"), ``, true},
+			{"object not array", `{"a": {"b": "foo"}}`, `a[0].b`, types.NewTextValue("bar"), ``, true},
 		}
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				var fb document.FieldBuffer
+				var fb object.FieldBuffer
 
-				d := document.NewFromJSON([]byte(tt.data))
+				d := object.NewFromJSON([]byte(tt.data))
 				err := fb.Copy(d)
 				assert.NoError(t, err)
 				p, err := parser.ParsePath(tt.path)
@@ -131,7 +131,7 @@ func TestFieldBuffer(t *testing.T) {
 				}
 
 				assert.NoError(t, err)
-				data, err := document.MarshalJSON(&fb)
+				data, err := object.MarshalJSON(&fb)
 				assert.NoError(t, err)
 				require.Equal(t, tt.want, string(data))
 			})
@@ -140,7 +140,7 @@ func TestFieldBuffer(t *testing.T) {
 
 	t.Run("Delete", func(t *testing.T) {
 		tests := []struct {
-			document   string
+			object     string
 			deletePath string
 			expected   string
 			fails      bool
@@ -155,12 +155,12 @@ func TestFieldBuffer(t *testing.T) {
 		}
 
 		for _, test := range tests {
-			t.Run(test.document, func(t *testing.T) {
-				var buf document.FieldBuffer
-				err := json.Unmarshal([]byte(test.document), &buf)
+			t.Run(test.object, func(t *testing.T) {
+				var buf object.FieldBuffer
+				err := json.Unmarshal([]byte(test.object), &buf)
 				assert.NoError(t, err)
 
-				path := testutil.ParseDocumentPath(t, test.deletePath)
+				path := testutil.ParseObjectPath(t, test.deletePath)
 
 				err = buf.Delete(path)
 				if test.fails {
@@ -176,7 +176,7 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Replace", func(t *testing.T) {
-		var buf document.FieldBuffer
+		var buf object.FieldBuffer
 		buf.Add("a", types.NewIntegerValue(10))
 		buf.Add("b", types.NewTextValue("hello"))
 
@@ -190,18 +190,18 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("Apply", func(t *testing.T) {
-		d := document.NewFromJSON([]byte(`{
+		d := object.NewFromJSON([]byte(`{
 			"a": "b",
 			"c": ["d", "e"],
 			"f": {"g": "h"}
 		}`))
 
-		buf := document.NewFieldBuffer()
+		buf := object.NewFieldBuffer()
 		err := buf.Copy(d)
 		assert.NoError(t, err)
 
-		err = buf.Apply(func(p document.Path, v types.Value) (types.Value, error) {
-			if v.Type() == types.ArrayValue || v.Type() == types.DocumentValue {
+		err = buf.Apply(func(p object.Path, v types.Value) (types.Value, error) {
+			if v.Type() == types.ArrayValue || v.Type() == types.ObjectValue {
 				return v, nil
 			}
 
@@ -215,49 +215,49 @@ func TestFieldBuffer(t *testing.T) {
 	})
 
 	t.Run("CloneValue", func(t *testing.T) {
-		d := testutil.MakeDocument(t, `{
+		d := testutil.MakeObject(t, `{
 			"a": "b",
 			"c": ["d", "e"],
 			"f": {"g": "h"}
 		}`)
 
-		got, err := document.CloneValue(types.NewDocumentValue(d))
+		got, err := object.CloneValue(types.NewObjectValue(d))
 		require.NoError(t, err)
-		testutil.RequireDocEqual(t, d, types.As[types.Document](got))
+		testutil.RequireObjEqual(t, d, types.As[types.Object](got))
 	})
 
 	t.Run("UnmarshalJSON", func(t *testing.T) {
 		tests := []struct {
 			name     string
 			data     string
-			expected *document.FieldBuffer
+			expected *object.FieldBuffer
 			fails    bool
 		}{
-			{"empty object", "{}", document.NewFieldBuffer(), false},
+			{"empty object", "{}", object.NewFieldBuffer(), false},
 			{"empty object, missing closing bracket", "{", nil, true},
 			{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
-				document.NewFieldBuffer().
+				object.NewFieldBuffer().
 					Add("a", types.NewIntegerValue(1)).
 					Add("b", types.NewBoolValue(true)).
 					Add("c", types.NewTextValue("hello")).
-					Add("d", types.NewArrayValue(document.NewValueBuffer().
+					Add("d", types.NewArrayValue(object.NewValueBuffer().
 						Append(types.NewIntegerValue(1)).
 						Append(types.NewIntegerValue(2)).
 						Append(types.NewIntegerValue(3)))).
-					Add("e", types.NewDocumentValue(document.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
+					Add("e", types.NewObjectValue(object.NewFieldBuffer().Add("f", types.NewTextValue("g")))),
 				false},
-			{"string values", `{"a": "hello ciao"}`, document.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
-			{"+integer values", `{"a": 1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
-			{"-integer values", `{"a": -1000}`, document.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
-			{"+float values", `{"a": 10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
-			{"-float values", `{"a": -10000000000.0}`, document.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
-			{"bool values", `{"a": true, "b": false}`, document.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
-			{"empty arrays", `{"a": []}`, document.NewFieldBuffer().Add("a", types.NewArrayValue(document.NewValueBuffer())), false},
-			{"nested arrays", `{"a": [[1,  2]]}`, document.NewFieldBuffer().
+			{"string values", `{"a": "hello ciao"}`, object.NewFieldBuffer().Add("a", types.NewTextValue("hello ciao")), false},
+			{"+integer values", `{"a": 1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(1000)), false},
+			{"-integer values", `{"a": -1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
+			{"+float values", `{"a": 10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
+			{"-float values", `{"a": -10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
+			{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+			{"empty arrays", `{"a": []}`, object.NewFieldBuffer().Add("a", types.NewArrayValue(object.NewValueBuffer())), false},
+			{"nested arrays", `{"a": [[1,  2]]}`, object.NewFieldBuffer().
 				Add("a", types.NewArrayValue(
-					document.NewValueBuffer().
+					object.NewValueBuffer().
 						Append(types.NewArrayValue(
-							document.NewValueBuffer().
+							object.NewValueBuffer().
 								Append(types.NewIntegerValue(1)).
 								Append(types.NewIntegerValue(2)))))), false},
 			{"missing comma", `{"a": 1 "b": 2}`, nil, true},
@@ -266,7 +266,7 @@ func TestFieldBuffer(t *testing.T) {
 
 		for _, test := range tests {
 			t.Run(test.name, func(t *testing.T) {
-				var buf document.FieldBuffer
+				var buf object.FieldBuffer
 
 				err := json.Unmarshal([]byte(test.data), &buf)
 				if test.fails {
@@ -300,7 +300,7 @@ func TestNewFromStruct(t *testing.T) {
 		L int32
 		M int64
 		N float64
-		// structs must be considered as documents
+		// structs must be considered as objects
 		O group
 
 		// nil pointers must be skipped
@@ -308,7 +308,7 @@ func TestNewFromStruct(t *testing.T) {
 		P *int
 		Q *int
 
-		// struct pointers should be considered as documents
+		// struct pointers should be considered as objects
 		// if there are nil though, they must be skipped
 		R *group
 		S *group
@@ -326,7 +326,7 @@ func TestNewFromStruct(t *testing.T) {
 
 		*group
 
-		BB time.Time // some has special encoding as Document
+		BB time.Time // some have special encoding as object
 
 		// unexported fields should be ignored
 		t int
@@ -365,7 +365,7 @@ func TestNewFromStruct(t *testing.T) {
 	u.X = []interface{}{1, "foo"}
 
 	t.Run("Iterate", func(t *testing.T) {
-		doc, err := document.NewFromStruct(u)
+		doc, err := object.NewFromStruct(u)
 		assert.NoError(t, err)
 
 		var counter int
@@ -402,11 +402,11 @@ func TestNewFromStruct(t *testing.T) {
 			case 13:
 				require.Equal(t, u.N, types.As[float64](v))
 			case 14:
-				require.EqualValues(t, types.DocumentValue, v.Type())
+				require.EqualValues(t, types.ObjectValue, v.Type())
 			case 15:
 				require.EqualValues(t, *u.Q, types.As[int64](v))
 			case 16:
-				require.EqualValues(t, types.DocumentValue, v.Type())
+				require.EqualValues(t, types.ObjectValue, v.Type())
 			case 17:
 				require.EqualValues(t, types.ArrayValue, v.Type())
 			case 18:
@@ -440,7 +440,7 @@ func TestNewFromStruct(t *testing.T) {
 	})
 
 	t.Run("GetByField", func(t *testing.T) {
-		doc, err := document.NewFromStruct(u)
+		doc, err := object.NewFromStruct(u)
 		assert.NoError(t, err)
 
 		v, err := doc.GetByField("a")
@@ -488,7 +488,7 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err = doc.GetByField("o")
 		assert.NoError(t, err)
-		d, ok := types.Is[types.Document](v)
+		d, ok := types.Is[types.Object](v)
 		require.True(t, ok)
 		v, err = d.GetByField("ig")
 		assert.NoError(t, err)
@@ -519,7 +519,7 @@ func TestNewFromStruct(t *testing.T) {
 		v, err = doc.GetByField("bb")
 		assert.NoError(t, err)
 		var tm time.Time
-		assert.NoError(t, document.ScanValue(v, &tm))
+		assert.NoError(t, object.ScanValue(v, &tm))
 		require.Equal(t, u.BB, tm)
 	})
 
@@ -528,14 +528,14 @@ func TestNewFromStruct(t *testing.T) {
 			A *int
 		}
 
-		d, err := document.NewFromStruct(new(s))
+		d, err := object.NewFromStruct(new(s))
 		assert.NoError(t, err)
 		_, err = d.GetByField("a")
 		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 
 		a := 10
 		ss := s{A: &a}
-		d, err = document.NewFromStruct(&ss)
+		d, err = object.NewFromStruct(&ss)
 		assert.NoError(t, err)
 		v, err := d.GetByField("a")
 		assert.NoError(t, err)
@@ -591,15 +591,15 @@ func (f *foo) GetByField(field string) (types.Value, error) {
 	return nil, errors.New("unknown field")
 }
 
-func TestJSONDocument(t *testing.T) {
+func TestJSONObject(t *testing.T) {
 	tests := []struct {
 		name     string
-		d        types.Document
+		o        types.Object
 		expected string
 	}{
 		{
 			"Flat",
-			document.NewFieldBuffer().
+			object.NewFieldBuffer().
 				Add("name", types.NewTextValue("John")).
 				Add("age", types.NewIntegerValue(10)).
 				Add(`"something with" quotes`, types.NewIntegerValue(10)),
@@ -607,15 +607,15 @@ func TestJSONDocument(t *testing.T) {
 		},
 		{
 			"Nested",
-			document.NewFieldBuffer().
+			object.NewFieldBuffer().
 				Add("name", types.NewTextValue("John")).
 				Add("age", types.NewIntegerValue(10)).
-				Add("address", types.NewDocumentValue(document.NewFieldBuffer().
+				Add("address", types.NewObjectValue(object.NewFieldBuffer().
 					Add("city", types.NewTextValue("Ajaccio")).
 					Add("country", types.NewTextValue("France")),
 				)).
 				Add("friends", types.NewArrayValue(
-					document.NewValueBuffer().
+					object.NewValueBuffer().
 						Append(types.NewTextValue("fred")).
 						Append(types.NewTextValue("jamie")),
 				)),
@@ -625,7 +625,7 @@ func TestJSONDocument(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			data, err := json.Marshal(test.d)
+			data, err := json.Marshal(test.o)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
 			assert.NoError(t, err)
@@ -633,7 +633,7 @@ func TestJSONDocument(t *testing.T) {
 	}
 }
 
-func BenchmarkDocumentIterate(b *testing.B) {
+func BenchmarkObjectIterate(b *testing.B) {
 	f := foo{
 		A: "a",
 		B: 1000,

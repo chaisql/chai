@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -30,19 +30,19 @@ func TestValueMarshalText(t *testing.T) {
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
 		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"null", nil, "NULL"},
-		{"document", document.NewFieldBuffer().
+		{"object", object.NewFieldBuffer().
 			Add("a", types.NewIntegerValue(10)).
 			Add("b c", types.NewTextValue("foo")).
 			Add(`"d e"`, types.NewTextValue("foo")),
 			"{a: 10, \"b c\": \"foo\", `\"d e\"`: \"foo\"}",
 		},
-		{"array", document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")), `[10, "foo"]`},
+		{"array", object.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")), `[10, "foo"]`},
 		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			v, err := document.NewValue(test.value)
+			v, err := object.NewValue(test.value)
 			assert.NoError(t, err)
 			data, err := v.MarshalText()
 			assert.NoError(t, err)
@@ -74,8 +74,8 @@ func TestMarshalTextIndent(t *testing.T) {
 		{"time", now, `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"float64", math.MaxFloat64, "1.7976931348623157e+308"},
 		{"null", nil, "NULL"},
-		{"document",
-			document.NewFieldBuffer().Add("a", types.NewIntegerValue(10)).Add("b c", types.NewTextValue("foo")).Add("d", types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")))),
+		{"object",
+			object.NewFieldBuffer().Add("a", types.NewIntegerValue(10)).Add("b c", types.NewTextValue("foo")).Add("d", types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")))),
 			`{
   a: 10,
   "b c": "foo",
@@ -85,7 +85,7 @@ func TestMarshalTextIndent(t *testing.T) {
   ]
 }`},
 		{"array",
-			document.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")),
+			object.NewValueBuffer(types.NewIntegerValue(10), types.NewTextValue("foo")),
 			`[
   10,
   "foo"
@@ -96,7 +96,7 @@ func TestMarshalTextIndent(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			v, err := document.NewValue(test.value)
+			v, err := object.NewValue(test.value)
 			assert.NoError(t, err)
 			data, err := types.MarshalTextIndent(v, "\n", "  ")
 			assert.NoError(t, err)
@@ -127,8 +127,8 @@ func TestValueMarshalJSON(t *testing.T) {
 		{"time", types.NewTimestampValue(now), `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
 		{"double with no decimal", types.NewDoubleValue(10), "10"},
 		{"big double", types.NewDoubleValue(1e15), "1e+15"},
-		{"document", types.NewDocumentValue(document.NewFieldBuffer().Add("a", types.NewIntegerValue(10))), "{\"a\": 10}"},
-		{"array", types.NewArrayValue(document.NewValueBuffer(types.NewIntegerValue(10))), "[10]"},
+		{"object", types.NewObjectValue(object.NewFieldBuffer().Add("a", types.NewIntegerValue(10))), "{\"a\": 10}"},
+		{"array", types.NewArrayValue(object.NewValueBuffer(types.NewIntegerValue(10))), "[10]"},
 	}
 
 	for _, test := range tests {

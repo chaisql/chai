@@ -1,4 +1,4 @@
-package document
+package object
 
 import (
 	"github.com/buger/jsonparser"
@@ -49,7 +49,7 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, 
 			return nil, err
 		}
 
-		return types.NewDocumentValue(buf), nil
+		return types.NewObjectValue(buf), nil
 	default:
 	}
 

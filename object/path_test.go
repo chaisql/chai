@@ -1,12 +1,12 @@
-package document_test
+package object_test
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,13 +29,13 @@ func TestPath(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			var buf document.FieldBuffer
+			var buf object.FieldBuffer
 
 			err := json.Unmarshal([]byte(test.data), &buf)
 			assert.NoError(t, err)
 			p, err := parser.ParsePath(test.path)
 			assert.NoError(t, err)
-			v, err := p.GetValueFromDocument(&buf)
+			v, err := p.GetValueFromObject(&buf)
 			if test.fails {
 				assert.Error(t, err)
 			} else {

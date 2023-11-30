@@ -58,8 +58,8 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: DOCUMENT
-CREATE TABLE test (a DOCUMENT);
+-- test: OBJECT
+CREATE TABLE test (a OBJECT);
 SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 /* result:
 {

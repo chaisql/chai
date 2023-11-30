@@ -16,7 +16,7 @@ VALUES
 EXPLAIN SELECT * FROM test ORDER BY c;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSort(c)'
+    "plan": 'table.Scan("test") | rows.TempTreeSort(c)'
 }
 */
 
@@ -24,7 +24,7 @@ EXPLAIN SELECT * FROM test ORDER BY c;
 EXPLAIN SELECT * FROM test ORDER BY c DESC;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSortReverse(c)'
+    "plan": 'table.Scan("test") | rows.TempTreeSortReverse(c)'
 }
 */
 
@@ -48,7 +48,7 @@ EXPLAIN SELECT * FROM test ORDER BY a DESC;
 EXPLAIN SELECT * FROM test ORDER BY b;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSort(b)'
+    "plan": 'table.Scan("test") | rows.TempTreeSort(b)'
 }
 */
 
@@ -56,7 +56,7 @@ EXPLAIN SELECT * FROM test ORDER BY b;
 EXPLAIN SELECT * FROM test ORDER BY b DESC;
 /* result:
 {
-    "plan": 'table.Scan("test") | docs.TempTreeSortReverse(b)'
+    "plan": 'table.Scan("test") | rows.TempTreeSortReverse(b)'
 }
 */
 
@@ -64,7 +64,7 @@ EXPLAIN SELECT * FROM test ORDER BY b DESC;
 EXPLAIN SELECT * FROM test WHERE a > 10 ORDER BY b DESC;
 /* result:
 {
-    "plan": 'index.Scan("test_a_b", [{"min": [10], "exclusive": true}]) | docs.TempTreeSortReverse(b)'
+    "plan": 'index.Scan("test_a_b", [{"min": [10], "exclusive": true}]) | rows.TempTreeSortReverse(b)'
 }
 */
 
@@ -81,6 +81,6 @@ EXPLAIN SELECT * FROM test WHERE a = 10 ORDER BY b DESC;
 EXPLAIN SELECT * FROM test WHERE b = 10 ORDER BY a DESC;
 /* result:
 {
-    "plan": 'index.ScanReverse("test_a_b") | docs.Filter(b = 10)'
+    "plan": 'index.ScanReverse("test_a_b") | rows.Filter(b = 10)'
 }
 */

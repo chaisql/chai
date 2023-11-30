@@ -3,22 +3,22 @@ package statement_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 )
 
-func ParseDocumentPath(t testing.TB, str string) document.Path {
+func ParseObjectPath(t testing.TB, str string) object.Path {
 	vp, err := parser.ParsePath(str)
 	assert.NoError(t, err)
 	return vp
 }
 
-func ParseDocumentPaths(t testing.TB, str ...string) []document.Path {
-	var paths []document.Path
+func ParseObjectPaths(t testing.TB, str ...string) []object.Path {
+	var paths []object.Path
 	for _, s := range str {
-		paths = append(paths, ParseDocumentPath(t, s))
+		paths = append(paths, ParseObjectPath(t, s))
 	}
 
 	return paths

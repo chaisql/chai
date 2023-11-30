@@ -1,19 +1,19 @@
-package docs_test
+package rows_test
 
 import (
 	"strconv"
 	"testing"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 	"github.com/stretchr/testify/require"
 )
@@ -23,24 +23,24 @@ func TestAggregate(t *testing.T) {
 		name     string
 		groupBy  expr.Expr
 		builders []expr.AggregatorBuilder
-		in       []types.Document
-		want     []types.Document
+		in       []types.Object
+		want     []types.Object
 		fails    bool
 	}{
 		{
 			"fake count",
 			nil,
 			makeAggregatorBuilders("agg"),
-			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`)},
-			[]types.Document{testutil.MakeDocument(t, `{"agg": 1}`)},
+			[]types.Object{testutil.MakeObject(t, `{"a": 10}`)},
+			[]types.Object{testutil.MakeObject(t, `{"agg": 1}`)},
 			false,
 		},
 		{
 			"count",
 			nil,
 			[]expr.AggregatorBuilder{&functions.Count{Wildcard: true}},
-			[]types.Document{testutil.MakeDocument(t, `{"a": 10}`)},
-			[]types.Document{testutil.MakeDocument(t, `{"COUNT(*)": 1}`)},
+			[]types.Object{testutil.MakeObject(t, `{"a": 10}`)},
+			[]types.Object{testutil.MakeObject(t, `{"COUNT(*)": 1}`)},
 			false,
 		},
 		{
@@ -48,7 +48,7 @@ func TestAggregate(t *testing.T) {
 			parser.MustParseExpr("a % 2"),
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			generateSeqDocs(t, 10),
-			[]types.Document{testutil.MakeDocument(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeDocument(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
+			[]types.Object{testutil.MakeObject(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeObject(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
 			false,
 		},
 		{
@@ -56,7 +56,7 @@ func TestAggregate(t *testing.T) {
 			nil,
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			nil,
-			[]types.Document{testutil.MakeDocument(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
+			[]types.Object{testutil.MakeObject(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
 		},
 		{
@@ -64,7 +64,7 @@ func TestAggregate(t *testing.T) {
 			parser.MustParseExpr("a % 2"),
 			nil,
 			generateSeqDocs(t, 4),
-			testutil.MakeDocuments(t, `{"a % 2": 0}`, `{"a % 2": 1}`),
+			testutil.MakeObjects(t, `{"a % 2": 0}`, `{"a % 2": 1}`),
 			false,
 		},
 	}
@@ -86,17 +86,17 @@ func TestAggregate(t *testing.T) {
 
 			s := stream.New(table.Scan("test"))
 			if test.groupBy != nil {
-				s = s.Pipe(docs.TempTreeSort(test.groupBy))
+				s = s.Pipe(rows.TempTreeSort(test.groupBy))
 			}
 
-			s = s.Pipe(docs.GroupAggregate(test.groupBy, test.builders...))
+			s = s.Pipe(rows.GroupAggregate(test.groupBy, test.builders...))
 
-			var got []types.Document
+			var got []types.Object
 			err := s.Iterate(&env, func(env *environment.Environment) error {
-				d, ok := env.GetDocument()
+				r, ok := env.GetRow()
 				require.True(t, ok)
-				var fb document.FieldBuffer
-				fb.Copy(d)
+				var fb object.FieldBuffer
+				fb.Copy(r.Object())
 				got = append(got, &fb)
 				return nil
 			})
@@ -105,7 +105,7 @@ func TestAggregate(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				for i, doc := range test.want {
-					testutil.RequireDocEqual(t, doc, got[i])
+					testutil.RequireObjEqual(t, doc, got[i])
 				}
 
 				require.Equal(t, len(test.want), len(got))
@@ -114,9 +114,9 @@ func TestAggregate(t *testing.T) {
 	}
 
 	t.Run("String", func(t *testing.T) {
-		require.Equal(t, `docs.GroupAggregate(a % 2, a(), b())`, docs.GroupAggregate(parser.MustParseExpr("a % 2"), makeAggregatorBuilders("a()", "b()")...).String())
-		require.Equal(t, `docs.GroupAggregate(NULL, a(), b())`, docs.GroupAggregate(nil, makeAggregatorBuilders("a()", "b()")...).String())
-		require.Equal(t, `docs.GroupAggregate(a % 2)`, docs.GroupAggregate(parser.MustParseExpr("a % 2")).String())
+		require.Equal(t, `rows.GroupAggregate(a % 2, a(), b())`, rows.GroupAggregate(parser.MustParseExpr("a % 2"), makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `rows.GroupAggregate(NULL, a(), b())`, rows.GroupAggregate(nil, makeAggregatorBuilders("a()", "b()")...).String())
+		require.Equal(t, `rows.GroupAggregate(a % 2)`, rows.GroupAggregate(parser.MustParseExpr("a % 2")).String())
 	})
 }
 
@@ -168,11 +168,11 @@ func makeAggregatorBuilders(names ...string) []expr.AggregatorBuilder {
 	return aggs
 }
 
-func generateSeqDocs(t testing.TB, max int) (docs []types.Document) {
+func generateSeqDocs(t testing.TB, max int) (docs []types.Object) {
 	t.Helper()
 
 	for i := 0; i < max; i++ {
-		docs = append(docs, testutil.MakeDocument(t, `{"a": `+strconv.Itoa(i)+`}`))
+		docs = append(docs, testutil.MakeObject(t, `{"a": `+strconv.Itoa(i)+`}`))
 	}
 
 	return docs

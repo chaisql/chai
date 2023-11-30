@@ -56,12 +56,12 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 	sequences := make([]database.Sequence, len(info))
 	for i := range info {
 		key := tree.NewKey(types.NewTextValue(info[i].Name))
-		d, err := tb.GetDocument(key)
+		r, err := tb.GetRow(key)
 		if err != nil {
 			return nil, err
 		}
 
-		v, err := d.GetByField("seq")
+		v, err := r.Get("seq")
 		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 			return nil, err
 		}
@@ -81,28 +81,28 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.IterateOnRange(nil, false, func(key *tree.Key, d types.Document) error {
-		tp, err := d.GetByField("type")
+	err = tb.IterateOnRange(nil, false, func(key *tree.Key, r database.Row) error {
+		tp, err := r.Get("type")
 		if err != nil {
 			return err
 		}
 
 		switch types.As[string](tp) {
 		case database.RelationTableType:
-			ti, err := tableInfoFromDocument(d)
+			ti, err := tableInfoFromRow(r)
 			if err != nil {
 				return errors.Wrap(err, "failed to decode table info")
 			}
 			tables = append(tables, *ti)
 		case database.RelationIndexType:
-			i, err := indexInfoFromDocument(d)
+			i, err := indexInfoFromRow(r)
 			if err != nil {
 				return errors.Wrap(err, "failed to decode index info")
 			}
 
 			indexes = append(indexes, *i)
 		case database.RelationSequenceType:
-			i, err := sequenceInfoFromDocument(d)
+			i, err := sequenceInfoFromRow(r)
 			if err != nil {
 				return errors.Wrap(err, "failed to decode sequence info")
 			}
@@ -114,8 +114,8 @@ func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (table
 	return
 }
 
-func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
-	s, err := d.GetByField("sql")
+func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
+	s, err := r.Get("sql")
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 
 	ti := stmt.(*statement.CreateTableStmt).Info
 
-	v, err := d.GetByField("namespace")
+	v, err := r.Get("namespace")
 	if err != nil {
 		return nil, err
 	}
@@ -138,19 +138,19 @@ func tableInfoFromDocument(d types.Document) (*database.TableInfo, error) {
 
 	ti.StoreNamespace = tree.Namespace(storeNamespace)
 
-	v, err = d.GetByField("docid_sequence_name")
+	v, err = r.Get("rowid_sequence_name")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		ti.DocidSequenceName = types.As[string](v)
+		ti.RowidSequenceName = types.As[string](v)
 	}
 
 	return &ti, nil
 }
 
-func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
-	s, err := d.GetByField("sql")
+func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
+	s, err := r.Get("sql")
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 
 	i := stmt.(*statement.CreateIndexStmt).Info
 
-	v, err := d.GetByField("namespace")
+	v, err := r.Get("namespace")
 	if err != nil {
 		return nil, err
 	}
@@ -174,12 +174,12 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 
 	i.StoreNamespace = tree.Namespace(storeNamespace)
 
-	v, err = d.GetByField("owner")
+	v, err = r.Get("owner")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromDocument(types.As[types.Document](v))
+		owner, err := ownerFromObject(types.As[types.Object](v))
 		if err != nil {
 			return nil, err
 		}
@@ -189,8 +189,8 @@ func indexInfoFromDocument(d types.Document) (*database.IndexInfo, error) {
 	return &i, nil
 }
 
-func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) {
-	s, err := d.GetByField("sql")
+func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
+	s, err := r.Get("sql")
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get sql field")
 	}
@@ -202,12 +202,12 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 
 	i := stmt.(*statement.CreateSequenceStmt).Info
 
-	v, err := d.GetByField("owner")
+	v, err := r.Get("owner")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, errors.Wrap(err, "failed to get owner field")
 	}
 	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromDocument(types.As[types.Document](v))
+		owner, err := ownerFromObject(types.As[types.Object](v))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get owner")
 		}
@@ -217,17 +217,17 @@ func sequenceInfoFromDocument(d types.Document) (*database.SequenceInfo, error) 
 	return &i, nil
 }
 
-func ownerFromDocument(d types.Document) (*database.Owner, error) {
+func ownerFromObject(o types.Object) (*database.Owner, error) {
 	var owner database.Owner
 
-	v, err := d.GetByField("table_name")
+	v, err := o.GetByField("table_name")
 	if err != nil {
 		return nil, err
 	}
 
 	owner.TableName = types.As[string](v)
 
-	v, err = d.GetByField("paths")
+	v, err = o.GetByField("paths")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}

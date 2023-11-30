@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/tree"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -114,7 +114,7 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 
 		// if set to false, we are still parsing field definitions
 		if !parsingTableConstraints {
-			fc, tcs, err := p.parseFieldDefinition(document.Path{})
+			fc, tcs, err := p.parseFieldDefinition(object.Path{})
 			if err != nil {
 				return err
 			}
@@ -149,7 +149,7 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 	return nil
 }
 
-func (p *Parser) parseFieldDefinition(parent document.Path) (*database.FieldConstraint, []*database.TableConstraint, error) {
+func (p *Parser) parseFieldDefinition(parent object.Path) (*database.FieldConstraint, []*database.TableConstraint, error) {
 	var err error
 
 	var fc database.FieldConstraint
@@ -168,18 +168,18 @@ func (p *Parser) parseFieldDefinition(parent document.Path) (*database.FieldCons
 
 	var tcs []*database.TableConstraint
 
-	if fc.Type.IsAny() || fc.Type == types.DocumentValue {
-		anon, nestedTCs, err := p.parseDocumentDefinition(path)
+	if fc.Type.IsAny() || fc.Type == types.ObjectValue {
+		anon, nestedTCs, err := p.parseObjectDefinition(path)
 		if err != nil {
 			return nil, nil, err
 		}
 		if anon != nil {
-			fc.Type = types.DocumentValue
+			fc.Type = types.ObjectValue
 			fc.AnonymousType = anon
-		} else if fc.Type == types.DocumentValue {
-			// if the field constraint is a document but doesn't have any constraint,
+		} else if fc.Type == types.ObjectValue {
+			// if the field constraint is an object but doesn't have any constraint,
 			// its AllowExtraFields is set to true
-			// i.e CREATE TABLE foo(a DOCUMENT) -> CREATE TABLE foo(a DOCUMENT (...))
+			// i.e CREATE TABLE foo(a OBJECT) -> CREATE TABLE foo(a OBJECT (...))
 			fc.AnonymousType = &database.AnonymousType{}
 			fc.AnonymousType.FieldConstraints.AllowExtraFields = true
 		}
@@ -201,7 +201,7 @@ LOOP:
 
 			tc := database.TableConstraint{
 				PrimaryKey: true,
-				Paths:      document.Paths{path},
+				Paths:      object.Paths{path},
 			}
 
 			// if ASC is set, we ignore it, otherwise we check for DESC
@@ -286,7 +286,7 @@ LOOP:
 		case scanner.UNIQUE:
 			tcs = append(tcs, &database.TableConstraint{
 				Unique: true,
-				Paths:  document.Paths{path},
+				Paths:  object.Paths{path},
 			})
 		case scanner.CHECK:
 			e, paths, err := p.parseCheckConstraint()
@@ -307,7 +307,7 @@ LOOP:
 	return &fc, tcs, nil
 }
 
-func (p *Parser) parseDocumentDefinition(parent document.Path) (*database.AnonymousType, []*database.TableConstraint, error) {
+func (p *Parser) parseObjectDefinition(parent object.Path) (*database.AnonymousType, []*database.TableConstraint, error) {
 	err := p.parseTokens(scanner.LPAREN)
 	if err != nil {
 		p.Unscan()
@@ -703,7 +703,7 @@ func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, 
 
 // parseCheckConstraint parses a check constraint.
 // it assumes the CHECK token has already been parsed.
-func (p *Parser) parseCheckConstraint() (expr.Expr, []document.Path, error) {
+func (p *Parser) parseCheckConstraint() (expr.Expr, []object.Path, error) {
 	// Parse "("
 	err := p.parseTokens(scanner.LPAREN)
 	if err != nil {
@@ -715,12 +715,12 @@ func (p *Parser) parseCheckConstraint() (expr.Expr, []document.Path, error) {
 		return nil, nil, err
 	}
 
-	var paths []document.Path
+	var paths []object.Path
 	// extract all the paths from the expression
 	expr.Walk(e, func(e expr.Expr) bool {
 		switch t := e.(type) {
 		case expr.Path:
-			pt := document.Path(t)
+			pt := object.Path(t)
 			// ensure that the path is not already in the list
 			found := false
 			for _, p := range paths {
@@ -730,7 +730,7 @@ func (p *Parser) parseCheckConstraint() (expr.Expr, []document.Path, error) {
 				}
 			}
 			if !found {
-				paths = append(paths, document.Path(t))
+				paths = append(paths, object.Path(t))
 			}
 		}
 

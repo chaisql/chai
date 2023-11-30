@@ -6,8 +6,8 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/docs"
 	"github.com/genjidb/genji/internal/stream/path"
+	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/types"
@@ -18,24 +18,24 @@ func TestUnset(t *testing.T) {
 	tests := []struct {
 		path  string
 		in    []expr.Expr
-		out   []types.Document
+		out   []types.Object
 		fails bool
 	}{
 		{
 			"a",
 			testutil.ParseExprs(t, `{"a": 10, "b": 20}`),
-			testutil.MakeDocuments(t, `{"b": 20}`),
+			testutil.MakeObjects(t, `{"b": 20}`),
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.path, func(t *testing.T) {
-			s := stream.New(docs.Emit(test.in...)).Pipe(path.Unset(test.path))
+			s := stream.New(rows.Emit(test.in...)).Pipe(path.Unset(test.path))
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				d, _ := out.GetDocument()
-				require.Equal(t, test.out[i], d)
+				r, _ := out.GetRow()
+				require.Equal(t, test.out[i], r.Object())
 				i++
 				return nil
 			})

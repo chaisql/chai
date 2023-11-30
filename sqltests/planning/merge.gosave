@@ -2,12 +2,12 @@
 // // the same path and can constitute a single filter node or a BETWEEN operation.
 // // It also detects invalid sequences of filter nodes that can never return any result.
 // // Example:
-// //		docs.Filter(a > 2) | docs.Filter(a < 5)
-// //	->	docs.Filter(a BETWEEN 2 AND 5)
-// //		docs.Filter(a > 2) | docs.Filter(a < 5) | docs.Filter(a = 3)
-// //	->	docs.Filter(a = 3)
-// //		docs.Filter(a > 2) | docs.Filter(a >= 5)
-// //	->	docs.Filter(a >= 5)
+// //		objs.Filter(a > 2) | objs.Filter(a < 5)
+// //	->	objs.Filter(a BETWEEN 2 AND 5)
+// //		objs.Filter(a > 2) | objs.Filter(a < 5) | objs.Filter(a = 3)
+// //	->	objs.Filter(a = 3)
+// //		objs.Filter(a > 2) | objs.Filter(a >= 5)
+// //	->	objs.Filter(a >= 5)
 // func MergeFilterNodes(sctx *StreamContext) error {
 // 	type selected struct {
 // 		path      document.Path

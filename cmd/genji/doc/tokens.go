@@ -13,5 +13,5 @@ func init() {
 	}
 
 	tokenDocs[scanner.BY] = "See GROUP BY, ORDER BY"
-	tokenDocs[scanner.FROM] = "FROM [TABLE] selects documents in the table named [TABLE]"
+	tokenDocs[scanner.FROM] = "FROM [TABLE] selects rows in the table named [TABLE]"
 }

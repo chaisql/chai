@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/document"
-	"github.com/genjidb/genji/types"
 )
 
 type User struct {
@@ -44,19 +42,19 @@ func Example() {
 		panic(err)
 	}
 
-	// Insert some data using document notation
+	// Insert some data using object notation
 	err = db.Exec(`INSERT INTO user VALUES {id: 12, "name": "bar", age: ?, address: {city: "Lyon", zipcode: "69001"}}`, 16)
 	if err != nil {
 		panic(err)
 	}
 
-	// Structs can be used to describe a document
+	// Structs can be used to describe a object
 	err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "baz", Age: 100}, &User{ID: 2, Name: "bat"})
 	if err != nil {
 		panic(err)
 	}
 
-	// Query some documents
+	// Query some objects
 	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
@@ -65,10 +63,10 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(d types.Document) error {
+	err = stream.Iterate(func(r *genji.Row) error {
 		var u User
 
-		err = document.StructScan(d, &u)
+		err = r.StructScan(&u)
 		if err != nil {
 			return err
 		}

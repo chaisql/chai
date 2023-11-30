@@ -1,13 +1,13 @@
-package docs
+package rows
 
 import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/document"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
+	"github.com/genjidb/genji/object"
 	"github.com/genjidb/genji/types"
 )
 
@@ -46,9 +46,9 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return err
 		}
 
-		// handle the first document of the stream
+		// handle the first object of the stream
 		if lastGroup == nil {
-			lastGroup, err = document.CloneValue(group)
+			lastGroup, err = object.CloneValue(group)
 			if err != nil {
 				return err
 			}
@@ -64,7 +64,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return ga.Aggregate(out)
 		}
 
-		// if the document is from a different group, we flush the previous group, emit it and start a new group
+		// if the object is from a different group, we flush the previous group, emit it and start a new group
 		e, err := ga.Flush(out)
 		if err != nil {
 			return err
@@ -74,7 +74,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return err
 		}
 
-		lastGroup, err = document.CloneValue(group)
+		lastGroup, err = object.CloneValue(group)
 		if err != nil {
 			return err
 		}
@@ -105,7 +105,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 func (op *GroupAggregateOperator) String() string {
 	var sb strings.Builder
 
-	sb.WriteString("docs.GroupAggregate(")
+	sb.WriteString("rows.GroupAggregate(")
 	if op.E != nil {
 		sb.WriteString(op.E.String())
 	} else {
@@ -121,8 +121,8 @@ func (op *GroupAggregateOperator) String() string {
 	return sb.String()
 }
 
-// a groupAggregator is an aggregator for a whole group of documents.
-// It applies all the aggregators for each documents and returns a new document with the
+// a groupAggregator is an aggregator for a whole group of objects.
+// It applies all the aggregators for each objects and returns a new object with the
 // result of the aggregation.
 type groupAggregator struct {
 	group       types.Value
@@ -155,9 +155,9 @@ func (g *groupAggregator) Aggregate(env *environment.Environment) error {
 }
 
 func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Environment, error) {
-	fb := document.NewFieldBuffer()
+	fb := object.NewFieldBuffer()
 
-	// add the current group to the document
+	// add the current group to the object
 	if g.groupExpr != "" {
 		fb.Add(g.groupExpr, g.group)
 	}
@@ -172,7 +172,7 @@ func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Envi
 
 	var newEnv environment.Environment
 	newEnv.SetOuter(env)
-	newEnv.SetDocument(fb)
+	newEnv.SetRowFromObject(fb)
 
 	return &newEnv, nil
 }

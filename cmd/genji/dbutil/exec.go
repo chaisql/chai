@@ -6,10 +6,10 @@ import (
 	"io"
 
 	"github.com/genjidb/genji"
+	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/types"
 )
 
 // ExecSQL reads SQL queries from reader and executes them until the reader is exhausted.
@@ -35,14 +35,14 @@ func ExecSQL(ctx context.Context, db *genji.DB, r io.Reader, w io.Writer) error 
 			return err
 		}
 
-		err = res.Iterate(func(d types.Document) error {
+		err = res.Iterate(func(r database.Row) error {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			default:
 			}
 
-			return enc.Encode(d)
+			return enc.Encode(r)
 		})
 		if err != nil {
 			res.Close()
