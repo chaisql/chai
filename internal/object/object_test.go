@@ -8,11 +8,11 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 var _ types.Object = new(object.FieldBuffer)

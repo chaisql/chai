@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/lib/atomic"
+	"github.com/genjidb/genji/internal/pkg/atomic"
 )
 
 const (

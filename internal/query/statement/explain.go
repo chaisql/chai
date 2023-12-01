@@ -5,7 +5,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // ExplainStmt is a Statement that

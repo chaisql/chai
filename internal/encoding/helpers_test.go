@@ -8,9 +8,9 @@ import (
 
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 

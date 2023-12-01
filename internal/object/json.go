@@ -2,7 +2,7 @@ package object
 
 import (
 	"github.com/buger/jsonparser"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, err error) {

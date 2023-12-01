@@ -3,7 +3,7 @@ package object
 import (
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // ArrayLength returns the length of an array.

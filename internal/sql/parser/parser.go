@@ -8,11 +8,11 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/query"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
 )
 
 // Parser represents an Genji SQL Parser.

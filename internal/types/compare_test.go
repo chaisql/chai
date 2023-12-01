@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 	"github.com/golang-module/carbon/v2"
 	"github.com/stretchr/testify/require"
 )

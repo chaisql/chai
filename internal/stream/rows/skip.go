@@ -5,9 +5,9 @@ import (
 
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A SkipOperator skips the n first values of the stream.

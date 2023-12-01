@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func NewKey(t testing.TB, values ...types.Value) *tree.Key {

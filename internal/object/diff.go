@@ -2,7 +2,7 @@ package object
 
 import (
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // Diff returns the operations needed to transform the first object into the second.

@@ -3,7 +3,7 @@ package expr
 import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // IsArithmeticOperator returns true if e is one of

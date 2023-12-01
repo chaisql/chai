@@ -6,7 +6,7 @@ import (
 
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A ScalarDefinition is the definition type for functions which operates on scalar values in contrast to other SQL functions

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 var (

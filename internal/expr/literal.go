@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A LiteralValue represents a literal value of any type defined by the value package.

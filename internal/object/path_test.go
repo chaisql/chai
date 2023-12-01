@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 

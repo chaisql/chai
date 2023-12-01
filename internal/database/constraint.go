@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/cockroachdb/errors"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // FieldConstraint describes constraints on a particular field.

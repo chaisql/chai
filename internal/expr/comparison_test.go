@@ -5,7 +5,7 @@ import (
 
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func TestComparisonExpr(t *testing.T) {

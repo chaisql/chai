@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/object"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func EncodeObject(dst []byte, d types.Object) ([]byte, error) {

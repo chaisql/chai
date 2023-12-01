@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/object"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A Param represents a parameter passed by the user to the statement.

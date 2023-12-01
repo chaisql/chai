@@ -3,7 +3,7 @@ package kv
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/lib/atomic"
+	"github.com/genjidb/genji/internal/pkg/atomic"
 )
 
 type snapshot struct {

@@ -6,8 +6,8 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/object"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // Range represents a range to select values after or before

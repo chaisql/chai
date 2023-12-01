@@ -10,7 +10,7 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/lib/pebbleutil"
+	"github.com/genjidb/genji/internal/pkg/pebbleutil"
 )
 
 const (

@@ -3,8 +3,8 @@ package expr
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/object"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A Path is an expression that extracts a value from a object at a given path.

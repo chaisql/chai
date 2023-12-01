@@ -10,9 +10,9 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/database"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )

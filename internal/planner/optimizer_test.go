@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/planner"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/stream"
@@ -12,8 +13,7 @@ import (
 	"github.com/genjidb/genji/internal/stream/table"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

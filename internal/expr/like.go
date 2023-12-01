@@ -6,7 +6,7 @@ import (
 	"github.com/genjidb/genji/internal/environment"
 	"github.com/genjidb/genji/internal/expr/glob"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func like(pattern, text string) bool {

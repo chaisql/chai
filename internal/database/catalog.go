@@ -8,10 +8,10 @@ import (
 
 	"github.com/cockroachdb/errors"
 	errs "github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/object"
+	"github.com/genjidb/genji/internal/pkg/atomic"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/lib/atomic"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // System tables

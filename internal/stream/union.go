@@ -7,9 +7,9 @@ import (
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // UnionOperator is an operator that merges the results of multiple operators.

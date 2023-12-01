@@ -3,10 +3,10 @@ package statement_test
 import (
 	"testing"
 
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/sql/parser"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
 )
 
 func ParseObjectPath(t testing.TB, str string) object.Path {

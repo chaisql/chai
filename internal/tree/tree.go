@@ -9,7 +9,7 @@ import (
 	"github.com/cockroachdb/pebble"
 	"github.com/genjidb/genji/internal/encoding"
 	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 type Namespace uint64

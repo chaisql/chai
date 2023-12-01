@@ -5,8 +5,8 @@ import (
 
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/object"
 	"github.com/stretchr/testify/require"
 )
 

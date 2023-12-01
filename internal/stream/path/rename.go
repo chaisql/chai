@@ -7,9 +7,9 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // An RenameOperator iterates over all columns of the incoming row in order and renames them.

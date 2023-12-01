@@ -3,12 +3,12 @@ package statement
 import (
 	"github.com/cockroachdb/errors"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/stream/index"
 	"github.com/genjidb/genji/internal/stream/path"
 	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/stream/table"
-	"github.com/genjidb/genji/object"
 )
 
 // UpdateConfig holds UPDATE configuration.

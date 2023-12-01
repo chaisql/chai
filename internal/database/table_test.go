@@ -9,12 +9,12 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 	"github.com/genjidb/genji/internal/database"
 	errs "github.com/genjidb/genji/internal/errors"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

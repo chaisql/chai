@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 func TestConcatExpr(t *testing.T) {

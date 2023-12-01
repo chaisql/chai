@@ -6,11 +6,11 @@ import (
 
 	"github.com/genjidb/genji/internal/database"
 	"github.com/genjidb/genji/internal/expr"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/query/statement"
 	"github.com/genjidb/genji/internal/sql/scanner"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.

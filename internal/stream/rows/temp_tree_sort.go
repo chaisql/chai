@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/expr"
 	"github.com/genjidb/genji/internal/stream"
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A TempTreeSortOperator consumes every value of the stream and outputs them in order.

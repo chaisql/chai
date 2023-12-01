@@ -2,7 +2,7 @@ package database
 
 import (
 	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 type Row interface {

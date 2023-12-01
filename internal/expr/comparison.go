@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/genjidb/genji/internal/environment"
+	"github.com/genjidb/genji/internal/object"
 	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/object"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // A cmpOp is a comparison operator.

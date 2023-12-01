@@ -9,7 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/object"
+	"github.com/genjidb/genji/internal/object"
 )
 
 // InsertJSON reads json objects from r and inserts them into the selected table.

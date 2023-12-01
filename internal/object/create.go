@@ -9,7 +9,7 @@ import (
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // NewFromJSON creates an object from raw JSON data.

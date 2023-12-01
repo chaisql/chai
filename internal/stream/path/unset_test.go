@@ -10,7 +10,7 @@ import (
 	"github.com/genjidb/genji/internal/stream/rows"
 	"github.com/genjidb/genji/internal/testutil"
 	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

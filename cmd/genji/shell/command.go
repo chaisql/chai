@@ -15,7 +15,7 @@ import (
 	"github.com/genjidb/genji/cmd/genji/dbutil"
 	"github.com/genjidb/genji/cmd/genji/doc"
 	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/object"
+	"github.com/genjidb/genji/internal/object"
 )
 
 type command struct {

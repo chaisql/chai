@@ -11,7 +11,7 @@ import (
 	"github.com/cockroachdb/errors"
 
 	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/types"
+	"github.com/genjidb/genji/internal/types"
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.
