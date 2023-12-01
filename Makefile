@@ -1,6 +1,6 @@
 NAME := genji
 
-.PHONY: all $(NAME) test testrace build gen tidy
+.PHONY: all build $(NAME) gen test testrace bench tidy
 
 all: $(NAME)
 
@@ -14,10 +14,6 @@ gen:
 
 test:
 	go test -timeout=1m -cover ./...
-	cd cmd/genji && go test -cover -timeout=1m ./...
-
-testnodebug:
-	go test -cover -timeout=1m ./...
 	cd cmd/genji && go test -cover -timeout=1m ./...
 
 testrace:
