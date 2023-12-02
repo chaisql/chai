@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
 // parseReindexStatement parses a reindex statement.

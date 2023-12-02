@@ -3,8 +3,8 @@ package database
 import (
 	"sync"
 
+	"github.com/chaisql/chai/internal/kv"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/kv"
 )
 
 // Transaction represents a database transaction. It provides methods for managing the

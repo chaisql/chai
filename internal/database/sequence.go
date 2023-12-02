@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 )
 
 var sequenceTableInfo = &TableInfo{

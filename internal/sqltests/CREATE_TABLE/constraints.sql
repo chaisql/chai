@@ -1,6 +1,6 @@
 -- test: no constraint
 CREATE TABLE test(a, b, c);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -10,7 +10,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: type
 CREATE TABLE test(a INTEGER);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: NOT NULL
 CREATE TABLE test(a NOT NULL);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -30,7 +30,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: default
 CREATE TABLE test(a DEFAULT 10);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -40,7 +40,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: unique
 CREATE TABLE test(a UNIQUE);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -50,7 +50,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: check
 CREATE TABLE test(a CHECK(a > 10));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -60,7 +60,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: all compatible constraints
 CREATE TABLE test(a INT PRIMARY KEY NOT NULL DEFAULT 10 UNIQUE CHECK(a >= 10));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

@@ -1,6 +1,6 @@
 -- test: INTEGER
 CREATE TABLE test (a INTEGER);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -10,7 +10,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: DOUBLE
 CREATE TABLE test (a DOUBLE);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: BOOLEAN
 CREATE TABLE test (a BOOLEAN);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -30,7 +30,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: BLOB
 CREATE TABLE test (a BLOB);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -40,7 +40,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: TEXT
 CREATE TABLE test (a TEXT);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -50,7 +50,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: ARRAY
 CREATE TABLE test (a ARRAY);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -60,7 +60,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: OBJECT
 CREATE TABLE test (a OBJECT);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -70,7 +70,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: ANY
 CREATE TABLE test (a ANY);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -84,7 +84,7 @@ CREATE TABLE test (a INT, a TEXT);
 
 -- test: INTEGER ALIAS: INT
 CREATE TABLE test (a INT);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -94,7 +94,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: TINYINT
 CREATE TABLE test (a INTEGER);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -104,7 +104,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: BIGINT
 CREATE TABLE test (a BIGINT);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -114,7 +114,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: mediumint
 CREATE TABLE test (a mediumint);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -124,7 +124,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: INT2
 CREATE TABLE test (a int2);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -134,7 +134,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: INT8
 CREATE TABLE test (a int8);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -144,7 +144,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: BOOLEAN ALIAS: BOOL
 CREATE TABLE test (a BOOL);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -154,7 +154,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: TEXT ALIAS: VARCHAR(n)
 CREATE TABLE test (a VARCHAR(255));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -164,7 +164,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: TEXT ALIAS: character(n)
 CREATE TABLE test (a character(255));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

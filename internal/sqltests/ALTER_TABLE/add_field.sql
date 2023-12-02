@@ -4,7 +4,7 @@ CREATE TABLE test(a int);
 -- test: field constraints are updated
 INSERT INTO test VALUES (1), (2);
 ALTER TABLE test ADD FIELD b int DEFAULT 0;
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

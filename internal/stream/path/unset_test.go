@@ -3,14 +3,14 @@ package path_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/path"
-	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/path"
+	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/genjidb/genji/driver"
+	"github.com/chaisql/chai/driver"
 )
 
 type User struct {
@@ -15,7 +15,7 @@ type User struct {
 }
 
 func Example() {
-	db, err := sql.Open("genji", ":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}

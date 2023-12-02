@@ -281,7 +281,7 @@ func Successor(dst, a []byte) []byte {
 // Equal function to determine if the original keys are equal.
 // The key is constructed as follows:
 // - 12 bits: the namespace, from 0 to 4096. If bigger than 4096, returns math.MaxUint64.
-// - 4 bits: the Genji type of the first value.
+// - 4 bits: the Chai type of the first value.
 // - 48 bits: a representation of the first value of the key, depending on its type.
 func AbbreviatedKey(key []byte) uint64 {
 	if len(key) == 0 {

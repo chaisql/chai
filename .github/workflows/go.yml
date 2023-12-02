@@ -30,11 +30,11 @@ jobs:
       - name: Install go-acc
         run: go install github.com/ory/go-acc@latest
 
-      - name: Test Genji
+      - name: Test Chai
         run: go-acc $(go list ./...) -- -mod vendor -race -timeout=2m
 
-      - name: Test Genji CLI
-        run: cd ./cmd/genji && go test -race ./... && cd -
+      - name: Test Chai CLI
+        run: cd ./cmd/chai && go test -race ./... && cd -
 
       - name: Upload Codecov
         run: bash <(curl -s https://codecov.io/bash)

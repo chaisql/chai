@@ -3,8 +3,8 @@ package encoding
 import (
 	"encoding/binary"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func EncodeArray(dst []byte, a types.Array) ([]byte, error) {

@@ -27,7 +27,7 @@ profile.*
 *.csv
 
 # Builds
-cmd/genji/genji
+cmd/chai/chai
 
 # IDE config
 .vscode/

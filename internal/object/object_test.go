@@ -8,11 +8,11 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 )
 
 var _ types.Object = new(object.FieldBuffer)
@@ -289,7 +289,7 @@ func TestNewFromStruct(t *testing.T) {
 		A []byte
 		B string
 		C bool
-		D uint `genji:"la-reponse-d"`
+		D uint `chai:"la-reponse-d"`
 		E uint8
 		F uint16
 		G uint32
@@ -322,7 +322,7 @@ func TestNewFromStruct(t *testing.T) {
 		Z  interface{}
 		ZZ interface{}
 
-		AA int `genji:"-"` // ignored
+		AA int `chai:"-"` // ignored
 
 		*group
 

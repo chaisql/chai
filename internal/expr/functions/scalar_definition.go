@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // A ScalarDefinition is the definition type for functions which operates on scalar values in contrast to other SQL functions

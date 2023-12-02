@@ -3,10 +3,10 @@ package table
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/stream"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/stream"
 )
 
 // A DeleteOperator replaces objects in the table

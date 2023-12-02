@@ -3,7 +3,7 @@ package stream
 import (
 	"strings"
 
-	"github.com/genjidb/genji/internal/environment"
+	"github.com/chaisql/chai/internal/environment"
 )
 
 // A ConcatOperator concatenates two streams.

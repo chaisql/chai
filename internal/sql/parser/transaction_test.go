@@ -3,10 +3,10 @@ package parser_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 

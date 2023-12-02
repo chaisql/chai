@@ -4,8 +4,8 @@ import (
 	"math"
 	"sync"
 
+	"github.com/chaisql/chai/internal/pkg/atomic"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/internal/pkg/atomic"
 )
 
 const (

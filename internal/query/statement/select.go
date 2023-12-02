@@ -3,13 +3,13 @@ package statement
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/internal/stream/table"
 )
 
 type SelectCoreStmt struct {

@@ -1,8 +1,8 @@
 package database
 
 import (
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 type Row interface {

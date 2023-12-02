@@ -23,7 +23,7 @@ func init() {
 	}
 }
 
-// scanner represents a lexical scanner for Genji.
+// scanner represents a lexical scanner for chai.
 type scanner struct {
 	r *reader
 }

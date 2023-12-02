@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/genjidb/genji/internal/database"
+	"github.com/chaisql/chai/internal/database"
 	"github.com/stretchr/testify/require"
 )
 

@@ -3,11 +3,11 @@ package expr
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/types"
 )
 
 type simpleOperator struct {

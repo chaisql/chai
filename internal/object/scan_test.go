@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -123,8 +123,8 @@ func TestScan(t *testing.T) {
 
 	type foo struct {
 		Foo string
-		Pub *string `genji:"bar"`
-		Baz *string `genji:"-"`
+		Pub *string `chai:"bar"`
+		Baz *string `chai:"-"`
 	}
 
 	var a []byte
@@ -151,7 +151,7 @@ func TestScan(t *testing.T) {
 	var x [4]uint8
 	var y struct {
 		foo
-		Pub string `genji:"bar"`
+		Pub string `chai:"bar"`
 		Bat string
 	}
 	var z time.Time

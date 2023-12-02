@@ -1,9 +1,9 @@
 package kv
 
 import (
+	"github.com/chaisql/chai/internal/pkg/atomic"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/internal/pkg/atomic"
 )
 
 type snapshot struct {

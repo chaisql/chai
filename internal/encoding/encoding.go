@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func EncodeBoolean(dst []byte, x bool) []byte {

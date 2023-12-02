@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

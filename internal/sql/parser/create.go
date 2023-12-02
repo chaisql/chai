@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // parseCreateStatement parses a create string and returns a Statement AST object.

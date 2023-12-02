@@ -1,6 +1,6 @@
 -- test: basic
 CREATE TABLE test(a PRIMARY KEY);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -10,7 +10,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: with type
 CREATE TABLE test(a INT PRIMARY KEY);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: with ASC order
 CREATE TABLE test(a INT PRIMARY KEY ASC);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -30,7 +30,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: with DESC order
 CREATE TABLE test(a INT PRIMARY KEY DESC);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -48,7 +48,7 @@ CREATE TABLE test(a INT PRIMARY KEY, b INT PRIMARY KEY);
 
 -- test: table constraint: one field
 CREATE TABLE test(a INT, PRIMARY KEY(a));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -58,7 +58,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: table constraint: multiple fields
 CREATE TABLE test(a INT, b INT, PRIMARY KEY(a, b));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -68,7 +68,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: table constraint: nested fields
 CREATE TABLE test(a (b INT), PRIMARY KEY(a.b));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -79,7 +79,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: table constraint: multiple fields: with order
 CREATE TABLE test(a INT, b INT, c (d INT), PRIMARY KEY(a DESC, b, c.d ASC));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

@@ -5,11 +5,11 @@ import (
 	"math"
 	"time"
 
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/internal/types"
 )
 
 type Namespace uint64
@@ -51,10 +51,10 @@ func (o SortOrder) SetAsc(i int) SortOrder {
 
 // A Tree is an abstraction over a k-v store that allows
 // manipulating data using high level keys and values of the
-// Genji type system.
+// Chai type system.
 // Trees are used as the basis for tables and indexes.
 // The key of a tree is a composite combination of several
-// values, while the value can be any value of Genji's type system.
+// values, while the value can be any value of Chai's type system.
 // The tree ensures all keys are sort-ordered according to the rules
 // of the types package operators.
 // A Tree doesn't support duplicate keys.

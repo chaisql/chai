@@ -3,10 +3,10 @@ package expr
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr/glob"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr/glob"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func like(pattern, text string) bool {

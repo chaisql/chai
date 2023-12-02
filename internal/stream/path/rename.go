@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // An RenameOperator iterates over all columns of the incoming row in order and renames them.

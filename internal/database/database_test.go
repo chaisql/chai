@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil/assert"
 )
 
-// See issue https://github.com/genjidb/genji/issues/298
+// See issue https://github.com/chaisql/chai/issues/298
 func TestConcurrentTransactionManagement(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer func() {
 		assert.NoError(t, db.Close())

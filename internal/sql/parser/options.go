@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"github.com/genjidb/genji/internal/expr/functions"
+	"github.com/chaisql/chai/internal/expr/functions"
 )
 
 // Options of the SQL parser.

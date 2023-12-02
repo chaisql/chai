@@ -3,13 +3,13 @@ package database_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/database/catalogstore"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

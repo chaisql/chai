@@ -6,10 +6,10 @@ labels: bug
 
 <!-- Please answer these questions before submitting your issue. Thanks! -->
 
-### What version of Genji are you using?
+### What version of Chai are you using?
 
 <pre>
-$ genji version
+$ chai version
 
 </pre>
 
@@ -18,8 +18,7 @@ $ genji version
 <!--
 If possible, provide a recipe for reproducing the error.
 A complete runnable program is good.
-A link on play.golang.org or goplay.space is best. You may use
-https://play.golang.org/p/_pr_rOXsAH3 as a starting point.
+A link on play.golang.org or goplay.space is best.
 -->
 
 ### What did you expect to see?

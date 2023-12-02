@@ -1,8 +1,8 @@
 package stream
 
 import (
+	"github.com/chaisql/chai/internal/environment"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/environment"
 )
 
 // ErrInvalidResult is returned when an expression supposed to evaluate to an object

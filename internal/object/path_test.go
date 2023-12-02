@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 

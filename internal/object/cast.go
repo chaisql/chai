@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // CastAs casts v as the selected type when possible.

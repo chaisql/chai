@@ -3,14 +3,14 @@ package index_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/index"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/index"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

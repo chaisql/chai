@@ -6,12 +6,12 @@ import (
 	"sort"
 	"strings"
 
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/pkg/atomic"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/pkg/atomic"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // System tables
@@ -43,7 +43,7 @@ const (
 
 // Catalog manages all database objects such as tables, indexes and sequences.
 // It stores all these objects in memory for fast access. Any modification
-// is persisted into the __genji_catalog table.
+// is persisted into the __chai_catalog table.
 type Catalog struct {
 	Cache        *catalogCache
 	CatalogTable *CatalogStore

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/buger/jsonparser"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // NewFromJSON creates an object from raw JSON data.
@@ -186,7 +186,7 @@ func newFromStruct(ref reflect.Value) (types.Object, error) {
 		}
 
 		field := strings.ToLower(sf.Name)
-		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+		if gtag, ok := sf.Tag.Lookup("chai"); ok {
 			if gtag == "-" {
 				continue
 			}

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/internal/encoding"
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/stretchr/testify/require"
 )
 

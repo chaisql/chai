@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji/internal/encoding"
 )
 
 const (

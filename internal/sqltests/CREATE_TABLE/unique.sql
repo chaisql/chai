@@ -1,7 +1,7 @@
 -- test: ANY
 CREATE TABLE test(a UNIQUE);
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -20,7 +20,7 @@ WHERE
 -- test: with type
 CREATE TABLE test(a INT UNIQUE);
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -39,7 +39,7 @@ WHERE
 -- test: multiple
 CREATE TABLE test(a INT UNIQUE, b DOUBLE UNIQUE);
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -62,7 +62,7 @@ WHERE
 -- test: table constraint: one field
 CREATE TABLE test(a INT, UNIQUE(a));
 SELECT name, sql
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -81,7 +81,7 @@ WHERE
 -- test: table constraint: multiple fields
 CREATE TABLE test(a INT, b INT, UNIQUE(a, b));
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -100,7 +100,7 @@ WHERE
 -- test: table constraint: multiple fields with order
 CREATE TABLE test(a INT, b INT, c INT, UNIQUE(a DESC, b ASC, c));
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
@@ -135,7 +135,7 @@ CREATE TABLE test(a INT UNIQUE, b INT, UNIQUE(a));
 -- test: table constraint: different fields
 CREATE TABLE test(a INT UNIQUE, b INT, UNIQUE(b));
 SELECT name, sql 
-FROM __genji_catalog 
+FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR

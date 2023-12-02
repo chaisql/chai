@@ -9,7 +9,7 @@ labels: enhancement
 ### Proposal
 
 <!--
-What is the current status of the proposed behavior? E.g. “Currently, it’s not possible to do X in Genji”.
+What is the current status of the proposed behavior? E.g. “Currently, it’s not possible to do X in Chai”.
 What is the proposed solution? E.g. “I propose adding SQL syntax Y that does X”.
 -->
 

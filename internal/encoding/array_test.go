@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

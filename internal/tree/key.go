@@ -1,10 +1,10 @@
 package tree
 
 import (
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
 )
 
 type Key struct {

@@ -9,15 +9,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
 )
 
 func init() {
-	sql.Register("genji", sqlDriver{})
+	sql.Register("chai", sqlDriver{})
 }
 
 var (
@@ -25,8 +25,8 @@ var (
 	_ driver.DriverContext = (*sqlDriver)(nil)
 )
 
-// sqlDriver is a driver.Driver that can open a new connection to a Genji database.
-// It is the driver used to register Genji against the database/sql package.
+// sqlDriver is a driver.Driver that can open a new connection to a Chai database.
+// It is the driver used to register Chai against the database/sql package.
 type sqlDriver struct{}
 
 func (d sqlDriver) Open(name string) (driver.Conn, error) {
@@ -34,7 +34,7 @@ func (d sqlDriver) Open(name string) (driver.Conn, error) {
 }
 
 func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
-	db, err := genji.Open(name)
+	db, err := chai.Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ var (
 type connector struct {
 	driver driver.Driver
 
-	db *genji.DB
+	db *chai.DB
 
 	closeOnce sync.Once
 }
@@ -77,11 +77,11 @@ func (c *connector) Close() error {
 	return err
 }
 
-// conn represents a connection to the Genji database.
+// conn represents a connection to the Chai database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db *genji.DB
-	tx *genji.Tx
+	db *chai.DB
+	tx *chai.Tx
 }
 
 // Prepare returns a prepared statement, bound to this connection.
@@ -91,7 +91,7 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	var s *genji.Statement
+	var s *chai.Statement
 	var err error
 
 	if c.tx != nil {
@@ -155,7 +155,7 @@ func (c *conn) Rollback() error {
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	stmt *genji.Statement
+	stmt *chai.Statement
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -256,7 +256,7 @@ func (s stmt) Close() error {
 var errStop = errors.New("stop")
 
 type recordStream struct {
-	res      *genji.Result
+	res      *chai.Result
 	cancelFn func()
 	c        chan row
 	wg       sync.WaitGroup
@@ -264,11 +264,11 @@ type recordStream struct {
 }
 
 type row struct {
-	r   *genji.Row
+	r   *chai.Row
 	err error
 }
 
-func newRecordStream(res *genji.Result) *recordStream {
+func newRecordStream(res *chai.Result) *recordStream {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ds := recordStream{
@@ -293,7 +293,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 	case <-rs.c:
 	}
 
-	err := rs.res.Iterate(func(r *genji.Row) error {
+	err := rs.res.Iterate(func(r *chai.Row) error {
 		select {
 		case <-ctx.Done():
 			return errStop
@@ -429,7 +429,7 @@ type valueScanner struct {
 }
 
 func (v valueScanner) Scan(src any) error {
-	if r, ok := src.(*genji.Row); ok {
+	if r, ok := src.(*chai.Row); ok {
 		return r.StructScan(v.dest)
 	}
 

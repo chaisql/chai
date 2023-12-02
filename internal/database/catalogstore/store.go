@@ -3,12 +3,12 @@ package catalogstore
 import (
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 )
 
 func LoadCatalog(tx *database.Transaction) error {
@@ -24,7 +24,7 @@ func LoadCatalog(tx *database.Transaction) error {
 		return errors.Wrap(err, "failed to load catalog store")
 	}
 
-	// add the __genji_catalog table to the list of tables
+	// add the __chai_catalog table to the list of tables
 	// so that it can be queried
 	ti := tx.Catalog.CatalogTable.Info().Clone()
 	// make sure that table is read-only

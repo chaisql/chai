@@ -1,9 +1,9 @@
-package genji_test
+package chai_test
 
 import (
 	"fmt"
 
-	"github.com/genjidb/genji"
+	"github.com/chaisql/chai"
 )
 
 type User struct {
@@ -18,13 +18,13 @@ type User struct {
 
 func Example() {
 	// Create a database instance, here we'll store everything in memory
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	if err != nil {
 		panic(err)
 	}
 	defer db.Close()
 
-	// Create a table. Genji tables are schemaless by default, you don't need to specify a schema.
+	// Create a table. Chai tables are schemaless by default, you don't need to specify a schema.
 	err = db.Exec("CREATE TABLE user (name text, ...)")
 	if err != nil {
 		panic(err)
@@ -63,7 +63,7 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(r *genji.Row) error {
+	err = stream.Iterate(func(r *chai.Row) error {
 		var u User
 
 		err = r.StructScan(&u)

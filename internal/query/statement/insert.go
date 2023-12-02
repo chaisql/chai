@@ -1,14 +1,14 @@
 package statement
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/index"
+	"github.com/chaisql/chai/internal/stream/path"
+	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/index"
-	"github.com/genjidb/genji/internal/stream/path"
-	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/internal/stream/table"
 )
 
 // InsertStmt holds INSERT configuration.

@@ -3,9 +3,9 @@ package statement_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/tree"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +20,7 @@ func TestReIndex(t *testing.T) {
 		{"ReIndex table", `REINDEX test2`, []string{"idx_test2_a", "idx_test2_b"}, false},
 		{"ReIndex index", `REINDEX idx_test1_a`, []string{"idx_test1_a"}, false},
 		{"ReIndex unknown", `REINDEX doesntexist`, []string{}, true},
-		{"ReIndex read-only", `REINDEX __genji_catalog`, []string{}, false},
+		{"ReIndex read-only", `REINDEX __chai_catalog`, []string{}, false},
 	}
 
 	for _, test := range tests {

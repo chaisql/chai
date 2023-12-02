@@ -3,9 +3,9 @@ package query
 import (
 	"context"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/query/statement"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/query/statement"
 )
 
 // A Query can execute statements against the database. It can read or write data

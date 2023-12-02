@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/stringutil"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // A LiteralValue represents a literal value of any type defined by the value package.

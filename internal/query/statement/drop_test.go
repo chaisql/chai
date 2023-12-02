@@ -3,16 +3,16 @@ package statement_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai"
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDropTable(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -31,10 +31,10 @@ func TestDropTable(t *testing.T) {
 	assert.Error(t, err)
 
 	// Assert that no other table has been dropped.
-	res, err := db.Query("SELECT name FROM __genji_catalog WHERE type = 'table'")
+	res, err := db.Query("SELECT name FROM __chai_catalog WHERE type = 'table'")
 	assert.NoError(t, err)
 	var tables []string
-	err = res.Iterate(func(r *genji.Row) error {
+	err = res.Iterate(func(r *chai.Row) error {
 		var name string
 		err := r.ScanColumn("name", &name)
 		if err != nil {
@@ -46,22 +46,22 @@ func TestDropTable(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, res.Close())
 
-	require.Equal(t, []string{"__genji_catalog", "__genji_sequence", "test2", "test3"}, tables)
+	require.Equal(t, []string{"__chai_catalog", "__chai_sequence", "test2", "test3"}, tables)
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryRow("SELECT 1 FROM __genji_catalog WHERE name = 'test1_a_idx'")
+	_, err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_a_idx'")
 	assert.Error(t, err)
 
 	// Assert the rowid sequence test1_seq, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryRow("SELECT 1 FROM __genji_catalog WHERE name = 'test1_seq'")
+	_, err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_seq'")
 	assert.Error(t, err)
-	_, err = db.QueryRow("SELECT 1 FROM __genji_sequence WHERE name = 'test1_seq'")
+	_, err = db.QueryRow("SELECT 1 FROM __chai_sequence WHERE name = 'test1_seq'")
 	assert.Error(t, err)
 
 	// Dropping a read-only table should fail.
-	err = db.Exec("DROP TABLE __genji_catalog")
+	err = db.Exec("DROP TABLE __chai_catalog")
 	assert.Error(t, err)
 }
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ type rowtest struct {
 type foo struct{ Foo string }
 
 func TestDriver(t *testing.T) {
-	db, err := sql.Open("genji", ":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -265,7 +265,7 @@ func TestDriver(t *testing.T) {
 }
 
 func TestDriverWithTimeValues(t *testing.T) {
-	db, err := sql.Open("genji", ":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 

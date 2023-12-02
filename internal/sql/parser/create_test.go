@@ -4,12 +4,12 @@ import (
 	"math"
 	"testing"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 

@@ -1,10 +1,10 @@
 package expr
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/types"
 )
 
 type ConstraintExpr struct {

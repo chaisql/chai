@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/genjidb/genji/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil"
 )
 
 func TestBuiltinFunctions(t *testing.T) {

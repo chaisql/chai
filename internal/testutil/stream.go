@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,12 +36,12 @@ func ParseResultStream(stream string) *ResultStream {
 	return &ResultStream{p, env}
 }
 
-func RequireStreamEq(t *testing.T, raw string, res *genji.Result, sorted bool) {
+func RequireStreamEq(t *testing.T, raw string, res *chai.Result, sorted bool) {
 	t.Helper()
 	RequireStreamEqf(t, raw, res, sorted, "")
 }
 
-func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, msg string, args ...any) {
+func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, sorted bool, msg string, args ...any) {
 	t.Helper()
 	objs := ParseResultStream(raw)
 
@@ -69,7 +69,7 @@ func RequireStreamEqf(t *testing.T, raw string, res *genji.Result, sorted bool, 
 
 	got := object.NewValueBuffer()
 
-	err := res.Iterate(func(r *genji.Row) error {
+	err := res.Iterate(func(r *chai.Row) error {
 		var fb object.FieldBuffer
 		err := fb.Copy(r.Object())
 		assert.NoError(t, err)

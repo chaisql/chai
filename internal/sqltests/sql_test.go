@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -66,7 +66,7 @@ func TestSQL(t *testing.T) {
 		}
 
 		t.Run(ts.Filename, func(t *testing.T) {
-			setup := func(t *testing.T, db *genji.DB) {
+			setup := func(t *testing.T, db *chai.DB) {
 				t.Helper()
 				err := db.Exec(ts.Setup)
 				assert.NoError(t, err)
@@ -96,7 +96,7 @@ func TestSQL(t *testing.T) {
 
 						for _, test := range tests {
 							t.Run(test.Name, func(t *testing.T) {
-								db, err := genji.Open(":memory:")
+								db, err := chai.Open(":memory:")
 								assert.NoError(t, err)
 								defer db.Close()
 
@@ -118,7 +118,7 @@ func TestSQL(t *testing.T) {
 										}
 										defer res.Close()
 
-										return res.Iterate(func(r *genji.Row) error {
+										return res.Iterate(func(r *chai.Row) error {
 											_, err := r.MarshalJSON()
 											return err
 										})

@@ -3,8 +3,8 @@ package expr_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func TestConcatExpr(t *testing.T) {

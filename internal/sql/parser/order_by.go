@@ -3,8 +3,8 @@ package parser
 import (
 	"errors"
 
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
 func (p *Parser) parseOrderBy() (expr.Path, scanner.Token, error) {

@@ -1,11 +1,11 @@
 package statement
 
 import (
-	"github.com/genjidb/genji/internal/database"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/index"
-	"github.com/genjidb/genji/internal/stream/table"
+	"github.com/chaisql/chai/internal/database"
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/index"
+	"github.com/chaisql/chai/internal/stream/table"
 )
 
 // ReIndexStmt is a DSL that allows creating a full REINDEX statement.

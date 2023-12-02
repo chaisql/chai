@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/cockroachdb/pebble"
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -254,7 +254,7 @@ func TestQueries(t *testing.T) {
 	t.Run("SELECT", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
 		r, err := db.QueryRow(`
@@ -274,7 +274,7 @@ func TestQueries(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(r *genji.Row) error {
+			err = st.Iterate(func(r *chai.Row) error {
 				var a int
 				err := r.Scan(&a)
 				assert.NoError(t, err)
@@ -289,7 +289,7 @@ func TestQueries(t *testing.T) {
 	t.Run("INSERT", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
 		err = db.Exec(`
@@ -302,7 +302,7 @@ func TestQueries(t *testing.T) {
 	t.Run("UPDATE", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
 		st, err := db.Query(`
@@ -322,13 +322,13 @@ func TestQueries(t *testing.T) {
 	t.Run("DELETE", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
 		err = db.Exec("CREATE TABLE test")
 		assert.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *chai.Tx) error {
 			for i := 1; i < 200; i++ {
 				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
 				assert.NoError(t, err)
@@ -354,10 +354,10 @@ func TestQueriesSameTransaction(t *testing.T) {
 	t.Run("SELECT", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *chai.Tx) error {
 			r, err := tx.QueryRow(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -376,10 +376,10 @@ func TestQueriesSameTransaction(t *testing.T) {
 	t.Run("INSERT", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *chai.Tx) error {
 			err = tx.Exec(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -393,10 +393,10 @@ func TestQueriesSameTransaction(t *testing.T) {
 	t.Run("UPDATE", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *chai.Tx) error {
 			st, err := tx.Query(`
 				CREATE TABLE test;
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -417,10 +417,10 @@ func TestQueriesSameTransaction(t *testing.T) {
 	t.Run("DELETE", func(t *testing.T) {
 		dir := testutil.TempDir(t)
 
-		db, err := genji.Open(filepath.Join(dir, "pebble"))
+		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		err = db.Update(func(tx *genji.Tx) error {
+		err = db.Update(func(tx *chai.Tx) error {
 			r, err := tx.QueryRow(`
 			CREATE TABLE test;
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);

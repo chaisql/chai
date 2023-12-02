@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/tree"
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 

@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +30,7 @@ func TestInsertStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				db, err := chai.Open(":memory:")
 				assert.NoError(t, err)
 				defer db.Close()
 
@@ -68,7 +68,7 @@ func TestInsertStmt(t *testing.T) {
 	}
 
 	t.Run("with struct param", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -77,7 +77,7 @@ func TestInsertStmt(t *testing.T) {
 
 		type foo struct {
 			A string
-			B string `genji:"b-b"`
+			B string `chai:"b-b"`
 		}
 
 		err = db.Exec("INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
@@ -92,7 +92,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with RETURNING", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -105,7 +105,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("ensure rollback", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -123,7 +123,7 @@ func TestInsertStmt(t *testing.T) {
 	})
 
 	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -171,7 +171,7 @@ func TestInsertSelect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(t, err)
 			defer db.Close()
 

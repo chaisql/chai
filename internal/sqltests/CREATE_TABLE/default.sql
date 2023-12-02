@@ -1,6 +1,6 @@
 -- test: basic
 CREATE TABLE test(a DEFAULT 10);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -10,7 +10,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: same type
 CREATE TABLE test(a INT DEFAULT 10);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: compatible type
 CREATE TABLE test(a DOUBLE DEFAULT 10);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -30,7 +30,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: expr
 CREATE TABLE test(a DOUBLE DEFAULT 1 + 4 / 4);
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -60,7 +60,7 @@ CREATE TABLE test(a BLOB DEFAULT b);
 
 -- test: nested doc
 CREATE TABLE test(a (b INT DEFAULT 10));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

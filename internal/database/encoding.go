@@ -4,10 +4,10 @@ import (
 	"encoding/binary"
 	"strings"
 
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // EncodeObject validates a row against all the constraints of the table

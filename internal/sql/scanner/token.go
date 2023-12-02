@@ -4,18 +4,18 @@ import (
 	"strings"
 )
 
-// Token is a lexical token of the Genji SQL language.
+// Token is a lexical token of the Chai SQL language.
 type Token int
 
-// These are a comprehensive list of Genji SQL language tokens.
+// These are a comprehensive list of Chai SQL language tokens.
 const (
-	// ILLEGAL Token, EOF, WS are Special Genji SQL tokens.
+	// ILLEGAL Token, EOF, WS are Special Chai SQL tokens.
 	ILLEGAL Token = iota
 	EOF
 	WS
 	COMMENT
 
-	// IDENT and the following are Genji SQL literal tokens.
+	// IDENT and the following are Chai SQL literal tokens.
 	IDENT           // main
 	NAMEDPARAM      // $param
 	POSITIONALPARAM // ?
@@ -33,7 +33,7 @@ const (
 	literalEnd
 
 	operatorBeg
-	// ADD and the following are Genji SQL Operators
+	// ADD and the following are Chai SQL Operators
 	ADD        // +
 	SUB        // -
 	MUL        // *
@@ -77,7 +77,7 @@ const (
 	DOT         // .
 
 	keywordBeg
-	// ALL and the following are Genji SQL Keywords
+	// ALL and the following are Chai SQL Keywords
 	ADD_KEYWORD
 	ALL
 	ALTER

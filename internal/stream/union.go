@@ -4,12 +4,12 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // UnionOperator is an operator that merges the results of multiple operators.

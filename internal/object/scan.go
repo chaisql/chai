@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // A Scanner can iterate over an object and scan all the fields.
@@ -43,7 +43,7 @@ func Scan(d types.Object, targets ...interface{}) error {
 // is called with that name. If there is a match, the value is converted to the struct
 // field type when possible, otherwise an error is returned.
 // The decoding of each struct field can be customized by the format string stored
-// under the "genji" key stored in the struct field's tag.
+// under the "chai" key stored in the struct field's tag.
 // The content of the format string is used instead of the struct field name and passed
 // to the GetByField method.
 func StructScan(d types.Object, t interface{}) error {
@@ -83,7 +83,7 @@ func structScan(d types.Object, ref reflect.Value) error {
 			continue
 		}
 		var name string
-		if gtag, ok := sf.Tag.Lookup("genji"); ok {
+		if gtag, ok := sf.Tag.Lookup("chai"); ok {
 			if gtag == "-" {
 				continue
 			}

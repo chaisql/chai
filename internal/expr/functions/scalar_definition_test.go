@@ -3,13 +3,13 @@ package functions_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/expr/functions"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/expr/functions"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

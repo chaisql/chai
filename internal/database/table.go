@@ -3,12 +3,12 @@ package database
 import (
 	"fmt"
 
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // A Table represents a collection of objects.

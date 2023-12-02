@@ -1,9 +1,9 @@
-package genji
+package chai
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	errs "github.com/genjidb/genji/internal/errors"
 )
 
 // IsNotFoundError determines if the given error is a NotFoundError.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/genjidb/genji/internal/expr"
+	"github.com/chaisql/chai/internal/expr"
 )
 
 // variadicArity represents an unlimited number of arguments.

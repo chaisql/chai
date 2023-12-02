@@ -1,10 +1,10 @@
 package parser
 
 import (
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseSelectStatement parses a select string and returns a Statement AST object.

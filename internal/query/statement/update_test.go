@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,7 +19,7 @@ func TestUpdateStmt(t *testing.T) {
 		params   []interface{}
 	}{
 		{"No clause", `UPDATE test`, true, "", nil},
-		{"Read-only table", `UPDATE __genji_catalog SET a = 1`, true, "", nil},
+		{"Read-only table", `UPDATE __chai_catalog SET a = 1`, true, "", nil},
 
 		// SET tests.
 		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},
@@ -47,7 +47,7 @@ func TestUpdateStmt(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			runTest := func(indexed bool) {
-				db, err := genji.Open(":memory:")
+				db, err := chai.Open(":memory:")
 				assert.NoError(t, err)
 				defer db.Close()
 
@@ -110,7 +110,7 @@ func TestUpdateStmt(t *testing.T) {
 
 		for _, tt := range tests {
 			t.Run(tt.name, func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				db, err := chai.Open(":memory:")
 				assert.NoError(t, err)
 				defer db.Close()
 

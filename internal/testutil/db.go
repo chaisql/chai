@@ -2,26 +2,25 @@ package testutil
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/database/catalogstore"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/tree"
 )
 
 func TempDir(t testing.TB) string {
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "chai")
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {

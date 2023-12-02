@@ -3,8 +3,8 @@ package statement
 import (
 	"fmt"
 
+	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/cockroachdb/errors"
-	errs "github.com/genjidb/genji/internal/errors"
 )
 
 // DropTableStmt is a DSL that allows creating a DROP TABLE query.

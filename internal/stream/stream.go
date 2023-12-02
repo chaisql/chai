@@ -3,8 +3,8 @@ package stream
 import (
 	"strings"
 
+	"github.com/chaisql/chai/internal/environment"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/environment"
 )
 
 // ErrStreamClosed is used to indicate that a stream must be closed.

@@ -1,55 +1,47 @@
 # Contributing
 
-You can participate in Genji in several ways, there is so much to do to make this project awesome!
+Below, you'll find guidelines on how to contribute effectively.
 
-  - [Reporting a bug](#reporting-a-bug)
-  - [Proposing an SQL feature or a general design change](#proposing-an-sql-feature-or-a-general-design-change)
-  - [Other contributions](#other-contributions)
+## Ways to Contribute
 
-The goal of this document is to provide guidelines to contributors to make working with Genji a smooth experience.
-Genji is a complex project that has many moving parts and we want to make sure that everyone's working towards the same goal.
+There are several ways you can contribute to Chai:
 
-We want to avoid situations where you would put energy on a contribution that gets rejected because it doesn't match the direction
-this project is taking.
+### Reporting a Bug
 
-## Reporting a bug
+If you encounter a bug while using Chai, please help us by reporting it. To do so, follow these steps:
 
-We use Github issues to track bugs. Report a bug by [opening an issue](https://github.com/genjidb/genji/issues/new), it's that easy!
+  - Open a new issue.
+  - Provide essential information:
+    - Chai version you are using
+    - Detailed description of the observed behavior
+    - Description of the expected behavior
+    - If possible, include code examples or a link to a Go playground illustrating the issue.
 
-Make sure you give enough context for us to reproduce the bug:
+### Proposing an SQL Feature or Design Change
 
-- The version of Genji you are using
-- The observed behavior
-- The expected behavior
-- Ideally, some code like a main file or a Go [playground](https://play.golang.org/) link
+If you have an idea for an SQL feature or a significant design change, we appreciate your input. To propose such a change, follow these steps:
 
-## Proposing an SQL feature or a general design change
+  - Open an issue to describe the SQL feature or design change you'd like to propose.
+  - Engage in a discussion with the project maintainers and contributors to refine your proposal.
+  - If necessary, an RFC (Request for Comments) document will be created to document the proposal in detail.
+  - Once the proposal is accepted, a designated contributor will create a Pull Request (PR) to implement it.
 
-Genji is not a common database because it mixes documents with SQL. Some SQL features that make sense in mainstream relational databases may not be a good fit for this project and vice versa.
-Every feature can have a big impact on the project, including performance, ordering, encoding, etc.
-To propose a consistent solution to users, every SQL feature needs to be thoroughly designed and discussed before even starting implementing it.
+Please note that the level of involvement in the RFC and PR process may vary depending on the complexity and significance of the feature. We encourage everyone to contribute and will try to accommodate your contributions.
 
-- Open an issue describing the SQL feature you want Genji to include
-- Discuss it with maintainers and contributors
-- If necessary, someone will be in charge of writing an RFC
-- Once the feature is accepted, someone will be in charge of creating a Pull Request
+### Other Contributions
 
-Depending on the complexity and importance of the feature, the RFC and the PR may or may not be assigned to you. However, we will always do our best to let you contribute code if you are eager to do so and the feature doesn't require too much context.
+Chai can benefit from various contributions beyond bug reports and feature proposals. You can contribute by:
 
-## Other contributions
+  - Improving Continuous Integration (CI) and tooling.
+  - Enhancing Go APIs.
+  - Updating documentation.
+  - Adding support for new build targets.
+  - Improving performance.
 
-Anything that can help improve Genji is a welcome contribution. Here are a few examples of things that can be improved:
+To contribute in these areas, follow these general steps:
 
-- CI/Tooling
-- Go APIs
-- Documentation
-- Build targets support
-- Performance
+  - Open an issue to discuss your proposed contribution.
+  - Collaborate with project maintainers and contributors to plan and refine your solution.
+  - Open a Pull Request (PR) to propose your solution to the problem.
 
-In most cases, contributing to Genji must follow these guidelines:
-
-- Open an issue
-- Discuss with maintainers and contributors
-- Open a PR to propose your solution to the problem
-
-If the change is really small, like correcting a typo or a very obvious bug fix, you may open a PR directly.
+For minor changes like straightforward bug fixes, you may directly open a PR.

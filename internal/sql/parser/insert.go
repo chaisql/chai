@@ -3,11 +3,11 @@ package parser
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/scanner"
 )
 
 // parseInsertStatement parses an insert string and returns a Statement AST object.

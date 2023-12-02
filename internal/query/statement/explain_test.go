@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +42,7 @@ func TestExplainStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.query, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(t, err)
 			defer db.Close()
 

@@ -3,7 +3,7 @@ CREATE TABLE test(a int primary key);
 
 -- test: rename
 ALTER TABLE test RENAME TO test2;
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND (name = "test2" OR name = "test");
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND (name = "test2" OR name = "test");
 /* result:
 {
   "name": "test2",
@@ -21,7 +21,7 @@ ALTER TABLE test2 RENAME TO test;
 -- error:
 
 -- test: reserved name
-ALTER TABLE test RENAME TO __genji_catalog;
+ALTER TABLE test RENAME TO __chai_catalog;
 -- error:
 
 -- test: bad syntax: no new name

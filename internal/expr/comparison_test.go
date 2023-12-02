@@ -3,9 +3,9 @@ package expr_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func TestComparisonExpr(t *testing.T) {

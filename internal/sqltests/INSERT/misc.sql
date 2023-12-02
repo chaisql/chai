@@ -1,5 +1,5 @@
 -- test: read-only tables
-INSERT INTO __genji_catalog VALUES {a: 400, b: a * 4};
+INSERT INTO __chai_catalog VALUES {a: 400, b: a * 4};
 -- error: cannot write to read-only table
 
 -- test: insert with primary keys

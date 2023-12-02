@@ -3,11 +3,11 @@ package rows
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // A SkipOperator skips the n first values of the stream.

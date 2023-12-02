@@ -3,8 +3,8 @@ package expr
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // NamedParam is an expression which represents the name of a parameter.

@@ -1,7 +1,7 @@
 /*
-Package genji implements an embedded SQL database.
+package chai implements an embedded SQL database.
 */
-package genji
+package chai
 
 import (
 	"bufio"
@@ -11,18 +11,18 @@ import (
 	"database/sql/driver"
 	"io"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
+	"github.com/chaisql/chai/internal/environment"
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/database/catalogstore"
-	"github.com/genjidb/genji/internal/environment"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/parser"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // DB represents a collection of tables.
@@ -31,7 +31,7 @@ type DB struct {
 	ctx context.Context
 }
 
-// Open creates a Genji database at the given path.
+// Open creates a Chai database at the given path.
 // If path is equal to ":memory:" it will open an in-memory database,
 // otherwise it will create an on-disk database.
 func Open(path string) (*DB, error) {

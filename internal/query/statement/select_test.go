@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -95,7 +95,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With two non existing idents, =", "SELECT * FROM test WHERE z = y", false, `[]`, nil},
 		{"With two non existing idents, >", "SELECT * FROM test WHERE z > y", false, `[]`, nil},
 		{"With two non existing idents, !=", "SELECT * FROM test WHERE z != y", false, `[]`, nil},
-		// See issue https://github.com/genjidb/genji/issues/283
+		// See issue https://github.com/chaisql/chai/issues/283
 		{"With empty WHERE and IN", "SELECT * FROM test WHERE [] IN [];", false, `[]`, nil},
 		{"Invalid use of MIN() aggregator", "SELECT * FROM test LIMIT min(0)", true, ``, nil},
 		{"Invalid use of COUNT() aggregator", "SELECT * FROM test OFFSET count(*)", true, ``, nil},
@@ -107,7 +107,7 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := genji.Open(":memory:")
+				db, err := chai.Open(":memory:")
 				assert.NoError(t, err)
 				defer db.Close()
 
@@ -160,7 +160,7 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -187,7 +187,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with objects", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -203,7 +203,7 @@ func TestSelectStmt(t *testing.T) {
 			defer st.Close()
 
 			var i int
-			err = st.Iterate(func(r *genji.Row) error {
+			err = st.Iterate(func(r *chai.Row) error {
 				data, err := r.MarshalJSON()
 				assert.NoError(t, err)
 				require.JSONEq(t, res[i], string(data))
@@ -220,7 +220,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("table not found", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -229,7 +229,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -249,9 +249,9 @@ func TestSelectStmt(t *testing.T) {
 		require.JSONEq(t, `[{"foo": true},{"foo": 1}, {"foo": 2},{"foo": "hello"}]`, buf.String())
 	})
 
-	// https://github.com/genjidb/genji/issues/208
+	// https://github.com/chaisql/chai/issues/208
 	t.Run("group by with arrays", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -268,7 +268,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("empty table with aggregators", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -285,7 +285,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("array number comparison with no constraints", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -316,7 +316,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("using sequences in SELECT must open read-write transaction instead of read-only", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -345,7 +345,7 @@ func TestSelectStmt(t *testing.T) {
 	})
 
 	t.Run("LIMIT / OFFSET with params", func(t *testing.T) {
-		db, err := genji.Open(":memory:")
+		db, err := chai.Open(":memory:")
 		assert.NoError(t, err)
 		defer db.Close()
 
@@ -388,7 +388,7 @@ func TestDistinct(t *testing.T) {
 		notUnique := total / 10
 
 		t.Run(typ.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(t, err)
 			defer db.Close()
 
@@ -431,7 +431,7 @@ func TestDistinct(t *testing.T) {
 					defer q.Close()
 
 					var i int
-					err = q.Iterate(func(r *genji.Row) error {
+					err = q.Iterate(func(r *chai.Row) error {
 						i++
 						return nil
 					})

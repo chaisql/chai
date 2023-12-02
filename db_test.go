@@ -1,23 +1,22 @@
-package genji_test
+package chai_test
 
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
 
 func ExampleTx() {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,11 +72,11 @@ func ExampleTx() {
 }
 
 func TestOpen(t *testing.T) {
-	dir, err := ioutil.TempDir("", "genji")
+	dir, err := os.MkdirTemp("", "chai")
 	assert.NoError(t, err)
 	defer os.RemoveAll(dir)
 
-	db, err := genji.Open(filepath.Join(dir, "testdb"))
+	db, err := chai.Open(filepath.Join(dir, "testdb"))
 	assert.NoError(t, err)
 
 	err = db.Exec(`
@@ -96,19 +95,19 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 
 	// ensure tables are loaded properly
-	db, err = genji.Open(filepath.Join(dir, "testdb"))
+	db, err = chai.Open(filepath.Join(dir, "testdb"))
 	assert.NoError(t, err)
 	defer db.Close()
 
-	res1, err := db.Query("SELECT * FROM __genji_catalog")
+	res1, err := db.Query("SELECT * FROM __chai_catalog")
 	assert.NoError(t, err)
 	defer res1.Close()
 
 	var count int
 	want := []string{
-		`{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
-		`{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
-		`{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
+		`{"name":"__chai_catalog", "namespace":1, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__chai_sequence", "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
+		`{"name":"__chai_store_seq", "owner":{"table_name":"__chai_catalog"}, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
 		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
 		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":10, "type":"table"}`,
 		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":11, "type":"index"}`,
@@ -117,7 +116,7 @@ func TestOpen(t *testing.T) {
 		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":14, "type":"index"}`,
 		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
-	err = res1.Iterate(func(r *genji.Row) error {
+	err = res1.Iterate(func(r *chai.Row) error {
 		count++
 		if count > len(want) {
 			return fmt.Errorf("more than %d relations", len(want))
@@ -132,17 +131,17 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 	testutil.RequireJSONEq(t, d, `{"a": "1"}`)
 
-	d, err = db.QueryRow("SELECT * FROM __genji_sequence")
+	d, err = db.QueryRow("SELECT * FROM __chai_sequence")
 	assert.NoError(t, err)
-	testutil.RequireJSONEq(t, d, `{"name":"__genji_store_seq", "seq":14}`)
+	testutil.RequireJSONEq(t, d, `{"name":"__chai_store_seq", "seq":14}`)
 
-	d, err = db.QueryRow("SELECT * FROM __genji_sequence OFFSET 1")
+	d, err = db.QueryRow("SELECT * FROM __chai_sequence OFFSET 1")
 	assert.NoError(t, err)
 	testutil.RequireJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }
 
 func TestQueryRow(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	require.NoError(t, err)
 
@@ -181,20 +180,20 @@ func TestQueryRow(t *testing.T) {
 
 	t.Run("Should return an error if no row", func(t *testing.T) {
 		r, err := db.QueryRow("SELECT * FROM test WHERE a > 100")
-		require.True(t, genji.IsNotFoundError(err))
+		require.True(t, chai.IsNotFoundError(err))
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
 		assert.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryRow("SELECT * FROM test WHERE a > 100")
-		require.True(t, genji.IsNotFoundError(err))
+		require.True(t, chai.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
 }
 
 func TestPrepareThreadSafe(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -215,7 +214,7 @@ func TestPrepareThreadSafe(t *testing.T) {
 			}
 			defer res.Close()
 
-			return res.Iterate(func(d *genji.Row) error {
+			return res.Iterate(func(d *chai.Row) error {
 				return nil
 			})
 		})
@@ -226,7 +225,7 @@ func TestPrepareThreadSafe(t *testing.T) {
 }
 
 func TestIterateDeepCopy(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -251,7 +250,7 @@ func TestIterateDeepCopy(t *testing.T) {
 	}
 
 	var items []*item
-	err = res.Iterate(func(r *genji.Row) error {
+	err = res.Iterate(func(r *chai.Row) error {
 		var i item
 		err := r.StructScan(&i)
 		assert.NoError(t, err)
@@ -269,7 +268,7 @@ func TestIterateDeepCopy(t *testing.T) {
 func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
@@ -283,7 +282,7 @@ func BenchmarkSelect(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo")
-				res.Iterate(func(d *genji.Row) error { return nil })
+				res.Iterate(func(d *chai.Row) error { return nil })
 			}
 		})
 	}
@@ -292,7 +291,7 @@ func BenchmarkSelect(b *testing.B) {
 func BenchmarkSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
@@ -306,7 +305,7 @@ func BenchmarkSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT b FROM foo WHERE a > 0")
-				res.Iterate(func(d *genji.Row) error { return nil })
+				res.Iterate(func(d *chai.Row) error { return nil })
 			}
 		})
 	}
@@ -315,7 +314,7 @@ func BenchmarkSelectWhere(b *testing.B) {
 func BenchmarkPreparedSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
@@ -330,7 +329,7 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := p.Query()
-				res.Iterate(func(d *genji.Row) error { return nil })
+				res.Iterate(func(d *chai.Row) error { return nil })
 			}
 		})
 	}
@@ -339,7 +338,7 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 func BenchmarkSelectPk(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo(a INT PRIMARY KEY)")
@@ -353,7 +352,7 @@ func BenchmarkSelectPk(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				res, _ := db.Query("SELECT * FROM foo WHERE a = ?", size-1)
-				res.Iterate(func(d *genji.Row) error { return nil })
+				res.Iterate(func(d *chai.Row) error { return nil })
 			}
 		})
 	}

@@ -2,7 +2,7 @@
 CREATE TABLE test (
     a CHECK(a > 10 AND a < 20)
 );
-SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -21,7 +21,7 @@ CREATE TABLE test (
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 100 NOT NULL PRIMARY KEY
 );
-SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -40,7 +40,7 @@ CREATE TABLE test (
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 0
 );
-SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -54,7 +54,7 @@ CREATE TABLE test (
     a INT CHECK (a > 10 AND b < 10),
     b INT
 );
-SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
@@ -69,7 +69,7 @@ CREATE TABLE test (
     CHECK (a > 10),
     CHECK (a > 20)
 );
-SELECT name, type, sql FROM __genji_catalog WHERE name = "test";
+SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",

@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // A Path represents the path to a particular value within an object.

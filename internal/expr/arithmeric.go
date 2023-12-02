@@ -1,9 +1,9 @@
 package expr
 
 import (
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // IsArithmeticOperator returns true if e is one of

@@ -7,16 +7,16 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/pkg/pebbleutil"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
 	"github.com/cockroachdb/pebble/vfs"
-	"github.com/genjidb/genji/internal/encoding"
-	"github.com/genjidb/genji/internal/kv"
-	"github.com/genjidb/genji/internal/pkg/pebbleutil"
 )
 
 const (
-	InternalPrefix = "__genji_"
+	InternalPrefix = "__chai_"
 )
 
 type Database struct {
@@ -127,7 +127,7 @@ func OpenPebble(path string, popts *pebble.Options) (*pebble.DB, error) {
 	return pebble.Open(path, popts)
 }
 
-// DefaultComparer is the default implementation of the Comparer interface for Genji.
+// DefaultComparer is the default implementation of the Comparer interface for chai.
 var DefaultComparer = &pebble.Comparer{
 	Compare:        encoding.Compare,
 	Equal:          encoding.Equal,

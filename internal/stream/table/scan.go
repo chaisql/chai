@@ -4,11 +4,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/tree"
 )
 
 // A ScanOperator iterates over the objects of a table.

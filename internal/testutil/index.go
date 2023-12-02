@@ -3,8 +3,8 @@ package testutil
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 func NewKey(t testing.TB, values ...types.Value) *tree.Key {

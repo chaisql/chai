@@ -3,8 +3,8 @@ package stream
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
 )
 
 // OnConflictOperator handles any conflicts that occur during the iteration.

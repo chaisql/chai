@@ -5,16 +5,16 @@ import (
 	"math"
 	"testing"
 
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/database"
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/database"
-	errs "github.com/genjidb/genji/internal/errors"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/testutil/assert"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -423,7 +423,7 @@ func TestTxDropIndex(t *testing.T) {
 			_, err = catalog.GetIndex(tx, "idxBar")
 			assert.NoError(t, err)
 
-			// cf: https://github.com/genjidb/genji/issues/360
+			// cf: https://github.com/chaisql/chai/issues/360
 			_, err = catalog.GetTable(tx, "test")
 			assert.NoError(t, err)
 
@@ -445,27 +445,27 @@ func TestTxDropIndex(t *testing.T) {
 }
 
 func TestReadOnlyTables(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
 	res, err := db.Query(`
 		CREATE TABLE foo (a int, b (c double unique));
 		CREATE INDEX idx_foo_a ON foo(a);
-		SELECT * FROM __genji_catalog
+		SELECT * FROM __chai_catalog
 	`)
 	assert.NoError(t, err)
 	defer res.Close()
 
 	var i int
-	err = res.Iterate(func(r *genji.Row) error {
+	err = res.Iterate(func(r *chai.Row) error {
 		switch i {
 		case 0:
-			testutil.RequireJSONEq(t, r, `{"name":"__genji_catalog", "namespace":1, "sql":"CREATE TABLE __genji_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __genji_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__chai_catalog", "namespace":1, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
 		case 1:
-			testutil.RequireJSONEq(t, r, `{"name":"__genji_sequence", "sql":"CREATE TABLE __genji_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __genji_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__chai_sequence", "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`)
 		case 2:
-			testutil.RequireJSONEq(t, r, `{"name":"__genji_store_seq", "owner":{"table_name":"__genji_catalog"}, "sql":"CREATE SEQUENCE __genji_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
+			testutil.RequireJSONEq(t, r, `{"name":"__chai_store_seq", "owner":{"table_name":"__chai_catalog"}, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
 		case 3:
 			testutil.RequireJSONEq(t, r, `{"name":"foo", "rowid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b (c DOUBLE), CONSTRAINT \"foo_b.c_unique\" UNIQUE (b.c))", "namespace":10, "type":"table"}`)
 		case 4:
@@ -569,7 +569,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 }
 
 func TestCatalogConcurrency(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -599,7 +599,7 @@ func TestCatalogConcurrency(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	row, err := rt1.QueryRow("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	row, err := rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
 	assert.NoError(t, err)
 	var i int
 	err = row.Scan(&i)
@@ -607,7 +607,7 @@ func TestCatalogConcurrency(t *testing.T) {
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
 	assert.NoError(t, err)
 	var s string
 	err = row.Scan(&s)
@@ -619,14 +619,14 @@ func TestCatalogConcurrency(t *testing.T) {
 	assert.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT COUNT(*) FROM __genji_catalog WHERE name LIKE '%test2%'")
+	row, err = rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
 	assert.NoError(t, err)
 	err = row.Scan(&i)
 	assert.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT sql FROM __genji_catalog WHERE name = 'test'")
+	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
 	assert.NoError(t, err)
 	err = row.Scan(&s)
 	assert.NoError(t, err)

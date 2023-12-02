@@ -3,9 +3,9 @@ package environment
 import (
 	"fmt"
 
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // A Param represents a parameter passed by the user to the statement.

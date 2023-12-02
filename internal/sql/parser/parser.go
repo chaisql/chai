@@ -5,17 +5,17 @@ import (
 	"io"
 	"strings"
 
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/expr/functions"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/expr/functions"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/query"
-	"github.com/genjidb/genji/internal/query/statement"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/tree"
 )
 
-// Parser represents an Genji SQL Parser.
+// Parser represents an Chai SQL Parser.
 type Parser struct {
 	s             *scanner.Scanner
 	orderedParams int
@@ -63,7 +63,7 @@ func MustParseExpr(s string) expr.Expr {
 	return e
 }
 
-// ParseQuery parses a Genji SQL string and returns a Query.
+// ParseQuery parses a Chai SQL string and returns a Query.
 func (p *Parser) ParseQuery() (query.Query, error) {
 	var statements []statement.Statement
 
@@ -78,7 +78,7 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 	return query.Query{Statements: statements}, nil
 }
 
-// ParseQuery parses a Genji SQL string and returns a Query.
+// ParseQuery parses a Chai SQL string and returns a Query.
 func (p *Parser) Parse(fn func(statement.Statement) error) error {
 	for {
 		err := p.skipMany(scanner.SEMICOLON)
@@ -115,7 +115,7 @@ func (p *Parser) Parse(fn func(statement.Statement) error) error {
 	}
 }
 
-// ParseStatement parses a Genji SQL string and returns a statement.
+// ParseStatement parses a Chai SQL string and returns a statement.
 func (p *Parser) ParseStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	p.Unscan()

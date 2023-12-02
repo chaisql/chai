@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/stringutil"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
 )
 
 // TableInfo contains information about a table.

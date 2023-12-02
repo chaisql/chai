@@ -1,9 +1,9 @@
 package query
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/query/statement"
 )
 
 // BeginStmt is a statement that creates a new transaction.

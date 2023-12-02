@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chaisql/chai/internal/stringutil"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/stringutil"
 	"github.com/golang-module/carbon/v2"
 )
 

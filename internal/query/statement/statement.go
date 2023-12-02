@@ -1,9 +1,9 @@
 package statement
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
 )
 
 // A Statement represents a unique action that can be executed against the database.

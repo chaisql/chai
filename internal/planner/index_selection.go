@@ -1,14 +1,14 @@
 package planner
 
 import (
-	"github.com/genjidb/genji/internal/expr"
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/sql/scanner"
-	"github.com/genjidb/genji/internal/stream"
-	"github.com/genjidb/genji/internal/stream/index"
-	"github.com/genjidb/genji/internal/stream/rows"
-	"github.com/genjidb/genji/internal/stream/table"
-	"github.com/genjidb/genji/internal/tree"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/sql/scanner"
+	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/stream/index"
+	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/stream/table"
+	"github.com/chaisql/chai/internal/tree"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by

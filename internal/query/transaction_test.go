@@ -3,8 +3,8 @@ package query_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
+	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil/assert"
 )
 
 func TestTransactionRun(t *testing.T) {
@@ -27,7 +27,7 @@ func TestTransactionRun(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := genji.Open(":memory:")
+			db, err := chai.Open(":memory:")
 			assert.NoError(t, err)
 			defer db.Close()
 			defer db.Exec("ROLLBACK")

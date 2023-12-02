@@ -3,15 +3,14 @@ package statement_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji"
-	"github.com/genjidb/genji/internal/testutil/assert"
-
-	errs "github.com/genjidb/genji/internal/errors"
+	"github.com/chaisql/chai"
+	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAlterTable(t *testing.T) {
-	db, err := genji.Open(":memory:")
+	db, err := chai.Open(":memory:")
 	assert.NoError(t, err)
 	defer db.Close()
 
@@ -42,6 +41,6 @@ func TestAlterTable(t *testing.T) {
 	require.JSONEq(t, `{"name": "John Doe", "age": 99}`, string(data))
 
 	// Renaming a read-only table should fail
-	err = db.Exec("ALTER TABLE __genji_catalog RENAME TO bar")
+	err = db.Exec("ALTER TABLE __chai_catalog RENAME TO bar")
 	assert.Error(t, err)
 }

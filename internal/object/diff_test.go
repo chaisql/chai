@@ -3,9 +3,9 @@ package object_test
 import (
 	"testing"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/testutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 

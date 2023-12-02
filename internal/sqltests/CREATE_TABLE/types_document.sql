@@ -1,6 +1,6 @@
 -- test: no keyword
 CREATE TABLE test (a (b int));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -10,7 +10,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: with keyword
 CREATE TABLE test (a OBJECT (b int));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
@@ -20,7 +20,7 @@ SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
 
 -- test: with ellipsis
 CREATE TABLE test (a OBJECT (b int, ...));
-SELECT name, sql FROM __genji_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",

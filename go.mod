@@ -1,4 +1,4 @@
-module github.com/genjidb/genji
+module github.com/chaisql/chai
 
 go 1.21
 

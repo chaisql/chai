@@ -3,9 +3,9 @@ package database
 import (
 	"math"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/tree"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 type Pivot []types.Value

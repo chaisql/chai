@@ -1,19 +1,17 @@
 <h1 align="center"> ChaiSQL </h1>
 <p align="center">
   <a href="https://chai.dev">
-    <img alt="chaiSQL" title="chaiSQL" src="https://raw.githubusercontent.com/chaisql/docs/master/assets/icons/logo.svg?sanitize=true" width="100">
+    <img alt="ChaiSQL" title="ChaiSQL" src="https://raw.githubusercontent.com/chaisql/docs/master/assets/icons/logo.svg?sanitize=true" width="100">
   </a>
 </p>
 
 <p align="center">
-  ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers. It provides a fresh alternative to traditional SQL databases by supporting more flexible schemas and offering advanced features tailored for modern applications.
+  ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers. It provides a fresh alternative to traditional SQL databases by offering advanced features tailored for modern applications.
 </p>
-
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
 ![Status](https://img.shields.io/badge/status-alpha-yellow)
-
 
 ## Key Features
 
@@ -115,7 +113,7 @@ func main() {
 
 > :warning: Chai's API is still evolving: We are working towards the v1.0.0 release, which will bring stability to the database structure and API.
 
-Checkout the [SQL documentation](https://chai.dev/docs/essentials/sql-introduction/), the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
+Checkout the [SQL documentation](https://chaisql.com/docs/essentials/sql-introduction/), the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
 
 ### In-memory database
 

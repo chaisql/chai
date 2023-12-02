@@ -5,8 +5,8 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/genjidb/genji/internal/object"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // MathFunctions returns all math package functions.

@@ -10,8 +10,8 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
 
-	"github.com/genjidb/genji/internal/stringutil"
-	"github.com/genjidb/genji/internal/types"
+	"github.com/chaisql/chai/internal/stringutil"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // ErrUnsupportedType is used to skip struct or array fields that are not supported.

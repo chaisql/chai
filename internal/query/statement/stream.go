@@ -1,11 +1,11 @@
 package statement
 
 import (
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/planner"
+	"github.com/chaisql/chai/internal/stream"
 	"github.com/cockroachdb/errors"
-	"github.com/genjidb/genji/internal/database"
-	"github.com/genjidb/genji/internal/environment"
-	"github.com/genjidb/genji/internal/planner"
-	"github.com/genjidb/genji/internal/stream"
 )
 
 // StreamStmt is a StreamStmt using a Stream.
