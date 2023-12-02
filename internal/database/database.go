@@ -2,6 +2,8 @@
 package database
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 
@@ -74,16 +76,35 @@ type TxOptions struct {
 
 func Open(path string, opts *Options) (*Database, error) {
 	popts := &pebble.Options{
-		Comparer: DefaultComparer,
-		Logger:   pebbleutil.NoopLoggerAndTracer{},
+		FormatMajorVersion: pebble.FormatVirtualSSTables,
+		Comparer:           DefaultComparer,
+		Logger:             pebbleutil.NoopLoggerAndTracer{},
 	}
 
 	if path == ":memory:" {
 		popts.FS = vfs.NewMem()
 		path = ""
+	} else {
+		fi, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return nil, err
+			}
+
+			err = os.MkdirAll(path, 0700)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			if !fi.IsDir() {
+				return nil, errors.New("path must be a directory")
+			}
+		}
 	}
 
-	pdb, err := OpenPebble(path, popts)
+	pbpath := filepath.Join(path, "pebble")
+
+	pdb, err := OpenPebble(pbpath, popts)
 	if err != nil {
 		return nil, err
 	}
