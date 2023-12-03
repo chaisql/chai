@@ -3,9 +3,10 @@ package doc
 type functionDocs map[string]string
 
 var packageDocs = map[string]functionDocs{
-	"strings": stringsDocs,
-	"math":    mathDocs,
 	"":        builtinDocs,
+	"math":    mathDocs,
+	"strings": stringsDocs,
+	"objects": objectsDocs,
 }
 
 var builtinDocs = functionDocs{
@@ -38,4 +39,8 @@ var stringsDocs = functionDocs{
 	"trim":  "The trim function returns arg1 with leading and trailing characters removed. space by default or arg2",
 	"ltrim": "The ltrim function returns arg1 with leading characters removed. space by default or arg2",
 	"rtrim": "The rtrim function returns arg1 with trailing characters removed. space by default or arg2",
+}
+
+var objectsDocs = functionDocs{
+	"fields": "The fields function returns the top-level fields of arg1 if arg1 evals to object, otherwise it returns null. It returns an array of TEXT.",
 }
