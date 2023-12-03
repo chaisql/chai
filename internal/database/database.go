@@ -150,7 +150,7 @@ func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
 	// due to a previous crash.
-	err := db.Store.Rollback()
+	err := db.Store.ResetRollbackSegment()
 	if err != nil {
 		return nil, err
 	}

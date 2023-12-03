@@ -74,31 +74,12 @@ func (s *Store) NewSnapshotSession() *SnapshotSession {
 	}
 }
 
-func (s *Store) NewBatchSession() *BatchSession {
-	// before creating a batch session, create a shared snapshot
-	// at this point-in-time.
-	s.LockSharedSnapshot()
-
-	b := s.db.NewIndexedBatch()
-
-	return &BatchSession{
-		Store:           s,
-		DB:              s.db,
-		Batch:           b,
-		rollbackSegment: s.rollbackSegment,
-		maxBatchSize:    s.opts.MaxBatchSize,
-	}
-}
-
-func (s *Store) NewTransientSession() *TransientSession {
-	return &TransientSession{
-		db:           s.db,
-		maxBatchSize: s.opts.MaxTransientBatchSize,
-	}
-}
-
 func (s *Store) Rollback() error {
 	return s.rollbackSegment.Rollback()
+}
+
+func (s *Store) ResetRollbackSegment() error {
+	return s.rollbackSegment.Reset()
 }
 
 func (s *Store) LockSharedSnapshot() {

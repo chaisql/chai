@@ -92,7 +92,7 @@ func NewTransient(session kv.Session, ns Namespace, order SortOrder) (*Tree, fun
 
 var defaultValue = []byte{0}
 
-// Insert adds a key-doc combination to the tree.
+// Insert adds a key-obj combination to the tree.
 // If the key already exists, it returns kv.ErrKeyAlreadyExists.
 func (t *Tree) Insert(key *Key, value []byte) error {
 	if len(value) == 0 {
@@ -106,7 +106,7 @@ func (t *Tree) Insert(key *Key, value []byte) error {
 	return t.Session.Insert(k, value)
 }
 
-// Put adds or replaces a key-doc combination to the tree.
+// Put adds or replaces a key-obj combination to the tree.
 // If the key already exists, its value will be replaced by
 // the given value.
 func (t *Tree) Put(key *Key, value []byte) error {

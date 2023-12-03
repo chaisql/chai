@@ -20,6 +20,22 @@ type BatchSession struct {
 	maxBatchSize    int
 }
 
+func (s *Store) NewBatchSession() *BatchSession {
+	// before creating a batch session, create a shared snapshot
+	// at this point-in-time.
+	s.LockSharedSnapshot()
+
+	b := s.db.NewIndexedBatch()
+
+	return &BatchSession{
+		Store:           s,
+		DB:              s.db,
+		Batch:           b,
+		rollbackSegment: s.rollbackSegment,
+		maxBatchSize:    s.opts.MaxBatchSize,
+	}
+}
+
 func (s *BatchSession) Commit() error {
 	if s.closed {
 		return errors.New("already closed")

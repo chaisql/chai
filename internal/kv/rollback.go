@@ -146,8 +146,13 @@ func (s *RollbackSegment) Rollback() error {
 
 	// we don't need to sync here.
 	// in case of a crash, the rollback segment will be rolled back
-	// during the next recovery.
+	// during the next recovery phase.
 	return b.Commit(pebble.NoSync)
+}
+
+func (s *RollbackSegment) Reset() error {
+	s.segmentCommitted = true
+	return s.Rollback()
 }
 
 func (s *RollbackSegment) Clear(b *pebble.Batch) error {

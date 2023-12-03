@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
+	"os"
 )
 
 func write1(dst []byte, code byte, n uint8) []byte {
@@ -183,6 +184,12 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 }
 
 func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Fprintf(os.Stderr, "compare field %v %v\n", a, b)
+			panic(e)
+		}
+	}()
 	// compare non empty values
 	switch t {
 	case Int64Value, Uint64Value, Float64Value:
@@ -202,59 +209,64 @@ func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
 		endb := n + int(l)
 		return bytes.Compare(a[n:enda], b[n:endb]), enda
 	case ArrayValue:
-		la, _ := binary.Uvarint(a[1:])
-		lb, n := binary.Uvarint(b[1:])
+		la, na := binary.Uvarint(a[1:])
+		lb, nb := binary.Uvarint(b[1:])
+		na++
+		nb++
 		minl := la
 		if lb < minl {
 			minl = lb
 		}
-		n++
 		for i := 0; i < int(minl); i++ {
-			cmp, nn := compareNextValue(a[n:], b[n:])
-			n += nn
+			cmp, nn := compareNextValue(a[na:], b[nb:])
+			na += nn
+			nb += nn
 			if cmp != 0 {
-				return cmp, n
+				return cmp, na
 			}
 		}
 		if la < lb {
-			return -1, n
+			return -1, na
 		}
 		if la > lb {
-			return 1, n
+			return 1, na
 		}
 
-		return 0, n
+		return 0, na
 	case ObjectValue:
-		la, _ := binary.Uvarint(a[1:])
-		lb, n := binary.Uvarint(b[1:])
+		la, na := binary.Uvarint(a[1:])
+		lb, nb := binary.Uvarint(b[1:])
+		na++
+		nb++
 		minl := la
 		if lb < minl {
 			minl = lb
 		}
-		n++
 		for i := 0; i < int(minl); i++ {
 			// compare field
-			cmp, nn := compareNextValue(a[n:], b[n:])
-			n += nn
+			cmp, nn := compareNextValue(a[na:], b[nb:])
+			na += nn
+			nb += nn
 			if cmp != 0 {
-				return cmp, n
+				return cmp, na
 			}
 
 			// compare value
-			cmp, nn = compareNextValue(a[n:], b[n:])
-			n += nn
+			cmp, nn = compareNextValue(a[na:], b[nb:])
+			na += nn
+			nb += nn
 			if cmp != 0 {
-				return cmp, n
+				return cmp, na
 			}
 		}
 		if la < lb {
-			return -1, n
+			return -1, na
 		}
 		if la > lb {
-			return 1, n
+			return 1, na
 		}
 
-		return 0, n
+		return 0, na
 	}
 
 	panic(fmt.Sprintf("unsupported value type: %d", a[0]))
@@ -334,12 +346,21 @@ func abbreviatedValue(key []byte) uint64 {
 		x := DecodeUint8(key[1:])
 		return uint64(x)
 	case Uint16Value, Int16Value:
+		if len(key) < 3 {
+			return 0
+		}
 		x := DecodeUint16(key[1:])
 		return uint64(x)
 	case Uint32Value, Int32Value:
+		if len(key) < 5 {
+			return 0
+		}
 		x := DecodeUint32(key[1:])
 		return uint64(x)
 	case Uint64Value, Int64Value, Float64Value:
+		if len(key) < 9 {
+			return 0
+		}
 		x := DecodeUint64(key[1:])
 		return uint64(x) >> 24
 	case TextValue, BlobValue:

@@ -1,7 +1,6 @@
 package encoding
 
 import (
-	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -63,10 +62,6 @@ func TestEncodeTimestamp(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			enc := EncodeTimestamp(nil, test.t)
-			x, _ := DecodeInt(enc)
-			fmt.Println("1", x)
-			x, _ = DecodeInt(test.enc)
-			fmt.Println("2", x)
 			require.Equal(t, test.enc, enc)
 			ts, _ := DecodeTimestamp(enc)
 			require.Equal(t, test.dec, ts)
