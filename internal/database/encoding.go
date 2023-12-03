@@ -167,6 +167,11 @@ func NewEncodedObject(fcs *FieldConstraints, data []byte) *EncodedObject {
 	return &e
 }
 
+func (e *EncodedObject) ResetWith(fcs *FieldConstraints, data []byte) {
+	e.fieldConstraints = fcs
+	e.encoded = data
+}
+
 func (e *EncodedObject) skipToExtra(b []byte) int {
 	l := len(e.fieldConstraints.Ordered)
 

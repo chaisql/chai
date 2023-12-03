@@ -38,6 +38,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 	var newEnv environment.Environment
 
 	var br database.BasicRow
+	var eo database.EncodedObject
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		buf = buf[:0]
 		newEnv.SetOuter(out)
@@ -54,9 +55,9 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 		}
 
 		// use the encoded row as the new row
-		o := database.NewEncodedObject(&info.FieldConstraints, buf)
+		eo.ResetWith(&info.FieldConstraints, buf)
 
-		br.ResetWith(row.TableName(), row.Key(), o)
+		br.ResetWith(row.TableName(), row.Key(), &eo)
 		newEnv.SetRow(&br)
 
 		// validate CHECK constraints if any

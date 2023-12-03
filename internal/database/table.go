@@ -36,7 +36,7 @@ func (t *Table) Insert(o types.Object) (*tree.Key, Row, error) {
 		return nil, nil, errors.New("cannot write to read-only table")
 	}
 
-	key, err := t.generateKey(t.Info, o)
+	key, isRowid, err := t.generateKey(t.Info, o)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,7 +47,13 @@ func (t *Table) Insert(o types.Object) (*tree.Key, Row, error) {
 	}
 
 	// insert into the table
-	err = t.Tree.Insert(key, enc)
+	if !isRowid {
+		// if the key is not a rowid, make sure it doesn't exist
+		// by using Insert instead of Put
+		err = t.Tree.Insert(key, enc)
+	} else {
+		err = t.Tree.Put(key, enc)
+	}
 	if err != nil {
 		if errors.Is(err, kv.ErrKeyAlreadyExists) {
 			return nil, nil, &ConstraintViolationError{
@@ -182,32 +188,33 @@ func (t *Table) GetRow(key *tree.Key) (Row, error) {
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the rowid.
-func (t *Table) generateKey(info *TableInfo, o types.Object) (*tree.Key, error) {
+// It returns a boolean indicating whether the key is a rowid or not.
+func (t *Table) generateKey(info *TableInfo, o types.Object) (*tree.Key, bool, error) {
 	if pk := t.Info.GetPrimaryKey(); pk != nil {
 		vs := make([]types.Value, 0, len(pk.Paths))
 		for _, p := range pk.Paths {
 			v, err := p.GetValueFromObject(o)
 			if errors.Is(err, types.ErrFieldNotFound) {
-				return nil, fmt.Errorf("missing primary key at path %q", p)
+				return nil, false, fmt.Errorf("missing primary key at path %q", p)
 			}
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
 			vs = append(vs, v)
 		}
 
-		return tree.NewKey(vs...), nil
+		return tree.NewKey(vs...), false, nil
 	}
 
 	seq, err := t.Tx.Catalog.GetSequence(t.Info.RowidSequenceName)
 	if err != nil {
-		return nil, err
+		return nil, true, err
 	}
 	rowid, err := seq.Next(t.Tx)
 	if err != nil {
-		return nil, err
+		return nil, true, err
 	}
 
-	return tree.NewKey(types.NewIntegerValue(rowid)), nil
+	return tree.NewKey(types.NewIntegerValue(rowid)), true, nil
 }

@@ -143,7 +143,7 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `DROP`, tok: DROP},
 		{s: `EXPLAIN`, tok: EXPLAIN},
 		{s: `GROUP`, tok: GROUP},
-		{s: `FIELD`, tok: FIELD},
+		{s: `COLUMN`, tok: COLUMN},
 		{s: `FOR`, tok: FOR},
 		{s: `FROM`, tok: FROM},
 		{s: `IGNORE`, tok: IGNORE},

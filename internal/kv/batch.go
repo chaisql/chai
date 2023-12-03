@@ -119,8 +119,6 @@ func (s *BatchSession) Insert(k, v []byte) error {
 		return ErrKeyAlreadyExists
 	}
 
-	s.rollbackSegment.EnqueueOp(k, kvOpInsert)
-
 	err = s.Batch.Set(k, v, nil)
 	if err != nil {
 		return err
@@ -139,8 +137,6 @@ func (s *BatchSession) Put(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
-	s.rollbackSegment.EnqueueOp(k, kvOpSet)
-
 	err := s.Batch.Set(k, v, nil)
 	if err != nil {
 		return err
@@ -151,8 +147,6 @@ func (s *BatchSession) Put(k, v []byte) error {
 
 // Delete a record by key. If the key doesn't exist, it doesn't do anything.
 func (s *BatchSession) Delete(k []byte) error {
-	s.rollbackSegment.EnqueueOp(k, kvOpDel)
-
 	err := s.Batch.Delete(k, nil)
 	if err != nil {
 		return err

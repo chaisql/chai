@@ -228,6 +228,11 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 		return err
 	}
 
+	stmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s VALUES ?", table))
+	if err != nil {
+		return err
+	}
+
 	for {
 		columns, err := r.Read()
 		if errors.Is(err, io.EOF) {
@@ -236,7 +241,7 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 		if err != nil {
 			return err
 		}
-		err = tx.Exec("INSERT INTO "+table+" VALUES ?", object.NewFromCSV(headers, columns))
+		err = stmt.Exec(object.NewFromCSV(headers, columns))
 		if err != nil {
 			return err
 		}

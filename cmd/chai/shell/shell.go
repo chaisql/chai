@@ -38,7 +38,7 @@ type Shell struct {
 	db   *chai.DB
 	opts *Options
 
-	showTime bool
+	displayTime bool
 
 	history []string
 
@@ -148,7 +148,7 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan queryTask) e
 		case <-ctx.Done():
 			return ctx.Err()
 		case input := <-promptExecCh:
-			showTime := sh.showTime
+			displayTime := sh.displayTime
 			start := time.Now().UTC()
 			err := sh.executeInput(sh.getExecContext(ctx), input.q, input.w)
 			if errors.Is(err, context.Canceled) {
@@ -169,7 +169,7 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan queryTask) e
 			}
 
 			// if showtime is true, ensure it's a query, and it was executed.
-			if showTime && !strings.HasPrefix(input.q, ".") && strings.HasSuffix(input.q, ";") {
+			if displayTime {
 				fmt.Fprintf(input.w, "Time: %s\n", time.Since(start))
 			}
 
@@ -313,7 +313,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 			return fmt.Errorf(getUsage(".timer"))
 		}
 
-		sh.showTime = cmd[1] == "on"
+		sh.displayTime = cmd[1] == "on"
 		return nil
 	case ".help":
 		return runHelpCmd(out)

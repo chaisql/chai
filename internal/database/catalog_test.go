@@ -594,7 +594,7 @@ func TestCatalogConcurrency(t *testing.T) {
 	err = wt1.Exec(`
 		CREATE TABLE test2 (a int);
 		CREATE INDEX idx_test2_a ON test2(a);
-		ALTER TABLE test ADD FIELD b int;
+		ALTER TABLE test ADD COLUMN b int;
 	`)
 	assert.NoError(t, err)
 

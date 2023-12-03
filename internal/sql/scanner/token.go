@@ -88,6 +88,7 @@ const (
 	CACHE
 	CAST
 	CHECK
+	COLUMN
 	COMMIT
 	CONFLICT
 	CONSTRAINT
@@ -101,7 +102,6 @@ const (
 	DROP
 	EXISTS
 	EXPLAIN
-	FIELD
 	FOR
 	FROM
 	GROUP
@@ -237,6 +237,7 @@ var tokens = [...]string{
 	CACHE:       "CACHE",
 	CAST:        "CAST",
 	CHECK:       "CHECK",
+	COLUMN:      "COLUMN",
 	COMMIT:      "COMMIT",
 	CONFLICT:    "CONFLICT",
 	CONSTRAINT:  "CONSTRAINT",
@@ -252,7 +253,6 @@ var tokens = [...]string{
 	EXPLAIN:     "EXPLAIN",
 	GROUP:       "GROUP",
 	KEY:         "KEY",
-	FIELD:       "FIELD",
 	FOR:         "FOR",
 	FROM:        "FROM",
 	IF:          "IF",

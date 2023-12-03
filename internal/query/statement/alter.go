@@ -52,7 +52,7 @@ func (stmt *AlterTableAddFieldStmt) IsReadOnly() bool {
 	return false
 }
 
-// Run runs the ALTER TABLE ADD FIELD statement in the given transaction.
+// Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.
 // It implements the Statement interface.
 // The statement rebuilds the table.
 func (stmt *AlterTableAddFieldStmt) Run(ctx *Context) (Result, error) {
@@ -158,7 +158,7 @@ func (stmt *AlterTableAddFieldStmt) Run(ctx *Context) (Result, error) {
 		}
 	}
 
-	// ALTER TABLE ADD FIELD does not return any result
+	// ALTER TABLE ADD COLUMN does not return any result
 	s = s.Pipe(stream.Discard())
 
 	// do NOT optimize the stream

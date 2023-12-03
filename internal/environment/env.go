@@ -83,8 +83,8 @@ func (e *Environment) GetRow() (database.Row, bool) {
 	return nil, false
 }
 
-func (e *Environment) SetRow(d database.Row) {
-	e.Row = d
+func (e *Environment) SetRow(r database.Row) {
+	e.Row = r
 }
 
 func (e *Environment) SetRowFromObject(o types.Object) {

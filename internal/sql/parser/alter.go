@@ -30,7 +30,7 @@ func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (*statement.
 	stmt.TableName = tableName
 
 	// Parse "FIELD".
-	if err := p.parseTokens(scanner.FIELD); err != nil {
+	if err := p.parseTokens(scanner.COLUMN); err != nil {
 		return nil, err
 	}
 

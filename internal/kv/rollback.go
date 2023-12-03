@@ -8,25 +8,13 @@ import (
 	"github.com/cockroachdb/pebble"
 )
 
-const (
-	kvOpSet = iota
-	kvOpInsert
-	kvOpDel
-)
-
 type RollbackSegment struct {
 	db               *pebble.DB
-	ops              []operation
 	namespace        int64
 	nsStart, nsEnd   []byte
 	buf              []byte
 	seen             map[string]struct{}
 	segmentCommitted bool
-}
-
-type operation struct {
-	key []byte
-	op  byte
 }
 
 func NewRollbackSegment(db *pebble.DB, namespace int64) *RollbackSegment {
@@ -40,47 +28,47 @@ func NewRollbackSegment(db *pebble.DB, namespace int64) *RollbackSegment {
 	}
 }
 
-func (s *RollbackSegment) EnqueueOp(k []byte, kvOp uint8) {
-	op := operation{
-		key: make([]byte, len(k)),
-		op:  kvOp,
-	}
-	copy(op.key, k)
-	s.ops = append(s.ops, op)
-}
-
 func (s *RollbackSegment) Apply(b *pebble.Batch) error {
-	if len(s.ops) == 0 {
-		return nil
-	}
+	r, n := pebble.ReadBatch(b.Repr())
 
-	for _, op := range s.ops {
+	for i := uint32(0); i < n; i++ {
 		s.buf = s.buf[:len(s.nsStart)]
 
-		// seen keys are not added to the rollback segment
-		if _, ok := s.seen[string(op.key)]; ok {
+		kind, key, _, ok, err := r.Next()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			break
+		}
+
+		if _, ok := s.seen[string(key)]; ok {
 			continue
 		}
-		s.seen[string(op.key)] = struct{}{}
+		s.seen[string(key)] = struct{}{}
 
 		var v []byte
 		var closer io.Closer
-		var err error
-		if op.op != kvOpInsert {
-			v, closer, err = s.db.Get(op.key)
+
+		switch kind {
+		case pebble.InternalKeyKindDelete, pebble.InternalKeyKindSet:
+			v, closer, err = s.db.Get(key)
 			if err != nil {
 				if err != pebble.ErrNotFound {
 					return err
 				}
 			}
+		default:
+			continue
 		}
+
 		if v == nil {
 			// key not found, add a tombstone to the rollback segment
 			v = tombStone
 		}
 
 		// append the key to the buffer
-		s.buf = encoding.EncodeBlob(s.buf, op.key)
+		s.buf = encoding.EncodeBlob(s.buf, key)
 
 		err = b.Set(s.buf, v, nil)
 		if err != nil {
@@ -96,7 +84,6 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 	}
 
 	s.segmentCommitted = true
-	s.ops = s.ops[:0]
 	s.buf = s.buf[:len(s.nsStart)]
 
 	return nil
@@ -116,7 +103,6 @@ func (s *RollbackSegment) Rollback() error {
 	if err != nil {
 		return err
 	}
-
 	defer it.Close()
 
 	for it.First(); it.Valid(); it.Next() {
@@ -171,10 +157,6 @@ func (s *RollbackSegment) Clear(b *pebble.Batch) error {
 }
 
 func (s *RollbackSegment) reset() {
-	s.ops = s.ops[:0]
-	s.buf = s.buf[:0]
+	s.buf = s.buf[:len(s.nsStart)]
 	s.segmentCommitted = false
-	for k := range s.seen {
-		delete(s.seen, k)
-	}
 }
