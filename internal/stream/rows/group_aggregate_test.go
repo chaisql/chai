@@ -38,7 +38,7 @@ func TestAggregate(t *testing.T) {
 		{
 			"count",
 			nil,
-			[]expr.AggregatorBuilder{&functions.Count{Wildcard: true}},
+			[]expr.AggregatorBuilder{functions.NewCount(expr.Wildcard{})},
 			[]types.Object{testutil.MakeObject(t, `{"a": 10}`)},
 			[]types.Object{testutil.MakeObject(t, `{"COUNT(*)": 1}`)},
 			false,

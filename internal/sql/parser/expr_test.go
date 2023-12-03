@@ -170,8 +170,8 @@ func TestParserExpr(t *testing.T) {
 		// functions
 		{"pk() function", "pk()", &functions.PK{}, false},
 		{"count(expr) function", "count(a)", &functions.Count{Expr: testutil.ParsePath(t, "a")}, false},
-		{"count(*) function", "count(*)", &functions.Count{Wildcard: true}, false},
-		{"count (*) function with spaces", "count      (*)", &functions.Count{Wildcard: true}, false},
+		{"count(*) function", "count(*)", functions.NewCount(expr.Wildcard{}), false},
+		{"count (*) function with spaces", "count      (*)", functions.NewCount(expr.Wildcard{}), false},
 		{"packaged function", "math.floor(1.2)", testutil.FunctionExpr(t, "math.floor", testutil.DoubleValue(1.2)), false},
 	}
 

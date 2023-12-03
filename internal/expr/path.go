@@ -63,15 +63,20 @@ func (w Wildcard) String() string {
 }
 
 func (w Wildcard) Eval(env *environment.Environment) (types.Value, error) {
-	return nil, errors.New("no table specified")
+	r, ok := env.GetRow()
+	if !ok {
+		return nil, errors.New("no table specified")
+	}
+
+	return types.NewObjectValue(r.Object()), nil
 }
 
 // Iterate call the object iterate method.
 func (w Wildcard) Iterate(env environment.Environment, fn func(field string, value types.Value) error) error {
-	d, ok := env.GetRow()
+	r, ok := env.GetRow()
 	if !ok {
 		return errors.New("no table specified")
 	}
 
-	return d.Iterate(fn)
+	return r.Iterate(fn)
 }

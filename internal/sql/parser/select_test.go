@@ -126,7 +126,7 @@ func TestParserSelect(t *testing.T) {
 		{"WithOffsetThenLimit", "SELECT * FROM test WHERE age = 10 OFFSET 20 LIMIT 10", nil, true, true},
 		{"With aggregation function", "SELECT COUNT(*) FROM test",
 			stream.New(table.Scan("test")).
-				Pipe(rows.GroupAggregate(nil, &functions.Count{Wildcard: true})).
+				Pipe(rows.GroupAggregate(nil, functions.NewCount(expr.Wildcard{}))).
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "COUNT(*)"))),
 			true, false},
 		{"With NEXT VALUE FOR", "SELECT NEXT VALUE FOR foo FROM test",

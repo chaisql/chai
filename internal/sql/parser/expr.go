@@ -8,7 +8,6 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
@@ -292,6 +291,8 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		return expr.LiteralValue{Value: types.NewBoolValue(tok == scanner.TRUE)}, nil
 	case scanner.NULL:
 		return expr.LiteralValue{Value: types.NewNullValue()}, nil
+	case scanner.MUL:
+		return expr.Wildcard{}, nil
 	case scanner.LBRACKET:
 		p.Unscan()
 		e, err := p.ParseObject()
@@ -668,16 +669,6 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 	if err := p.parseTokens(scanner.LPAREN); err != nil {
 		return nil, err
 	}
-
-	// Special case: If the function is COUNT, support the special case COUNT(*)
-	if tok, pos, lit := p.ScanIgnoreWhitespace(); tok == scanner.MUL {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.RPAREN {
-			return nil, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
-		}
-
-		return &functions.Count{Wildcard: true}, nil
-	}
-	p.Unscan()
 
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {

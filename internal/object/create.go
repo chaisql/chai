@@ -355,3 +355,7 @@ func NewFromCSV(headers, columns []string) types.Object {
 
 	return fb
 }
+
+func NewArrayFromSlice[T any](l []T) types.Array {
+	return &sliceArray{ref: reflect.ValueOf(l)}
+}

@@ -85,7 +85,7 @@ func newQueryInputModel(shell *Shell) queryInputModel {
 	ta.Cursor.SetMode(cursor.CursorStatic)
 	ta.MaxWidth = 0
 	ta.SetHeight(1)
-	ta.SetPromptFunc(7, func(lineIdx int) string {
+	ta.SetPromptFunc(6, func(lineIdx int) string {
 		if lineIdx == 0 {
 			return "chai> "
 		}

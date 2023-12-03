@@ -172,22 +172,22 @@ func ExprRunner(t *testing.T, testfile string) {
 						t.Helper()
 						// parse the expected result
 						e, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
-						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
+						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// eval it to get a proper Value
 						want, err := e.Eval(environment.New(nil))
-						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ResLine, stmt.Res)
+						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// parse the given expr
 						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
+						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// eval it to get a proper Value
 						got, err := e.Eval(environment.New(nil))
-						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`", testfile, stmt.ExprLine, stmt.Expr)
+						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// finally, compare those two
-						require.Equalf(t, want, got, "assertion error at %s:%d", testfile, stmt.ResLine)
+						RequireValueEqual(t, want, got, "assertion error at %s:%d", testfile, stmt.ResLine)
 					})
 				} else {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {

@@ -30,7 +30,7 @@ var builtinFunctions = Definitions{
 		name:  "count",
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Count{Expr: args[0]}, nil
+			return NewCount(args[0]), nil
 		},
 	},
 	"min": &definition{
@@ -189,8 +189,16 @@ var _ expr.AggregatorBuilder = (*Count)(nil)
 // in a stream.
 type Count struct {
 	Expr     expr.Expr
-	Wildcard bool
+	wildcard bool
 	Count    int64
+}
+
+func NewCount(e expr.Expr) *Count {
+	_, wc := e.(expr.Wildcard)
+	return &Count{
+		Expr:     e,
+		wildcard: wc,
+	}
 }
 
 func (c *Count) Eval(env *environment.Environment) (types.Value, error) {
@@ -214,20 +222,12 @@ func (c *Count) IsEqual(other expr.Expr) bool {
 		return false
 	}
 
-	if c.Wildcard && o.Wildcard {
-		return c.Expr == nil && o.Expr == nil
-	}
-
 	return expr.Equal(c.Expr, o.Expr)
 }
 
 func (c *Count) Params() []expr.Expr { return []expr.Expr{c.Expr} }
 
 func (c *Count) String() string {
-	if c.Wildcard {
-		return "COUNT(*)"
-	}
-
 	return fmt.Sprintf("COUNT(%v)", c.Expr)
 }
 
@@ -246,7 +246,7 @@ type CountAggregator struct {
 
 // Aggregate increments the counter if the count expression evaluates to a non-null value.
 func (c *CountAggregator) Aggregate(env *environment.Environment) error {
-	if c.Fn.Wildcard {
+	if c.Fn.wildcard {
 		c.Count++
 		return nil
 	}

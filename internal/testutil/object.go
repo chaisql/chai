@@ -18,7 +18,7 @@ import (
 )
 
 // MakeValue turns v into a types.Value.
-func MakeValue(t testing.TB, v interface{}) types.Value {
+func MakeValue(t testing.TB, v any) types.Value {
 	t.Helper()
 
 	vv, err := object.NewValue(v)
@@ -26,7 +26,7 @@ func MakeValue(t testing.TB, v interface{}) types.Value {
 	return vv
 }
 
-func MakeArrayValue(t testing.TB, vs ...interface{}) types.Value {
+func MakeArrayValue(t testing.TB, vs ...any) types.Value {
 	t.Helper()
 
 	vvs := []types.Value{}
@@ -165,6 +165,19 @@ func RequireArrayEqual(t testing.TB, want, got types.Array) {
 
 	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
 		require.Failf(t, "mismatched arrays, (-want, +got)", "%s", diff)
+	}
+}
+
+func RequireValueEqual(t testing.TB, want, got types.Value, msg string, args ...any) {
+	t.Helper()
+
+	tWant, err := types.MarshalTextIndent(want, "\n", "  ")
+	require.NoError(t, err)
+	tGot, err := types.MarshalTextIndent(got, "\n", "  ")
+	require.NoError(t, err)
+
+	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
+		require.Failf(t, "mismatched values, (-want, +got)", "%s\n%s", diff, fmt.Sprintf(msg, args...))
 	}
 }
 
