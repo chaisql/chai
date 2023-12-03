@@ -1,6 +1,8 @@
 package kv
 
 import (
+	"math"
+
 	"github.com/chaisql/chai/internal/pkg/atomic"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
@@ -29,6 +31,30 @@ type SnapshotSession struct {
 }
 
 var _ Session = (*SnapshotSession)(nil)
+
+func (s *Store) NewSnapshotSession() *SnapshotSession {
+	var sn *snapshot
+
+	// if there is a shared snapshot, use it.
+	s.sharedSnapshot.RLock()
+	sn = s.sharedSnapshot.snapshot
+
+	// if there is no shared snapshot, create one.
+	if sn == nil {
+		sn = &snapshot{
+			snapshot: s.db.NewSnapshot(),
+			refCount: atomic.NewCounter(0, math.MaxInt64, false),
+		}
+	}
+	sn.Incr()
+
+	s.sharedSnapshot.RUnlock()
+
+	return &SnapshotSession{
+		Store:    s,
+		Snapshot: sn,
+	}
+}
 
 func (s *SnapshotSession) Commit() error {
 	return errors.New("cannot commit in read-only mode")

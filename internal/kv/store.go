@@ -50,30 +50,6 @@ func NewStore(db *pebble.DB, opts Options) *Store {
 	}
 }
 
-func (s *Store) NewSnapshotSession() *SnapshotSession {
-	var sn *snapshot
-
-	// if there is a shared snapshot, use it.
-	s.sharedSnapshot.RLock()
-	sn = s.sharedSnapshot.snapshot
-
-	// if there is no shared snapshot, create one.
-	if sn == nil {
-		sn = &snapshot{
-			snapshot: s.db.NewSnapshot(),
-			refCount: atomic.NewCounter(0, math.MaxInt64, false),
-		}
-	}
-	sn.Incr()
-
-	s.sharedSnapshot.RUnlock()
-
-	return &SnapshotSession{
-		Store:    s,
-		Snapshot: sn,
-	}
-}
-
 func (s *Store) Rollback() error {
 	return s.rollbackSegment.Rollback()
 }

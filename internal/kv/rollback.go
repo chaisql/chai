@@ -41,10 +41,12 @@ func NewRollbackSegment(db *pebble.DB, namespace int64) *RollbackSegment {
 }
 
 func (s *RollbackSegment) EnqueueOp(k []byte, kvOp uint8) {
-	s.ops = append(s.ops, operation{
-		key: k,
+	op := operation{
+		key: make([]byte, len(k)),
 		op:  kvOp,
-	})
+	}
+	copy(op.key, k)
+	s.ops = append(s.ops, op)
 }
 
 func (s *RollbackSegment) Apply(b *pebble.Batch) error {
@@ -106,8 +108,8 @@ func (s *RollbackSegment) Rollback() error {
 	}
 
 	// read the rollback segment and rollback the changes
-	b := s.db.NewIndexedBatch()
-	it, err := b.NewIter(&pebble.IterOptions{
+	b := s.db.NewBatch()
+	it, err := s.db.NewIter(&pebble.IterOptions{
 		LowerBound: s.nsStart,
 		UpperBound: s.nsEnd,
 	})

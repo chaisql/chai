@@ -155,6 +155,12 @@ func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 		return nil, err
 	}
 
+	// clean up the transient namespaces
+	err = db.cleanupTransientNamespaces()
+	if err != nil {
+		return nil, err
+	}
+
 	tx, err := db.Begin(true)
 	if err != nil {
 		return nil, err
@@ -174,11 +180,6 @@ func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	err = db.cleanupTransientNamespaces(tx)
-	if err != nil {
-		return nil, err
 	}
 
 	err = tx.Commit()
@@ -340,9 +341,10 @@ func (db *Database) releaseAttachedTx() {
 }
 
 // ensures the transient namespaces are all empty before starting the database.
-func (db *Database) cleanupTransientNamespaces(tx *Transaction) error {
-	return tx.Session.DeleteRange(
+func (db *Database) cleanupTransientNamespaces() error {
+	return db.DB.DeleteRange(
 		encoding.EncodeUint(nil, uint64(MinTransientNamespace)),
 		encoding.EncodeUint(nil, uint64(MaxTransientNamespace)),
+		pebble.NoSync,
 	)
 }

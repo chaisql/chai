@@ -395,7 +395,11 @@ func abbreviatedValue(key []byte) uint64 {
 	return 0
 }
 
-func Separator(dst, a, b []byte) (foo []byte) {
+func Separator(dst, a, b []byte) []byte {
+	if len(b) == 0 {
+		return append(dst, a...)
+	}
+
 	var n, cmp int
 	var idx int
 	var aa []byte = a
