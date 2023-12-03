@@ -26,6 +26,8 @@ type TableInfo struct {
 
 	FieldConstraints FieldConstraints
 	TableConstraints TableConstraints
+
+	PrimaryKey *PrimaryKey
 }
 
 func (ti *TableInfo) AddFieldConstraint(newFc *FieldConstraint) error {
@@ -58,10 +60,8 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	switch {
 	case newTc.PrimaryKey:
 		// ensure there is only one primary key
-		for _, tc := range ti.TableConstraints {
-			if tc.PrimaryKey {
-				return fmt.Errorf("multiple primary keys for table %q are not allowed", ti.TableName)
-			}
+		if ti.PrimaryKey != nil {
+			return fmt.Errorf("multiple primary keys for table %q are not allowed", ti.TableName)
 		}
 
 		// add NOT NULL constraint to paths
@@ -115,10 +115,12 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	}
 
 	ti.TableConstraints = append(ti.TableConstraints, newTc)
+
+	ti.BuildPrimaryKey()
 	return nil
 }
 
-func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
+func (ti *TableInfo) BuildPrimaryKey() {
 	var pk PrimaryKey
 
 	for _, tc := range ti.TableConstraints {
@@ -138,19 +140,16 @@ func (ti *TableInfo) GetPrimaryKey() *PrimaryKey {
 			}
 		}
 
-		return &pk
+		ti.PrimaryKey = &pk
 	}
-
-	return nil
 }
 
 func (ti *TableInfo) PrimaryKeySortOrder() tree.SortOrder {
-	pk := ti.GetPrimaryKey()
-	if pk == nil {
+	if ti.PrimaryKey == nil {
 		return 0
 	}
 
-	return pk.SortOrder
+	return ti.PrimaryKey.SortOrder
 }
 
 func (ti *TableInfo) GetFieldConstraintForPath(p object.Path) *FieldConstraint {
@@ -159,10 +158,10 @@ func (ti *TableInfo) GetFieldConstraintForPath(p object.Path) *FieldConstraint {
 
 func (ti *TableInfo) EncodeKey(key *tree.Key) ([]byte, error) {
 	var order tree.SortOrder
-	pk := ti.GetPrimaryKey()
-	if pk != nil {
-		order = pk.SortOrder
+	if ti.PrimaryKey != nil {
+		order = ti.PrimaryKey.SortOrder
 	}
+
 	return key.Encode(ti.StoreNamespace, order)
 }
 

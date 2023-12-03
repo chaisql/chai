@@ -199,6 +199,8 @@ func runSaveCmd(ctx context.Context, db *chai.DB, dbPath string) error {
 	return otherDB.Exec(dbDump.String())
 }
 
+const csvBatchSize = 1000
+
 func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	if strings.ToLower(fileType) != "csv" {
 		return errors.New("TYPE should be csv")
@@ -228,24 +230,71 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 		return err
 	}
 
-	stmt, err := tx.Prepare(fmt.Sprintf("INSERT INTO %s VALUES ?", table))
-	if err != nil {
-		return err
+	baseQ := fmt.Sprintf("INSERT INTO %s VALUES ", table)
+
+	buf := make([][]string, csvBatchSize)
+	fbs := make([]*object.FieldBuffer, csvBatchSize)
+	for i := range fbs {
+		fbs[i] = object.NewFieldBuffer()
+	}
+	args := make([]any, csvBatchSize)
+	for i := range args {
+		args[i] = fbs[i]
 	}
 
-	for {
-		columns, err := r.Read()
+	var sb strings.Builder
+	var stop bool
+	var stmt *chai.Statement
+
+	for !stop {
+		sb.Reset()
+		n, err := csvReadN(r, csvBatchSize, buf)
 		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
+			stop = true
+		} else if err != nil {
 			return err
 		}
-		err = stmt.Exec(object.NewFromCSV(headers, columns))
+
+		if n == 0 {
+			break
+		}
+
+		for i := 0; i < n; i++ {
+			fbs[i].Reset()
+			fbs[i].ScanCSV(headers, buf[i])
+		}
+
+		if stmt == nil || n < csvBatchSize {
+			sb.WriteString(baseQ)
+			for i := 0; i < n; i++ {
+				if i > 0 {
+					sb.WriteString(",")
+				}
+				sb.WriteString("?")
+			}
+
+			stmt, err = tx.Prepare(sb.String())
+			if err != nil {
+				return err
+			}
+		}
+
+		err = stmt.Exec(args[:n]...)
 		if err != nil {
 			return err
 		}
 	}
 
 	return tx.Commit()
+}
+
+func csvReadN(r *csv.Reader, n int, dst [][]string) (int, error) {
+	for i := 0; i < n; i++ {
+		record, err := r.Read()
+		if err != nil {
+			return i, err
+		}
+		dst[i] = record
+	}
+	return n, nil
 }

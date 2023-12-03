@@ -11,32 +11,37 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-var sequenceTableInfo = &TableInfo{
-	TableName:      SequenceTableName,
-	StoreNamespace: SequenceTableNamespace,
-	FieldConstraints: MustNewFieldConstraints(
-		&FieldConstraint{
-			Position:  0,
-			Field:     "name",
-			Type:      types.TextValue,
-			IsNotNull: true,
-		},
-		&FieldConstraint{
-			Position: 1,
-			Field:    "seq",
-			Type:     types.IntegerValue,
-		},
-	),
-	TableConstraints: []*TableConstraint{
-		{
-			Name: SequenceTableName + "_pk",
-			Paths: []object.Path{
-				object.NewPath("name"),
+var sequenceTableInfo = func() *TableInfo {
+	info := &TableInfo{
+		TableName:      SequenceTableName,
+		StoreNamespace: SequenceTableNamespace,
+		FieldConstraints: MustNewFieldConstraints(
+			&FieldConstraint{
+				Position:  0,
+				Field:     "name",
+				Type:      types.TextValue,
+				IsNotNull: true,
 			},
-			PrimaryKey: true,
+			&FieldConstraint{
+				Position: 1,
+				Field:    "seq",
+				Type:     types.IntegerValue,
+			},
+		),
+		TableConstraints: []*TableConstraint{
+			{
+				Name: SequenceTableName + "_pk",
+				Paths: []object.Path{
+					object.NewPath("name"),
+				},
+				PrimaryKey: true,
+			},
 		},
-	},
-}
+	}
+	info.BuildPrimaryKey()
+
+	return info
+}()
 
 // A Sequence manages a sequence of numbers.
 // It is not thread safe.

@@ -41,21 +41,21 @@ func (stmt AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
 	return res, err
 }
 
-type AlterTableAddFieldStmt struct {
+type AlterTableAddColumnStmt struct {
 	TableName        string
 	FieldConstraint  *database.FieldConstraint
 	TableConstraints database.TableConstraints
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *AlterTableAddFieldStmt) IsReadOnly() bool {
+func (stmt *AlterTableAddColumnStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.
 // It implements the Statement interface.
 // The statement rebuilds the table.
-func (stmt *AlterTableAddFieldStmt) Run(ctx *Context) (Result, error) {
+func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	var err error
 
 	// get the table before adding the field constraint

@@ -345,13 +345,7 @@ func (s sliceArray) MarshalJSON() ([]byte, error) {
 // The length of headers and columns must be the same.
 func NewFromCSV(headers, columns []string) types.Object {
 	fb := NewFieldBuffer()
-	for i, h := range headers {
-		if i >= len(columns) {
-			break
-		}
-
-		fb.Add(h, types.NewTextValue(columns[i]))
-	}
+	fb.ScanCSV(headers, columns)
 
 	return fb
 }

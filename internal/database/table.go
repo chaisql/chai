@@ -58,7 +58,7 @@ func (t *Table) Insert(o types.Object) (*tree.Key, Row, error) {
 		if errors.Is(err, kv.ErrKeyAlreadyExists) {
 			return nil, nil, &ConstraintViolationError{
 				Constraint: "PRIMARY KEY",
-				Paths:      t.Info.GetPrimaryKey().Paths,
+				Paths:      t.Info.PrimaryKey.Paths,
 				Key:        key,
 			}
 		}
@@ -135,7 +135,7 @@ func (t *Table) Replace(key *tree.Key, o types.Object) (Row, error) {
 func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, r Row) error) error {
 	var paths []object.Path
 
-	pk := t.Info.GetPrimaryKey()
+	pk := t.Info.PrimaryKey
 	if pk != nil {
 		paths = pk.Paths
 	}
@@ -190,7 +190,7 @@ func (t *Table) GetRow(key *tree.Key) (Row, error) {
 // key is generated, called the rowid.
 // It returns a boolean indicating whether the key is a rowid or not.
 func (t *Table) generateKey(info *TableInfo, o types.Object) (*tree.Key, bool, error) {
-	if pk := t.Info.GetPrimaryKey(); pk != nil {
+	if pk := t.Info.PrimaryKey; pk != nil {
 		vs := make([]types.Value, 0, len(pk.Paths))
 		for _, p := range pk.Paths {
 			v, err := p.GetValueFromObject(o)

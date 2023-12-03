@@ -357,3 +357,22 @@ func BenchmarkSelectPk(b *testing.B) {
 		})
 	}
 }
+
+func BenchmarkInsert(b *testing.B) {
+	db, err := chai.Open(b.TempDir())
+	assert.NoError(b, err)
+	defer db.Close()
+
+	err = db.Exec("CREATE TABLE foo(a INT)")
+	assert.NoError(b, err)
+
+	stmt, err := db.Prepare("INSERT INTO foo(a) VALUES (?)")
+	assert.NoError(b, err)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < 100; j++ {
+			stmt.Exec(j)
+		}
+	}
+}

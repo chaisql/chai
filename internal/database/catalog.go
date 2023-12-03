@@ -793,69 +793,72 @@ type CatalogStore struct {
 }
 
 func newCatalogStore() *CatalogStore {
-	return &CatalogStore{
-		info: &TableInfo{
-			TableName:      CatalogTableName,
-			StoreNamespace: CatalogTableNamespace,
-			TableConstraints: []*TableConstraint{
-				{
-					Name:       CatalogTableName + "_pk",
-					PrimaryKey: true,
-					Paths: []object.Path{
-						object.NewPath("name"),
-					},
+	info := &TableInfo{
+		TableName:      CatalogTableName,
+		StoreNamespace: CatalogTableNamespace,
+		TableConstraints: []*TableConstraint{
+			{
+				Name:       CatalogTableName + "_pk",
+				PrimaryKey: true,
+				Paths: []object.Path{
+					object.NewPath("name"),
 				},
 			},
-			FieldConstraints: MustNewFieldConstraints(
-				&FieldConstraint{
-					Position:  0,
-					Field:     "name",
-					Type:      types.TextValue,
-					IsNotNull: true,
-				},
-				&FieldConstraint{
-					Position:  1,
-					Field:     "type",
-					Type:      types.TextValue,
-					IsNotNull: true,
-				},
-				&FieldConstraint{
-					Position: 2,
-					Field:    "namespace",
-					Type:     types.IntegerValue,
-				},
-				&FieldConstraint{
-					Position: 3,
-					Field:    "sql",
-					Type:     types.TextValue,
-				},
-				&FieldConstraint{
-					Position: 4,
-					Field:    "rowid_sequence_name",
-					Type:     types.TextValue,
-				},
-				&FieldConstraint{
-					Position: 5,
-					Field:    "owner",
-					Type:     types.ObjectValue,
-					AnonymousType: &AnonymousType{
-						FieldConstraints: MustNewFieldConstraints(
-							&FieldConstraint{
-								Position:  0,
-								Field:     "table_name",
-								Type:      types.TextValue,
-								IsNotNull: true,
-							},
-							&FieldConstraint{
-								Position: 1,
-								Field:    "paths",
-								Type:     types.ArrayValue,
-							},
-						),
-					},
-				},
-			),
 		},
+		FieldConstraints: MustNewFieldConstraints(
+			&FieldConstraint{
+				Position:  0,
+				Field:     "name",
+				Type:      types.TextValue,
+				IsNotNull: true,
+			},
+			&FieldConstraint{
+				Position:  1,
+				Field:     "type",
+				Type:      types.TextValue,
+				IsNotNull: true,
+			},
+			&FieldConstraint{
+				Position: 2,
+				Field:    "namespace",
+				Type:     types.IntegerValue,
+			},
+			&FieldConstraint{
+				Position: 3,
+				Field:    "sql",
+				Type:     types.TextValue,
+			},
+			&FieldConstraint{
+				Position: 4,
+				Field:    "rowid_sequence_name",
+				Type:     types.TextValue,
+			},
+			&FieldConstraint{
+				Position: 5,
+				Field:    "owner",
+				Type:     types.ObjectValue,
+				AnonymousType: &AnonymousType{
+					FieldConstraints: MustNewFieldConstraints(
+						&FieldConstraint{
+							Position:  0,
+							Field:     "table_name",
+							Type:      types.TextValue,
+							IsNotNull: true,
+						},
+						&FieldConstraint{
+							Position: 1,
+							Field:    "paths",
+							Type:     types.ArrayValue,
+						},
+					),
+				},
+			},
+		),
+	}
+	info.BuildPrimaryKey()
+
+	return &CatalogStore{
+		info: info,
 	}
 }
 

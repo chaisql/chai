@@ -51,7 +51,7 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	if err != nil {
 		return nil, err
 	}
-	pk := ti.GetPrimaryKey()
+	pk := ti.PrimaryKey
 
 	s := stream.New(table.Scan(stmt.TableName))
 

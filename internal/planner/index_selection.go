@@ -156,7 +156,7 @@ func (i *indexSelector) selectIndex() error {
 	if err != nil {
 		return err
 	}
-	pk := tb.GetPrimaryKey()
+	pk := tb.PrimaryKey
 	if pk != nil {
 		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Paths, pk.SortOrder, nodes)
 		if selected != nil {

@@ -322,13 +322,12 @@ func (r *Result) Iterate(fn func(r *Row) error) error {
 	}
 
 	return r.result.Iterate(func(dr database.Row) error {
-		select {
-		case <-r.ctx.Done():
-			return r.ctx.Err()
-		default:
-			row.row = dr
-			return fn(&row)
+		if err := r.ctx.Err(); err != nil {
+			return err
 		}
+
+		row.row = dr
+		return fn(&row)
 	})
 }
 

@@ -47,28 +47,28 @@ func TestParserAlterTableAddField(t *testing.T) {
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo ADD COLUMN bar", &statement.AlterTableAddFieldStmt{
+		{"Basic", "ALTER TABLE foo ADD COLUMN bar", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
 				Type:  types.AnyValue,
 			},
 		}, false},
-		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", &statement.AlterTableAddFieldStmt{
+		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
 				Type:  types.IntegerValue,
 			},
 		}, false},
-		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", &statement.AlterTableAddFieldStmt{
+		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field:     "bar",
 				IsNotNull: true,
 			},
 		}, false},
-		{"With primary key", "ALTER TABLE foo ADD COLUMN bar PRIMARY KEY", &statement.AlterTableAddFieldStmt{
+		{"With primary key", "ALTER TABLE foo ADD COLUMN bar PRIMARY KEY", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
@@ -81,7 +81,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 				},
 			},
 		}, false},
-		{"With multiple constraints", "ALTER TABLE foo ADD COLUMN bar integer NOT NULL DEFAULT 0", &statement.AlterTableAddFieldStmt{
+		{"With multiple constraints", "ALTER TABLE foo ADD COLUMN bar integer NOT NULL DEFAULT 0", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field:        "bar",

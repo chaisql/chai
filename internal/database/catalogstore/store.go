@@ -146,6 +146,8 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 		ti.RowidSequenceName = types.As[string](v)
 	}
 
+	ti.BuildPrimaryKey()
+
 	return &ti, nil
 }
 

@@ -149,7 +149,7 @@ func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	pk := info.GetPrimaryKey()
+	pk := info.PrimaryKey
 	if pk != nil {
 		for i, tp := range pk.Types {
 			if !tp.IsAny() {

@@ -3,7 +3,9 @@ package shell
 import (
 	"bytes"
 	"context"
+	"encoding/csv"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/chaisql/chai"
@@ -137,4 +139,34 @@ func TestSaveCommand(t *testing.T) {
 	assert.NoError(t, err)
 	require.Len(t, indexes, 1)
 	require.Equal(t, "idx_a_b", indexes[0])
+}
+
+func BenchmarkImportCSV(b *testing.B) {
+	db, err := chai.Open(b.TempDir())
+	assert.NoError(b, err)
+	defer db.Close()
+
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	w.Write([]string{"a", "b", "c"})
+	for i := 0; i < 10000; i++ {
+		w.Write([]string{"1", "2", "3"})
+	}
+	w.Flush()
+
+	fp := filepath.Join(b.TempDir(), "data.csv")
+	err = os.WriteFile(fp, buf.Bytes(), 0644)
+	assert.NoError(b, err)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		err = runImportCmd(db, "csv", fp, "foo")
+		assert.NoError(b, err)
+
+		b.StopTimer()
+		err = db.Exec("DELETE FROM foo")
+		assert.NoError(b, err)
+		b.StartTimer()
+	}
 }

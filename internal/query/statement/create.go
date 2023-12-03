@@ -27,7 +27,7 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	// if there is no primary key, create a rowid sequence
-	if stmt.Info.GetPrimaryKey() == nil {
+	if stmt.Info.PrimaryKey == nil {
 		seq := database.SequenceInfo{
 			IncrementBy: 1,
 			Min:         1, Max: math.MaxInt64,

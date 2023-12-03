@@ -414,6 +414,16 @@ func (fb *FieldBuffer) Reset() {
 	fb.fields = fb.fields[:0]
 }
 
+func (fb *FieldBuffer) ScanCSV(headers, columns []string) {
+	for i, h := range headers {
+		if i >= len(columns) {
+			break
+		}
+
+		fb.Add(h, types.NewTextValue(columns[i]))
+	}
+}
+
 // MaskFields returns a new object that masks the given fields.
 func MaskFields(d types.Object, fields ...string) types.Object {
 	return &maskObject{d, fields}
