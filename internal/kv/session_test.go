@@ -240,19 +240,18 @@ func TestStoreDelete(t *testing.T) {
 		it, err := st.Iterator(nil)
 		assert.NoError(t, err)
 		defer it.Close()
-		i := 0
 		for it.First(); it.Valid(); it.Next() {
-			require.Equal(t, []byte("foo"), it.Key())
-			i++
+			if bytes.Equal(it.Key(), []byte("bar")) {
+				t.Fatal("bar should not be present")
+			}
 		}
-		require.Equal(t, 1, i)
 	})
 }
 
 // TestQueries test simple queries against the kv.
 func TestQueries(t *testing.T) {
 	t.Run("SELECT", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -287,7 +286,7 @@ func TestQueries(t *testing.T) {
 	})
 
 	t.Run("INSERT", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -300,7 +299,7 @@ func TestQueries(t *testing.T) {
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -320,7 +319,7 @@ func TestQueries(t *testing.T) {
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -352,7 +351,7 @@ func TestQueries(t *testing.T) {
 // TestQueriesSameTransaction test simple queries in the same transaction.
 func TestQueriesSameTransaction(t *testing.T) {
 	t.Run("SELECT", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -374,7 +373,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 	})
 
 	t.Run("INSERT", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -391,7 +390,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
@@ -415,7 +414,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
-		dir := testutil.TempDir(t)
+		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)

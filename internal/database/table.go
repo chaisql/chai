@@ -118,6 +118,15 @@ func (t *Table) Replace(key *tree.Key, o types.Object) (Row, error) {
 		return nil, errors.Wrapf(errs.NewNotFoundError(key.String()), "can't replace key %q", key)
 	}
 
+	return t.Put(key, o)
+}
+
+// Put a row by key. If the key doesn't exist, it is created.
+func (t *Table) Put(key *tree.Key, o types.Object) (Row, error) {
+	if t.Info.ReadOnly {
+		return nil, errors.New("cannot write to read-only table")
+	}
+
 	o, enc, err := t.encodeObject(o)
 	if err != nil {
 		return nil, err

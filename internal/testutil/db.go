@@ -2,8 +2,6 @@ package testutil
 
 import (
 	"context"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/chaisql/chai/internal/database"
@@ -19,22 +17,10 @@ import (
 	"github.com/cockroachdb/pebble/vfs"
 )
 
-func TempDir(t testing.TB) string {
-	dir, err := os.MkdirTemp("", "chai")
-	assert.NoError(t, err)
-
-	t.Cleanup(func() {
-		os.RemoveAll(dir)
-	})
-	return dir
-}
-
 func NewPebble(t testing.TB) *pebble.DB {
 	t.Helper()
 
-	dir := TempDir(t)
-
-	db, err := pebble.Open(filepath.Join(dir, "pebble"), nil)
+	db, err := pebble.Open(t.TempDir(), nil)
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {

@@ -18,6 +18,7 @@ type BatchSession struct {
 	closed          bool
 	rollbackSegment *RollbackSegment
 	maxBatchSize    int
+	keys            map[string]struct{}
 }
 
 func (s *Store) NewBatchSession() *BatchSession {
@@ -25,7 +26,7 @@ func (s *Store) NewBatchSession() *BatchSession {
 	// at this point-in-time.
 	s.LockSharedSnapshot()
 
-	b := s.db.NewIndexedBatch()
+	b := s.db.NewBatch()
 
 	return &BatchSession{
 		Store:           s,
@@ -33,6 +34,7 @@ func (s *Store) NewBatchSession() *BatchSession {
 		Batch:           b,
 		rollbackSegment: s.rollbackSegment,
 		maxBatchSize:    s.opts.MaxBatchSize,
+		keys:            make(map[string]struct{}),
 	}
 }
 
@@ -69,20 +71,29 @@ func (s *BatchSession) Close() error {
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *BatchSession) Get(k []byte) ([]byte, error) {
-	return get(s.Batch, k)
+	if _, ok := s.keys[string(k)]; ok {
+		s.applyBatch()
+	}
+
+	return get(s.DB, k)
 }
 
 // Exists returns whether a key exists and is visible by the current session.
 func (s *BatchSession) Exists(k []byte) (bool, error) {
-	return exists(s.Batch, k)
+	if _, ok := s.keys[string(k)]; ok {
+		return true, nil
+	}
+
+	s.applyBatch()
+
+	return exists(s.DB, k)
 }
 
-func (s *BatchSession) ensureBatchSize() error {
-	if s.Batch.Len() < s.maxBatchSize {
+func (s *BatchSession) applyBatch() error {
+	if s.Batch.Empty() {
 		return nil
 	}
 
-	// The batch is too large. Insert the rollback segments and commit the batch.
 	err := s.rollbackSegment.Apply(s.Batch)
 	if err != nil {
 		return err
@@ -97,6 +108,18 @@ func (s *BatchSession) ensureBatchSize() error {
 
 	// reset batch
 	s.Batch.Reset()
+	clear(s.keys)
+
+	return nil
+}
+
+func (s *BatchSession) ensureBatchSize() error {
+	if s.Batch.Len() < s.maxBatchSize {
+		return nil
+	}
+
+	// The batch is too large. Insert the rollback segments and commit the batch.
+	s.applyBatch()
 
 	return nil
 }
@@ -119,6 +142,8 @@ func (s *BatchSession) Insert(k, v []byte) error {
 		return ErrKeyAlreadyExists
 	}
 
+	s.keys[string(k)] = struct{}{}
+
 	err = s.Batch.Set(k, v, nil)
 	if err != nil {
 		return err
@@ -137,6 +162,8 @@ func (s *BatchSession) Put(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
+	s.keys[string(k)] = struct{}{}
+
 	err := s.Batch.Set(k, v, nil)
 	if err != nil {
 		return err
@@ -152,13 +179,15 @@ func (s *BatchSession) Delete(k []byte) error {
 		return err
 	}
 
+	delete(s.keys, string(k))
+
 	return s.ensureBatchSize()
 }
 
 // DeleteRange deletes all keys in the given range.
 // This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	it, err := s.Batch.NewIter(&pebble.IterOptions{
+	it, err := s.Iterator(&pebble.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	})
@@ -178,5 +207,7 @@ func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
 }
 
 func (s *BatchSession) Iterator(opts *pebble.IterOptions) (*pebble.Iterator, error) {
-	return s.Batch.NewIter(opts)
+	s.applyBatch()
+
+	return s.DB.NewIter(opts)
 }

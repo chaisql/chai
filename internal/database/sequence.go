@@ -179,7 +179,7 @@ func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
 
 	k := s.key()
 
-	_, err = tb.Replace(k,
+	_, err = tb.Put(k,
 		object.NewFieldBuffer().
 			Add("name", types.NewTextValue(name)).
 			Add("seq", types.NewIntegerValue(v)),
