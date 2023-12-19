@@ -2,7 +2,6 @@ package functions
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
@@ -761,7 +760,12 @@ func (c *Coalesce) Params() []expr.Expr {
 type Now struct{}
 
 func (n *Now) Eval(env *environment.Environment) (types.Value, error) {
-	return types.NewTimestampValue(time.Now()), nil
+	tx := env.GetTx()
+	if tx == nil {
+		return nil, errors.New("misuse of NOW()")
+	}
+
+	return types.NewTimestampValue(tx.TxStart.UTC()), nil
 }
 
 func (n *Now) IsEqual(other expr.Expr) bool {

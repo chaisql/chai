@@ -6,7 +6,9 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
@@ -162,6 +164,13 @@ func ExprRunner(t *testing.T, testfile string) {
 	ts, err := genexprtests.Parse(f)
 	assert.NoError(t, err)
 
+	tx := database.Transaction{
+		TxStart: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	env := environment.New(nil)
+	env.Tx = &tx
+
 	for _, test := range ts.Tests {
 		t.Run(test.Name, func(t *testing.T) {
 			t.Helper()
@@ -175,7 +184,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// eval it to get a proper Value
-						want, err := e.Eval(environment.New(nil))
+						want, err := e.Eval(env)
 						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// parse the given expr
@@ -183,7 +192,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// eval it to get a proper Value
-						got, err := e.Eval(environment.New(nil))
+						got, err := e.Eval(env)
 						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// finally, compare those two
@@ -198,7 +207,7 @@ func ExprRunner(t *testing.T, testfile string) {
 							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
 						} else {
 							// eval it, it should return an error
-							_, err = e.Eval(environment.New(nil))
+							_, err = e.Eval(env)
 							require.NotNilf(t, err, "expected expr to return an error at %s:%\n`%s`, got nil", testfile, stmt.ExprLine, stmt.Expr)
 							require.Regexpf(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error(), "expected error message to match at %s:%d", testfile, stmt.ResLine)
 						}

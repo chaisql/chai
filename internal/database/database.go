@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/kv"
@@ -303,6 +304,7 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 		Writable: !opts.ReadOnly,
 		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
 		Catalog:  db.Catalog(),
+		TxStart:  time.Now(),
 	}
 
 	if !opts.ReadOnly {

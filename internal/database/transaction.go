@@ -2,6 +2,7 @@ package database
 
 import (
 	"sync"
+	"time"
 
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/cockroachdb/errors"
@@ -13,6 +14,10 @@ import (
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
 	db *Database
+
+	// Timestamp at which the transaction was created.
+	// The timestamp must use the local timezone.
+	TxStart time.Time
 
 	Session   kv.Session
 	Store     *kv.Store
