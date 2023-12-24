@@ -34,10 +34,7 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 	for i := uint32(0); i < n; i++ {
 		s.buf = s.buf[:len(s.nsStart)]
 
-		kind, key, _, ok, err := r.Next()
-		if err != nil {
-			return err
-		}
+		kind, key, _, ok := r.Next()
 		if !ok {
 			break
 		}
@@ -49,6 +46,7 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 
 		var v []byte
 		var closer io.Closer
+		var err error
 
 		switch kind {
 		case pebble.InternalKeyKindDelete, pebble.InternalKeyKindSet:
@@ -96,13 +94,10 @@ func (s *RollbackSegment) Rollback() error {
 
 	// read the rollback segment and rollback the changes
 	b := s.db.NewBatch()
-	it, err := s.db.NewIter(&pebble.IterOptions{
+	it := s.db.NewIter(&pebble.IterOptions{
 		LowerBound: s.nsStart,
 		UpperBound: s.nsEnd,
 	})
-	if err != nil {
-		return err
-	}
 	defer it.Close()
 
 	for it.First(); it.Valid(); it.Next() {
@@ -127,7 +122,7 @@ func (s *RollbackSegment) Rollback() error {
 		}
 	}
 
-	err = b.DeleteRange(s.nsStart, s.nsEnd, nil)
+	err := b.DeleteRange(s.nsStart, s.nsEnd, nil)
 	if err != nil {
 		return err
 	}

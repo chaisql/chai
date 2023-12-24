@@ -13,10 +13,7 @@ type DumpPebbleOptions struct {
 }
 
 func DumpPebble(c context.Context, db *pebble.DB, opt DumpPebbleOptions) error {
-	iter, err := db.NewIter(nil)
-	if err != nil {
-		return err
-	}
+	iter := db.NewIter(nil)
 	defer iter.Close()
 
 	var curns int64

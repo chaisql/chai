@@ -187,13 +187,10 @@ func (s *BatchSession) Delete(k []byte) error {
 // DeleteRange deletes all keys in the given range.
 // This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	it, err := s.Iterator(&pebble.IterOptions{
+	it := s.Iterator(&pebble.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	})
-	if err != nil {
-		return err
-	}
 	defer it.Close()
 
 	for it.First(); it.Valid(); it.Next() {
@@ -206,7 +203,7 @@ func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
 	return nil
 }
 
-func (s *BatchSession) Iterator(opts *pebble.IterOptions) (*pebble.Iterator, error) {
+func (s *BatchSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
 	s.applyBatch()
 
 	return s.DB.NewIter(opts)

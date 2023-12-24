@@ -77,7 +77,7 @@ type TxOptions struct {
 
 func Open(path string, opts *Options) (*Database, error) {
 	popts := &pebble.Options{
-		FormatMajorVersion: pebble.FormatVirtualSSTables,
+		FormatMajorVersion: pebble.FormatPrePebblev1MarkedCompacted,
 		Comparer:           DefaultComparer,
 		Logger:             pebbleutil.NoopLoggerAndTracer{},
 	}

@@ -237,8 +237,7 @@ func TestStoreDelete(t *testing.T) {
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
-		it, err := st.Iterator(nil)
-		assert.NoError(t, err)
+		it := st.Iterator(nil)
 		defer it.Close()
 		for it.First(); it.Valid(); it.Next() {
 			if bytes.Equal(it.Key(), []byte("bar")) {

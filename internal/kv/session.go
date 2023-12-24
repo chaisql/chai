@@ -28,7 +28,7 @@ type Session interface {
 	// Delete a record by key. If not found, returns ErrKeyNotFound.
 	Delete(k []byte) error
 	DeleteRange(start []byte, end []byte) error
-	Iterator(opts *pebble.IterOptions) (*pebble.Iterator, error)
+	Iterator(opts *pebble.IterOptions) *pebble.Iterator
 }
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
