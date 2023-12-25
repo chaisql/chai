@@ -2,10 +2,17 @@ package kv
 
 import (
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/pkg/atomic"
+	"github.com/chaisql/chai/internal/pkg/pebbleutil"
+	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/vfs"
 )
 
 const (
@@ -27,12 +34,86 @@ type Store struct {
 
 		snapshot *snapshot
 	}
+
+	minTransientNamespace uint64
+	maxTransientNamespace uint64
 }
 
 type Options struct {
 	RollbackSegmentNamespace int64
 	MaxBatchSize             int
 	MaxTransientBatchSize    int
+	MinTransientNamespace    uint64
+	MaxTransientNamespace    uint64
+}
+
+func NewEngineWith(path string, opts Options, popts *pebble.Options) (*Store, error) {
+	if popts == nil {
+		popts = &pebble.Options{}
+	}
+
+	popts.FormatMajorVersion = pebble.FormatPrePebblev1MarkedCompacted
+	popts.Comparer = DefaultComparer
+	if popts.Logger == nil {
+		popts.Logger = pebbleutil.NoopLoggerAndTracer{}
+	}
+
+	popts = popts.EnsureDefaults()
+
+	db, err := pebble.Open(path, popts)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewStore(db, opts), nil
+}
+
+func NewEngine(path string, opts Options) (*Store, error) {
+	var popts pebble.Options
+	var pbpath string
+
+	if path == ":memory:" {
+		popts.FS = vfs.NewMem()
+	} else {
+		path = strings.TrimSpace(path)
+		path = filepath.Clean(path)
+		if path == "" {
+			return nil, errors.New("path cannot be empty")
+		}
+
+		fi, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				return nil, err
+			}
+
+			err = os.MkdirAll(path, 0700)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			if !fi.IsDir() {
+				return nil, errors.New("path must be a directory")
+			}
+		}
+
+		pbpath = filepath.Join(path, "pebble")
+	}
+
+	return NewEngineWith(pbpath, opts, &popts)
+}
+
+// DefaultComparer is the default implementation of the Comparer interface for chai.
+var DefaultComparer = &pebble.Comparer{
+	Compare:        encoding.Compare,
+	Equal:          encoding.Equal,
+	AbbreviatedKey: encoding.AbbreviatedKey,
+	FormatKey:      pebble.DefaultComparer.FormatKey,
+	Separator:      encoding.Separator,
+	Successor:      encoding.Successor,
+	// This name is part of the C++ Level-DB implementation's default file
+	// format, and should not be changed.
+	Name: "leveldb.BytewiseComparator",
 }
 
 func NewStore(db *pebble.DB, opts Options) *Store {
@@ -42,12 +123,22 @@ func NewStore(db *pebble.DB, opts Options) *Store {
 	if opts.MaxTransientBatchSize <= 0 {
 		opts.MaxTransientBatchSize = defaultMaxTransientBatchSize
 	}
+	if opts.MinTransientNamespace == 0 {
+		panic("min transient namespace cannot be 0")
+	}
+	if opts.MaxTransientNamespace == 0 {
+		panic("max transient namespace cannot be 0")
+	}
 
 	return &Store{
 		db:              db,
 		opts:            opts,
 		rollbackSegment: NewRollbackSegment(db, opts.RollbackSegmentNamespace),
 	}
+}
+
+func (s *Store) Close() error {
+	return s.db.Close()
 }
 
 func (s *Store) Rollback() error {
@@ -73,4 +164,16 @@ func (s *Store) UnlockSharedSnapshot() {
 	s.sharedSnapshot.snapshot.Done()
 	s.sharedSnapshot.snapshot = nil
 	s.sharedSnapshot.Unlock()
+}
+
+func (s *Store) DB() *pebble.DB {
+	return s.db
+}
+
+func (s *Store) CleanupTransientNamespaces() error {
+	return s.db.DeleteRange(
+		encoding.EncodeUint(nil, uint64(s.minTransientNamespace)),
+		encoding.EncodeUint(nil, uint64(s.maxTransientNamespace)),
+		pebble.NoSync,
+	)
 }

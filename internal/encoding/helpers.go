@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os"
 )
 
 func write1(dst []byte, code byte, n uint8) []byte {
@@ -184,12 +183,6 @@ func compareNextValue(a, b []byte) (cmp int, n int) {
 }
 
 func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
-	defer func() {
-		if e := recover(); e != nil {
-			fmt.Fprintf(os.Stderr, "compare field %v %v\n", a, b)
-			panic(e)
-		}
-	}()
 	// compare non empty values
 	switch t {
 	case Int64Value, Uint64Value, Float64Value:

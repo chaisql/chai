@@ -72,7 +72,10 @@ func (s *BatchSession) Close() error {
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *BatchSession) Get(k []byte) ([]byte, error) {
 	if _, ok := s.keys[string(k)]; ok {
-		s.applyBatch()
+		err := s.applyBatch()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return get(s.DB, k)
@@ -187,10 +190,13 @@ func (s *BatchSession) Delete(k []byte) error {
 // DeleteRange deletes all keys in the given range.
 // This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	it := s.Iterator(&pebble.IterOptions{
+	it, err := s.Iterator(&IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	})
+	if err != nil {
+		return err
+	}
 	defer it.Close()
 
 	for it.First(); it.Valid(); it.Next() {
@@ -203,8 +209,23 @@ func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
 	return nil
 }
 
-func (s *BatchSession) Iterator(opts *pebble.IterOptions) *pebble.Iterator {
-	s.applyBatch()
+func (s *BatchSession) Iterator(opts *IterOptions) (Iterator, error) {
+	err := s.applyBatch()
+	if err != nil {
+		return nil, err
+	}
 
-	return s.DB.NewIter(opts)
+	var popts *pebble.IterOptions
+	if opts != nil {
+		popts = &pebble.IterOptions{
+			LowerBound: opts.LowerBound,
+			UpperBound: opts.UpperBound,
+		}
+	}
+
+	it := s.DB.NewIter(popts)
+
+	return &iterator{
+		Iterator: it,
+	}, nil
 }

@@ -6,12 +6,10 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/cockroachdb/pebble"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,10 +20,8 @@ func getValue(t *testing.T, st kv.Session, key []byte) []byte {
 }
 
 func TestReadOnly(t *testing.T) {
-	pdb := testutil.NewPebble(t)
-
 	t.Run("Read-Only write attempts", func(t *testing.T) {
-		sro := kv.NewStore(pdb, kv.Options{}).NewSnapshotSession()
+		sro := testutil.NewEngine(t).NewSnapshotSession()
 		defer sro.Close()
 
 		tests := []struct {
@@ -49,12 +45,9 @@ func TestReadOnly(t *testing.T) {
 }
 
 func kvBuilder(t testing.TB) kv.Session {
-	pdb := testutil.NewPebble(t)
+	ng := testutil.NewEngine(t)
+	s := ng.NewBatchSession()
 
-	s := kv.NewStore(pdb, kv.Options{
-		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
-		MaxBatchSize:             1 << 7,
-	}).NewBatchSession()
 	t.Cleanup(func() {
 		s.Close()
 	})
@@ -63,13 +56,9 @@ func kvBuilder(t testing.TB) kv.Session {
 }
 
 func TestBatchCommit(t *testing.T) {
-	pdb := testutil.NewPebble(t)
+	ng := testutil.NewEngine(t)
 
-	store := kv.NewStore(pdb, kv.Options{
-		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
-		MaxBatchSize:             1 << 7,
-	})
-	batch := store.NewBatchSession()
+	batch := ng.NewBatchSession()
 	defer batch.Close()
 
 	var k int64
@@ -83,7 +72,7 @@ func TestBatchCommit(t *testing.T) {
 	}
 
 	// snapshots created during the write transaction should not see the changes
-	ss := store.NewSnapshotSession()
+	ss := ng.NewSnapshotSession()
 	_, err := ss.Get(encoding.EncodeInt(encoding.EncodeInt(nil, 10), 9))
 	require.Error(t, err)
 	err = ss.Close()
@@ -94,7 +83,7 @@ func TestBatchCommit(t *testing.T) {
 	require.NoError(t, err)
 
 	// try to read again, should see the changes
-	ss = store.NewSnapshotSession()
+	ss = ng.NewSnapshotSession()
 	for i := int64(9); i >= 0; i-- {
 		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
 		v, err := ss.Get(key)
@@ -107,13 +96,9 @@ func TestBatchCommit(t *testing.T) {
 }
 
 func TestRollback(t *testing.T) {
-	pdb := testutil.NewPebble(t)
+	ng := testutil.NewEngine(t)
 
-	store := kv.NewStore(pdb, kv.Options{
-		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
-		MaxBatchSize:             1 << 7,
-	})
-	s := store.NewBatchSession()
+	s := ng.NewBatchSession()
 	defer s.Close()
 
 	var k int64
@@ -129,37 +114,40 @@ func TestRollback(t *testing.T) {
 	err := s.Close()
 	require.NoError(t, err)
 
-	err = store.Rollback()
+	err = ng.Rollback()
 	require.NoError(t, err)
 
+	snapshot := ng.NewSnapshotSession()
 	for i := int64(9); i >= 0; i-- {
 		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
-		_, _, err = pdb.Get(key)
-		require.Equal(t, pebble.ErrNotFound, err)
+		_, err = snapshot.Get(key)
+		require.ErrorIs(t, err, kv.ErrKeyNotFound)
 	}
 }
 
 func TestStorePut(t *testing.T) {
+	key := encoding.EncodeText(nil, "foo")
+
 	t.Run("Should insert data", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(key, []byte("FOO"))
 		assert.NoError(t, err)
 
-		v := getValue(t, st, []byte("foo"))
+		v := getValue(t, st, key)
 		require.Equal(t, []byte("FOO"), v)
 	})
 
 	t.Run("Should replace existing key", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(key, []byte("FOO"))
 		assert.NoError(t, err)
 
-		err = st.Put([]byte("foo"), []byte("BAR"))
+		err = st.Put(key, []byte("BAR"))
 		assert.NoError(t, err)
 
-		v := getValue(t, st, []byte("foo"))
+		v := getValue(t, st, key)
 		require.Equal(t, []byte("BAR"), v)
 	})
 
@@ -176,20 +164,23 @@ func TestStorePut(t *testing.T) {
 	t.Run("Should fail when value is nil or empty", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		err := st.Put([]byte("foo"), nil)
+		err := st.Put(key, nil)
 		assert.Error(t, err)
 
-		err = st.Put([]byte("foo"), []byte(""))
+		err = st.Put(key, []byte(""))
 		assert.Error(t, err)
 	})
 }
 
 // TestStoreGet verifies Get behaviour.
 func TestStoreGet(t *testing.T) {
+	foo := encoding.EncodeText(nil, "foo")
+	bar := encoding.EncodeText(nil, "bar")
+
 	t.Run("Should fail if not found", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		r, err := st.Get([]byte("id"))
+		r, err := st.Get(foo)
 		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
@@ -197,50 +188,54 @@ func TestStoreGet(t *testing.T) {
 	t.Run("Should return the right key", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(foo, []byte("FOO"))
 		assert.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
+		err = st.Put(bar, []byte("BAR"))
 		assert.NoError(t, err)
 
-		v := getValue(t, st, []byte("foo"))
+		v := getValue(t, st, foo)
 		require.Equal(t, []byte("FOO"), v)
 
-		v = getValue(t, st, []byte("bar"))
+		v = getValue(t, st, bar)
 		require.Equal(t, []byte("BAR"), v)
 	})
 }
 
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T) {
+	foo := encoding.EncodeText(nil, "foo")
+	bar := encoding.EncodeText(nil, "bar")
+
 	t.Run("Should delete the right object", func(t *testing.T) {
 		st := kvBuilder(t)
 
-		err := st.Put([]byte("foo"), []byte("FOO"))
+		err := st.Put(foo, []byte("FOO"))
 		assert.NoError(t, err)
-		err = st.Put([]byte("bar"), []byte("BAR"))
+		err = st.Put(bar, []byte("BAR"))
 		assert.NoError(t, err)
 
-		v := getValue(t, st, []byte("foo"))
+		v := getValue(t, st, foo)
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
-		err = st.Delete([]byte("bar"))
+		err = st.Delete(bar)
 		assert.NoError(t, err)
 
 		// try again, should fail
-		ok, err := st.Exists([]byte("bar"))
+		ok, err := st.Exists(bar)
 		assert.NoError(t, err)
 		require.False(t, ok)
 
 		// make sure it didn't also delete the other one
-		v = getValue(t, st, []byte("foo"))
+		v = getValue(t, st, foo)
 		require.Equal(t, []byte("FOO"), v)
 
 		// the deleted key must not appear on iteration
-		it := st.Iterator(nil)
+		it, err := st.Iterator(nil)
+		assert.NoError(t, err)
 		defer it.Close()
 		for it.First(); it.Valid(); it.Next() {
-			if bytes.Equal(it.Key(), []byte("bar")) {
+			if bytes.Equal(it.Key(), bar) {
 				t.Fatal("bar should not be present")
 			}
 		}

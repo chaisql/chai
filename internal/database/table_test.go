@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query/statement"
@@ -13,8 +14,6 @@ import (
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
 	"github.com/stretchr/testify/require"
 )
 
@@ -126,11 +125,11 @@ func TestTableGetObject(t *testing.T) {
 // TestTableInsert verifies Insert behaviour.
 func TestTableInsert(t *testing.T) {
 	t.Run("Should generate the right rowid on existing databases", func(t *testing.T) {
-		fs := vfs.NewStrictMem()
-		pdb, err := database.OpenPebble("", &pebble.Options{FS: fs})
+		path := t.TempDir()
+		db1, err := database.Open(path, &database.Options{
+			CatalogLoader: catalogstore.LoadCatalog,
+		})
 		assert.NoError(t, err)
-
-		db1 := testutil.NewTestDBWithPebble(t, pdb)
 
 		insertDoc := func(db *database.Database) (rawKey *tree.Key) {
 			t.Helper()
@@ -159,9 +158,10 @@ func TestTableInsert(t *testing.T) {
 		assert.NoError(t, err)
 
 		// create a new database object
-		pdb, err = database.OpenPebble("", &pebble.Options{FS: fs})
+		db2, err := database.Open(path, &database.Options{
+			CatalogLoader: catalogstore.LoadCatalog,
+		})
 		assert.NoError(t, err)
-		db2 := testutil.NewTestDBWithPebble(t, pdb)
 
 		key2 := insertDoc(db2)
 
@@ -174,6 +174,7 @@ func TestTableInsert(t *testing.T) {
 		b := vs[0].V().(int64)
 
 		require.Equal(t, int64(a+1), int64(b))
+		db2.Close()
 	})
 }
 

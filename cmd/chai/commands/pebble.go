@@ -35,7 +35,7 @@ func NewPebbleCommand() *cli.Command {
 		}
 		defer db.Close()
 
-		return dbutil.DumpPebble(c.Context, db.DB.DB, dbutil.DumpPebbleOptions{
+		return dbutil.DumpPebble(c.Context, db.DB.Store.DB(), dbutil.DumpPebbleOptions{
 			KeysOnly: c.Bool("keys-only"),
 		})
 	}

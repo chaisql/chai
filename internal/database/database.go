@@ -2,18 +2,12 @@
 package database
 
 import (
-	"os"
-	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/kv"
-	"github.com/chaisql/chai/internal/pkg/pebbleutil"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
 )
 
 const (
@@ -21,8 +15,6 @@ const (
 )
 
 type Database struct {
-	DB *pebble.DB
-
 	catalogMu sync.RWMutex
 	catalog   *Catalog
 
@@ -76,88 +68,28 @@ type TxOptions struct {
 }
 
 func Open(path string, opts *Options) (*Database, error) {
-	popts := &pebble.Options{
-		FormatMajorVersion: pebble.FormatPrePebblev1MarkedCompacted,
-		Comparer:           DefaultComparer,
-		Logger:             pebbleutil.NoopLoggerAndTracer{},
-	}
-
-	if path == ":memory:" {
-		popts.FS = vfs.NewMem()
-		path = ""
-	} else {
-		fi, err := os.Stat(path)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return nil, err
-			}
-
-			err = os.MkdirAll(path, 0700)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			if !fi.IsDir() {
-				return nil, errors.New("path must be a directory")
-			}
-		}
-	}
-
-	pbpath := filepath.Join(path, "pebble")
-
-	pdb, err := OpenPebble(pbpath, popts)
+	store, err := kv.NewEngine(path, kv.Options{
+		RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
+		MinTransientNamespace:    uint64(MinTransientNamespace),
+		MaxTransientNamespace:    uint64(MaxTransientNamespace),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return New(pdb, opts)
-}
-
-// Open a database with a custom comparer.
-func OpenPebble(path string, popts *pebble.Options) (*pebble.DB, error) {
-	if popts == nil {
-		popts = &pebble.Options{}
-	}
-
-	if popts.Comparer == nil {
-		popts.Comparer = DefaultComparer
-	}
-
-	popts = popts.EnsureDefaults()
-
-	return pebble.Open(path, popts)
-}
-
-// DefaultComparer is the default implementation of the Comparer interface for chai.
-var DefaultComparer = &pebble.Comparer{
-	Compare:        encoding.Compare,
-	Equal:          encoding.Equal,
-	AbbreviatedKey: encoding.AbbreviatedKey,
-	FormatKey:      pebble.DefaultComparer.FormatKey,
-	Separator:      encoding.Separator,
-	Successor:      encoding.Successor,
-	// This name is part of the C++ Level-DB implementation's default file
-	// format, and should not be changed.
-	Name: "leveldb.BytewiseComparator",
-}
-
-func New(pdb *pebble.DB, opts *Options) (*Database, error) {
 	db := Database{
-		DB: pdb,
-		Store: kv.NewStore(pdb, kv.Options{
-			RollbackSegmentNamespace: int64(RollbackSegmentNamespace),
-		}),
+		Store: store,
 	}
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
 	// due to a previous crash.
-	err := db.Store.ResetRollbackSegment()
+	err = db.Store.ResetRollbackSegment()
 	if err != nil {
 		return nil, err
 	}
 
 	// clean up the transient namespaces
-	err = db.cleanupTransientNamespaces()
+	err = db.Store.CleanupTransientNamespaces()
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +167,7 @@ func (db *Database) closeDatabase() error {
 		return err
 	}
 
-	return db.DB.Close()
+	return db.Store.Close()
 }
 
 // GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
@@ -340,13 +272,4 @@ func (db *Database) releaseAttachedTx() {
 	if db.attachedTransaction != nil {
 		db.attachedTransaction = nil
 	}
-}
-
-// ensures the transient namespaces are all empty before starting the database.
-func (db *Database) cleanupTransientNamespaces() error {
-	return db.DB.DeleteRange(
-		encoding.EncodeUint(nil, uint64(MinTransientNamespace)),
-		encoding.EncodeUint(nil, uint64(MaxTransientNamespace)),
-		pebble.NoSync,
-	)
 }

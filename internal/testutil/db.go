@@ -13,44 +13,34 @@ import (
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/vfs"
+	"github.com/stretchr/testify/require"
 )
 
-func NewPebble(t testing.TB) *pebble.DB {
+func NewEngine(t testing.TB) *kv.Store {
 	t.Helper()
 
-	db, err := pebble.Open(t.TempDir(), nil)
-	assert.NoError(t, err)
+	st, err := kv.NewEngine(":memory:", kv.Options{
+		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
+		MaxBatchSize:             1 << 7,
+		MinTransientNamespace:    10_000,
+		MaxTransientNamespace:    11_000,
+	})
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		db.Close()
+		st.Close()
 	})
-	return db
-}
 
-func NewMemPebble(t testing.TB) *pebble.DB {
-	t.Helper()
-
-	pdb, err := database.OpenPebble("", &pebble.Options{FS: vfs.NewStrictMem()})
-	assert.NoError(t, err)
-
-	return pdb
+	return st
 }
 
 func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 	t.Helper()
 
-	pdb := NewMemPebble(t)
-
-	session := kv.NewStore(pdb, kv.Options{
-		RollbackSegmentNamespace: int64(database.RollbackSegmentNamespace),
-		MaxBatchSize:             1 << 7,
-	}).NewBatchSession()
+	session := NewEngine(t).NewBatchSession()
 
 	t.Cleanup(func() {
 		session.Close()
-		pdb.Close()
 	})
 
 	return tree.New(session, namespace, 0)
@@ -59,13 +49,7 @@ func NewTestTree(t testing.TB, namespace tree.Namespace) *tree.Tree {
 func NewTestDB(t testing.TB) *database.Database {
 	t.Helper()
 
-	return NewTestDBWithPebble(t, NewMemPebble(t))
-}
-
-func NewTestDBWithPebble(t testing.TB, pdb *pebble.DB) *database.Database {
-	t.Helper()
-
-	db, err := database.New(pdb, &database.Options{
+	db, err := database.Open(":memory:", &database.Options{
 		CatalogLoader: catalogstore.LoadCatalog,
 	})
 	assert.NoError(t, err)

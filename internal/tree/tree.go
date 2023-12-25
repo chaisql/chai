@@ -9,7 +9,6 @@ import (
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
 )
 
 type Namespace uint64
@@ -184,11 +183,14 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		return err
 	}
 
-	opts := pebble.IterOptions{
+	opts := kv.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	}
-	it := t.Session.Iterator(&opts)
+	it, err := t.Session.Iterator(&opts)
+	if err != nil {
+		return err
+	}
 	defer it.Close()
 
 	if !reverse {
@@ -202,7 +204,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		k.Encoded = it.Key()
 		k.values = nil
 
-		v, err := it.ValueAndErr()
+		v, err := it.Value()
 		if err != nil {
 			return err
 		}

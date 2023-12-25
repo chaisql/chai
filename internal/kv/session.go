@@ -28,7 +28,40 @@ type Session interface {
 	// Delete a record by key. If not found, returns ErrKeyNotFound.
 	Delete(k []byte) error
 	DeleteRange(start []byte, end []byte) error
-	Iterator(opts *pebble.IterOptions) *pebble.Iterator
+	Iterator(opts *IterOptions) (Iterator, error)
+}
+
+type Iterator interface {
+	Close() error
+	First() bool
+	Last() bool
+	Valid() bool
+	Next() bool
+	Prev() bool
+	Error() error
+	Key() []byte
+	Value() ([]byte, error)
+}
+
+type IterOptions struct {
+	// LowerBound specifies the smallest key (inclusive) that the iterator will
+	// return during iteration. If the iterator is seeked or iterated past this
+	// boundary the iterator will return Valid()==false. Setting LowerBound
+	// effectively truncates the key space visible to the iterator.
+	LowerBound []byte
+	// UpperBound specifies the largest key (exclusive) that the iterator will
+	// return during iteration. If the iterator is seeked or iterated past this
+	// boundary the iterator will return Valid()==false. Setting UpperBound
+	// effectively truncates the key space visible to the iterator.
+	UpperBound []byte
+}
+
+type iterator struct {
+	*pebble.Iterator
+}
+
+func (i *iterator) Value() ([]byte, error) {
+	return i.Iterator.ValueAndErr()
 }
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
