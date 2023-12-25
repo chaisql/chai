@@ -1,13 +1,6 @@
-<h1 align="center"> ChaiSQL </h1>
-<p align="center">
-  <a href="https://chai.dev">
-    <img alt="ChaiSQL" title="ChaiSQL" src="https://raw.githubusercontent.com/chaisql/docs/master/assets/icons/logo.svg?sanitize=true" width="100">
-  </a>
-</p>
+# ChaiSQL
 
-<p align="center">
-  ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers. It provides a fresh alternative to traditional SQL databases by offering advanced features tailored for modern applications.
-</p>
+ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers. It provides a fresh alternative to traditional embedded databases by offering advanced features tailored for modern applications.
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
@@ -15,14 +8,24 @@
 
 ## Key Features
 
-- **Modern SQL Experience**: ChaiSQL introduces a modern twist to SQL, offering enhanced features and performance optimizations.
-- **Schema Flexibility**: Support for strict, partial, and schemaless table designs, catering to various data modeling needs.
+- **Modern SQL Experience**: ChaiSQL introduces a modern twist to traditional SQL embedded databases
 - **Optimized for Go**: Native Go implementation with no CGO dependency.
-- **SQLite Alternative**: Aims to be a modern alternative to SQLite.
+- **Solid foundations**: ChaiSQL is backed by [Pebble](https://github.com/cockroachdb/pebble) for native Go toolchains, and [RocksDB](https://rocksdb.org/) for non-Go or CGO builds (coming soon).
+- **Schema Flexibility**: Support for strict, partial, and schemaless table designs, catering to various data modeling needs.
+
+## Roadmap
+
+ChaiSQL is work in progress and is not ready yet for production.
+
+Here is a high level list of features that we want to implement in the near future, in no particular order:
+
+- [ ] Stable storage format (90% completed)
+- [ ] Implement most of the SQL-92 standard (detailed roadmap coming soon)
+- [ ] Provide clients for other languages (JS/TS, Python, etc) and add support for RocksDB as the backend
 
 ## Installation
 
-Install the chai database
+Install the ChaiSQL database
 
 ```bash
 go install github.com/chaisql/chai
@@ -98,7 +101,7 @@ func main() {
 
     err = db.Exec(`INSERT INTO user VALUES ?`, &u)
 
-    // Query data 
+    // Query data
     rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
     defer rows.Close()
 
@@ -110,8 +113,6 @@ func main() {
     })
 }
 ```
-
-> :warning: Chai's API is still evolving: We are working towards the v1.0.0 release, which will bring stability to the database structure and API.
 
 Checkout the [SQL documentation](https://chaisql.com/docs/essentials/sql-introduction/), the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
 
