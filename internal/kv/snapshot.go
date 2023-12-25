@@ -3,6 +3,7 @@ package kv
 import (
 	"math"
 
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/pkg/atomic"
 	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/pebble"
@@ -25,14 +26,14 @@ func (s *snapshot) Done() error {
 }
 
 type SnapshotSession struct {
-	Store    *Store
+	Store    *PebbleEngine
 	Snapshot *snapshot
 	closed   bool
 }
 
-var _ Session = (*SnapshotSession)(nil)
+var _ engine.Session = (*SnapshotSession)(nil)
 
-func (s *Store) NewSnapshotSession() *SnapshotSession {
+func (s *PebbleEngine) NewSnapshotSession() engine.Session {
 	var sn *snapshot
 
 	// if there is a shared snapshot, use it.
@@ -96,7 +97,7 @@ func (s *SnapshotSession) DeleteRange(start []byte, end []byte) error {
 	return errors.New("cannot delete range in read-only mode")
 }
 
-func (s *SnapshotSession) Iterator(opts *IterOptions) (Iterator, error) {
+func (s *SnapshotSession) Iterator(opts *engine.IterOptions) (engine.Iterator, error) {
 	var popts *pebble.IterOptions
 	if opts != nil {
 		popts = &pebble.IterOptions{

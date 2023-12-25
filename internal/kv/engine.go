@@ -20,7 +20,7 @@ const (
 	defaultMaxTransientBatchSize int = 1 << 19          // 512KB
 )
 
-type Store struct {
+type PebbleEngine struct {
 	db              *pebble.DB
 	opts            Options
 	rollbackSegment *RollbackSegment
@@ -47,7 +47,7 @@ type Options struct {
 	MaxTransientNamespace    uint64
 }
 
-func NewEngineWith(path string, opts Options, popts *pebble.Options) (*Store, error) {
+func NewEngineWith(path string, opts Options, popts *pebble.Options) (*PebbleEngine, error) {
 	if popts == nil {
 		popts = &pebble.Options{}
 	}
@@ -68,7 +68,7 @@ func NewEngineWith(path string, opts Options, popts *pebble.Options) (*Store, er
 	return NewStore(db, opts), nil
 }
 
-func NewEngine(path string, opts Options) (*Store, error) {
+func NewEngine(path string, opts Options) (*PebbleEngine, error) {
 	var popts pebble.Options
 	var pbpath string
 
@@ -116,7 +116,7 @@ var DefaultComparer = &pebble.Comparer{
 	Name: "leveldb.BytewiseComparator",
 }
 
-func NewStore(db *pebble.DB, opts Options) *Store {
+func NewStore(db *pebble.DB, opts Options) *PebbleEngine {
 	if opts.MaxBatchSize <= 0 {
 		opts.MaxBatchSize = defaultMaxBatchSize
 	}
@@ -130,26 +130,26 @@ func NewStore(db *pebble.DB, opts Options) *Store {
 		panic("max transient namespace cannot be 0")
 	}
 
-	return &Store{
+	return &PebbleEngine{
 		db:              db,
 		opts:            opts,
 		rollbackSegment: NewRollbackSegment(db, opts.RollbackSegmentNamespace),
 	}
 }
 
-func (s *Store) Close() error {
+func (s *PebbleEngine) Close() error {
 	return s.db.Close()
 }
 
-func (s *Store) Rollback() error {
+func (s *PebbleEngine) Rollback() error {
 	return s.rollbackSegment.Rollback()
 }
 
-func (s *Store) ResetRollbackSegment() error {
+func (s *PebbleEngine) Recover() error {
 	return s.rollbackSegment.Reset()
 }
 
-func (s *Store) LockSharedSnapshot() {
+func (s *PebbleEngine) LockSharedSnapshot() {
 	s.sharedSnapshot.Lock()
 	s.sharedSnapshot.snapshot = &snapshot{
 		snapshot: s.db.NewSnapshot(),
@@ -159,18 +159,18 @@ func (s *Store) LockSharedSnapshot() {
 	s.sharedSnapshot.Unlock()
 }
 
-func (s *Store) UnlockSharedSnapshot() {
+func (s *PebbleEngine) UnlockSharedSnapshot() {
 	s.sharedSnapshot.Lock()
 	s.sharedSnapshot.snapshot.Done()
 	s.sharedSnapshot.snapshot = nil
 	s.sharedSnapshot.Unlock()
 }
 
-func (s *Store) DB() *pebble.DB {
+func (s *PebbleEngine) DB() *pebble.DB {
 	return s.db
 }
 
-func (s *Store) CleanupTransientNamespaces() error {
+func (s *PebbleEngine) CleanupTransientNamespaces() error {
 	return s.db.DeleteRange(
 		encoding.EncodeUint(nil, uint64(s.minTransientNamespace)),
 		encoding.EncodeUint(nil, uint64(s.maxTransientNamespace)),

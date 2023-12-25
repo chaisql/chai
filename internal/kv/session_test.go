@@ -7,13 +7,13 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func getValue(t *testing.T, st kv.Session, key []byte) []byte {
+func getValue(t *testing.T, st engine.Session, key []byte) []byte {
 	v, err := st.Get([]byte(key))
 	assert.NoError(t, err)
 	return v
@@ -44,7 +44,7 @@ func TestReadOnly(t *testing.T) {
 	})
 }
 
-func kvBuilder(t testing.TB) kv.Session {
+func kvBuilder(t testing.TB) engine.Session {
 	ng := testutil.NewEngine(t)
 	s := ng.NewBatchSession()
 
@@ -121,7 +121,7 @@ func TestRollback(t *testing.T) {
 	for i := int64(9); i >= 0; i-- {
 		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
 		_, err = snapshot.Get(key)
-		require.ErrorIs(t, err, kv.ErrKeyNotFound)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 	}
 }
 
@@ -181,7 +181,7 @@ func TestStoreGet(t *testing.T) {
 		st := kvBuilder(t)
 
 		r, err := st.Get(foo)
-		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
+		assert.ErrorIs(t, err, engine.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
 

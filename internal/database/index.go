@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -122,7 +122,7 @@ func (idx *Index) Delete(vs []types.Value, key []byte) error {
 		return err
 	}
 
-	return errors.WithStack(kv.ErrKeyNotFound)
+	return errors.WithStack(engine.ErrKeyNotFound)
 }
 
 func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {

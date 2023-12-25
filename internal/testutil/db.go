@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func NewEngine(t testing.TB) *kv.Store {
+func NewEngine(t testing.TB) *kv.PebbleEngine {
 	t.Helper()
 
 	st, err := kv.NewEngine(":memory:", kv.Options{

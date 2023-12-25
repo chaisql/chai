@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/cockroachdb/errors"
 )
 
@@ -19,8 +19,8 @@ type Transaction struct {
 	// The timestamp must use the local timezone.
 	TxStart time.Time
 
-	Session   kv.Session
-	Store     *kv.Store
+	Session   engine.Session
+	Engine    engine.Engine
 	ID        uint64
 	Writable  bool
 	WriteTxMu *sync.Mutex
@@ -41,7 +41,7 @@ func (tx *Transaction) Rollback() error {
 	}
 
 	if tx.Writable {
-		err = tx.Store.Rollback()
+		err = tx.Engine.Rollback()
 		if err != nil {
 			return err
 		}

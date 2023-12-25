@@ -3,8 +3,8 @@ package database
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/engine"
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/kv"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
@@ -55,7 +55,7 @@ func (t *Table) Insert(o types.Object) (*tree.Key, Row, error) {
 		err = t.Tree.Put(key, enc)
 	}
 	if err != nil {
-		if errors.Is(err, kv.ErrKeyAlreadyExists) {
+		if errors.Is(err, engine.ErrKeyAlreadyExists) {
 			return nil, nil, &ConstraintViolationError{
 				Constraint: "PRIMARY KEY",
 				Paths:      t.Info.PrimaryKey.Paths,
@@ -95,7 +95,7 @@ func (t *Table) Delete(key *tree.Key) error {
 	}
 
 	err := t.Tree.Delete(key)
-	if errors.Is(err, kv.ErrKeyNotFound) {
+	if errors.Is(err, engine.ErrKeyNotFound) {
 		return errors.WithStack(errs.NewNotFoundError(key.String()))
 	}
 
@@ -178,7 +178,7 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, 
 func (t *Table) GetRow(key *tree.Key) (Row, error) {
 	enc, err := t.Tree.Get(key)
 	if err != nil {
-		if errors.Is(err, kv.ErrKeyNotFound) {
+		if errors.Is(err, engine.ErrKeyNotFound) {
 			return nil, errors.WithStack(errs.NewNotFoundError(key.String()))
 		}
 		return nil, fmt.Errorf("failed to fetch row %q: %w", key, err)

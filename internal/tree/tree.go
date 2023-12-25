@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -58,12 +58,12 @@ func (o SortOrder) SetAsc(i int) SortOrder {
 // of the types package operators.
 // A Tree doesn't support duplicate keys.
 type Tree struct {
-	Session   kv.Session
+	Session   engine.Session
 	Namespace Namespace
 	Order     SortOrder
 }
 
-func New(session kv.Session, ns Namespace, order SortOrder) *Tree {
+func New(session engine.Session, ns Namespace, order SortOrder) *Tree {
 	return &Tree{
 		Namespace: ns,
 		Session:   session,
@@ -71,7 +71,7 @@ func New(session kv.Session, ns Namespace, order SortOrder) *Tree {
 	}
 }
 
-func NewTransient(session kv.Session, ns Namespace, order SortOrder) (*Tree, func() error, error) {
+func NewTransient(session engine.Session, ns Namespace, order SortOrder) (*Tree, func() error, error) {
 	t := Tree{
 		Namespace: ns,
 		Session:   session,
@@ -92,7 +92,7 @@ func NewTransient(session kv.Session, ns Namespace, order SortOrder) (*Tree, fun
 var defaultValue = []byte{0}
 
 // Insert adds a key-obj combination to the tree.
-// If the key already exists, it returns kv.ErrKeyAlreadyExists.
+// If the key already exists, it returns engine.ErrKeyAlreadyExists.
 func (t *Tree) Insert(key *Key, value []byte) error {
 	if len(value) == 0 {
 		value = defaultValue
@@ -121,7 +121,7 @@ func (t *Tree) Put(key *Key, value []byte) error {
 }
 
 // Get a key from the tree. If the key doesn't exist,
-// it returns kv.ErrKeyNotFound.
+// it returns engine.ErrKeyNotFound.
 func (t *Tree) Get(key *Key) ([]byte, error) {
 	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
@@ -142,7 +142,7 @@ func (t *Tree) Exists(key *Key) (bool, error) {
 }
 
 // Delete a key from the tree. If the key doesn't exist,
-// it returns kv.ErrKeyNotFound.
+// it returns engine.ErrKeyNotFound.
 func (t *Tree) Delete(key *Key) error {
 	k, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
@@ -183,7 +183,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		return err
 	}
 
-	opts := kv.IterOptions{
+	opts := engine.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	}

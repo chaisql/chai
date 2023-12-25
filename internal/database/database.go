@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/cockroachdb/errors"
 )
@@ -41,7 +42,7 @@ type Database struct {
 	closeOnce sync.Once
 
 	// Underlying kv store.
-	Store *kv.Store
+	Engine engine.Engine
 }
 
 // Options are passed to Open to control
@@ -54,7 +55,7 @@ type Options struct {
 // It may parse a SQL representation of the catalog
 // and return a Catalog that represents all entities stored on disk.
 type CatalogLoader interface {
-	LoadCatalog(kv.Session) (*Catalog, error)
+	LoadCatalog(engine.Session) (*Catalog, error)
 }
 
 // TxOptions are passed to Begin to configure transactions.
@@ -78,18 +79,18 @@ func Open(path string, opts *Options) (*Database, error) {
 	}
 
 	db := Database{
-		Store: store,
+		Engine: store,
 	}
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
 	// due to a previous crash.
-	err = db.Store.ResetRollbackSegment()
+	err = db.Engine.Recover()
 	if err != nil {
 		return nil, err
 	}
 
 	// clean up the transient namespaces
-	err = db.Store.CleanupTransientNamespaces()
+	err = db.Engine.CleanupTransientNamespaces()
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +168,7 @@ func (db *Database) closeDatabase() error {
 		return err
 	}
 
-	return db.Store.Close()
+	return db.Engine.Close()
 }
 
 // GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
@@ -222,16 +223,16 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 		opts = &TxOptions{}
 	}
 
-	var sess kv.Session
+	var sess engine.Session
 	if opts.ReadOnly {
-		sess = db.Store.NewSnapshotSession()
+		sess = db.Engine.NewSnapshotSession()
 	} else {
-		sess = db.Store.NewBatchSession()
+		sess = db.Engine.NewBatchSession()
 	}
 
 	tx := Transaction{
 		db:       db,
-		Store:    db.Store,
+		Engine:   db.Engine,
 		Session:  sess,
 		Writable: !opts.ReadOnly,
 		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
