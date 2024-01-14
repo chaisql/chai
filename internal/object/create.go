@@ -224,7 +224,7 @@ func NewValue(x any) (types.Value, error) {
 		}
 		return NewValue(reflect.Indirect(v).Interface())
 	case reflect.Bool:
-		return types.NewBoolValue(v.Bool()), nil
+		return types.NewBooleanValue(v.Bool()), nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return types.NewIntegerValue(v.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:

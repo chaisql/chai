@@ -119,9 +119,9 @@ func DecodeValue(b []byte, intAsDouble bool) (types.Value, int) {
 	case NullValue:
 		return types.NewNullValue(), 1
 	case FalseValue:
-		return types.NewBoolValue(false), 1
+		return types.NewBooleanValue(false), 1
 	case TrueValue:
-		return types.NewBoolValue(true), 1
+		return types.NewBooleanValue(true), 1
 	case Int8Value, Int16Value, Int32Value, Int64Value, Uint8Value, Uint16Value, Uint32Value, Uint64Value:
 		x, n := DecodeInt(b)
 		if intAsDouble {

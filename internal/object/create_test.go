@@ -94,7 +94,7 @@ func TestNewFromJSON(t *testing.T) {
 		{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
 			object.NewFieldBuffer().
 				Add("a", types.NewIntegerValue(1)).
-				Add("b", types.NewBoolValue(true)).
+				Add("b", types.NewBooleanValue(true)).
 				Add("c", types.NewTextValue("hello")).
 				Add("d", types.NewArrayValue(object.NewValueBuffer().
 					Append(types.NewIntegerValue(1)).
@@ -107,7 +107,7 @@ func TestNewFromJSON(t *testing.T) {
 		{"-integer values", `{"a": -1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
 		{"+float values", `{"a": 10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
 		{"-float values", `{"a": -10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
-		{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+		{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBooleanValue(true)).Add("b", types.NewBooleanValue(false)), false},
 		{"empty arrays", `{"a": []}`, object.NewFieldBuffer().Add("a", types.NewArrayValue(object.NewValueBuffer())), false},
 		{"nested arrays", `{"a": [[1,  2]]}`, object.NewFieldBuffer().
 			Add("a", types.NewArrayValue(

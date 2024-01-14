@@ -49,32 +49,32 @@ func getIndex(t testing.TB, arity int) *database.Index {
 func TestIndexSet(t *testing.T) {
 	t.Run("Set nil key falls (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.Error(t, idx.Set(values(types.NewBoolValue(true)), nil))
+		assert.Error(t, idx.Set(values(types.NewBooleanValue(true)), nil))
 	})
 
 	t.Run("Set value and key succeeds (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.NoError(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set two values and key succeeds (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.NoError(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+		assert.NoError(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set one value fails (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.Error(t, idx.Set(values(types.NewBoolValue(true)), []byte("key")))
+		assert.Error(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set two values fails (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+		assert.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set three values fails (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.Error(t, idx.Set(values(types.NewBoolValue(true), types.NewBoolValue(true), types.NewBoolValue(true)), []byte("key")))
+		assert.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 }
 

@@ -17,7 +17,7 @@ func TestCastAs(t *testing.T) {
 	}
 	now := time.Now()
 
-	boolV := types.NewBoolValue(true)
+	boolV := types.NewBooleanValue(true)
 	integerV := types.NewIntegerValue(10)
 	doubleV := types.NewDoubleValue(10.5)
 	tsV := types.NewTimestampValue(now)
@@ -52,11 +52,11 @@ func TestCastAs(t *testing.T) {
 		check(t, types.TypeBoolean, []test{
 			{boolV, boolV, false},
 			{integerV, boolV, false},
-			{types.NewIntegerValue(0), types.NewBoolValue(false), false},
+			{types.NewIntegerValue(0), types.NewBooleanValue(false), false},
 			{doubleV, nil, true},
 			{textV, nil, true},
 			{types.NewTextValue("true"), boolV, false},
-			{types.NewTextValue("false"), types.NewBoolValue(false), false},
+			{types.NewTextValue("false"), types.NewBooleanValue(false), false},
 			{blobV, nil, true},
 			{arrayV, nil, true},
 			{docV, nil, true},
@@ -66,7 +66,7 @@ func TestCastAs(t *testing.T) {
 	t.Run("integer", func(t *testing.T) {
 		check(t, types.TypeInteger, []test{
 			{boolV, types.NewIntegerValue(1), false},
-			{types.NewBoolValue(false), types.NewIntegerValue(0), false},
+			{types.NewBooleanValue(false), types.NewIntegerValue(0), false},
 			{integerV, integerV, false},
 			{doubleV, integerV, false},
 			{textV, nil, true},

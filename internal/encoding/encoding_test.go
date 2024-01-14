@@ -82,7 +82,7 @@ func TestEncodeDecode(t *testing.T) {
 	})
 
 	complexArray := object.NewValueBuffer().
-		Append(types.NewBoolValue(true)).
+		Append(types.NewBooleanValue(true)).
 		Append(types.NewIntegerValue(-40)).
 		Append(types.NewDoubleValue(-3.14)).
 		Append(types.NewDoubleValue(3)).

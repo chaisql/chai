@@ -364,7 +364,7 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 	case types.TypeNull:
 		return types.NewNullValue()
 	case types.TypeBoolean:
-		return types.NewBoolValue(false)
+		return types.NewBooleanValue(false)
 	case types.TypeInteger:
 		return types.NewIntegerValue(math.MinInt64)
 	case types.TypeDouble:
@@ -464,7 +464,7 @@ func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 	case types.TypeNull:
 		return types.NewNullValue()
 	case types.TypeBoolean:
-		return types.NewBoolValue(true)
+		return types.NewBooleanValue(true)
 	case types.TypeInteger:
 		return types.NewIntegerValue(math.MaxInt64)
 	case types.TypeDouble:

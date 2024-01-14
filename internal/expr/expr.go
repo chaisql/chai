@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	TrueLiteral  = types.NewBoolValue(true)
-	FalseLiteral = types.NewBoolValue(false)
+	TrueLiteral  = types.NewBooleanValue(true)
+	FalseLiteral = types.NewBooleanValue(false)
 	NullLiteral  = types.NewNullValue()
 )
 

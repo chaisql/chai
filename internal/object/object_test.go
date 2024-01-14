@@ -45,7 +45,7 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Add("a", types.NewIntegerValue(10))
 		buf.Add("b", types.NewTextValue("hello"))
 
-		c := types.NewBoolValue(true)
+		c := types.NewBooleanValue(true)
 		buf.Add("c", c)
 		require.Equal(t, 3, buf.Len())
 	})
@@ -58,7 +58,7 @@ func TestFieldBuffer(t *testing.T) {
 
 		buf2.Add("a", types.NewIntegerValue(20))
 		buf2.Add("b", types.NewTextValue("bye"))
-		buf2.Add("c", types.NewBoolValue(true))
+		buf2.Add("c", types.NewBooleanValue(true))
 
 		err := buf1.ScanObject(&buf2)
 		assert.NoError(t, err)
@@ -68,7 +68,7 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Add("b", types.NewTextValue("hello"))
 		buf.Add("a", types.NewIntegerValue(20))
 		buf.Add("b", types.NewTextValue("bye"))
-		buf.Add("c", types.NewBoolValue(true))
+		buf.Add("c", types.NewBooleanValue(true))
 		require.Equal(t, buf, buf1)
 	})
 
@@ -180,11 +180,11 @@ func TestFieldBuffer(t *testing.T) {
 		buf.Add("a", types.NewIntegerValue(10))
 		buf.Add("b", types.NewTextValue("hello"))
 
-		err := buf.Replace("a", types.NewBoolValue(true))
+		err := buf.Replace("a", types.NewBooleanValue(true))
 		assert.NoError(t, err)
 		v, err := buf.GetByField("a")
 		assert.NoError(t, err)
-		require.Equal(t, types.NewBoolValue(true), v)
+		require.Equal(t, types.NewBooleanValue(true), v)
 		err = buf.Replace("d", types.NewIntegerValue(11))
 		assert.Error(t, err)
 	})
@@ -238,7 +238,7 @@ func TestFieldBuffer(t *testing.T) {
 			{"classic object", `{"a": 1, "b": true, "c": "hello", "d": [1, 2, 3], "e": {"f": "g"}}`,
 				object.NewFieldBuffer().
 					Add("a", types.NewIntegerValue(1)).
-					Add("b", types.NewBoolValue(true)).
+					Add("b", types.NewBooleanValue(true)).
 					Add("c", types.NewTextValue("hello")).
 					Add("d", types.NewArrayValue(object.NewValueBuffer().
 						Append(types.NewIntegerValue(1)).
@@ -251,7 +251,7 @@ func TestFieldBuffer(t *testing.T) {
 			{"-integer values", `{"a": -1000}`, object.NewFieldBuffer().Add("a", types.NewIntegerValue(-1000)), false},
 			{"+float values", `{"a": 10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(10000000000)), false},
 			{"-float values", `{"a": -10000000000.0}`, object.NewFieldBuffer().Add("a", types.NewDoubleValue(-10000000000)), false},
-			{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBoolValue(true)).Add("b", types.NewBoolValue(false)), false},
+			{"bool values", `{"a": true, "b": false}`, object.NewFieldBuffer().Add("a", types.NewBooleanValue(true)).Add("b", types.NewBooleanValue(false)), false},
 			{"empty arrays", `{"a": []}`, object.NewFieldBuffer().Add("a", types.NewArrayValue(object.NewValueBuffer())), false},
 			{"nested arrays", `{"a": [[1,  2]]}`, object.NewFieldBuffer().
 				Add("a", types.NewArrayValue(
@@ -563,7 +563,7 @@ func (f *foo) Iterate(fn func(field string, value types.Value) error) error {
 		return err
 	}
 
-	err = fn("c", types.NewBoolValue(f.C))
+	err = fn("c", types.NewBooleanValue(f.C))
 	if err != nil {
 		return err
 	}
@@ -583,7 +583,7 @@ func (f *foo) GetByField(field string) (types.Value, error) {
 	case "b":
 		return types.NewIntegerValue(f.B), nil
 	case "c":
-		return types.NewBoolValue(f.C), nil
+		return types.NewBooleanValue(f.C), nil
 	case "d":
 		return types.NewDoubleValue(f.D), nil
 	}

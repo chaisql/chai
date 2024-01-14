@@ -53,13 +53,13 @@ func CastAsBool(v types.Value) (types.Value, error) {
 	case types.TypeBoolean:
 		return v, nil
 	case types.TypeInteger:
-		return types.NewBoolValue(types.As[int64](v) != 0), nil
+		return types.NewBooleanValue(types.As[int64](v) != 0), nil
 	case types.TypeText:
 		b, err := strconv.ParseBool(types.As[string](v))
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as bool: %w`, v.V(), err)
 		}
-		return types.NewBoolValue(b), nil
+		return types.NewBooleanValue(b), nil
 	}
 
 	return nil, fmt.Errorf("cannot cast %s as bool", v.Type())

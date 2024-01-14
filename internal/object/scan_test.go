@@ -43,7 +43,7 @@ func TestScan(t *testing.T) {
 	doc := object.NewFieldBuffer().
 		Add("a", types.NewBlobValue([]byte("foo"))).
 		Add("b", types.NewTextValue("bar")).
-		Add("c", types.NewBoolValue(true)).
+		Add("c", types.NewBooleanValue(true)).
 		Add("d", types.NewIntegerValue(10)).
 		Add("e", types.NewIntegerValue(10)).
 		Add("f", types.NewIntegerValue(10)).
@@ -52,7 +52,7 @@ func TestScan(t *testing.T) {
 		Add("i", types.NewDoubleValue(10.5)).
 		Add("j", types.NewArrayValue(
 			object.NewValueBuffer().
-				Append(types.NewBoolValue(true)),
+				Append(types.NewBooleanValue(true)),
 		)).
 		Add("k", types.NewObjectValue(
 			object.NewFieldBuffer().
@@ -79,7 +79,7 @@ func TestScan(t *testing.T) {
 		Add("o", types.NewNullValue()).
 		Add("p", types.NewTextValue(now.Format(time.RFC3339Nano))).
 		Add("r", dec).
-		Add("s", types.NewArrayValue(object.NewValueBuffer(types.NewBoolValue(true), types.NewBoolValue(false)))).
+		Add("s", types.NewArrayValue(object.NewValueBuffer(types.NewBooleanValue(true), types.NewBooleanValue(false)))).
 		Add("u", types.NewArrayValue(object.NewValueBuffer(
 			types.NewObjectValue(
 				object.NewFieldBuffer().

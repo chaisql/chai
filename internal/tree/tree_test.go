@@ -17,14 +17,14 @@ import (
 
 var key1 = func() *tree.Key {
 	return tree.NewKey(
-		types.NewBoolValue(true),
+		types.NewBooleanValue(true),
 		types.NewIntegerValue(1),
 	)
 }()
 
 var key2 = func() *tree.Key {
 	return tree.NewKey(
-		types.NewBoolValue(true),
+		types.NewBooleanValue(true),
 		types.NewIntegerValue(2),
 	)
 }()
@@ -128,8 +128,8 @@ func TestTreeIterateOnRange(t *testing.T) {
 	for i := int64(0); i < 10; i++ {
 		for j := int64(0); j < 10; j++ {
 			keys = append(keys, tree.NewKey(
-				types.NewBoolValue(i%2 == 0),
-				types.NewBoolValue(j%2 == 0),
+				types.NewBooleanValue(i%2 == 0),
+				types.NewBooleanValue(j%2 == 0),
 				types.NewIntegerValue(c),
 			))
 			c++
@@ -260,22 +260,22 @@ func TestTreeIterateOnRange(t *testing.T) {
 			// other types
 
 			// bool
-			{"= false", tree.NewKey(types.NewBoolValue(false)), tree.NewKey(types.NewBoolValue(false)), false, 0, 50, 0},
-			{"= true", tree.NewKey(types.NewBoolValue(true)), tree.NewKey(types.NewBoolValue(true)), false, 50, 100, 0},
-			{">= false", tree.NewKey(types.NewBoolValue(false)), nil, false, 0, 100, 0},
-			{"> false", tree.NewKey(types.NewBoolValue(false)), nil, true, 50, 100, 0},
-			{"<= false", nil, tree.NewKey(types.NewBoolValue(false)), false, 0, 50, 0},
-			{"< false", nil, tree.NewKey(types.NewBoolValue(false)), true, 0, 0, 0},
-			{"< true", nil, tree.NewKey(types.NewBoolValue(true)), true, 0, 50, 0},
+			{"= false", tree.NewKey(types.NewBooleanValue(false)), tree.NewKey(types.NewBooleanValue(false)), false, 0, 50, 0},
+			{"= true", tree.NewKey(types.NewBooleanValue(true)), tree.NewKey(types.NewBooleanValue(true)), false, 50, 100, 0},
+			{">= false", tree.NewKey(types.NewBooleanValue(false)), nil, false, 0, 100, 0},
+			{"> false", tree.NewKey(types.NewBooleanValue(false)), nil, true, 50, 100, 0},
+			{"<= false", nil, tree.NewKey(types.NewBooleanValue(false)), false, 0, 50, 0},
+			{"< false", nil, tree.NewKey(types.NewBooleanValue(false)), true, 0, 0, 0},
+			{"< true", nil, tree.NewKey(types.NewBooleanValue(true)), true, 0, 50, 0},
 
 			// bool desc
-			{"= false desc", tree.NewKey(types.NewBoolValue(false)), tree.NewKey(types.NewBoolValue(false)), false, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
-			{"= true desc", tree.NewKey(types.NewBoolValue(true)), tree.NewKey(types.NewBoolValue(true)), false, 1500, 1550, tree.SortOrder(0).SetDesc(0)},
-			{">= false desc", tree.NewKey(types.NewBoolValue(false)), nil, false, 1500, 1600, tree.SortOrder(0).SetDesc(0)},
-			{"> false desc", tree.NewKey(types.NewBoolValue(false)), nil, true, 1500, 1550, tree.SortOrder(0).SetDesc(0)},
-			{"<= false desc", nil, tree.NewKey(types.NewBoolValue(false)), false, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
-			{"< false desc", nil, tree.NewKey(types.NewBoolValue(false)), true, 0, 0, tree.SortOrder(0).SetDesc(0)},
-			{"< true desc", nil, tree.NewKey(types.NewBoolValue(true)), true, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
+			{"= false desc", tree.NewKey(types.NewBooleanValue(false)), tree.NewKey(types.NewBooleanValue(false)), false, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
+			{"= true desc", tree.NewKey(types.NewBooleanValue(true)), tree.NewKey(types.NewBooleanValue(true)), false, 1500, 1550, tree.SortOrder(0).SetDesc(0)},
+			{">= false desc", tree.NewKey(types.NewBooleanValue(false)), nil, false, 1500, 1600, tree.SortOrder(0).SetDesc(0)},
+			{"> false desc", tree.NewKey(types.NewBooleanValue(false)), nil, true, 1500, 1550, tree.SortOrder(0).SetDesc(0)},
+			{"<= false desc", nil, tree.NewKey(types.NewBooleanValue(false)), false, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
+			{"< false desc", nil, tree.NewKey(types.NewBooleanValue(false)), true, 0, 0, tree.SortOrder(0).SetDesc(0)},
+			{"< true desc", nil, tree.NewKey(types.NewBooleanValue(true)), true, 1550, 1600, tree.SortOrder(0).SetDesc(0)},
 
 			// double
 			{"= 3.0", tree.NewKey(types.NewDoubleValue(3)), tree.NewKey(types.NewDoubleValue(3)), false, 1130, 1140, 0},

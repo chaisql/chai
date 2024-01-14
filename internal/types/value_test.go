@@ -121,7 +121,7 @@ func TestValueMarshalJSON(t *testing.T) {
 		{"null", types.NewNullValue(), "null"},
 		{"blob", types.NewBlobValue([]byte("bar")), `"YmFy"`},
 		{"string", types.NewTextValue("bar"), `"bar"`},
-		{"bool", types.NewBoolValue(true), "true"},
+		{"bool", types.NewBooleanValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},
 		{"double", types.NewDoubleValue(10.1), "10.1"},
 		{"time", types.NewTimestampValue(now), `"` + now.UTC().Format(time.RFC3339Nano) + `"`},

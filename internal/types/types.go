@@ -76,6 +76,7 @@ func (t ValueType) IsAny() bool {
 type Value interface {
 	Type() ValueType
 	V() any
+	IsZero() (bool, error)
 	String() string
 	MarshalJSON() ([]byte, error)
 	MarshalText() ([]byte, error)

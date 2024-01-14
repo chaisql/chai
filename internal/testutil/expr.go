@@ -32,7 +32,7 @@ func TextValue(v string) expr.LiteralValue {
 
 // BoolValue creates a literal value of type Bool.
 func BoolValue(v bool) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewBoolValue(v)}
+	return expr.LiteralValue{Value: types.NewBooleanValue(v)}
 }
 
 // IntegerValue creates a literal value of type Integer.

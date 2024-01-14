@@ -14,7 +14,7 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, 
 		if err != nil {
 			return nil, err
 		}
-		return types.NewBoolValue(b), nil
+		return types.NewBooleanValue(b), nil
 	case jsonparser.Number:
 		i, err := jsonparser.ParseInt(data)
 		if err != nil {

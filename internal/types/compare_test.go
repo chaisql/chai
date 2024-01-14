@@ -44,7 +44,7 @@ func jsonToBoolean(t testing.TB, x string) types.Value {
 	err := json.Unmarshal([]byte(x), &b)
 	assert.NoError(t, err)
 
-	return types.NewBoolValue(b)
+	return types.NewBooleanValue(b)
 }
 
 func toText(t testing.TB, x string) types.Value {

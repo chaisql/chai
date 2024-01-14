@@ -288,7 +288,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		}
 		return expr.LiteralValue{Value: types.NewIntegerValue(v)}, nil
 	case scanner.TRUE, scanner.FALSE:
-		return expr.LiteralValue{Value: types.NewBoolValue(tok == scanner.TRUE)}, nil
+		return expr.LiteralValue{Value: types.NewBooleanValue(tok == scanner.TRUE)}, nil
 	case scanner.NULL:
 		return expr.LiteralValue{Value: types.NewNullValue()}, nil
 	case scanner.MUL:

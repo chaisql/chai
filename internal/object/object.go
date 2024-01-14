@@ -319,7 +319,7 @@ func CloneValue(v types.Value) (types.Value, error) {
 	case types.TypeNull:
 		return types.NewNullValue(), nil
 	case types.TypeBoolean:
-		return types.NewBoolValue(types.As[bool](v)), nil
+		return types.NewBooleanValue(types.As[bool](v)), nil
 	case types.TypeInteger:
 		return types.NewIntegerValue(types.As[int64](v)), nil
 	case types.TypeDouble:
