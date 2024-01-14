@@ -126,7 +126,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 		path[0].ArrayIndex = i
 
 		switch v.Type() {
-		case types.ObjectValue:
+		case types.TypeObject:
 			buf, ok := types.Is[*FieldBuffer](v)
 			if !ok {
 				buf = NewFieldBuffer()
@@ -143,7 +143,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 				return err
 			}
 			vb.Values[i] = types.NewObjectValue(buf)
-		case types.ArrayValue:
+		case types.TypeArray:
 			buf, ok := types.Is[*ValueBuffer](v)
 			if !ok {
 				buf = NewValueBuffer()

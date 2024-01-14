@@ -117,13 +117,13 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 		var tableName string
 		tf := kv[1]
-		if tf.Type() != types.NullValue {
+		if tf.Type() != types.TypeNull {
 			tableName = types.As[string](tf)
 		}
 
 		var key *tree.Key
 		kf := kv[2]
-		if kf.Type() != types.NullValue {
+		if kf.Type() != types.TypeNull {
 			key = tree.NewEncodedKey(types.As[[]byte](kf))
 		}
 

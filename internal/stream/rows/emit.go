@@ -31,7 +31,7 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 		if err != nil {
 			return err
 		}
-		if v.Type() != types.ObjectValue {
+		if v.Type() != types.TypeObject {
 			return errors.WithStack(stream.ErrInvalidResult)
 		}
 

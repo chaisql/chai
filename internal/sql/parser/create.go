@@ -168,15 +168,15 @@ func (p *Parser) parseFieldDefinition(parent object.Path) (*database.FieldConstr
 
 	var tcs []*database.TableConstraint
 
-	if fc.Type.IsAny() || fc.Type == types.ObjectValue {
+	if fc.Type.IsAny() || fc.Type == types.TypeObject {
 		anon, nestedTCs, err := p.parseObjectDefinition(path)
 		if err != nil {
 			return nil, nil, err
 		}
 		if anon != nil {
-			fc.Type = types.ObjectValue
+			fc.Type = types.TypeObject
 			fc.AnonymousType = anon
-		} else if fc.Type == types.ObjectValue {
+		} else if fc.Type == types.TypeObject {
 			// if the field constraint is an object but doesn't have any constraint,
 			// its AllowExtraFields is set to true
 			// i.e CREATE TABLE foo(a OBJECT) -> CREATE TABLE foo(a OBJECT (...))

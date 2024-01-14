@@ -101,10 +101,10 @@ func TestCatalogTable(t *testing.T) {
 
 		ti := &database.TableInfo{
 			FieldConstraints: database.MustNewFieldConstraints(
-				&database.FieldConstraint{Field: "name", Type: types.TextValue, IsNotNull: true},
-				&database.FieldConstraint{Field: "age", Type: types.IntegerValue},
-				&database.FieldConstraint{Field: "gender", Type: types.TextValue},
-				&database.FieldConstraint{Field: "city", Type: types.TextValue},
+				&database.FieldConstraint{Field: "name", Type: types.TypeText, IsNotNull: true},
+				&database.FieldConstraint{Field: "age", Type: types.TypeInteger},
+				&database.FieldConstraint{Field: "gender", Type: types.TypeText},
+				&database.FieldConstraint{Field: "city", Type: types.TypeText},
 			), TableConstraints: []*database.TableConstraint{
 				{Paths: []object.Path{testutil.ParseObjectPath(t, "age")}, PrimaryKey: true},
 			}}
@@ -182,10 +182,10 @@ func TestCatalogTable(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		ti := &database.TableInfo{FieldConstraints: database.MustNewFieldConstraints(
-			&database.FieldConstraint{Field: "name", Type: types.TextValue, IsNotNull: true},
-			&database.FieldConstraint{Field: "age", Type: types.IntegerValue},
-			&database.FieldConstraint{Field: "gender", Type: types.TextValue},
-			&database.FieldConstraint{Field: "city", Type: types.TextValue},
+			&database.FieldConstraint{Field: "name", Type: types.TypeText, IsNotNull: true},
+			&database.FieldConstraint{Field: "age", Type: types.TypeInteger},
+			&database.FieldConstraint{Field: "gender", Type: types.TypeText},
+			&database.FieldConstraint{Field: "city", Type: types.TypeText},
 		), TableConstraints: []*database.TableConstraint{
 			{Paths: []object.Path{testutil.ParseObjectPath(t, "age")}, PrimaryKey: true},
 		}}
@@ -200,7 +200,7 @@ func TestCatalogTable(t *testing.T) {
 
 			// Add field constraint
 			fieldToAdd := database.FieldConstraint{
-				Field: "last_name", Type: types.TextValue,
+				Field: "last_name", Type: types.TypeText,
 			}
 			// Add table constraint
 			var tcs database.TableConstraints
@@ -284,7 +284,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
-					&database.FieldConstraint{Field: "a", Type: types.TextValue},
+					&database.FieldConstraint{Field: "a", Type: types.TypeText},
 				),
 				TableConstraints: []*database.TableConstraint{
 					{Paths: []object.Path{testutil.ParseObjectPath(t, "a")}, PrimaryKey: true},
@@ -315,7 +315,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
-					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
+					&database.FieldConstraint{Field: "foo", Type: types.TypeText},
 				),
 			})
 		})
@@ -354,11 +354,11 @@ func TestCatalogCreateIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			return catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
-					&database.FieldConstraint{Field: "foo", Type: types.ObjectValue, AnonymousType: &database.AnonymousType{
+					&database.FieldConstraint{Field: "foo", Type: types.TypeObject, AnonymousType: &database.AnonymousType{
 						FieldConstraints: database.MustNewFieldConstraints(
-							&database.FieldConstraint{Field: "  bar ", Type: types.ObjectValue, AnonymousType: &database.AnonymousType{
+							&database.FieldConstraint{Field: "  bar ", Type: types.TypeObject, AnonymousType: &database.AnonymousType{
 								FieldConstraints: database.MustNewFieldConstraints(
-									&database.FieldConstraint{Field: "c", Type: types.TextValue},
+									&database.FieldConstraint{Field: "c", Type: types.TypeText},
 								),
 							}},
 						),
@@ -396,8 +396,8 @@ func TestTxDropIndex(t *testing.T) {
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "test", &database.TableInfo{
 				FieldConstraints: database.MustNewFieldConstraints(
-					&database.FieldConstraint{Field: "foo", Type: types.TextValue},
-					&database.FieldConstraint{Field: "bar", Type: types.AnyValue},
+					&database.FieldConstraint{Field: "foo", Type: types.TypeText},
+					&database.FieldConstraint{Field: "bar", Type: types.TypeAny},
 				),
 			})
 			assert.NoError(t, err)

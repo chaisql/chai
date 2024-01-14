@@ -49,7 +49,7 @@ func TestCastAs(t *testing.T) {
 	}
 
 	t.Run("bool", func(t *testing.T) {
-		check(t, types.BooleanValue, []test{
+		check(t, types.TypeBoolean, []test{
 			{boolV, boolV, false},
 			{integerV, boolV, false},
 			{types.NewIntegerValue(0), types.NewBoolValue(false), false},
@@ -64,7 +64,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("integer", func(t *testing.T) {
-		check(t, types.IntegerValue, []test{
+		check(t, types.TypeInteger, []test{
 			{boolV, types.NewIntegerValue(1), false},
 			{types.NewBoolValue(false), types.NewIntegerValue(0), false},
 			{integerV, integerV, false},
@@ -80,7 +80,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("double", func(t *testing.T) {
-		check(t, types.DoubleValue, []test{
+		check(t, types.TypeDouble, []test{
 			{boolV, nil, true},
 			{integerV, types.NewDoubleValue(10), false},
 			{doubleV, doubleV, false},
@@ -94,7 +94,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("ts", func(t *testing.T) {
-		check(t, types.TimestampValue, []test{
+		check(t, types.TypeTimestamp, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},
@@ -106,7 +106,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("text", func(t *testing.T) {
-		check(t, types.TextValue, []test{
+		check(t, types.TypeText, []test{
 			{boolV, types.NewTextValue("true"), false},
 			{integerV, types.NewTextValue("10"), false},
 			{doubleV, types.NewTextValue("10.5"), false},
@@ -120,7 +120,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("blob", func(t *testing.T) {
-		check(t, types.BlobValue, []test{
+		check(t, types.TypeBlob, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},
@@ -133,7 +133,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("array", func(t *testing.T) {
-		check(t, types.ArrayValue, []test{
+		check(t, types.TypeArray, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},
@@ -146,7 +146,7 @@ func TestCastAs(t *testing.T) {
 	})
 
 	t.Run("object", func(t *testing.T) {
-		check(t, types.ObjectValue, []test{
+		check(t, types.TypeObject, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},

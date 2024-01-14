@@ -60,12 +60,12 @@ func BitwiseXor(v1, v2 Value) (res Value, err error) {
 }
 
 func calculateValues(a, b Value, operator byte) (res Value, err error) {
-	if a.Type() == NullValue || b.Type() == NullValue {
+	if a.Type() == TypeNull || b.Type() == TypeNull {
 		return NewNullValue(), nil
 	}
 
 	if a.Type().IsNumber() && b.Type().IsNumber() {
-		if a.Type() == DoubleValue || b.Type() == DoubleValue {
+		if a.Type() == TypeDouble || b.Type() == TypeDouble {
 			return calculateFloats(a, b, operator)
 		}
 
@@ -182,7 +182,7 @@ func calculateFloats(a, b Value, operator byte) (res Value, err error) {
 
 func convertNumberToInteger(v Value) Value {
 	switch v.Type() {
-	case IntegerValue:
+	case TypeInteger:
 		return v
 	default:
 		return NewIntegerValue(int64(As[float64](v)))
@@ -191,7 +191,7 @@ func convertNumberToInteger(v Value) Value {
 
 func convertNumberToDouble(v Value) Value {
 	switch v.Type() {
-	case DoubleValue:
+	case TypeDouble:
 		return v
 	default:
 		return NewDoubleValue(float64(As[int64](v)))
@@ -200,9 +200,9 @@ func convertNumberToDouble(v Value) Value {
 
 func convertToTime(v Value) (time.Time, error) {
 	switch v.Type() {
-	case TimestampValue:
+	case TypeTimestamp:
 		return As[time.Time](v), nil
-	case TextValue:
+	case TypeText:
 		return ParseTimestamp(As[string](v))
 	default:
 		panic(fmt.Sprintf("cannot convert %v to time", v.Type()))

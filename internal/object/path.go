@@ -142,9 +142,9 @@ func (p Path) ExtendIndex(index int) Path {
 
 func (p Path) getValueFromValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
-	case types.ObjectValue:
+	case types.TypeObject:
 		return p.GetValueFromObject(types.As[types.Object](v))
-	case types.ArrayValue:
+	case types.TypeArray:
 		return p.GetValueFromArray(types.As[types.Array](v))
 	}
 

@@ -29,7 +29,7 @@ func (f *FieldConstraint) String() string {
 	var s strings.Builder
 
 	s.WriteString(f.Field)
-	if f.Type != types.ObjectValue {
+	if f.Type != types.TypeObject {
 		s.WriteString(" ")
 		s.WriteString(strings.ToUpper(f.Type.String()))
 	} else if f.AnonymousType != nil {
@@ -102,7 +102,7 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 			// which is the only one compatible for the moment.
 			// Integers can be converted to other integers, doubles, texts and bools.
 			switch newFc.Type {
-			case types.IntegerValue, types.DoubleValue, types.TextValue, types.BooleanValue:
+			case types.TypeInteger, types.TypeDouble, types.TypeText, types.TypeBoolean:
 			default:
 				return fmt.Errorf("default value %q cannot be converted to type %q", newFc.DefaultValue, newFc.Type)
 			}
@@ -128,10 +128,10 @@ func CastConversion(v types.Value, path object.Path, targetType types.ValueType)
 // at the given path.
 func (f FieldConstraints) ConvertValueAtPath(path object.Path, v types.Value, conversionFn ConversionFunc) (types.Value, error) {
 	switch v.Type() {
-	case types.ArrayValue:
+	case types.TypeArray:
 		vb, err := f.convertArrayAtPath(path, types.As[types.Array](v), conversionFn)
 		return types.NewArrayValue(vb), err
-	case types.ObjectValue:
+	case types.TypeObject:
 		fb, err := f.convertObjectAtPath(path, types.As[types.Object](v), conversionFn)
 		return types.NewObjectValue(fb), err
 	}
@@ -159,12 +159,12 @@ func (f FieldConstraints) convertScalarAtPath(path object.Path, v types.Value, c
 
 	// no constraint have been found for this path.
 	// check if this is an integer and convert it to double.
-	if v.Type() == types.IntegerValue {
+	if v.Type() == types.TypeInteger {
 		newV, _ := object.CastAsDouble(v)
 		return newV, nil
 	}
 
-	if v.Type() == types.TimestampValue {
+	if v.Type() == types.TypeTimestamp {
 		newV, _ := object.CastAsText(v)
 		return newV, nil
 	}
@@ -299,13 +299,13 @@ func (t *TableConstraints) ValidateRow(tx *Transaction, r Row) error {
 		}
 		var ok bool
 		switch v.Type() {
-		case types.BooleanValue:
+		case types.TypeBoolean:
 			ok = types.As[bool](v)
-		case types.IntegerValue:
+		case types.TypeInteger:
 			ok = types.As[int64](v) != 0
-		case types.DoubleValue:
+		case types.TypeDouble:
 			ok = types.As[float64](v) != 0
-		case types.NullValue:
+		case types.TypeNull:
 			ok = true
 		}
 

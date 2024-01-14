@@ -136,7 +136,7 @@ func (fb *FieldBuffer) setFieldValue(field string, reqValue types.Value) error {
 // setValueAtPath deep replaces or creates a field at the given path
 func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, error) {
 	switch v.Type() {
-	case types.ObjectValue:
+	case types.TypeObject:
 		var buf FieldBuffer
 		err := buf.ScanObject(types.As[types.Object](v))
 		if err != nil {
@@ -166,7 +166,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 
 		err = buf.setFieldValue(p[0].FieldName, va)
 		return types.NewObjectValue(&buf), err
-	case types.ArrayValue:
+	case types.TypeArray:
 		var vb ValueBuffer
 		err := vb.ScanArray(types.As[types.Array](v))
 		if err != nil {
@@ -257,7 +257,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 		return err
 	}
 	switch v.Type() {
-	case types.ObjectValue:
+	case types.TypeObject:
 		subBuf, ok := types.Is[*FieldBuffer](v)
 		if !ok {
 			return errors.New("delete doesn't support non buffered object")
@@ -271,7 +271,7 @@ func (fb *FieldBuffer) Delete(path Path) error {
 		}
 
 		return types.ErrFieldNotFound
-	case types.ArrayValue:
+	case types.TypeArray:
 		subBuf, ok := types.Is[*ValueBuffer](v)
 		if !ok {
 			return errors.New("delete doesn't support non buffered array")
@@ -316,28 +316,28 @@ func (fb *FieldBuffer) Copy(d types.Object) error {
 
 func CloneValue(v types.Value) (types.Value, error) {
 	switch v.Type() {
-	case types.NullValue:
+	case types.TypeNull:
 		return types.NewNullValue(), nil
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return types.NewBoolValue(types.As[bool](v)), nil
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return types.NewIntegerValue(types.As[int64](v)), nil
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return types.NewDoubleValue(types.As[float64](v)), nil
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return types.NewTimestampValue(types.As[time.Time](v)), nil
-	case types.TextValue:
+	case types.TypeText:
 		return types.NewTextValue(strings.Clone(types.As[string](v))), nil
-	case types.BlobValue:
+	case types.TypeBlob:
 		return types.NewBlobValue(append([]byte{}, types.As[[]byte](v)...)), nil
-	case types.ArrayValue:
+	case types.TypeArray:
 		vb := NewValueBuffer()
 		err := vb.Copy(types.As[types.Array](v))
 		if err != nil {
 			return nil, err
 		}
 		return types.NewArrayValue(vb), nil
-	case types.ObjectValue:
+	case types.TypeObject:
 		fb := NewFieldBuffer()
 		err := fb.Copy(types.As[types.Object](v))
 		if err != nil {
@@ -364,7 +364,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 		fb.fields[i].Value = f.Value
 
 		switch f.Value.Type() {
-		case types.ObjectValue:
+		case types.TypeObject:
 			buf, ok := types.Is[*FieldBuffer](f.Value)
 			if !ok {
 				buf = NewFieldBuffer()
@@ -381,7 +381,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 				return err
 			}
 			fb.fields[i].Value = types.NewObjectValue(buf)
-		case types.ArrayValue:
+		case types.TypeArray:
 			buf, ok := types.Is[*ValueBuffer](f.Value)
 			if !ok {
 				buf = NewValueBuffer()

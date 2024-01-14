@@ -57,7 +57,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 			if err != nil {
 				hasNull = true
 				v = types.NewNullValue()
-			} else if v.Type() == types.NullValue {
+			} else if v.Type() == types.TypeNull {
 				hasNull = true
 			}
 

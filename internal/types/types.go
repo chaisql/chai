@@ -20,38 +20,38 @@ type ValueType uint8
 
 // List of supported value types.
 const (
-	// AnyValue denotes the absence of type
-	AnyValue ValueType = iota
-	NullValue
-	BooleanValue
-	IntegerValue
-	DoubleValue
-	TimestampValue
-	TextValue
-	BlobValue
-	ArrayValue
-	ObjectValue
+	// TypeAny denotes the absence of type
+	TypeAny ValueType = iota
+	TypeNull
+	TypeBoolean
+	TypeInteger
+	TypeDouble
+	TypeTimestamp
+	TypeText
+	TypeBlob
+	TypeArray
+	TypeObject
 )
 
 func (t ValueType) String() string {
 	switch t {
-	case NullValue:
+	case TypeNull:
 		return "null"
-	case BooleanValue:
+	case TypeBoolean:
 		return "boolean"
-	case IntegerValue:
+	case TypeInteger:
 		return "integer"
-	case DoubleValue:
+	case TypeDouble:
 		return "double"
-	case TimestampValue:
+	case TypeTimestamp:
 		return "timestamp"
-	case BlobValue:
+	case TypeBlob:
 		return "blob"
-	case TextValue:
+	case TypeText:
 		return "text"
-	case ArrayValue:
+	case TypeArray:
 		return "array"
-	case ObjectValue:
+	case TypeObject:
 		return "object"
 	}
 
@@ -60,17 +60,17 @@ func (t ValueType) String() string {
 
 // IsNumber returns true if t is either an integer or a float.
 func (t ValueType) IsNumber() bool {
-	return t == IntegerValue || t == DoubleValue
+	return t == TypeInteger || t == TypeDouble
 }
 
 // IsTimestampCompatible returns true if t is either a timestamp, an integer, or a text.
 func (t ValueType) IsTimestampCompatible() bool {
-	return t == TimestampValue || t == TextValue
+	return t == TypeTimestamp || t == TypeText
 }
 
 // IsAny returns whether this is type is Any or a real type
 func (t ValueType) IsAny() bool {
-	return t == AnyValue
+	return t == TypeAny
 }
 
 type Value interface {

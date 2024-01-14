@@ -32,14 +32,14 @@ var _ Value = &value[bool]{}
 // NewNullValue returns a SQL NULL value.
 func NewNullValue() Value {
 	return &value[struct{}]{
-		tp: NullValue,
+		tp: TypeNull,
 	}
 }
 
 // NewBoolValue returns a SQL BOOL value.
 func NewBoolValue(x bool) Value {
 	return &value[bool]{
-		tp: BooleanValue,
+		tp: TypeBoolean,
 		v:  x,
 	}
 }
@@ -47,7 +47,7 @@ func NewBoolValue(x bool) Value {
 // NewIntegerValue returns a SQL INTEGER value.
 func NewIntegerValue(x int64) Value {
 	return &value[int64]{
-		tp: IntegerValue,
+		tp: TypeInteger,
 		v:  x,
 	}
 }
@@ -55,7 +55,7 @@ func NewIntegerValue(x int64) Value {
 // NewDoubleValue returns a SQL DOUBLE value.
 func NewDoubleValue(x float64) Value {
 	return &value[float64]{
-		tp: DoubleValue,
+		tp: TypeDouble,
 		v:  x,
 	}
 }
@@ -63,7 +63,7 @@ func NewDoubleValue(x float64) Value {
 // NewTimestampValue returns a SQL TIMESTAMP value.
 func NewTimestampValue(x time.Time) Value {
 	return &value[time.Time]{
-		tp: TimestampValue,
+		tp: TypeTimestamp,
 		v:  x.UTC(),
 	}
 }
@@ -71,7 +71,7 @@ func NewTimestampValue(x time.Time) Value {
 // NewBlobValue returns a SQL BLOB value.
 func NewBlobValue(x []byte) Value {
 	return &value[[]byte]{
-		tp: BlobValue,
+		tp: TypeBlob,
 		v:  x,
 	}
 }
@@ -79,7 +79,7 @@ func NewBlobValue(x []byte) Value {
 // NewTextValue returns a SQL TEXT value.
 func NewTextValue(x string) Value {
 	return &value[string]{
-		tp: TextValue,
+		tp: TypeText,
 		v:  x,
 	}
 }
@@ -87,7 +87,7 @@ func NewTextValue(x string) Value {
 // NewArrayValue returns a SQL ARRAY value.
 func NewArrayValue(a Array) Value {
 	return &value[Array]{
-		tp: ArrayValue,
+		tp: TypeArray,
 		v:  a,
 	}
 }
@@ -95,7 +95,7 @@ func NewArrayValue(a Array) Value {
 // NewObjectValue returns a SQL OBJECT value.
 func NewObjectValue(d Object) Value {
 	return &value[Object]{
-		tp: ObjectValue,
+		tp: TypeObject,
 		v:  d,
 	}
 }
@@ -109,7 +109,7 @@ func NewValueWith[T any](t ValueType, v T) Value {
 }
 
 func (v *value[T]) V() any {
-	if v.tp == NullValue {
+	if v.tp == TypeNull {
 		return nil
 	}
 
@@ -140,12 +140,12 @@ func Is[T any](v Value) (T, bool) {
 }
 
 func IsNull(v Value) bool {
-	return v == nil || v.Type() == NullValue
+	return v == nil || v.Type() == TypeNull
 }
 
 // IsTruthy returns whether v is not equal to the zero value of its type.
 func IsTruthy(v Value) (bool, error) {
-	if v.Type() == NullValue {
+	if v.Type() == TypeNull {
 		return false, nil
 	}
 
@@ -157,19 +157,19 @@ func IsTruthy(v Value) (bool, error) {
 // This function doesn't perform any allocation.
 func IsZeroValue(v Value) (bool, error) {
 	switch v.Type() {
-	case BooleanValue:
+	case TypeBoolean:
 		return !As[bool](v), nil
-	case IntegerValue:
+	case TypeInteger:
 		return As[int64](v) == int64(0), nil
-	case DoubleValue:
+	case TypeDouble:
 		return As[float64](v) == float64(0), nil
-	case TimestampValue:
+	case TypeTimestamp:
 		return As[time.Time](v).IsZero(), nil
-	case BlobValue:
+	case TypeBlob:
 		return As[[]byte](v) == nil, nil
-	case TextValue:
+	case TypeText:
 		return As[string](v) == "", nil
-	case ArrayValue:
+	case TypeArray:
 		// The zero value of an array is an empty array.
 		// Thus, if GetByIndex(0) returns the ErrValueNotFound
 		// it means that the array is empty.
@@ -178,7 +178,7 @@ func IsZeroValue(v Value) (bool, error) {
 			return true, nil
 		}
 		return false, err
-	case ObjectValue:
+	case TypeObject:
 		err := As[Object](v).Iterate(func(_ string, _ Value) error {
 			// We return an error in the first iteration to stop it.
 			return errors.WithStack(errStop)
@@ -227,16 +227,16 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 	}
 
 	switch v.Type() {
-	case NullValue:
+	case TypeNull:
 		dst.WriteString("NULL")
 		return nil
-	case BooleanValue:
+	case TypeBoolean:
 		dst.WriteString(strconv.FormatBool(As[bool](v)))
 		return nil
-	case IntegerValue:
+	case TypeInteger:
 		dst.WriteString(strconv.FormatInt(As[int64](v), 10))
 		return nil
-	case DoubleValue:
+	case TypeDouble:
 		f := As[float64](v)
 		abs := math.Abs(f)
 		fmt := byte('f')
@@ -255,19 +255,19 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		}
 		dst.WriteString(strconv.FormatFloat(As[float64](v), fmt, prec, 64))
 		return nil
-	case TimestampValue:
+	case TypeTimestamp:
 		dst.WriteString(strconv.Quote(As[time.Time](v).Format(time.RFC3339Nano)))
 		return nil
-	case TextValue:
+	case TypeText:
 		dst.WriteString(strconv.Quote(As[string](v)))
 		return nil
-	case BlobValue:
+	case TypeBlob:
 		src := As[[]byte](v)
 		dst.WriteString("\"\\x")
 		hex.NewEncoder(dst).Write(src)
 		dst.WriteByte('"')
 		return nil
-	case ArrayValue:
+	case TypeArray:
 		var nonempty bool
 		dst.WriteByte('[')
 		err := As[Array](v).Iterate(func(i int, value Value) error {
@@ -290,7 +290,7 @@ func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) e
 		}
 		dst.WriteByte(']')
 		return nil
-	case ObjectValue:
+	case TypeObject:
 		dst.WriteByte('{')
 		var i int
 		err := As[Object](v).Iterate(func(field string, value Value) error {
@@ -335,11 +335,11 @@ func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
 // MarshalJSON implements the json.Marshaler interface.
 func (v *value[T]) MarshalJSON() ([]byte, error) {
 	switch v.Type() {
-	case BooleanValue, IntegerValue, TextValue, TimestampValue:
+	case TypeBoolean, TypeInteger, TypeText, TypeTimestamp:
 		return v.MarshalText()
-	case NullValue:
+	case TypeNull:
 		return []byte("null"), nil
-	case DoubleValue:
+	case TypeDouble:
 		f := As[float64](v)
 		abs := math.Abs(f)
 		fmt := byte('f')
@@ -353,16 +353,16 @@ func (v *value[T]) MarshalJSON() ([]byte, error) {
 		// See https://pkg.go.dev/strconv#FormatFloat
 		prec := -1
 		return strconv.AppendFloat(nil, As[float64](v), fmt, prec, 64), nil
-	case BlobValue:
+	case TypeBlob:
 		src := As[[]byte](v)
 		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
 		dst[0] = '"'
 		dst[len(dst)-1] = '"'
 		base64.StdEncoding.Encode(dst[1:], src)
 		return dst, nil
-	case ArrayValue:
+	case TypeArray:
 		return jsonArray{Array: As[Array](v)}.MarshalJSON()
-	case ObjectValue:
+	case TypeObject:
 		return jsonObject{Object: As[Object](v)}.MarshalJSON()
 	default:
 		return nil, fmt.Errorf("unexpected type: %d", v.Type())

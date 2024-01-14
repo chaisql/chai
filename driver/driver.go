@@ -357,56 +357,56 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 			return err
 		}
 		switch tp {
-		case types.BooleanValue.String():
+		case types.TypeBoolean.String():
 			var b bool
 			err = row.r.ScanColumn(rs.columns[i], &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
-		case types.IntegerValue.String():
+		case types.TypeInteger.String():
 			var ii int64
 			err = row.r.ScanColumn(rs.columns[i], &ii)
 			if err != nil {
 				return err
 			}
 			dest[i] = ii
-		case types.DoubleValue.String():
+		case types.TypeDouble.String():
 			var d float64
 			err = row.r.ScanColumn(rs.columns[i], &d)
 			if err != nil {
 				return err
 			}
 			dest[i] = d
-		case types.TimestampValue.String():
+		case types.TypeTimestamp.String():
 			var t time.Time
 			err = row.r.ScanColumn(rs.columns[i], &t)
 			if err != nil {
 				return err
 			}
 			dest[i] = t
-		case types.TextValue.String():
+		case types.TypeText.String():
 			var s string
 			err = row.r.ScanColumn(rs.columns[i], &s)
 			if err != nil {
 				return err
 			}
 			dest[i] = s
-		case types.BlobValue.String():
+		case types.TypeBlob.String():
 			var b []byte
 			err = row.r.ScanColumn(rs.columns[i], &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
-		case types.ArrayValue.String():
+		case types.TypeArray.String():
 			var a []any
 			err = row.r.ScanColumn(rs.columns[i], &a)
 			if err != nil {
 				return err
 			}
 			dest[i] = a
-		case types.ObjectValue.String():
+		case types.TypeObject.String():
 			m := make(map[string]any)
 			err = row.r.ScanColumn(rs.columns[i], &m)
 			if err != nil {

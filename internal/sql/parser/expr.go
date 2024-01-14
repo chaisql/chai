@@ -430,31 +430,31 @@ func (p *Parser) parseType() (types.ValueType, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEANY:
-		return types.AnyValue, nil
+		return types.TypeAny, nil
 	case scanner.TYPEARRAY:
-		return types.ArrayValue, nil
+		return types.TypeArray, nil
 	case scanner.TYPEBLOB, scanner.TYPEBYTES:
-		return types.BlobValue, nil
+		return types.TypeBlob, nil
 	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
-		return types.BooleanValue, nil
+		return types.TypeBoolean, nil
 	case scanner.TYPEOBJECT:
-		return types.ObjectValue, nil
+		return types.TypeObject, nil
 	case scanner.TYPEREAL:
-		return types.DoubleValue, nil
+		return types.TypeDouble, nil
 	case scanner.TYPEDOUBLE:
 		tok, _, _ := p.ScanIgnoreWhitespace()
 		if tok == scanner.PRECISION {
-			return types.DoubleValue, nil
+			return types.TypeDouble, nil
 		}
 		p.Unscan()
-		return types.DoubleValue, nil
+		return types.TypeDouble, nil
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
 		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
-		return types.IntegerValue, nil
+		return types.TypeInteger, nil
 	case scanner.TYPETEXT:
-		return types.TextValue, nil
+		return types.TypeText, nil
 	case scanner.TYPETIMESTAMP:
-		return types.TimestampValue, nil
+		return types.TypeTimestamp, nil
 	case scanner.TYPEVARCHAR, scanner.TYPECHARACTER:
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != scanner.LPAREN {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{"("}, pos)
@@ -469,7 +469,7 @@ func (p *Parser) parseType() (types.ValueType, error) {
 			return 0, newParseError(scanner.Tokstr(tok, lit), []string{")"}, pos)
 		}
 
-		return types.TextValue, nil
+		return types.TypeText, nil
 	}
 
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)

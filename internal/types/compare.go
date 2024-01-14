@@ -72,23 +72,23 @@ func IsLesserThanOrEqual(v, other Value) (bool, error) {
 func compare(op operator, l, r Value) (bool, error) {
 	switch {
 	// deal with nil
-	case l.Type() == NullValue || r.Type() == NullValue:
+	case l.Type() == TypeNull || r.Type() == TypeNull:
 		return compareWithNull(op, l, r), nil
 
 	// compare booleans together
-	case l.Type() == BooleanValue && r.Type() == BooleanValue:
+	case l.Type() == TypeBoolean && r.Type() == TypeBoolean:
 		return compareBooleans(op, As[bool](l), As[bool](r)), nil
 
 	// compare texts together
-	case l.Type() == TextValue && r.Type() == TextValue:
+	case l.Type() == TypeText && r.Type() == TypeText:
 		return compareTexts(op, As[string](l), As[string](r)), nil
 
 	// compare blobs together
-	case r.Type() == BlobValue && l.Type() == BlobValue:
+	case r.Type() == TypeBlob && l.Type() == TypeBlob:
 		return compareBlobs(op, As[[]byte](l), As[[]byte](r)), nil
 
 	// compare integers together
-	case l.Type() == IntegerValue && r.Type() == IntegerValue:
+	case l.Type() == TypeInteger && r.Type() == TypeInteger:
 		return compareIntegers(op, As[int64](l), As[int64](r)), nil
 
 	// compare numbers together
@@ -96,22 +96,22 @@ func compare(op operator, l, r Value) (bool, error) {
 		return compareNumbers(op, l, r), nil
 
 	// compare timestamps together
-	case l.Type() == TimestampValue && r.Type() == TimestampValue:
+	case l.Type() == TypeTimestamp && r.Type() == TypeTimestamp:
 		return compareTimes(op, As[time.Time](l), As[time.Time](r)), nil
 
 	// compare arrays together
-	case l.Type() == ArrayValue && r.Type() == ArrayValue:
+	case l.Type() == TypeArray && r.Type() == TypeArray:
 		return compareArrays(op, As[Array](l), As[Array](r))
 
 	// compare objects together
-	case l.Type() == ObjectValue && r.Type() == ObjectValue:
+	case l.Type() == TypeObject && r.Type() == TypeObject:
 		return compareobjects(op, As[Object](l), As[Object](r))
 	}
 
 	// compare compatible timestamps
-	if l.Type() == TimestampValue && r.Type().IsTimestampCompatible() {
+	if l.Type() == TypeTimestamp && r.Type().IsTimestampCompatible() {
 		return compareTimestamps(op, l, r)
-	} else if r.Type() == TimestampValue && l.Type().IsTimestampCompatible() {
+	} else if r.Type() == TypeTimestamp && l.Type().IsTimestampCompatible() {
 		return compareTimestamps(op, l, r)
 	}
 

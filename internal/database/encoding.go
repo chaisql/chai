@@ -44,7 +44,7 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 		}
 
 		// if the field is not found OR NULL, and the field is required, return an error
-		if fc.IsNotNull && (v == nil || v.Type() == types.NullValue) {
+		if fc.IsNotNull && (v == nil || v.Type() == types.TypeNull) {
 			return nil, &ConstraintViolationError{Constraint: "NOT NULL", Paths: []object.Path{object.NewPath(fc.Field)}}
 		}
 
@@ -53,12 +53,12 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 		}
 
 		// ensure the value is of the correct type
-		if fc.Type != types.AnyValue {
+		if fc.Type != types.TypeAny {
 			v, err = object.CastAs(v, fc.Type)
 			if err != nil {
 				return nil, err
 			}
-		} else if v.Type() == types.TimestampValue {
+		} else if v.Type() == types.TypeTimestamp {
 			// without a type constraint, timestamp values must
 			// always be stored as text to avoid mixed representations.
 			v, err = object.CastAsText(v)
@@ -68,7 +68,7 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 		}
 
 		// Encode the value only.
-		if v.Type() == types.ObjectValue {
+		if v.Type() == types.TypeObject {
 			// encode map length
 			mlen := len(fc.AnonymousType.FieldConstraints.Ordered)
 			if fc.AnonymousType.FieldConstraints.AllowExtraFields {
@@ -134,7 +134,7 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Object) ([]byt
 		dst = encoding.EncodeText(dst, field)
 
 		// then encode the value
-		if value.Type() == types.TimestampValue {
+		if value.Type() == types.TypeTimestamp {
 			// without a type constraint, timestamp values must
 			// always be stored as text to avoid mixed representations.
 			value, err = object.CastAsText(value)
@@ -187,7 +187,7 @@ func (e *EncodedObject) skipToExtra(b []byte) int {
 func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value, int, error) {
 	c := b[0]
 
-	if fc.Type == types.ObjectValue && c == encoding.ArrayValue {
+	if fc.Type == types.TypeObject && c == encoding.ArrayValue {
 		// skip array
 		after := encoding.SkipArray(b[1:])
 
@@ -201,14 +201,14 @@ func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value,
 		return types.NewObjectValue(NewEncodedObject(&fc.AnonymousType.FieldConstraints, b)), after + 1, nil
 	}
 
-	v, n := encoding.DecodeValue(b, fc.Type == types.AnyValue || fc.Type == types.ArrayValue /* intAsDouble */)
+	v, n := encoding.DecodeValue(b, fc.Type == types.TypeAny || fc.Type == types.TypeArray /* intAsDouble */)
 
-	if fc.Type == types.TimestampValue && v.Type() == types.IntegerValue {
+	if fc.Type == types.TypeTimestamp && v.Type() == types.TypeInteger {
 		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.As[int64](v)))
 	}
 
 	// ensure the returned value is of the correct type
-	if fc.Type != types.AnyValue {
+	if fc.Type != types.TypeAny {
 		var err error
 		v, err = object.CastAs(v, fc.Type)
 		if err != nil {
@@ -216,7 +216,7 @@ func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value,
 		}
 	}
 
-	if v.Type() == types.TextValue {
+	if v.Type() == types.TypeText {
 		s := strings.Clone(types.As[string](v))
 		v = types.NewTextValue(s)
 	}
@@ -266,7 +266,7 @@ func (e *EncodedObject) Iterate(fn func(field string, value types.Value) error) 
 
 		b = b[n:]
 
-		if v.Type() == types.NullValue {
+		if v.Type() == types.TypeNull {
 			continue
 		}
 

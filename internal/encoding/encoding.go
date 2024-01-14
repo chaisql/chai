@@ -39,23 +39,23 @@ func EncodeValue(dst []byte, v types.Value, desc bool) ([]byte, error) {
 func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 	if v.V() == nil {
 		switch v.Type() {
-		case types.NullValue:
+		case types.TypeNull:
 			return EncodeNull(dst), nil
-		case types.BooleanValue:
+		case types.TypeBoolean:
 			return EncodeBoolean(dst, false), nil
-		case types.IntegerValue:
+		case types.TypeInteger:
 			return EncodeInt(dst, 0), nil
-		case types.DoubleValue:
+		case types.TypeDouble:
 			return EncodeFloat64(dst, 0), nil
-		case types.TimestampValue:
+		case types.TypeTimestamp:
 			return EncodeTimestamp(dst, time.Time{}), nil
-		case types.TextValue:
+		case types.TypeText:
 			return EncodeText(dst, ""), nil
-		case types.BlobValue:
+		case types.TypeBlob:
 			return EncodeBlob(dst, nil), nil
-		case types.ArrayValue:
+		case types.TypeArray:
 			return EncodeArray(dst, nil)
-		case types.ObjectValue:
+		case types.TypeObject:
 			return EncodeObject(dst, nil)
 		default:
 			panic(fmt.Sprintf("unsupported type %v", v.Type()))
@@ -63,23 +63,23 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 	}
 
 	switch v.Type() {
-	case types.NullValue:
+	case types.TypeNull:
 		return EncodeNull(dst), nil
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return EncodeBoolean(dst, types.As[bool](v)), nil
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return EncodeInt(dst, types.As[int64](v)), nil
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return EncodeFloat64(dst, types.As[float64](v)), nil
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return EncodeTimestamp(dst, types.As[time.Time](v)), nil
-	case types.TextValue:
+	case types.TypeText:
 		return EncodeText(dst, types.As[string](v)), nil
-	case types.BlobValue:
+	case types.TypeBlob:
 		return EncodeBlob(dst, types.As[[]byte](v)), nil
-	case types.ArrayValue:
+	case types.TypeArray:
 		return EncodeArray(dst, types.As[types.Array](v))
-	case types.ObjectValue:
+	case types.TypeObject:
 		return EncodeObject(dst, types.As[types.Object](v))
 	}
 

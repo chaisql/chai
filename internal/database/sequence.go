@@ -19,13 +19,13 @@ var sequenceTableInfo = func() *TableInfo {
 			&FieldConstraint{
 				Position:  0,
 				Field:     "name",
-				Type:      types.TextValue,
+				Type:      types.TypeText,
 				IsNotNull: true,
 			},
 			&FieldConstraint{
 				Position: 1,
 				Field:    "seq",
-				Type:     types.IntegerValue,
+				Type:     types.TypeInteger,
 			},
 		),
 		TableConstraints: []*TableConstraint{

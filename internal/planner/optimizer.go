@@ -390,7 +390,7 @@ func RemoveUnnecessaryFilterNodesRule(sctx *StreamContext) error {
 			// IN operator with empty array
 			// ex: WHERE a IN []
 			lv, ok := t.RightHand().(expr.LiteralValue)
-			if ok && lv.Value.Type() == types.ArrayValue {
+			if ok && lv.Value.Type() == types.TypeArray {
 				l, err := object.ArrayLength(types.As[types.Array](lv.Value))
 				if err != nil {
 					return err

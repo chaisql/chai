@@ -67,7 +67,7 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 		}
 
 		var currentValue *int64
-		if err == nil && v.Type() != types.NullValue {
+		if err == nil && v.Type() != types.TypeNull {
 			v := types.As[int64](v)
 			currentValue = &v
 		}
@@ -142,7 +142,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
+	if err == nil && v.Type() != types.TypeNull {
 		ti.RowidSequenceName = types.As[string](v)
 	}
 
@@ -180,7 +180,7 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
+	if err == nil && v.Type() != types.TypeNull {
 		owner, err := ownerFromObject(types.As[types.Object](v))
 		if err != nil {
 			return nil, err
@@ -208,7 +208,7 @@ func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, errors.Wrap(err, "failed to get owner field")
 	}
-	if err == nil && v.Type() != types.NullValue {
+	if err == nil && v.Type() != types.TypeNull {
 		owner, err := ownerFromObject(types.As[types.Object](v))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get owner")
@@ -233,7 +233,7 @@ func ownerFromObject(o types.Object) (*database.Owner, error) {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
+	if err == nil && v.Type() != types.TypeNull {
 		err = types.As[types.Array](v).Iterate(func(i int, value types.Value) error {
 			pp, err := parser.ParsePath(types.As[string](value))
 			if err != nil {

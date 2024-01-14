@@ -24,7 +24,7 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // Comparing with NULL always evaluates to NULL.
 func (op *cmpOp) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
@@ -106,7 +106,7 @@ func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, erro
 	}
 
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
@@ -150,11 +150,11 @@ func In(a, b Expr) Expr {
 
 func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
-		if b.Type() != types.ArrayValue {
+		if b.Type() != types.TypeArray {
 			return FalseLiteral, nil
 		}
 

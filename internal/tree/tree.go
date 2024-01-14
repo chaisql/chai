@@ -361,23 +361,23 @@ func (t *Tree) buildEndKeyExclusive(key *Key, desc bool) ([]byte, error) {
 
 func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return types.NewNullValue()
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return types.NewBoolValue(false)
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return types.NewIntegerValue(math.MinInt64)
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return types.NewDoubleValue(-math.MaxFloat64)
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return types.NewTimestampValue(time.Time{})
-	case types.TextValue:
+	case types.TypeText:
 		return types.NewTextValue("")
-	case types.BlobValue:
+	case types.TypeBlob:
 		return types.NewBlobValue(nil)
-	case types.ArrayValue:
+	case types.TypeArray:
 		return types.NewArrayValue(nil)
-	case types.ObjectValue:
+	case types.TypeObject:
 		return types.NewObjectValue(nil)
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
@@ -386,23 +386,23 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 
 func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return encoding.NullValue
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return encoding.FalseValue
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return encoding.Int64Value
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return encoding.Float64Value
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return encoding.Int64Value
-	case types.TextValue:
+	case types.TypeText:
 		return encoding.TextValue
-	case types.BlobValue:
+	case types.TypeBlob:
 		return encoding.BlobValue
-	case types.ArrayValue:
+	case types.TypeArray:
 		return encoding.ArrayValue
-	case types.ObjectValue:
+	case types.TypeObject:
 		return encoding.ObjectValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
@@ -411,23 +411,23 @@ func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 
 func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return encoding.DESC_NullValue
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return encoding.DESC_TrueValue
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return encoding.DESC_Uint64Value
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return encoding.DESC_Float64Value
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return encoding.DESC_Uint64Value
-	case types.TextValue:
+	case types.TypeText:
 		return encoding.DESC_TextValue
-	case types.BlobValue:
+	case types.TypeBlob:
 		return encoding.DESC_BlobValue
-	case types.ArrayValue:
+	case types.TypeArray:
 		return encoding.DESC_ArrayValue
-	case types.ObjectValue:
+	case types.TypeObject:
 		return encoding.DESC_ObjectValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
@@ -436,23 +436,23 @@ func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
 
 func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return encoding.DESC_NullValue + 1
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return encoding.DESC_FalseValue + 1
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return encoding.DESC_Int64Value + 1
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return encoding.DESC_Float64Value + 1
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return encoding.DESC_Int64Value + 1
-	case types.TextValue:
+	case types.TypeText:
 		return encoding.DESC_TextValue + 1
-	case types.BlobValue:
+	case types.TypeBlob:
 		return encoding.DESC_BlobValue + 1
-	case types.ArrayValue:
+	case types.TypeArray:
 		return encoding.DESC_ArrayValue + 1
-	case types.ObjectValue:
+	case types.TypeObject:
 		return encoding.DESC_ObjectValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
@@ -461,23 +461,23 @@ func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
 
 func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return types.NewNullValue()
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return types.NewBoolValue(true)
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return types.NewIntegerValue(math.MaxInt64)
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return types.NewDoubleValue(math.MaxFloat64)
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return types.NewIntegerValue(math.MaxInt64)
-	case types.TextValue:
+	case types.TypeText:
 		return types.NewTextValue("")
-	case types.BlobValue:
+	case types.TypeBlob:
 		return types.NewBlobValue(nil)
-	case types.ArrayValue:
+	case types.TypeArray:
 		return types.NewArrayValue(nil)
-	case types.ObjectValue:
+	case types.TypeObject:
 		return types.NewObjectValue(nil)
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
@@ -486,23 +486,23 @@ func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 
 func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
 	switch tp {
-	case types.NullValue:
+	case types.TypeNull:
 		return encoding.NullValue + 1
-	case types.BooleanValue:
+	case types.TypeBoolean:
 		return encoding.TrueValue + 1
-	case types.IntegerValue:
+	case types.TypeInteger:
 		return encoding.Uint64Value + 1
-	case types.DoubleValue:
+	case types.TypeDouble:
 		return encoding.Float64Value + 1
-	case types.TimestampValue:
+	case types.TypeTimestamp:
 		return encoding.Uint64Value + 1
-	case types.TextValue:
+	case types.TypeText:
 		return encoding.TextValue + 1
-	case types.BlobValue:
+	case types.TypeBlob:
 		return encoding.BlobValue + 1
-	case types.ArrayValue:
+	case types.TypeArray:
 		return encoding.ArrayValue + 1
-	case types.ObjectValue:
+	case types.TypeObject:
 		return encoding.ObjectValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))

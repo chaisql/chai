@@ -32,9 +32,9 @@ var floor = &ScalarDefinition{
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
 		switch args[0].Type() {
-		case types.DoubleValue:
+		case types.TypeDouble:
 			return types.NewDoubleValue(math.Floor(types.As[float64](args[0]))), nil
-		case types.IntegerValue:
+		case types.TypeInteger:
 			return args[0], nil
 		default:
 			return nil, fmt.Errorf("floor(arg1) expects arg1 to be a number")
@@ -46,16 +46,16 @@ var abs = &ScalarDefinition{
 	name:  "abs",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() == types.NullValue {
+		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
 		res := math.Abs(types.As[float64](v))
-		if args[0].Type() == types.IntegerValue {
-			return object.CastAs(types.NewDoubleValue(res), types.IntegerValue)
+		if args[0].Type() == types.TypeInteger {
+			return object.CastAs(types.NewDoubleValue(res), types.TypeInteger)
 		}
 		return types.NewDoubleValue(res), nil
 	},
@@ -65,10 +65,10 @@ var acos = &ScalarDefinition{
 	name:  "acos",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() == types.NullValue {
+		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -85,10 +85,10 @@ var acosh = &ScalarDefinition{
 	name:  "acosh",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() == types.NullValue {
+		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -105,10 +105,10 @@ var asin = &ScalarDefinition{
 	name:  "asin",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() == types.NullValue {
+		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -125,8 +125,8 @@ var asinh = &ScalarDefinition{
 	name:  "asinh",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := object.CastAs(args[0], types.DoubleValue)
-		if err != nil || v.Type() == types.NullValue {
+		v, err := object.CastAs(args[0], types.TypeDouble)
+		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
 		vv := types.As[float64](v)
@@ -139,8 +139,8 @@ var atan = &ScalarDefinition{
 	name:  "atan",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := object.CastAs(args[0], types.DoubleValue)
-		if err != nil || v.Type() == types.NullValue {
+		v, err := object.CastAs(args[0], types.TypeDouble)
+		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
 		vv := types.As[float64](v)
@@ -153,13 +153,13 @@ var atan2 = &ScalarDefinition{
 	name:  "atan2",
 	arity: 2,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		vA, err := object.CastAs(args[0], types.DoubleValue)
-		if err != nil || vA.Type() == types.NullValue {
+		vA, err := object.CastAs(args[0], types.TypeDouble)
+		if err != nil || vA.Type() == types.TypeNull {
 			return vA, err
 		}
 		vvA := types.As[float64](vA)
-		vB, err := object.CastAs(args[1], types.DoubleValue)
-		if err != nil || vB.Type() == types.NullValue {
+		vB, err := object.CastAs(args[1], types.TypeDouble)
+		if err != nil || vB.Type() == types.TypeNull {
 			return vB, err
 		}
 		vvB := types.As[float64](vB)
@@ -181,10 +181,10 @@ var sqrt = &ScalarDefinition{
 	name:  "sqrt",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() != types.DoubleValue && args[0].Type() != types.IntegerValue {
+		if args[0].Type() != types.TypeDouble && args[0].Type() != types.TypeInteger {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.DoubleValue)
+		v, err := object.CastAs(args[0], types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}

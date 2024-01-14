@@ -17,21 +17,21 @@ func TestEncoding(t *testing.T) {
 	err := ti.AddFieldConstraint(&database.FieldConstraint{
 		Position: 0,
 		Field:    "a",
-		Type:     types.IntegerValue,
+		Type:     types.TypeInteger,
 	})
 	require.NoError(t, err)
 
 	err = ti.AddFieldConstraint(&database.FieldConstraint{
 		Position: 1,
 		Field:    "b",
-		Type:     types.TextValue,
+		Type:     types.TypeText,
 	})
 	require.NoError(t, err)
 
 	err = ti.AddFieldConstraint(&database.FieldConstraint{
 		Position:  2,
 		Field:     "c",
-		Type:      types.DoubleValue,
+		Type:      types.TypeDouble,
 		IsNotNull: true,
 	})
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestEncoding(t *testing.T) {
 	err = ti.AddFieldConstraint(&database.FieldConstraint{
 		Position:     3,
 		Field:        "d",
-		Type:         types.DoubleValue,
+		Type:         types.TypeDouble,
 		DefaultValue: expr.Constraint(testutil.ParseExpr(t, `10`)),
 	})
 	require.NoError(t, err)
@@ -47,7 +47,7 @@ func TestEncoding(t *testing.T) {
 	err = ti.AddFieldConstraint(&database.FieldConstraint{
 		Position: 4,
 		Field:    "e",
-		Type:     types.DoubleValue,
+		Type:     types.TypeDouble,
 	})
 	require.NoError(t, err)
 
@@ -92,7 +92,7 @@ func TestEncoding(t *testing.T) {
 		err := ti.AddFieldConstraint(&database.FieldConstraint{
 			Position: 0,
 			Field:    "a",
-			Type:     types.ObjectValue,
+			Type:     types.TypeObject,
 			AnonymousType: &database.AnonymousType{
 				FieldConstraints: database.FieldConstraints{
 					AllowExtraFields: true,
@@ -106,7 +106,7 @@ func TestEncoding(t *testing.T) {
 		err = subfcs.Add(&database.FieldConstraint{
 			Position: 0,
 			Field:    "d",
-			Type:     types.TextValue,
+			Type:     types.TypeText,
 		})
 		subfcs.AllowExtraFields = true
 		require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestEncoding(t *testing.T) {
 		err = ti.AddFieldConstraint(&database.FieldConstraint{
 			Position: 1,
 			Field:    "b",
-			Type:     types.ObjectValue,
+			Type:     types.TypeObject,
 			AnonymousType: &database.AnonymousType{
 				FieldConstraints: subfcs,
 			},
@@ -125,7 +125,7 @@ func TestEncoding(t *testing.T) {
 		err = ti.AddFieldConstraint(&database.FieldConstraint{
 			Position: 2,
 			Field:    "c",
-			Type:     types.IntegerValue,
+			Type:     types.TypeInteger,
 		})
 		require.NoError(t, err)
 

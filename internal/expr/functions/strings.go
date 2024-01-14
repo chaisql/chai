@@ -63,7 +63,7 @@ func (s *Lower) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if val.Type() != types.TextValue {
+	if val.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
@@ -103,7 +103,7 @@ func (s *Upper) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if val.Type() != types.TextValue {
+	if val.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
@@ -153,7 +153,7 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if input.Type() != types.TextValue {
+	if input.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
@@ -164,7 +164,7 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		if remove.Type() != types.TextValue {
+		if remove.Type() != types.TypeText {
 			return types.NewNullValue(), nil
 		}
 		cutset = types.As[string](remove)

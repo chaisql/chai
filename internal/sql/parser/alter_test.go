@@ -51,14 +51,14 @@ func TestParserAlterTableAddField(t *testing.T) {
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
-				Type:  types.AnyValue,
+				Type:  types.TypeAny,
 			},
 		}, false},
 		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
-				Type:  types.IntegerValue,
+				Type:  types.TypeInteger,
 			},
 		}, false},
 		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", &statement.AlterTableAddColumnStmt{
@@ -72,7 +72,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field: "bar",
-				Type:  types.AnyValue,
+				Type:  types.TypeAny,
 			},
 			TableConstraints: database.TableConstraints{
 				&database.TableConstraint{
@@ -85,7 +85,7 @@ func TestParserAlterTableAddField(t *testing.T) {
 			TableName: "foo",
 			FieldConstraint: &database.FieldConstraint{
 				Field:        "bar",
-				Type:         types.IntegerValue,
+				Type:         types.TypeInteger,
 				IsNotNull:    true,
 				DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
 			},

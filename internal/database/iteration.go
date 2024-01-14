@@ -65,11 +65,11 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 	// is lossless.
 	// if a timestamp is encountered, ensure the field constraint is also a timestamp, otherwise convert it to text.
 	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path object.Path, targetType types.ValueType) (types.Value, error) {
-		if v.Type() == types.IntegerValue && targetType == types.DoubleValue {
+		if v.Type() == types.TypeInteger && targetType == types.TypeDouble {
 			return object.CastAsDouble(v)
 		}
 
-		if v.Type() == types.DoubleValue && targetType == types.IntegerValue {
+		if v.Type() == types.TypeDouble && targetType == types.TypeInteger {
 			f := types.As[float64](v)
 			if float64(int64(f)) == f {
 				return object.CastAsInteger(v)
@@ -104,7 +104,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 			}
 		}
 
-		if v.Type() == types.TimestampValue && targetType == types.TextValue {
+		if v.Type() == types.TypeTimestamp && targetType == types.TypeText {
 			return object.CastAsText(v)
 		}
 

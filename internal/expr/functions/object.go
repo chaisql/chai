@@ -36,7 +36,7 @@ func (s *ObjectFields) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if val.Type() != types.ObjectValue {
+	if val.Type() != types.TypeObject {
 		return types.NewNullValue(), nil
 	}
 

@@ -809,46 +809,46 @@ func newCatalogStore() *CatalogStore {
 			&FieldConstraint{
 				Position:  0,
 				Field:     "name",
-				Type:      types.TextValue,
+				Type:      types.TypeText,
 				IsNotNull: true,
 			},
 			&FieldConstraint{
 				Position:  1,
 				Field:     "type",
-				Type:      types.TextValue,
+				Type:      types.TypeText,
 				IsNotNull: true,
 			},
 			&FieldConstraint{
 				Position: 2,
 				Field:    "namespace",
-				Type:     types.IntegerValue,
+				Type:     types.TypeInteger,
 			},
 			&FieldConstraint{
 				Position: 3,
 				Field:    "sql",
-				Type:     types.TextValue,
+				Type:     types.TypeText,
 			},
 			&FieldConstraint{
 				Position: 4,
 				Field:    "rowid_sequence_name",
-				Type:     types.TextValue,
+				Type:     types.TypeText,
 			},
 			&FieldConstraint{
 				Position: 5,
 				Field:    "owner",
-				Type:     types.ObjectValue,
+				Type:     types.TypeObject,
 				AnonymousType: &AnonymousType{
 					FieldConstraints: MustNewFieldConstraints(
 						&FieldConstraint{
 							Position:  0,
 							Field:     "table_name",
-							Type:      types.TextValue,
+							Type:      types.TypeText,
 							IsNotNull: true,
 						},
 						&FieldConstraint{
 							Position: 1,
 							Field:    "paths",
-							Type:     types.ArrayValue,
+							Type:     types.TypeArray,
 						},
 					),
 				},

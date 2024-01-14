@@ -273,7 +273,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v.Type() != types.NullValue {
+	if v.Type() != types.TypeNull {
 		c.Count++
 	}
 
@@ -347,7 +347,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		return nil
 	}
 
@@ -451,7 +451,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		return nil
 	}
 
@@ -558,12 +558,12 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return err
 	}
-	if v.Type() != types.IntegerValue && v.Type() != types.DoubleValue {
+	if v.Type() != types.TypeInteger && v.Type() != types.TypeDouble {
 		return nil
 	}
 
 	if s.SumF != nil {
-		if v.Type() == types.IntegerValue {
+		if v.Type() == types.TypeInteger {
 			*s.SumF += float64(types.As[int64](v))
 		} else {
 			*s.SumF += float64(types.As[float64](v))
@@ -572,7 +572,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if v.Type() == types.DoubleValue {
+	if v.Type() == types.TypeDouble {
 		var sumF float64
 		if s.SumI != nil {
 			sumF = float64(*s.SumI)
@@ -668,9 +668,9 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	switch v.Type() {
-	case types.IntegerValue:
+	case types.TypeInteger:
 		s.Avg += float64(types.As[int64](v))
-	case types.DoubleValue:
+	case types.TypeDouble:
 		s.Avg += types.As[float64](v)
 	default:
 		return nil
@@ -708,15 +708,15 @@ func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	}
 	var length int
 	switch val.Type() {
-	case types.TextValue:
+	case types.TypeText:
 		length = len(types.As[string](val))
-	case types.ArrayValue:
+	case types.TypeArray:
 		arrayLen, err := object.ArrayLength(types.As[types.Array](val))
 		if err != nil {
 			return nil, err
 		}
 		length = arrayLen
-	case types.ObjectValue:
+	case types.TypeObject:
 		docLen, err := object.Length(types.As[types.Object](val))
 		if err != nil {
 			return nil, err
@@ -761,7 +761,7 @@ func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		if v.Type() != types.NullValue {
+		if v.Type() != types.TypeNull {
 			return v, nil
 		}
 	}

@@ -24,7 +24,7 @@ func Like(a, b Expr) Expr {
 
 func (op *LikeOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() != types.TextValue || b.Type() != types.TextValue {
+		if a.Type() != types.TypeText || b.Type() != types.TypeText {
 			return NullLiteral, nil
 		}
 

@@ -159,7 +159,7 @@ func TestParserExpr(t *testing.T) {
 		{"with NULL", "age > NULL", expr.Gt(testutil.ParsePath(t, "age"), testutil.NullValue()), false},
 
 		// unary operators
-		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TextValue}, false},
+		{"CAST", "CAST(a.b[1][0] AS TEXT)", expr.Cast{Expr: testutil.ParsePath(t, "a.b[1][0]"), CastAs: types.TypeText}, false},
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},

@@ -201,7 +201,7 @@ func TestFieldBuffer(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = buf.Apply(func(p object.Path, v types.Value) (types.Value, error) {
-			if v.Type() == types.ArrayValue || v.Type() == types.ObjectValue {
+			if v.Type() == types.TypeArray || v.Type() == types.TypeObject {
 				return v, nil
 			}
 
@@ -402,31 +402,31 @@ func TestNewFromStruct(t *testing.T) {
 			case 13:
 				require.Equal(t, u.N, types.As[float64](v))
 			case 14:
-				require.EqualValues(t, types.ObjectValue, v.Type())
+				require.EqualValues(t, types.TypeObject, v.Type())
 			case 15:
 				require.EqualValues(t, *u.Q, types.As[int64](v))
 			case 16:
-				require.EqualValues(t, types.ObjectValue, v.Type())
+				require.EqualValues(t, types.TypeObject, v.Type())
 			case 17:
-				require.EqualValues(t, types.ArrayValue, v.Type())
+				require.EqualValues(t, types.TypeArray, v.Type())
 			case 18:
-				require.EqualValues(t, types.NullValue, v.Type())
+				require.EqualValues(t, types.TypeNull, v.Type())
 			case 19:
-				require.EqualValues(t, types.ArrayValue, v.Type())
+				require.EqualValues(t, types.TypeArray, v.Type())
 			case 20:
-				require.EqualValues(t, types.ArrayValue, v.Type())
+				require.EqualValues(t, types.TypeArray, v.Type())
 			case 21:
-				require.EqualValues(t, types.ArrayValue, v.Type())
+				require.EqualValues(t, types.TypeArray, v.Type())
 			case 22:
-				require.EqualValues(t, types.ArrayValue, v.Type())
+				require.EqualValues(t, types.TypeArray, v.Type())
 			case 23:
 				require.EqualValues(t, u.Z, types.As[int64](v))
 			case 24:
-				require.EqualValues(t, types.NullValue, v.Type())
+				require.EqualValues(t, types.TypeNull, v.Type())
 			case 25:
-				require.EqualValues(t, types.IntegerValue, v.Type())
+				require.EqualValues(t, types.TypeInteger, v.Type())
 			case 26:
-				require.EqualValues(t, types.TimestampValue, v.Type())
+				require.EqualValues(t, types.TypeTimestamp, v.Type())
 			default:
 				require.FailNowf(t, "", "unknown field %q", f)
 			}

@@ -233,7 +233,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		return &ErrUnsupportedType{ref, "parameter is not a valid reference"}
 	}
 
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		if ref.Type().Kind() != reflect.Ptr {
 			return nil
 		}
@@ -269,7 +269,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	}
 
 	// Scan nulls as Go zero values.
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		ref.Set(reflect.Zero(ref.Type()))
 		return nil
 	}
@@ -323,12 +323,12 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return scanValue(v, ref.Elem())
 		}
 		switch v.Type() {
-		case types.ObjectValue:
+		case types.TypeObject:
 			m := make(map[string]any)
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
 			return mapScan(types.As[types.Object](v), vm)
-		case types.ArrayValue:
+		case types.TypeArray:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
 			err := sliceScan(types.As[types.Array](v), vs)
@@ -337,14 +337,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			}
 			ref.Set(vs.Elem())
 			return nil
-		case types.TextValue:
+		case types.TypeText:
 			// copy the string to avoid
 			// keeping a reference to the underlying buffer
 			// which could be reused
 			cp := strings.Clone(types.As[string](v))
 			ref.Set(reflect.ValueOf(cp))
 			return nil
-		case types.BlobValue:
+		case types.TypeBlob:
 			// copy the byte slice to avoid
 			// keeping a reference to the underlying buffer
 			// which could be reused
@@ -361,7 +361,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	switch ref.Type().String() {
 	case "time.Time":
 		switch v.Type() {
-		case types.TextValue:
+		case types.TypeText:
 			parsed, err := time.Parse(time.RFC3339Nano, types.As[string](v))
 			if err != nil {
 				return err
@@ -369,7 +369,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 
 			ref.Set(reflect.ValueOf(parsed))
 			return nil
-		case types.TimestampValue:
+		case types.TypeTimestamp:
 			ref.Set(reflect.ValueOf(types.As[time.Time](v)))
 			return nil
 		}
@@ -385,10 +385,10 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		return structScan(types.As[types.Object](v), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
+			if v.Type() != types.TypeText && v.Type() != types.TypeBlob {
 				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
-			if v.Type() == types.TextValue {
+			if v.Type() == types.TypeText {
 				ref.SetBytes([]byte(types.As[string](v)))
 			} else {
 				ref.SetBytes(types.As[[]byte](v))
@@ -403,7 +403,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		return sliceScan(types.As[types.Array](v), ref.Addr())
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
-			if v.Type() != types.TextValue && v.Type() != types.BlobValue {
+			if v.Type() != types.TypeText && v.Type() != types.TypeBlob {
 				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
 			reflect.Copy(ref, reflect.ValueOf(v.V()))
