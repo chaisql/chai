@@ -54,6 +54,26 @@ func (v NullValue) String() string {
 	return "NULL"
 }
 
+func (v NullValue) Eq(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
+func (v NullValue) GT(other Value) (bool, error) {
+	return false, nil
+}
+
+func (v NullValue) GTEq(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
+func (v NullValue) LT(other Value) (bool, error) {
+	return false, nil
+}
+
+func (v NullValue) LTEq(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
 func (v NullValue) MarshalText() ([]byte, error) {
 	return []byte("NULL"), nil
 }
@@ -79,6 +99,48 @@ func (v BooleanValue) Type() ValueType {
 
 func (v BooleanValue) IsZero() (bool, error) {
 	return !bool(v), nil
+}
+
+func (v BooleanValue) Eq(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return bool(v) == AsBool(other), nil
+}
+
+func (v BooleanValue) GT(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return bool(v) && !AsBool(other), nil
+}
+
+func (v BooleanValue) GTEq(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	bv := bool(v)
+	return bv == AsBool(other) || bv, nil
+}
+
+func (v BooleanValue) LT(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return !bool(v) && AsBool(other), nil
+}
+
+func (v BooleanValue) LTEq(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	bv := bool(v)
+	return bv == AsBool(other) || !bv, nil
 }
 
 func (v BooleanValue) String() string {
@@ -112,6 +174,61 @@ func (v IntegerValue) IsZero() (bool, error) {
 	return v == 0, nil
 }
 
+func (v IntegerValue) Eq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return int64(v) == AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) == AsFloat64(v), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) GT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return int64(v) > AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) > AsFloat64(v), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) GTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return int64(v) >= AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) >= AsFloat64(v), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) LT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return int64(v) < AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) <= AsFloat64(v), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) LTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return int64(v) <= AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) <= AsFloat64(v), nil
+	default:
+		return false, nil
+	}
+}
+
 func (v IntegerValue) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
@@ -141,6 +258,61 @@ func (v DoubleValue) Type() ValueType {
 
 func (v DoubleValue) IsZero() (bool, error) {
 	return v == 0, nil
+}
+
+func (v DoubleValue) Eq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeDouble:
+		return float64(v) == AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) == float64(AsInt64(v)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) GT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeDouble:
+		return float64(v) > AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) > float64(AsInt64(v)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) GTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeDouble:
+		return float64(v) >= AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) >= float64(AsInt64(v)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) LT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeDouble:
+		return float64(v) < AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) < float64(AsInt64(v)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) LTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeDouble:
+		return float64(v) <= AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) <= float64(AsInt64(v)), nil
+	default:
+		return false, nil
+	}
 }
 
 func (v DoubleValue) String() string {
@@ -200,6 +372,89 @@ func (v TimestampValue) Type() ValueType {
 
 func (v TimestampValue) IsZero() (bool, error) {
 	return time.Time(v).IsZero(), nil
+}
+
+func (v TimestampValue) Eq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeTimestamp:
+		return time.Time(v).Equal(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).Equal(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) GT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeTimestamp:
+		return time.Time(v).After(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).After(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) GTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeTimestamp:
+		ta := time.Time(v)
+		tb := AsTime(other)
+		return ta.After(tb) || ta.Equal(tb), nil
+	case TypeText:
+		ta := time.Time(v)
+		tb, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+
+		return ta.After(tb) || ta.Equal(tb), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) LT(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeTimestamp:
+		return time.Time(v).Before(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).Before(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) LTEq(other Value) (bool, error) {
+	switch other.Type() {
+	case TypeTimestamp:
+		ta := time.Time(v)
+		tb := AsTime(other)
+		return ta.Before(tb) || ta.Equal(tb), nil
+	case TypeText:
+		ta := time.Time(v)
+		tb, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+
+		return ta.Before(tb) || ta.Equal(tb), nil
+	default:
+		return false, nil
+	}
 }
 
 func (v TimestampValue) String() string {
@@ -381,6 +636,60 @@ func (o *ObjectValue) MarshalJSON() ([]byte, error) {
 
 func As[T any](v Value) T {
 	return v.V().(T)
+}
+
+func AsBool(v Value) bool {
+	bv, ok := v.(BooleanValue)
+	if !ok {
+		return v.V().(bool)
+	}
+
+	return bool(bv)
+}
+
+func AsInt64(v Value) int64 {
+	iv, ok := v.(IntegerValue)
+	if !ok {
+		return v.V().(int64)
+	}
+
+	return int64(iv)
+}
+
+func AsFloat64(v Value) float64 {
+	dv, ok := v.(DoubleValue)
+	if !ok {
+		return v.V().(float64)
+	}
+
+	return float64(dv)
+}
+
+func AsTime(v Value) time.Time {
+	tv, ok := v.(TimestampValue)
+	if !ok {
+		return v.V().(time.Time)
+	}
+
+	return time.Time(tv)
+}
+
+func AsString(v Value) string {
+	tv, ok := v.(TextValue)
+	if !ok {
+		return v.V().(string)
+	}
+
+	return string(tv)
+}
+
+func AsByteSlice(v Value) []byte {
+	bv, ok := v.(BlobValue)
+	if !ok {
+		return v.V().([]byte)
+	}
+
+	return string(bv)
 }
 
 func Is[T any](v Value) (T, bool) {

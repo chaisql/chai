@@ -77,6 +77,11 @@ type Value interface {
 	Type() ValueType
 	V() any
 	IsZero() (bool, error)
+	Eq(other Value) (bool, error)
+	GT(other Value) (bool, error)
+	GTEq(other Value) (bool, error)
+	LT(other Value) (bool, error)
+	LTEq(other Value) (bool, error)
 	String() string
 	MarshalJSON() ([]byte, error)
 	MarshalText() ([]byte, error)
