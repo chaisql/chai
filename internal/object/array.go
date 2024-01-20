@@ -27,7 +27,7 @@ func ArrayContains(a types.Array, v types.Value) (bool, error) {
 	var found bool
 
 	err := a.Iterate(func(i int, vv types.Value) error {
-		ok, err := types.IsEqual(vv, v)
+		ok, err := vv.EQ(v)
 		if err != nil {
 			return err
 		}

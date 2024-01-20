@@ -21,21 +21,21 @@ func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, e
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
 		switch op.simpleOperator.Tok {
 		case scanner.ADD:
-			return types.Add(a, b)
+			return a.Add(b)
 		case scanner.SUB:
-			return types.Sub(a, b)
+			return a.Sub(b)
 		case scanner.MUL:
-			return types.Mul(a, b)
+			return a.Mul(b)
 		case scanner.DIV:
-			return types.Div(a, b)
+			return a.Div(b)
 		case scanner.MOD:
-			return types.Mod(a, b)
+			return a.Mod(b)
 		case scanner.BITWISEAND:
-			return types.BitwiseAnd(a, b)
+			return a.BitwiseAnd(b)
 		case scanner.BITWISEOR:
-			return types.BitwiseOr(a, b)
+			return a.BitwiseOr(b)
 		case scanner.BITWISEXOR:
-			return types.BitwiseXor(a, b)
+			return a.BitwiseXor(b)
 		}
 
 		panic("unknown arithmetic token")

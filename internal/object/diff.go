@@ -77,7 +77,7 @@ func diff(path Path, d1, d2 types.Object) ([]Op, error) {
 				}
 				ops = append(ops, subOps...)
 			default:
-				ok, err := types.IsEqual(v1, v2)
+				ok, err := v1.EQ(v2)
 				if err != nil {
 					return nil, err
 				}
@@ -145,7 +145,7 @@ func arrayDiff(path Path, a1, a2 types.Array) ([]Op, error) {
 			}
 			ops = append(ops, subOps...)
 		default:
-			ok, err := types.IsEqual(v1, v2)
+			ok, err := v1.EQ(v2)
 			if err != nil {
 				return nil, err
 			}

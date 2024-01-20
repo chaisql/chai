@@ -116,7 +116,7 @@ func TestTableGetObject(t *testing.T) {
 		assert.NoError(t, err)
 		fc, err := res.Get("fieldc")
 		assert.NoError(t, err)
-		ok, err := types.IsEqual(vc, fc)
+		ok, err := vc.EQ(fc)
 		assert.NoError(t, err)
 		require.True(t, ok)
 	})

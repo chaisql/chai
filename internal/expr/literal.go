@@ -22,7 +22,7 @@ func (v LiteralValue) IsEqual(other Expr) bool {
 	if !ok {
 		return false
 	}
-	ok, err := types.IsEqual(v.Value, o.Value)
+	ok, err := v.Value.EQ(o.Value)
 	return ok && err == nil
 }
 

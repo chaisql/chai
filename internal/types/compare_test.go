@@ -269,17 +269,18 @@ func TestCompare(t *testing.T) {
 
 			switch test.op {
 			case "=":
-				ok, err = types.IsEqual(a, b)
+				ok, err = a.EQ(b)
 			case "!=":
-				ok, err = types.IsNotEqual(a, b)
+				ok, err = a.EQ(b)
+				ok = !ok
 			case ">":
-				ok, err = types.IsGreaterThan(a, b)
+				ok, err = a.GT(b)
 			case ">=":
-				ok, err = types.IsGreaterThanOrEqual(a, b)
+				ok, err = a.GTE(b)
 			case "<":
-				ok, err = types.IsLesserThan(a, b)
+				ok, err = a.LT(b)
 			case "<=":
-				ok, err = types.IsLesserThanOrEqual(a, b)
+				ok, err = a.LTE(b)
 			}
 			assert.NoError(t, err)
 			require.Equal(t, test.ok, ok)
@@ -322,17 +323,18 @@ func TestCompareValues(t *testing.T) {
 
 			switch test.op {
 			case "=":
-				ok, err = types.IsEqual(a, b)
+				ok, err = a.EQ(b)
 			case "!=":
-				ok, err = types.IsNotEqual(a, b)
+				ok, err = a.EQ(b)
+				ok = !ok
 			case ">":
-				ok, err = types.IsGreaterThan(a, b)
+				ok, err = a.GT(b)
 			case ">=":
-				ok, err = types.IsGreaterThanOrEqual(a, b)
+				ok, err = a.GTE(b)
 			case "<":
-				ok, err = types.IsLesserThan(a, b)
+				ok, err = a.LT(b)
 			case "<=":
-				ok, err = types.IsLesserThanOrEqual(a, b)
+				ok, err = a.LTE(b)
 			}
 			assert.NoError(t, err)
 			require.Equal(t, test.ok, ok)

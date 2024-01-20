@@ -35,7 +35,7 @@ func TestValueAdd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.Add(test.v, test.u)
+			res, err := test.v.Add(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -71,7 +71,7 @@ func TestValueSub(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.Sub(test.v, test.u)
+			res, err := test.v.Sub(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -105,7 +105,7 @@ func TestValueMult(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.Mul(test.v, test.u)
+			res, err := test.v.Mul(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -140,7 +140,7 @@ func TestValueDiv(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.Div(test.v, test.u)
+			res, err := test.v.Div(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -177,7 +177,7 @@ func TestValueMod(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.Mod(test.v, test.u)
+			res, err := test.v.Mod(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -211,7 +211,7 @@ func TestValueBitwiseAnd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.BitwiseAnd(test.v, test.u)
+			res, err := test.v.BitwiseAnd(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -244,7 +244,7 @@ func TestValueBitwiseOr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.BitwiseOr(test.v, test.u)
+			res, err := test.v.BitwiseOr(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -276,7 +276,7 @@ func TestValueBitwiseXor(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := types.BitwiseXor(test.v, test.u)
+			res, err := test.v.BitwiseXor(test.u)
 			if test.fails {
 				assert.Error(t, err)
 			} else {

@@ -54,6 +54,62 @@ func (v NullValue) String() string {
 	return "NULL"
 }
 
+func (v NullValue) EQ(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
+func (v NullValue) GT(other Value) (bool, error) {
+	return false, nil
+}
+
+func (v NullValue) GTE(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
+func (v NullValue) LT(other Value) (bool, error) {
+	return false, nil
+}
+
+func (v NullValue) LTE(other Value) (bool, error) {
+	return other.Type() == TypeNull, nil
+}
+
+func (v NullValue) Between(a, b Value) (bool, error) {
+	return false, nil
+}
+
+func (v NullValue) Add(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) Sub(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) Mul(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) Div(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) Mod(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) BitwiseAnd(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) BitwiseOr(other Value) (Value, error) {
+	return v, nil
+}
+
+func (v NullValue) BitwiseXor(other Value) (Value, error) {
+	return v, nil
+}
+
 func (v NullValue) MarshalText() ([]byte, error) {
 	return []byte("NULL"), nil
 }
@@ -79,6 +135,93 @@ func (v BooleanValue) Type() ValueType {
 
 func (v BooleanValue) IsZero() (bool, error) {
 	return !bool(v), nil
+}
+
+func (v BooleanValue) EQ(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return bool(v) == AsBool(other), nil
+}
+
+func (v BooleanValue) GT(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return bool(v) && !AsBool(other), nil
+}
+
+func (v BooleanValue) GTE(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	bv := bool(v)
+	return bv == AsBool(other) || bv, nil
+}
+
+func (v BooleanValue) LT(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	return !bool(v) && AsBool(other), nil
+}
+
+func (v BooleanValue) LTE(other Value) (bool, error) {
+	if other.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	bv := bool(v)
+	return bv == AsBool(other) || !bv, nil
+}
+
+func (v BooleanValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeBoolean || b.Type() != TypeBoolean {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v BooleanValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BooleanValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
 }
 
 func (v BooleanValue) String() string {
@@ -112,6 +255,229 @@ func (v IntegerValue) IsZero() (bool, error) {
 	return v == 0, nil
 }
 
+func (v IntegerValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeInteger:
+		return int64(v) == AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) == AsFloat64(other), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeInteger:
+		return int64(v) > AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) > AsFloat64(other), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeInteger:
+		return int64(v) >= AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) >= AsFloat64(other), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeInteger:
+		return int64(v) < AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) <= AsFloat64(other), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeInteger:
+		return int64(v) <= AsInt64(other), nil
+	case TypeDouble:
+		return float64(int64(v)) <= AsFloat64(other), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v IntegerValue) Between(a, b Value) (bool, error) {
+	if !a.Type().IsNumber() || !b.Type().IsNumber() {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v IntegerValue) Add(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xa := int64(v)
+		xb := AsInt64(other)
+		xr := xa + xb
+		// if there is an integer overflow
+		// convert to float
+		if (xr > xa) != (xb > 0) {
+			return NewDoubleValue(float64(xa) + float64(xb)), nil
+		}
+		return NewIntegerValue(xr), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(int64(v)) + AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) Sub(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xa := int64(v)
+		xb := AsInt64(other)
+		xr := xa - xb
+		// if there is an integer overflow
+		// convert to float
+		if (xr < xa) != (xb > 0) {
+			return NewDoubleValue(float64(xa) - float64(xb)), nil
+		}
+		return NewIntegerValue(xr), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(int64(v)) - AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) Mul(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xa := int64(v)
+		xb := AsInt64(other)
+		if xa == 0 || xb == 0 {
+			return NewIntegerValue(0), nil
+		}
+		xr := xa * xb
+		// if there is no integer overflow
+		// return an int, otherwise
+		// convert to float
+		if (xr < 0) == ((xa < 0) != (xb < 0)) {
+			if xr/xb == xa {
+				return NewIntegerValue(xr), nil
+			}
+		}
+
+		return NewDoubleValue(float64(xa) * float64(xb)), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(int64(v)) * AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) Div(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xa := int64(v)
+		xb := AsInt64(other)
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewIntegerValue(xa / xb), nil
+	case TypeDouble:
+		xa := float64(AsInt64(v))
+		xb := AsFloat64(other)
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(xa / xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) Mod(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xa := int64(v)
+		xb := AsInt64(other)
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewIntegerValue(xa % xb), nil
+	case TypeDouble:
+		xa := float64(AsInt64(v))
+		xb := AsFloat64(other)
+		mod := math.Mod(xa, xb)
+		if math.IsNaN(mod) {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(mod), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) BitwiseAnd(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) & AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa & xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) BitwiseOr(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) | AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa | xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v IntegerValue) BitwiseXor(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) ^ AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa ^ xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
 func (v IntegerValue) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
@@ -141,6 +507,195 @@ func (v DoubleValue) Type() ValueType {
 
 func (v DoubleValue) IsZero() (bool, error) {
 	return v == 0, nil
+}
+
+func (v DoubleValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeDouble:
+		return float64(v) == AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) == float64(AsInt64(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeDouble:
+		return float64(v) > AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) > float64(AsInt64(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeDouble:
+		return float64(v) >= AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) >= float64(AsInt64(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeDouble:
+		return float64(v) < AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) < float64(AsInt64(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeDouble:
+		return float64(v) <= AsFloat64(other), nil
+	case TypeInteger:
+		return float64(v) <= float64(AsInt64(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v DoubleValue) Between(a, b Value) (bool, error) {
+	if !a.Type().IsNumber() || !b.Type().IsNumber() {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v DoubleValue) Add(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewDoubleValue(float64(v) + float64(AsInt64(other))), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(v) + AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) Sub(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewDoubleValue(float64(v) - float64(AsInt64(other))), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(v) - AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) Mul(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewDoubleValue(float64(v) * float64(AsInt64(other))), nil
+	case TypeDouble:
+		return NewDoubleValue(float64(v) * AsFloat64(other)), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) Div(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xb := float64(AsInt64(other))
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(float64(v) / xb), nil
+	case TypeDouble:
+		xb := AsFloat64(other)
+		if xb == 0 {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(float64(v) / xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) Mod(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		xb := float64(AsInt64(other))
+		xr := math.Mod(float64(v), xb)
+		if math.IsNaN(xr) {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(xr), nil
+	case TypeDouble:
+		xb := AsFloat64(other)
+		xr := math.Mod(float64(v), xb)
+		if math.IsNaN(xr) {
+			return NewNullValue(), nil
+		}
+
+		return NewDoubleValue(xr), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) BitwiseAnd(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) & AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa & xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) BitwiseOr(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) | AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa | xb), nil
+	}
+
+	return NewNullValue(), nil
+}
+
+func (v DoubleValue) BitwiseXor(other Value) (Value, error) {
+	switch other.Type() {
+	case TypeInteger:
+		return NewIntegerValue(int64(v) ^ AsInt64(other)), nil
+	case TypeDouble:
+		xa := int64(v)
+		xb := int64(AsFloat64(other))
+		return NewIntegerValue(xa ^ xb), nil
+	}
+
+	return NewNullValue(), nil
 }
 
 func (v DoubleValue) String() string {
@@ -202,6 +757,139 @@ func (v TimestampValue) IsZero() (bool, error) {
 	return time.Time(v).IsZero(), nil
 }
 
+func (v TimestampValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeTimestamp:
+		return time.Time(v).Equal(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).Equal(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeTimestamp:
+		return time.Time(v).After(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).After(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeTimestamp:
+		ta := time.Time(v)
+		tb := AsTime(other)
+		return ta.After(tb) || ta.Equal(tb), nil
+	case TypeText:
+		ta := time.Time(v)
+		tb, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+
+		return ta.After(tb) || ta.Equal(tb), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeTimestamp:
+		return time.Time(v).Before(AsTime(other)), nil
+	case TypeText:
+		ts, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+		return time.Time(v).Before(ts), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeTimestamp:
+		ta := time.Time(v)
+		tb := AsTime(other)
+		return ta.Before(tb) || ta.Equal(tb), nil
+	case TypeText:
+		ta := time.Time(v)
+		tb, err := ParseTimestamp(AsString(other))
+		if err != nil {
+			return false, err
+		}
+
+		return ta.Before(tb) || ta.Equal(tb), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TimestampValue) Between(a, b Value) (bool, error) {
+	if !a.Type().IsTimestampCompatible() || !b.Type().IsTimestampCompatible() {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v TimestampValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TimestampValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
 func (v TimestampValue) String() string {
 	return strconv.Quote(time.Time(v).Format(time.RFC3339Nano))
 }
@@ -233,6 +921,133 @@ func (v TextValue) IsZero() (bool, error) {
 	return v == "", nil
 }
 
+func (v TextValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeText:
+		return strings.Compare(string(v), AsString(other)) == 0, nil
+	case TypeTimestamp:
+		ts, err := ParseTimestamp(As[string](v))
+		if err != nil {
+			return false, err
+		}
+		return ts.Equal(AsTime(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TextValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeText:
+		return strings.Compare(string(v), AsString(other)) > 0, nil
+	case TypeTimestamp:
+		ts, err := ParseTimestamp(As[string](v))
+		if err != nil {
+			return false, err
+		}
+		return ts.After(AsTime(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TextValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeText:
+		return strings.Compare(string(v), AsString(other)) >= 0, nil
+	case TypeTimestamp:
+		t1, err := ParseTimestamp(As[string](v))
+		if err != nil {
+			return false, err
+		}
+		t2 := AsTime(other)
+		return t1.After(t2) || t1.Equal(t2), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TextValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeText:
+		return strings.Compare(string(v), AsString(other)) < 0, nil
+	case TypeTimestamp:
+		ts, err := ParseTimestamp(As[string](v))
+		if err != nil {
+			return false, err
+		}
+		return ts.Before(AsTime(other)), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TextValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	switch t {
+	case TypeText:
+		return strings.Compare(string(v), AsString(other)) <= 0, nil
+	case TypeTimestamp:
+		t1, err := ParseTimestamp(As[string](v))
+		if err != nil {
+			return false, err
+		}
+		t2 := AsTime(other)
+		return t1.Before(t2) || t1.Equal(t2), nil
+	default:
+		return false, nil
+	}
+}
+
+func (v TextValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeText || b.Type() != TypeText {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v TextValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v TextValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
 func (v TextValue) String() string {
 	return strconv.Quote(string(v))
 }
@@ -262,6 +1077,95 @@ func (v BlobValue) Type() ValueType {
 
 func (v BlobValue) IsZero() (bool, error) {
 	return v == nil, nil
+}
+
+func (v BlobValue) EQ(other Value) (bool, error) {
+	if other.Type() != TypeBlob {
+		return false, nil
+	}
+
+	return bytes.Equal([]byte(v), AsByteSlice(other)), nil
+}
+
+func (v BlobValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeBlob {
+		return false, nil
+	}
+
+	return bytes.Compare([]byte(v), AsByteSlice(other)) > 0, nil
+}
+
+func (v BlobValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeBlob {
+		return false, nil
+	}
+
+	return bytes.Compare([]byte(v), AsByteSlice(other)) >= 0, nil
+}
+
+func (v BlobValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeBlob {
+		return false, nil
+	}
+
+	return bytes.Compare([]byte(v), AsByteSlice(other)) < 0, nil
+}
+
+func (v BlobValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeBlob {
+		return false, nil
+	}
+
+	return bytes.Compare([]byte(v), AsByteSlice(other)) <= 0, nil
+}
+
+func (v BlobValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeBlob || b.Type() != TypeBlob {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v BlobValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v BlobValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
 }
 
 func (v BlobValue) String() string {
@@ -304,7 +1208,7 @@ func (v *ArrayValue) Type() ValueType {
 	return TypeArray
 }
 
-func (v ArrayValue) IsZero() (bool, error) {
+func (v *ArrayValue) IsZero() (bool, error) {
 	// The zero value of an array is an empty array.
 	// Thus, if GetByIndex(0) returns the ErrValueNotFound
 	// it means that the array is empty.
@@ -313,6 +1217,96 @@ func (v ArrayValue) IsZero() (bool, error) {
 		return true, nil
 	}
 	return false, err
+}
+
+func (v *ArrayValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeArray {
+		return false, nil
+	}
+
+	return compareArrays(operatorEq, v.a, AsArray(other))
+}
+
+func (v *ArrayValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeArray {
+		return false, nil
+	}
+
+	return compareArrays(operatorGt, v.a, AsArray(other))
+}
+
+func (v *ArrayValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeArray {
+		return false, nil
+	}
+
+	return compareArrays(operatorGte, v.a, AsArray(other))
+}
+
+func (v *ArrayValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeArray {
+		return false, nil
+	}
+
+	return compareArrays(operatorLt, v.a, AsArray(other))
+}
+
+func (v *ArrayValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeArray {
+		return false, nil
+	}
+
+	return compareArrays(operatorLte, v.a, AsArray(other))
+}
+
+func (v *ArrayValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeArray || b.Type() != TypeArray {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v *ArrayValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ArrayValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
 }
 
 func (v *ArrayValue) String() string {
@@ -366,6 +1360,96 @@ func (v *ObjectValue) IsZero() (bool, error) {
 	return false, err
 }
 
+func (v *ObjectValue) EQ(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeObject {
+		return false, nil
+	}
+
+	return compareObjects(operatorEq, v.o, AsObject(other))
+}
+
+func (v *ObjectValue) GT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeObject {
+		return false, nil
+	}
+
+	return compareObjects(operatorGt, v.o, AsObject(other))
+}
+
+func (v *ObjectValue) GTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeObject {
+		return false, nil
+	}
+
+	return compareObjects(operatorGte, v.o, AsObject(other))
+}
+
+func (v *ObjectValue) LT(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeObject {
+		return false, nil
+	}
+
+	return compareObjects(operatorLt, v.o, AsObject(other))
+}
+
+func (v *ObjectValue) LTE(other Value) (bool, error) {
+	t := other.Type()
+	if t != TypeObject {
+		return false, nil
+	}
+
+	return compareObjects(operatorLte, v.o, AsObject(other))
+}
+
+func (v *ObjectValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeObject || b.Type() != TypeObject {
+		return false, nil
+	}
+
+	ok, err := a.LTE(v)
+	if err != nil || !ok {
+		return false, err
+	}
+
+	return b.GTE(v)
+}
+
+func (v *ObjectValue) Add(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) Sub(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) Mul(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) Div(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) Mod(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) BitwiseAnd(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) BitwiseOr(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
+func (v *ObjectValue) BitwiseXor(other Value) (Value, error) {
+	return NewNullValue(), nil
+}
+
 func (o *ObjectValue) String() string {
 	data, _ := o.MarshalText()
 	return string(data)
@@ -383,6 +1467,78 @@ func As[T any](v Value) T {
 	return v.V().(T)
 }
 
+func AsBool(v Value) bool {
+	bv, ok := v.(BooleanValue)
+	if !ok {
+		return v.V().(bool)
+	}
+
+	return bool(bv)
+}
+
+func AsInt64(v Value) int64 {
+	iv, ok := v.(IntegerValue)
+	if !ok {
+		return v.V().(int64)
+	}
+
+	return int64(iv)
+}
+
+func AsFloat64(v Value) float64 {
+	dv, ok := v.(DoubleValue)
+	if !ok {
+		return v.V().(float64)
+	}
+
+	return float64(dv)
+}
+
+func AsTime(v Value) time.Time {
+	tv, ok := v.(TimestampValue)
+	if !ok {
+		return v.V().(time.Time)
+	}
+
+	return time.Time(tv)
+}
+
+func AsString(v Value) string {
+	tv, ok := v.(TextValue)
+	if !ok {
+		return v.V().(string)
+	}
+
+	return string(tv)
+}
+
+func AsByteSlice(v Value) []byte {
+	bv, ok := v.(BlobValue)
+	if !ok {
+		return v.V().([]byte)
+	}
+
+	return bv
+}
+
+func AsArray(v Value) Array {
+	av, ok := v.(*ArrayValue)
+	if !ok {
+		return v.V().(Array)
+	}
+
+	return av.a
+}
+
+func AsObject(v Value) Object {
+	ov, ok := v.(*ObjectValue)
+	if !ok {
+		return v.V().(Object)
+	}
+
+	return ov.o
+}
+
 func Is[T any](v Value) (T, bool) {
 	x, ok := v.V().(T)
 	return x, ok
@@ -392,7 +1548,7 @@ func IsNull(v Value) bool {
 	return v == nil || v.Type() == TypeNull
 }
 
-// IsTruthy returns whether v is not equal to the zero value of its type.
+// IsTruthy returns whether v is not Equal to the zero value of its type.
 func IsTruthy(v Value) (bool, error) {
 	if v.Type() == TypeNull {
 		return false, nil

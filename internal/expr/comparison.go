@@ -40,17 +40,21 @@ func (op *cmpOp) Eval(env *environment.Environment) (types.Value, error) {
 func (op *cmpOp) compare(l, r types.Value) (bool, error) {
 	switch op.Tok {
 	case scanner.EQ:
-		return types.IsEqual(l, r)
+		return l.EQ(r)
 	case scanner.NEQ:
-		return types.IsNotEqual(l, r)
+		eq, err := l.EQ(r)
+		if err != nil {
+			return false, err
+		}
+		return !eq, nil
 	case scanner.GT:
-		return types.IsGreaterThan(l, r)
+		return l.GT(r)
 	case scanner.GTE:
-		return types.IsGreaterThanOrEqual(l, r)
+		return l.GTE(r)
 	case scanner.LT:
-		return types.IsLesserThan(l, r)
+		return l.LT(r)
 	case scanner.LTE:
-		return types.IsLesserThanOrEqual(l, r)
+		return l.LTE(r)
 	default:
 		panic(fmt.Sprintf("unknown token %v", op.Tok))
 	}
@@ -106,21 +110,20 @@ func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, erro
 	}
 
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull || x.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
-		ok, err := types.IsGreaterThanOrEqual(x, a)
-		if !ok || err != nil {
-			return FalseLiteral, err
+		ok, err := x.Between(a, b)
+		if err != nil {
+			return NullLiteral, err
 		}
 
-		ok, err = types.IsLesserThanOrEqual(x, b)
-		if !ok || err != nil {
-			return FalseLiteral, err
+		if ok {
+			return TrueLiteral, nil
 		}
 
-		return TrueLiteral, nil
+		return FalseLiteral, nil
 	})
 }
 
@@ -198,7 +201,7 @@ func Is(a, b Expr) Expr {
 
 func (op *IsOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		ok, err := types.IsEqual(a, b)
+		ok, err := a.EQ(b)
 		if err != nil {
 			return NullLiteral, err
 		}
@@ -221,11 +224,11 @@ func IsNot(a, b Expr) Expr {
 
 func (op *IsNotOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		ok, err := types.IsNotEqual(a, b)
+		eq, err := a.EQ(b)
 		if err != nil {
 			return NullLiteral, err
 		}
-		if ok {
+		if !eq {
 			return TrueLiteral, nil
 		}
 

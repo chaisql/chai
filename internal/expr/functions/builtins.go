@@ -363,7 +363,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	if m.Min.Type() == v.Type() || m.Min.Type().IsNumber() && v.Type().IsNumber() {
-		ok, err := types.IsGreaterThan(m.Min, v)
+		ok, err := m.Min.GT(v)
 		if err != nil {
 			return err
 		}
@@ -467,7 +467,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	if m.Max.Type() == v.Type() || m.Max.Type().IsNumber() && v.Type().IsNumber() {
-		ok, err := types.IsLesserThan(m.Max, v)
+		ok, err := m.Max.LT(v)
 		if err != nil {
 			return err
 		}

@@ -56,7 +56,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return ga.Aggregate(out)
 		}
 
-		ok, err := types.IsEqual(lastGroup, group)
+		ok, err := lastGroup.EQ(group)
 		if err != nil {
 			return err
 		}

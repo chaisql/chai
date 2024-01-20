@@ -114,7 +114,7 @@ func (vb *sortableValueBuffer) Less(i, j int) (ok bool) {
 	if it == jt || (it.IsNumber() && jt.IsNumber()) {
 		// TODO(asdine) make the types package work with static objects
 		// to avoid having to deal with errors?
-		ok, _ = types.IsLesserThan(vb.Values[i], vb.Values[j])
+		ok, _ = vb.Values[i].LT(vb.Values[j])
 		return
 	}
 

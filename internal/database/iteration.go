@@ -132,14 +132,14 @@ func (r *Range) IsEqual(other *Range) bool {
 	}
 
 	for i := range r.Min {
-		eq, err := types.IsEqual(r.Min[i], other.Min[i])
+		eq, err := r.Min[i].EQ(other.Min[i])
 		if err != nil || !eq {
 			return false
 		}
 	}
 
 	for i := range r.Max {
-		eq, err := types.IsEqual(r.Max[i], other.Max[i])
+		eq, err := r.Max[i].EQ(other.Max[i])
 		if err != nil || !eq {
 			return false
 		}
