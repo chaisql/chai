@@ -149,18 +149,27 @@ func TestTableScan(t *testing.T) {
 			var i int
 			var got testutil.Objs
 			err := op.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
+				b, ok := env.GetBloc()
 				require.True(t, ok)
 				var fb object.FieldBuffer
 
-				err := fb.Copy(r.Object())
-				assert.NoError(t, err)
+				r := b.Next()
+				require.NotNil(t, r)
+				for r != nil {
+					fb.Reset()
 
-				got = append(got, &fb)
-				v, err := env.GetParamByName("foo")
-				assert.NoError(t, err)
-				require.Equal(t, types.NewIntegerValue(1), v)
-				i++
+					err := fb.Copy(r.Object())
+					assert.NoError(t, err)
+
+					got = append(got, &fb)
+					v, err := env.GetParamByName("foo")
+					assert.NoError(t, err)
+					require.Equal(t, types.NewIntegerValue(1), v)
+					i++
+
+					r = b.Next()
+				}
+
 				return nil
 			})
 			if test.fails {

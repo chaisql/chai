@@ -33,14 +33,19 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		r, ok := out.GetRow()
+		bloc, ok := out.GetBloc()
 		if !ok {
-			return errors.New("missing row")
+			return errors.New("missing bloc")
 		}
 
-		err := table.Delete(r.Key())
-		if err != nil {
-			return err
+		r := bloc.Next()
+		for r != nil {
+			err := table.Delete(r.Key())
+			if err != nil {
+				return err
+			}
+
+			r = bloc.Next()
 		}
 
 		return f(out)

@@ -25,12 +25,15 @@ func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *envir
 	var newEnv environment.Environment
 
 	var table *database.Table
+
+	newBloc := stream.NewRowBloc()
+
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		newEnv.SetOuter(out)
 
-		r, ok := out.GetRow()
+		bloc, ok := out.GetBloc()
 		if !ok {
-			return errors.New("missing row")
+			return errors.New("missing bloc")
 		}
 
 		var err error
@@ -41,12 +44,19 @@ func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		_, r, err = table.Insert(r.Object())
-		if err != nil {
-			return err
+		r := bloc.Next()
+		for r != nil {
+			_, newRow, err := table.Insert(r.Object())
+			if err != nil {
+				return err
+			}
+
+			newBloc.Add(newRow)
+
+			r = bloc.Next()
 		}
 
-		newEnv.SetRow(r)
+		newEnv.SetBloc(newBloc)
 
 		return f(&newEnv)
 	})

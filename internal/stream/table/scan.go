@@ -59,15 +59,40 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 		}
 	}
 
-	for _, rng := range ranges {
-		err = table.IterateOnRange(rng, it.Reverse, func(key *tree.Key, r database.Row) error {
-			newEnv.SetRow(r)
+	bloc := stream.NewBytesBloc(table.Info)
+	defer bloc.Close()
 
-			return fn(&newEnv)
+	newEnv.SetBloc(bloc)
+
+	for _, rng := range ranges {
+		err = table.IterateRawOnRange(rng, it.Reverse, func(key *tree.Key, r []byte) error {
+			err = bloc.Add(key, r)
+			if err != nil {
+				return err
+			}
+
+			if bloc.Len() < 50 {
+				return nil
+			}
+
+			err = fn(&newEnv)
+			if err != nil {
+				return err
+			}
+
+			bloc.Reset()
+			return nil
 		})
 		if errors.Is(err, stream.ErrStreamClosed) {
 			err = nil
 		}
+		if err != nil {
+			return err
+		}
+	}
+
+	if bloc.Len() > 0 {
+		err = fn(&newEnv)
 		if err != nil {
 			return err
 		}

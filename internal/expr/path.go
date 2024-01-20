@@ -23,11 +23,6 @@ func (p Path) Eval(env *environment.Environment) (types.Value, error) {
 	}
 	dp := object.Path(p)
 
-	v, ok := env.Get(dp)
-	if ok {
-		return v, nil
-	}
-
 	v, err := dp.GetValueFromObject(r.Object())
 	if errors.Is(err, types.ErrFieldNotFound) {
 		return NullLiteral, nil

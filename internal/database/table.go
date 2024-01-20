@@ -142,6 +142,22 @@ func (t *Table) Put(key *tree.Key, o types.Object) (Row, error) {
 }
 
 func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, r Row) error) error {
+	e := EncodedObject{
+		fieldConstraints: &t.Info.FieldConstraints,
+	}
+	row := BasicRow{
+		tableName: t.Info.TableName,
+		obj:       &e,
+	}
+
+	return t.IterateRawOnRange(rng, reverse, func(k *tree.Key, enc []byte) error {
+		row.key = k
+		e.encoded = enc
+		return fn(k, &row)
+	})
+}
+
+func (t *Table) IterateRawOnRange(rng *Range, reverse bool, fn func(key *tree.Key, row []byte) error) error {
 	var paths []object.Path
 
 	pk := t.Info.PrimaryKey
@@ -159,19 +175,7 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, 
 		}
 	}
 
-	e := EncodedObject{
-		fieldConstraints: &t.Info.FieldConstraints,
-	}
-	row := BasicRow{
-		tableName: t.Info.TableName,
-		obj:       &e,
-	}
-
-	return t.Tree.IterateOnRange(r, reverse, func(k *tree.Key, enc []byte) error {
-		row.key = k
-		e.encoded = enc
-		return fn(k, &row)
-	})
+	return t.Tree.IterateOnRange(r, reverse, fn)
 }
 
 // GetRow returns one row by key.

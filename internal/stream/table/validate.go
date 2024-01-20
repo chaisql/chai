@@ -37,34 +37,44 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 
 	var newEnv environment.Environment
 
+	newBloc := stream.NewBytesBloc(info)
+
 	var br database.BasicRow
 	var eo database.EncodedObject
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		buf = buf[:0]
 		newEnv.SetOuter(out)
 
-		row, ok := out.GetRow()
+		bloc, ok := out.GetBloc()
 		if !ok {
-			return errors.New("missing row")
+			return errors.New("missing bloc")
 		}
 
-		// generate default values, validate and encode row
-		buf, err = info.EncodeObject(tx, buf, row.Object())
-		if err != nil {
-			return err
+		row := bloc.Next()
+		for row != nil {
+			// generate default values, validate and encode row
+			buf, err = info.EncodeObject(tx, buf, row.Object())
+			if err != nil {
+				return err
+			}
+
+			// use the encoded row as the new row
+			eo.ResetWith(&info.FieldConstraints, buf)
+
+			br.ResetWith(row.TableName(), row.Key(), &eo)
+
+			// validate CHECK constraints if any
+			err := info.TableConstraints.ValidateRow(tx, &br)
+			if err != nil {
+				return err
+			}
+
+			newBloc.Add(row.Key(), buf)
+
+			row = bloc.Next()
 		}
 
-		// use the encoded row as the new row
-		eo.ResetWith(&info.FieldConstraints, buf)
-
-		br.ResetWith(row.TableName(), row.Key(), &eo)
-		newEnv.SetRow(&br)
-
-		// validate CHECK constraints if any
-		err := info.TableConstraints.ValidateRow(tx, newEnv.Row)
-		if err != nil {
-			return err
-		}
+		newEnv.SetBloc(newBloc)
 
 		return fn(&newEnv)
 	})

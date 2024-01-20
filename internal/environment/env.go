@@ -14,27 +14,24 @@ type Param struct {
 	Name string
 
 	// Value is the parameter value.
-	Value interface{}
+	Value any
 }
 
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
 	Params []Param
-	Vars   *object.FieldBuffer
-	Row    database.Row
+	Bloc   Bloc
 	DB     *database.Database
 	Tx     *database.Transaction
-
-	baseRow database.BasicRow
 
 	Outer *Environment
 }
 
-func New(r database.Row, params ...Param) *Environment {
+func New(b Bloc, params ...Param) *Environment {
 	env := Environment{
 		Params: params,
-		Row:    r,
+		Bloc:   b,
 	}
 
 	return &env
@@ -48,48 +45,20 @@ func (e *Environment) SetOuter(env *Environment) {
 	e.Outer = env
 }
 
-func (e *Environment) Get(path object.Path) (v types.Value, ok bool) {
-	if e.Vars != nil {
-		v, err := path.GetValueFromObject(e.Vars)
-		if err == nil {
-			return v, true
-		}
+func (e *Environment) GetBloc() (Bloc, bool) {
+	if e.Bloc != nil {
+		return e.Bloc, true
 	}
 
 	if e.Outer != nil {
-		return e.Outer.Get(path)
-	}
-
-	return types.NewNullValue(), false
-}
-
-func (e *Environment) Set(path object.Path, v types.Value) {
-	if e.Vars == nil {
-		e.Vars = object.NewFieldBuffer()
-	}
-
-	e.Vars.Set(path, v)
-}
-
-func (e *Environment) GetRow() (database.Row, bool) {
-	if e.Row != nil {
-		return e.Row, true
-	}
-
-	if e.Outer != nil {
-		return e.Outer.GetRow()
+		return e.Outer.GetBloc()
 	}
 
 	return nil, false
 }
 
-func (e *Environment) SetRow(r database.Row) {
-	e.Row = r
-}
-
-func (e *Environment) SetRowFromObject(o types.Object) {
-	e.baseRow.ResetWith("", nil, o)
-	e.Row = &e.baseRow
+func (e *Environment) SetBloc(b Bloc) {
+	e.Bloc = b
 }
 
 func (e *Environment) SetParams(params []Param) {
@@ -149,4 +118,10 @@ func (e *Environment) GetDB() *database.Database {
 	}
 
 	return nil
+}
+
+type Bloc interface {
+	Next() database.Row
+	Len() int
+	Close() error
 }

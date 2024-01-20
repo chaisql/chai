@@ -286,7 +286,7 @@ func (t *TableConstraint) String() string {
 // TableConstraints holds the list of CHECK constraints.
 type TableConstraints []*TableConstraint
 
-// ValidateRow checks all the table constraint for the given row.
+// ValidateRow checks all the table constraints for the given row.
 func (t *TableConstraints) ValidateRow(tx *Transaction, r Row) error {
 	for _, tc := range *t {
 		if tc.Check == nil {

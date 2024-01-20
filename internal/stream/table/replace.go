@@ -25,9 +25,9 @@ func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *envi
 	var table *database.Table
 
 	it := func(out *environment.Environment) error {
-		r, ok := out.GetRow()
+		bloc, ok := out.GetBloc()
 		if !ok {
-			return errors.New("missing row")
+			return errors.New("missing bloc")
 		}
 
 		if table == nil {
@@ -38,9 +38,14 @@ func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *envi
 			}
 		}
 
-		_, err := table.Replace(r.Key(), r.Object())
-		if err != nil {
-			return err
+		r := bloc.Next()
+		for r != nil {
+			_, err := table.Replace(r.Key(), r.Object())
+			if err != nil {
+				return err
+			}
+
+			r = bloc.Next()
 		}
 
 		return f(out)

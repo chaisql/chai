@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/stream"
@@ -26,6 +27,8 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
+	bloc := stream.NewRowBloc()
+
 	for _, e := range op.Exprs {
 		v, err := e.Eval(in)
 		if err != nil {
@@ -35,14 +38,10 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 			return errors.WithStack(stream.ErrInvalidResult)
 		}
 
-		newEnv.SetRowFromObject(types.As[types.Object](v))
-		err = fn(&newEnv)
-		if err != nil {
-			return err
-		}
+		bloc.Add(database.NewBasicRow(types.As[types.Object](v)))
 	}
 
-	return nil
+	return fn(&newEnv)
 }
 
 func (op *EmitOperator) String() string {
