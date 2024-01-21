@@ -37,7 +37,7 @@ func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environ
 		return err
 	}
 
-	n := types.As[int64](v)
+	n := types.AsInt64(v)
 	var skipped int64
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {

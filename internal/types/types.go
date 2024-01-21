@@ -90,47 +90,14 @@ func (t ValueType) IsAny() bool {
 }
 
 type Value interface {
+	Comparable
+
 	Type() ValueType
 	V() any
 	IsZero() (bool, error)
 	String() string
 	MarshalJSON() ([]byte, error)
 	MarshalText() ([]byte, error)
-	EQ(other Value) (bool, error)
-	GT(other Value) (bool, error)
-	GTE(other Value) (bool, error)
-	LT(other Value) (bool, error)
-	LTE(other Value) (bool, error)
-	Between(a, b Value) (bool, error)
-	// Add u to v and return the result.
-	// Only numeric values and booleans can be added together.
-	Add(other Value) (Value, error)
-	// Sub calculates v - u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	Sub(other Value) (Value, error)
-	// Mul calculates v * u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	Mul(other Value) (Value, error)
-	// Div calculates v / u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	// If both v and u are integers, the result will be an integer.
-	Div(other Value) (Value, error)
-	// Mod calculates v / u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	// If both v and u are integers, the result will be an integer.
-	Mod(other Value) (Value, error)
-	// BitwiseAnd calculates v & u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	// If both v and u are integers, the result will be an integer.
-	BitwiseAnd(other Value) (Value, error)
-	// BitwiseOr calculates v | u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	// If both v and u are integers, the result will be an integer.
-	BitwiseOr(other Value) (Value, error)
-	// BitwiseXor calculates v ^ u and returns the result.
-	// Only numeric values and booleans can be calculated together.
-	// If both v and u are integers, the result will be an integer.
-	BitwiseXor(other Value) (Value, error)
 }
 
 // A Object represents a group of key value pairs.

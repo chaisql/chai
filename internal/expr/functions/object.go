@@ -40,7 +40,7 @@ func (s *ObjectFields) Eval(env *environment.Environment) (types.Value, error) {
 		return types.NewNullValue(), nil
 	}
 
-	obj := types.As[types.Object](val)
+	obj := types.AsObject(val)
 	var fields []string
 	err = obj.Iterate(func(k string, _ types.Value) error {
 		fields = append(fields, k)

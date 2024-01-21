@@ -112,7 +112,7 @@ func TestUnion(t *testing.T) {
 					return err
 				}
 
-				got = append(got, types.As[types.Object](clone))
+				got = append(got, types.AsObject(clone))
 				i++
 				return nil
 			})
@@ -162,7 +162,7 @@ func TestConcatOperator(t *testing.T) {
 	want := append(in1, in2...)
 	for i, w := range want {
 		v, _ := w.Eval(new(environment.Environment))
-		d := types.As[types.Object](v)
+		d := types.AsObject(v)
 		testutil.RequireObjEqual(t, d, got[i])
 	}
 }

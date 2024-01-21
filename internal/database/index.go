@@ -85,7 +85,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 			return err
 		}
 
-		dKey = tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
+		dKey = tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
 		found = true
 		return errStop
 	})
@@ -144,7 +144,7 @@ func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(
 			return err
 		}
 
-		pk := tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
+		pk := tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
 
 		return fn(k, pk)
 	}

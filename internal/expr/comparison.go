@@ -161,7 +161,7 @@ func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
 			return FalseLiteral, nil
 		}
 
-		ok, err := object.ArrayContains(types.As[types.Array](b), a)
+		ok, err := object.ArrayContains(types.AsArray(b), a)
 		if err != nil {
 			return NullLiteral, err
 		}

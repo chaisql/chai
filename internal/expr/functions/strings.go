@@ -67,7 +67,7 @@ func (s *Lower) Eval(env *environment.Environment) (types.Value, error) {
 		return types.NewNullValue(), nil
 	}
 
-	lowerCaseString := strings.ToLower(types.As[string](val))
+	lowerCaseString := strings.ToLower(types.AsString(val))
 
 	return types.NewTextValue(lowerCaseString), nil
 }
@@ -107,7 +107,7 @@ func (s *Upper) Eval(env *environment.Environment) (types.Value, error) {
 		return types.NewNullValue(), nil
 	}
 
-	upperCaseString := strings.ToUpper(types.As[string](val))
+	upperCaseString := strings.ToUpper(types.AsString(val))
 
 	return types.NewTextValue(upperCaseString), nil
 }
@@ -167,10 +167,10 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 		if remove.Type() != types.TypeText {
 			return types.NewNullValue(), nil
 		}
-		cutset = types.As[string](remove)
+		cutset = types.AsString(remove)
 	}
 
-	trimmed := s.TrimFunc(types.As[string](input), cutset)
+	trimmed := s.TrimFunc(types.AsString(input), cutset)
 
 	return types.NewTextValue(trimmed), nil
 }

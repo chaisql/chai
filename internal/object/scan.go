@@ -283,7 +283,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		// copy the string to avoid
 		// keeping a reference to the underlying buffer
 		// which could be reused
-		cp := strings.Clone(types.As[string](v))
+		cp := strings.Clone(types.AsString(v))
 		ref.SetString(cp)
 		return nil
 	case reflect.Bool:
@@ -291,14 +291,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		ref.SetBool(types.As[bool](v))
+		ref.SetBool(types.AsBool(v))
 		return nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		v, err := CastAsInteger(v)
 		if err != nil {
 			return err
 		}
-		x := types.As[int64](v)
+		x := types.AsInt64(v)
 		if x < 0 {
 			return fmt.Errorf("cannot convert value %d into Go value of type %s", x, ref.Type().Name())
 		}
@@ -309,14 +309,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 		if err != nil {
 			return err
 		}
-		ref.SetInt(types.As[int64](v))
+		ref.SetInt(types.AsInt64(v))
 		return nil
 	case reflect.Float32, reflect.Float64:
 		v, err := CastAsDouble(v)
 		if err != nil {
 			return err
 		}
-		ref.SetFloat(types.As[float64](v))
+		ref.SetFloat(types.AsFloat64(v))
 		return nil
 	case reflect.Interface:
 		if !ref.IsNil() {
@@ -327,11 +327,11 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			m := make(map[string]any)
 			vm := reflect.ValueOf(m)
 			ref.Set(vm)
-			return mapScan(types.As[types.Object](v), vm)
+			return mapScan(types.AsObject(v), vm)
 		case types.TypeArray:
 			var s []interface{}
 			vs := reflect.ValueOf(&s)
-			err := sliceScan(types.As[types.Array](v), vs)
+			err := sliceScan(types.AsArray(v), vs)
 			if err != nil {
 				return err
 			}
@@ -341,14 +341,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			// copy the string to avoid
 			// keeping a reference to the underlying buffer
 			// which could be reused
-			cp := strings.Clone(types.As[string](v))
+			cp := strings.Clone(types.AsString(v))
 			ref.Set(reflect.ValueOf(cp))
 			return nil
 		case types.TypeBlob:
 			// copy the byte slice to avoid
 			// keeping a reference to the underlying buffer
 			// which could be reused
-			b := bytes.Clone(types.As[[]byte](v))
+			b := bytes.Clone(types.AsByteSlice(v))
 			ref.Set(reflect.ValueOf(b))
 			return nil
 		}
@@ -362,7 +362,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 	case "time.Time":
 		switch v.Type() {
 		case types.TypeText:
-			parsed, err := time.Parse(time.RFC3339Nano, types.As[string](v))
+			parsed, err := time.Parse(time.RFC3339Nano, types.AsString(v))
 			if err != nil {
 				return err
 			}
@@ -370,7 +370,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			ref.Set(reflect.ValueOf(parsed))
 			return nil
 		case types.TypeTimestamp:
-			ref.Set(reflect.ValueOf(types.As[time.Time](v)))
+			ref.Set(reflect.ValueOf(types.AsTime(v)))
 			return nil
 		}
 	}
@@ -382,16 +382,16 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return structScan(types.As[types.Object](v), ref)
+		return structScan(types.AsObject(v), ref)
 	case reflect.Slice:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TypeText && v.Type() != types.TypeBlob {
 				return fmt.Errorf("cannot scan value of type %s to byte slice", v.Type())
 			}
 			if v.Type() == types.TypeText {
-				ref.SetBytes([]byte(types.As[string](v)))
+				ref.SetBytes([]byte(types.AsString(v)))
 			} else {
-				ref.SetBytes(types.As[[]byte](v))
+				ref.SetBytes(types.AsByteSlice(v))
 			}
 			return nil
 		}
@@ -400,7 +400,7 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return sliceScan(types.As[types.Array](v), ref.Addr())
+		return sliceScan(types.AsArray(v), ref.Addr())
 	case reflect.Array:
 		if ref.Type().Elem().Kind() == reflect.Uint8 {
 			if v.Type() != types.TypeText && v.Type() != types.TypeBlob {
@@ -414,14 +414,14 @@ func scanValue(v types.Value, ref reflect.Value) error {
 			return err
 		}
 
-		return sliceScan(types.As[types.Array](v), ref.Addr())
+		return sliceScan(types.AsArray(v), ref.Addr())
 	case reflect.Map:
 		v, err := CastAsObject(v)
 		if err != nil {
 			return err
 		}
 
-		return mapScan(types.As[types.Object](v), ref)
+		return mapScan(types.AsObject(v), ref)
 	}
 
 	return &ErrUnsupportedType{ref, "Invalid type"}

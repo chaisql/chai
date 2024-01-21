@@ -223,7 +223,7 @@ func TestFieldBuffer(t *testing.T) {
 
 		got, err := object.CloneValue(types.NewObjectValue(d))
 		require.NoError(t, err)
-		testutil.RequireObjEqual(t, d, types.As[types.Object](got))
+		testutil.RequireObjEqual(t, d, types.AsObject(got))
 	})
 
 	t.Run("UnmarshalJSON", func(t *testing.T) {
@@ -373,38 +373,38 @@ func TestNewFromStruct(t *testing.T) {
 		err = doc.Iterate(func(f string, v types.Value) error {
 			switch counter {
 			case 0:
-				require.Equal(t, u.A, types.As[[]byte](v))
+				require.Equal(t, u.A, types.AsByteSlice(v))
 			case 1:
-				require.Equal(t, u.B, types.As[string](v))
+				require.Equal(t, u.B, types.AsString(v))
 			case 2:
-				require.Equal(t, u.C, types.As[bool](v))
+				require.Equal(t, u.C, types.AsBool(v))
 			case 3:
 				require.Equal(t, "la-reponse-d", f)
-				require.EqualValues(t, u.D, types.As[int64](v))
+				require.EqualValues(t, u.D, types.AsInt64(v))
 			case 4:
-				require.EqualValues(t, u.E, types.As[int64](v))
+				require.EqualValues(t, u.E, types.AsInt64(v))
 			case 5:
-				require.EqualValues(t, u.F, types.As[int64](v))
+				require.EqualValues(t, u.F, types.AsInt64(v))
 			case 6:
-				require.EqualValues(t, u.G, types.As[int64](v))
+				require.EqualValues(t, u.G, types.AsInt64(v))
 			case 7:
-				require.EqualValues(t, u.H, types.As[int64](v))
+				require.EqualValues(t, u.H, types.AsInt64(v))
 			case 8:
-				require.EqualValues(t, u.I, types.As[int64](v))
+				require.EqualValues(t, u.I, types.AsInt64(v))
 			case 9:
-				require.EqualValues(t, u.J, types.As[int64](v))
+				require.EqualValues(t, u.J, types.AsInt64(v))
 			case 10:
-				require.EqualValues(t, u.K, types.As[int64](v))
+				require.EqualValues(t, u.K, types.AsInt64(v))
 			case 11:
-				require.EqualValues(t, u.L, types.As[int64](v))
+				require.EqualValues(t, u.L, types.AsInt64(v))
 			case 12:
-				require.EqualValues(t, u.M, types.As[int64](v))
+				require.EqualValues(t, u.M, types.AsInt64(v))
 			case 13:
-				require.Equal(t, u.N, types.As[float64](v))
+				require.Equal(t, u.N, types.AsFloat64(v))
 			case 14:
 				require.EqualValues(t, types.TypeObject, v.Type())
 			case 15:
-				require.EqualValues(t, *u.Q, types.As[int64](v))
+				require.EqualValues(t, *u.Q, types.AsInt64(v))
 			case 16:
 				require.EqualValues(t, types.TypeObject, v.Type())
 			case 17:
@@ -420,7 +420,7 @@ func TestNewFromStruct(t *testing.T) {
 			case 22:
 				require.EqualValues(t, types.TypeArray, v.Type())
 			case 23:
-				require.EqualValues(t, u.Z, types.As[int64](v))
+				require.EqualValues(t, u.Z, types.AsInt64(v))
 			case 24:
 				require.EqualValues(t, types.TypeNull, v.Type())
 			case 25:
@@ -445,46 +445,46 @@ func TestNewFromStruct(t *testing.T) {
 
 		v, err := doc.GetByField("a")
 		assert.NoError(t, err)
-		require.Equal(t, u.A, types.As[[]byte](v))
+		require.Equal(t, u.A, types.AsByteSlice(v))
 		v, err = doc.GetByField("b")
 		assert.NoError(t, err)
-		require.Equal(t, u.B, types.As[string](v))
+		require.Equal(t, u.B, types.AsString(v))
 		v, err = doc.GetByField("c")
 		assert.NoError(t, err)
-		require.Equal(t, u.C, types.As[bool](v))
+		require.Equal(t, u.C, types.AsBool(v))
 		v, err = doc.GetByField("la-reponse-d")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.D, types.As[int64](v))
+		require.EqualValues(t, u.D, types.AsInt64(v))
 		v, err = doc.GetByField("e")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.E, types.As[int64](v))
+		require.EqualValues(t, u.E, types.AsInt64(v))
 		v, err = doc.GetByField("f")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.F, types.As[int64](v))
+		require.EqualValues(t, u.F, types.AsInt64(v))
 		v, err = doc.GetByField("g")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.G, types.As[int64](v))
+		require.EqualValues(t, u.G, types.AsInt64(v))
 		v, err = doc.GetByField("h")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.H, types.As[int64](v))
+		require.EqualValues(t, u.H, types.AsInt64(v))
 		v, err = doc.GetByField("i")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.I, types.As[int64](v))
+		require.EqualValues(t, u.I, types.AsInt64(v))
 		v, err = doc.GetByField("j")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.J, types.As[int64](v))
+		require.EqualValues(t, u.J, types.AsInt64(v))
 		v, err = doc.GetByField("k")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.K, types.As[int64](v))
+		require.EqualValues(t, u.K, types.AsInt64(v))
 		v, err = doc.GetByField("l")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.L, types.As[int64](v))
+		require.EqualValues(t, u.L, types.AsInt64(v))
 		v, err = doc.GetByField("m")
 		assert.NoError(t, err)
-		require.EqualValues(t, u.M, types.As[int64](v))
+		require.EqualValues(t, u.M, types.AsInt64(v))
 		v, err = doc.GetByField("n")
 		assert.NoError(t, err)
-		require.Equal(t, u.N, types.As[float64](v))
+		require.Equal(t, u.N, types.AsFloat64(v))
 
 		v, err = doc.GetByField("o")
 		assert.NoError(t, err)
@@ -492,11 +492,11 @@ func TestNewFromStruct(t *testing.T) {
 		require.True(t, ok)
 		v, err = d.GetByField("ig")
 		assert.NoError(t, err)
-		require.EqualValues(t, 0, types.As[int64](v))
+		require.EqualValues(t, 0, types.AsInt64(v))
 
 		v, err = doc.GetByField("ig")
 		assert.NoError(t, err)
-		require.EqualValues(t, 100, types.As[int64](v))
+		require.EqualValues(t, 100, types.AsInt64(v))
 
 		v, err = doc.GetByField("t")
 		assert.NoError(t, err)
@@ -505,7 +505,7 @@ func TestNewFromStruct(t *testing.T) {
 		var count int
 		err = a.Iterate(func(i int, v types.Value) error {
 			count++
-			require.EqualValues(t, i+1, types.As[int64](v))
+			require.EqualValues(t, i+1, types.AsInt64(v))
 			return nil
 		})
 		assert.NoError(t, err)
@@ -514,7 +514,7 @@ func TestNewFromStruct(t *testing.T) {
 		assert.ErrorIs(t, err, types.ErrFieldNotFound)
 		v, err = a.GetByIndex(1)
 		assert.NoError(t, err)
-		require.EqualValues(t, 2, types.As[int64](v))
+		require.EqualValues(t, 2, types.AsInt64(v))
 
 		v, err = doc.GetByField("bb")
 		assert.NoError(t, err)

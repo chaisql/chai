@@ -38,7 +38,7 @@ func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environ
 		return err
 	}
 
-	n := types.As[int64](v)
+	n := types.AsInt64(v)
 	var count int64
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		if count < n {

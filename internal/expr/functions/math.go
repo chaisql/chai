@@ -33,7 +33,7 @@ var floor = &ScalarDefinition{
 	callFn: func(args ...types.Value) (types.Value, error) {
 		switch args[0].Type() {
 		case types.TypeDouble:
-			return types.NewDoubleValue(math.Floor(types.As[float64](args[0]))), nil
+			return types.NewDoubleValue(math.Floor(types.AsFloat64(args[0]))), nil
 		case types.TypeInteger:
 			return args[0], nil
 		default:
@@ -53,7 +53,7 @@ var abs = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		res := math.Abs(types.As[float64](v))
+		res := math.Abs(types.AsFloat64(v))
 		if args[0].Type() == types.TypeInteger {
 			return object.CastAs(types.NewDoubleValue(res), types.TypeInteger)
 		}
@@ -72,7 +72,7 @@ var acos = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := types.As[float64](v)
+		vv := types.AsFloat64(v)
 		if vv > 1.0 || vv < -1.0 {
 			return nil, fmt.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
 		}
@@ -92,7 +92,7 @@ var acosh = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := types.As[float64](v)
+		vv := types.AsFloat64(v)
 		if vv < 1.0 {
 			return nil, fmt.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
 		}
@@ -112,7 +112,7 @@ var asin = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		vv := types.As[float64](v)
+		vv := types.AsFloat64(v)
 		if vv > 1.0 || vv < -1.0 {
 			return nil, fmt.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
 		}
@@ -129,7 +129,7 @@ var asinh = &ScalarDefinition{
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
-		vv := types.As[float64](v)
+		vv := types.AsFloat64(v)
 		res := math.Asinh(vv)
 		return types.NewDoubleValue(res), nil
 	},
@@ -143,7 +143,7 @@ var atan = &ScalarDefinition{
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
-		vv := types.As[float64](v)
+		vv := types.AsFloat64(v)
 		res := math.Atan(vv)
 		return types.NewDoubleValue(res), nil
 	},
@@ -157,12 +157,12 @@ var atan2 = &ScalarDefinition{
 		if err != nil || vA.Type() == types.TypeNull {
 			return vA, err
 		}
-		vvA := types.As[float64](vA)
+		vvA := types.AsFloat64(vA)
 		vB, err := object.CastAs(args[1], types.TypeDouble)
 		if err != nil || vB.Type() == types.TypeNull {
 			return vB, err
 		}
-		vvB := types.As[float64](vB)
+		vvB := types.AsFloat64(vB)
 		res := math.Atan2(vvA, vvB)
 		return types.NewDoubleValue(res), nil
 	},
@@ -188,7 +188,7 @@ var sqrt = &ScalarDefinition{
 		if err != nil {
 			return nil, err
 		}
-		res := math.Sqrt(types.As[float64](v))
+		res := math.Sqrt(types.AsFloat64(v))
 		return types.NewDoubleValue(res), nil
 	},
 }

@@ -65,13 +65,13 @@ func diff(path Path, d1, d2 types.Object) ([]Op, error) {
 		} else {
 			switch v1.Type() {
 			case types.TypeObject:
-				subOps, err := diff(append(path, PathFragment{FieldName: f1[i]}), types.As[types.Object](v1), types.As[types.Object](v2))
+				subOps, err := diff(append(path, PathFragment{FieldName: f1[i]}), types.AsObject(v1), types.AsObject(v2))
 				if err != nil {
 					return nil, err
 				}
 				ops = append(ops, subOps...)
 			case types.TypeArray:
-				subOps, err := arrayDiff(append(path, PathFragment{FieldName: f1[i]}), types.As[types.Array](v1), types.As[types.Array](v2))
+				subOps, err := arrayDiff(append(path, PathFragment{FieldName: f1[i]}), types.AsArray(v1), types.AsArray(v2))
 				if err != nil {
 					return nil, err
 				}
@@ -133,13 +133,13 @@ func arrayDiff(path Path, a1, a2 types.Array) ([]Op, error) {
 
 		switch v1.Type() {
 		case types.TypeObject:
-			subOps, err := diff(append(path, PathFragment{ArrayIndex: i}), types.As[types.Object](v1), types.As[types.Object](v2))
+			subOps, err := diff(append(path, PathFragment{ArrayIndex: i}), types.AsObject(v1), types.AsObject(v2))
 			if err != nil {
 				return nil, err
 			}
 			ops = append(ops, subOps...)
 		case types.TypeArray:
-			subOps, err := arrayDiff(append(path, PathFragment{ArrayIndex: i}), types.As[types.Array](v1), types.As[types.Array](v2))
+			subOps, err := arrayDiff(append(path, PathFragment{ArrayIndex: i}), types.AsArray(v1), types.AsArray(v2))
 			if err != nil {
 				return nil, err
 			}

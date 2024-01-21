@@ -115,7 +115,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 		var tableName string
 		var pk *tree.Key
 
-		obj := types.As[types.Object](kv[0])
+		obj := types.AsObject(kv[0])
 
 		if len(value) > 1 {
 			ser := encoding.DecodeObject(value, false)
@@ -123,12 +123,12 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 			if err != nil {
 				return err
 			}
-			pk = tree.NewEncodedKey(types.As[[]byte](pkf))
+			pk = tree.NewEncodedKey(types.AsByteSlice(pkf))
 			tf, err := ser.GetByField("table")
 			if err != nil {
 				return err
 			}
-			tableName = types.As[string](tf)
+			tableName = types.AsString(tf)
 		}
 
 		basicRow.ResetWith(tableName, pk, obj)

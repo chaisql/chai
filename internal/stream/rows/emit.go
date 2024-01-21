@@ -35,7 +35,7 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 			return errors.WithStack(stream.ErrInvalidResult)
 		}
 
-		newEnv.SetRowFromObject(types.As[types.Object](v))
+		newEnv.SetRowFromObject(types.AsObject(v))
 		err = fn(&newEnv)
 		if err != nil {
 			return err

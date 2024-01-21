@@ -1,9 +1,17 @@
 package types
 
 import (
-	"sort"
 	"strings"
 )
+
+type Comparable interface {
+	EQ(other Value) (bool, error)
+	GT(other Value) (bool, error)
+	GTE(other Value) (bool, error)
+	LT(other Value) (bool, error)
+	LTE(other Value) (bool, error)
+	Between(a, b Value) (bool, error)
+}
 
 type operator uint8
 
@@ -14,23 +22,6 @@ const (
 	operatorLt
 	operatorLte
 )
-
-func (op operator) String() string {
-	switch op {
-	case operatorEq:
-		return "="
-	case operatorGt:
-		return ">"
-	case operatorGte:
-		return ">="
-	case operatorLt:
-		return "<"
-	case operatorLte:
-		return "<="
-	}
-
-	return ""
-}
 
 func compareArrays(op operator, l Array, r Array) (bool, error) {
 	var i, j int
@@ -47,6 +38,7 @@ func compareArrays(op operator, l Array, r Array) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
+
 		if lv.Type().IsComparableWith(rv.Type()) {
 			isEq, err := lv.EQ(rv)
 			if err != nil {
@@ -172,6 +164,7 @@ func compareObjects(op operator, l, r Object) (bool, error) {
 		if lerr != nil || rerr != nil {
 			break
 		}
+
 		if lv.Type().IsComparableWith(rv.Type()) {
 			isEq, err := lv.EQ(rv)
 			if err != nil {
@@ -226,20 +219,4 @@ func compareObjects(op operator, l, r Object) (bool, error) {
 			return false, nil
 		}
 	}
-}
-
-// Fields returns a list of all the fields at the root of the object
-// sorted lexicographically.
-func Fields(d Object) ([]string, error) {
-	var fields []string
-	err := d.Iterate(func(f string, _ Value) error {
-		fields = append(fields, f)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Strings(fields)
-	return fields, nil
 }

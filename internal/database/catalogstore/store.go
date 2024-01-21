@@ -68,7 +68,7 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 
 		var currentValue *int64
 		if err == nil && v.Type() != types.TypeNull {
-			v := types.As[int64](v)
+			v := types.AsInt64(v)
 			currentValue = &v
 		}
 
@@ -87,7 +87,7 @@ func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (table
 			return err
 		}
 
-		switch types.As[string](tp) {
+		switch types.AsString(tp) {
 		case database.RelationTableType:
 			ti, err := tableInfoFromRow(r)
 			if err != nil {
@@ -120,7 +120,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	storeNamespace := types.As[int64](v)
+	storeNamespace := types.AsInt64(v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
@@ -143,7 +143,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.TypeNull {
-		ti.RowidSequenceName = types.As[string](v)
+		ti.RowidSequenceName = types.AsString(v)
 	}
 
 	ti.BuildPrimaryKey()
@@ -157,7 +157,7 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	storeNamespace := types.As[int64](v)
+	storeNamespace := types.AsInt64(v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
@@ -181,7 +181,7 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.TypeNull {
-		owner, err := ownerFromObject(types.As[types.Object](v))
+		owner, err := ownerFromObject(types.AsObject(v))
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +197,7 @@ func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
 		return nil, errors.Wrap(err, "failed to get sql field")
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse sql")
 	}
@@ -209,7 +209,7 @@ func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
 		return nil, errors.Wrap(err, "failed to get owner field")
 	}
 	if err == nil && v.Type() != types.TypeNull {
-		owner, err := ownerFromObject(types.As[types.Object](v))
+		owner, err := ownerFromObject(types.AsObject(v))
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to get owner")
 		}
@@ -227,15 +227,15 @@ func ownerFromObject(o types.Object) (*database.Owner, error) {
 		return nil, err
 	}
 
-	owner.TableName = types.As[string](v)
+	owner.TableName = types.AsString(v)
 
 	v, err = o.GetByField("paths")
 	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.TypeNull {
-		err = types.As[types.Array](v).Iterate(func(i int, value types.Value) error {
-			pp, err := parser.ParsePath(types.As[string](value))
+		err = types.AsArray(v).Iterate(func(i int, value types.Value) error {
+			pp, err := parser.ParsePath(types.AsString(value))
 			if err != nil {
 				return err
 			}

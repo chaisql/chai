@@ -1,9 +1,10 @@
-package types_test
+package expr_test
 
 import (
 	"math"
 	"testing"
 
+	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
@@ -35,7 +36,9 @@ func TestValueAdd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Add(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.Add(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -71,7 +74,9 @@ func TestValueSub(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Sub(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.Sub(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -105,7 +110,9 @@ func TestValueMult(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Mul(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.Mul(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -140,7 +147,9 @@ func TestValueDiv(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Div(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.Div(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -177,7 +186,9 @@ func TestValueMod(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.Mod(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.Mod(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -211,7 +222,9 @@ func TestValueBitwiseAnd(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.BitwiseAnd(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.BitwiseAnd(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -244,7 +257,9 @@ func TestValueBitwiseOr(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.BitwiseOr(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.BitwiseOr(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {
@@ -276,7 +291,9 @@ func TestValueBitwiseXor(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			res, err := test.v.BitwiseXor(test.u)
+			v := expr.LiteralValue{Value: test.v}
+			u := expr.LiteralValue{Value: test.u}
+			res, err := expr.BitwiseXor(v, u).Eval(nil)
 			if test.fails {
 				assert.Error(t, err)
 			} else {

@@ -18,7 +18,17 @@ type arithmeticOperator struct {
 }
 
 func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(va, vb types.Value) (types.Value, error) {
+		a, ok := va.(types.Numeric)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		b, ok := vb.(types.Numeric)
+		if !ok {
+			return NullLiteral, nil
+		}
+
 		switch op.simpleOperator.Tok {
 		case scanner.ADD:
 			return a.Add(b)

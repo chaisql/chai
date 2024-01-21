@@ -66,21 +66,21 @@ func encodeValueAsc(dst []byte, v types.Value) ([]byte, error) {
 	case types.TypeNull:
 		return EncodeNull(dst), nil
 	case types.TypeBoolean:
-		return EncodeBoolean(dst, types.As[bool](v)), nil
+		return EncodeBoolean(dst, types.AsBool(v)), nil
 	case types.TypeInteger:
-		return EncodeInt(dst, types.As[int64](v)), nil
+		return EncodeInt(dst, types.AsInt64(v)), nil
 	case types.TypeDouble:
-		return EncodeFloat64(dst, types.As[float64](v)), nil
+		return EncodeFloat64(dst, types.AsFloat64(v)), nil
 	case types.TypeTimestamp:
-		return EncodeTimestamp(dst, types.As[time.Time](v)), nil
+		return EncodeTimestamp(dst, types.AsTime(v)), nil
 	case types.TypeText:
-		return EncodeText(dst, types.As[string](v)), nil
+		return EncodeText(dst, types.AsString(v)), nil
 	case types.TypeBlob:
-		return EncodeBlob(dst, types.As[[]byte](v)), nil
+		return EncodeBlob(dst, types.AsByteSlice(v)), nil
 	case types.TypeArray:
-		return EncodeArray(dst, types.As[types.Array](v))
+		return EncodeArray(dst, types.AsArray(v))
 	case types.TypeObject:
-		return EncodeObject(dst, types.As[types.Object](v))
+		return EncodeObject(dst, types.AsObject(v))
 	}
 
 	return nil, fmt.Errorf("unsupported value type: %s", v.Type())

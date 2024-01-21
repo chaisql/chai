@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/buger/jsonparser"
 	"github.com/cockroachdb/errors"
@@ -138,7 +137,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 	switch v.Type() {
 	case types.TypeObject:
 		var buf FieldBuffer
-		err := buf.ScanObject(types.As[types.Object](v))
+		err := buf.ScanObject(types.AsObject(v))
 		if err != nil {
 			return v, err
 		}
@@ -168,7 +167,7 @@ func setValueAtPath(v types.Value, p Path, newValue types.Value) (types.Value, e
 		return types.NewObjectValue(&buf), err
 	case types.TypeArray:
 		var vb ValueBuffer
-		err := vb.ScanArray(types.As[types.Array](v))
+		err := vb.ScanArray(types.AsArray(v))
 		if err != nil {
 			return v, err
 		}
@@ -319,27 +318,27 @@ func CloneValue(v types.Value) (types.Value, error) {
 	case types.TypeNull:
 		return types.NewNullValue(), nil
 	case types.TypeBoolean:
-		return types.NewBooleanValue(types.As[bool](v)), nil
+		return types.NewBooleanValue(types.AsBool(v)), nil
 	case types.TypeInteger:
-		return types.NewIntegerValue(types.As[int64](v)), nil
+		return types.NewIntegerValue(types.AsInt64(v)), nil
 	case types.TypeDouble:
-		return types.NewDoubleValue(types.As[float64](v)), nil
+		return types.NewDoubleValue(types.AsFloat64(v)), nil
 	case types.TypeTimestamp:
-		return types.NewTimestampValue(types.As[time.Time](v)), nil
+		return types.NewTimestampValue(types.AsTime(v)), nil
 	case types.TypeText:
-		return types.NewTextValue(strings.Clone(types.As[string](v))), nil
+		return types.NewTextValue(strings.Clone(types.AsString(v))), nil
 	case types.TypeBlob:
-		return types.NewBlobValue(append([]byte{}, types.As[[]byte](v)...)), nil
+		return types.NewBlobValue(append([]byte{}, types.AsByteSlice(v)...)), nil
 	case types.TypeArray:
 		vb := NewValueBuffer()
-		err := vb.Copy(types.As[types.Array](v))
+		err := vb.Copy(types.AsArray(v))
 		if err != nil {
 			return nil, err
 		}
 		return types.NewArrayValue(vb), nil
 	case types.TypeObject:
 		fb := NewFieldBuffer()
-		err := fb.Copy(types.As[types.Object](v))
+		err := fb.Copy(types.AsObject(v))
 		if err != nil {
 			return nil, err
 		}
@@ -368,7 +367,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := types.Is[*FieldBuffer](f.Value)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(types.As[types.Object](f.Value))
+				err := buf.Copy(types.AsObject(f.Value))
 				if err != nil {
 					return err
 				}
@@ -385,7 +384,7 @@ func (fb *FieldBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := types.Is[*ValueBuffer](f.Value)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(types.As[types.Array](f.Value))
+				err := buf.Copy(types.AsArray(f.Value))
 				if err != nil {
 					return err
 				}

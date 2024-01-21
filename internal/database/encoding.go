@@ -75,7 +75,7 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 				mlen += 1
 			}
 			dst = encoding.EncodeArrayLength(dst, mlen)
-			dst, err = encodeObject(tx, dst, &fc.AnonymousType.FieldConstraints, types.As[types.Object](v))
+			dst, err = encodeObject(tx, dst, &fc.AnonymousType.FieldConstraints, types.AsObject(v))
 		} else {
 			dst, err = encoding.EncodeValue(dst, v, false)
 		}
@@ -204,7 +204,7 @@ func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value,
 	v, n := encoding.DecodeValue(b, fc.Type == types.TypeAny || fc.Type == types.TypeArray /* intAsDouble */)
 
 	if fc.Type == types.TypeTimestamp && v.Type() == types.TypeInteger {
-		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.As[int64](v)))
+		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.AsInt64(v)))
 	}
 
 	// ensure the returned value is of the correct type
@@ -217,7 +217,7 @@ func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value,
 	}
 
 	if v.Type() == types.TypeText {
-		s := strings.Clone(types.As[string](v))
+		s := strings.Clone(types.AsString(v))
 		v = types.NewTextValue(s)
 	}
 

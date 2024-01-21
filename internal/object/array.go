@@ -130,7 +130,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := types.Is[*FieldBuffer](v)
 			if !ok {
 				buf = NewFieldBuffer()
-				err := buf.Copy(types.As[types.Object](v))
+				err := buf.Copy(types.AsObject(v))
 				if err != nil {
 					return err
 				}
@@ -147,7 +147,7 @@ func (vb *ValueBuffer) Apply(fn func(p Path, v types.Value) (types.Value, error)
 			buf, ok := types.Is[*ValueBuffer](v)
 			if !ok {
 				buf = NewValueBuffer()
-				err := buf.Copy(types.As[types.Array](v))
+				err := buf.Copy(types.AsArray(v))
 				if err != nil {
 					return err
 				}

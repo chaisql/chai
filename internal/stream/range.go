@@ -7,7 +7,6 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/object"
-	"github.com/chaisql/chai/internal/types"
 )
 
 // Range represents a range to select values after or before
@@ -37,7 +36,7 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 			return nil, err
 		}
 
-		rng.Min = types.As[*object.ValueBuffer](min).Values
+		rng.Min = min.V().(*object.ValueBuffer).Values
 	}
 
 	if len(r.Max) > 0 {
@@ -45,7 +44,8 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		if err != nil {
 			return nil, err
 		}
-		rng.Max = types.As[*object.ValueBuffer](max).Values
+
+		rng.Max = max.V().(*object.ValueBuffer).Values
 	}
 
 	return &rng, nil

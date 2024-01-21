@@ -564,9 +564,9 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 
 	if s.SumF != nil {
 		if v.Type() == types.TypeInteger {
-			*s.SumF += float64(types.As[int64](v))
+			*s.SumF += float64(types.AsInt64(v))
 		} else {
-			*s.SumF += float64(types.As[float64](v))
+			*s.SumF += float64(types.AsFloat64(v))
 		}
 
 		return nil
@@ -578,7 +578,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 			sumF = float64(*s.SumI)
 		}
 		s.SumF = &sumF
-		*s.SumF += float64(types.As[float64](v))
+		*s.SumF += float64(types.AsFloat64(v))
 
 		return nil
 	}
@@ -588,7 +588,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		s.SumI = &sumI
 	}
 
-	*s.SumI += types.As[int64](v)
+	*s.SumI += types.AsInt64(v)
 	return nil
 }
 
@@ -669,9 +669,9 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 
 	switch v.Type() {
 	case types.TypeInteger:
-		s.Avg += float64(types.As[int64](v))
+		s.Avg += float64(types.AsInt64(v))
 	case types.TypeDouble:
-		s.Avg += types.As[float64](v)
+		s.Avg += types.AsFloat64(v)
 	default:
 		return nil
 	}
@@ -709,15 +709,15 @@ func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	var length int
 	switch val.Type() {
 	case types.TypeText:
-		length = len(types.As[string](val))
+		length = len(types.AsString(val))
 	case types.TypeArray:
-		arrayLen, err := object.ArrayLength(types.As[types.Array](val))
+		arrayLen, err := object.ArrayLength(types.AsArray(val))
 		if err != nil {
 			return nil, err
 		}
 		length = arrayLen
 	case types.TypeObject:
-		docLen, err := object.Length(types.As[types.Object](val))
+		docLen, err := object.Length(types.AsObject(val))
 		if err != nil {
 			return nil, err
 		}

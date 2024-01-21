@@ -53,9 +53,9 @@ func CastAsBool(v types.Value) (types.Value, error) {
 	case types.TypeBoolean:
 		return v, nil
 	case types.TypeInteger:
-		return types.NewBooleanValue(types.As[int64](v) != 0), nil
+		return types.NewBooleanValue(types.AsInt64(v) != 0), nil
 	case types.TypeText:
-		b, err := strconv.ParseBool(types.As[string](v))
+		b, err := strconv.ParseBool(types.AsString(v))
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as bool: %w`, v.V(), err)
 		}
@@ -83,21 +83,21 @@ func CastAsInteger(v types.Value) (types.Value, error) {
 	case types.TypeInteger:
 		return v, nil
 	case types.TypeBoolean:
-		if types.As[bool](v) {
+		if types.AsBool(v) {
 			return types.NewIntegerValue(1), nil
 		}
 		return types.NewIntegerValue(0), nil
 	case types.TypeDouble:
-		f := types.As[float64](v)
+		f := types.AsFloat64(v)
 		if f > 0 && (int64(f) < 0 || f >= math.MaxInt64) {
 			return nil, fmt.Errorf("integer out of range")
 		}
 		return types.NewIntegerValue(int64(f)), nil
 	case types.TypeText:
-		i, err := strconv.ParseInt(types.As[string](v), 10, 64)
+		i, err := strconv.ParseInt(types.AsString(v), 10, 64)
 		if err != nil {
 			intErr := err
-			f, err := strconv.ParseFloat(types.As[string](v), 64)
+			f, err := strconv.ParseFloat(types.AsString(v), 64)
 			if err != nil {
 				return nil, fmt.Errorf(`cannot cast %q as integer: %w`, v.V(), intErr)
 			}
@@ -124,9 +124,9 @@ func CastAsDouble(v types.Value) (types.Value, error) {
 	case types.TypeDouble:
 		return v, nil
 	case types.TypeInteger:
-		return types.NewDoubleValue(float64(types.As[int64](v))), nil
+		return types.NewDoubleValue(float64(types.AsInt64(v))), nil
 	case types.TypeText:
-		f, err := strconv.ParseFloat(types.As[string](v), 64)
+		f, err := strconv.ParseFloat(types.AsString(v), 64)
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as double: %w`, v.V(), err)
 		}
@@ -150,7 +150,7 @@ func CastAsTimestamp(v types.Value) (types.Value, error) {
 	case types.TypeTimestamp:
 		return v, nil
 	case types.TypeText:
-		t, err := types.ParseTimestamp(types.As[string](v))
+		t, err := types.ParseTimestamp(types.AsString(v))
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as timestamp: %w`, v.V(), err)
 		}
@@ -172,9 +172,9 @@ func CastAsText(v types.Value) (types.Value, error) {
 	case types.TypeText:
 		return v, nil
 	case types.TypeBlob:
-		return types.NewTextValue(base64.StdEncoding.EncodeToString(types.As[[]byte](v))), nil
+		return types.NewTextValue(base64.StdEncoding.EncodeToString(types.AsByteSlice(v))), nil
 	case types.TypeTimestamp:
-		return types.NewTextValue(types.As[time.Time](v).Format(time.RFC3339Nano)), nil
+		return types.NewTextValue(types.AsTime(v).Format(time.RFC3339Nano)), nil
 	}
 
 	d, err := v.MarshalJSON()
@@ -202,7 +202,7 @@ func CastAsBlob(v types.Value) (types.Value, error) {
 
 	if v.Type() == types.TypeText {
 		// if the string starts with \x, read it as hex
-		s := types.As[string](v)
+		s := types.AsString(v)
 		b, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {
 			return nil, err
@@ -229,7 +229,7 @@ func CastAsArray(v types.Value) (types.Value, error) {
 
 	if v.Type() == types.TypeText {
 		var vb ValueBuffer
-		err := vb.UnmarshalJSON([]byte(types.As[string](v)))
+		err := vb.UnmarshalJSON([]byte(types.AsString(v)))
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as array: %w`, v.V(), err)
 		}
@@ -255,7 +255,7 @@ func CastAsObject(v types.Value) (types.Value, error) {
 
 	if v.Type() == types.TypeText {
 		var fb FieldBuffer
-		err := fb.UnmarshalJSON([]byte(types.As[string](v)))
+		err := fb.UnmarshalJSON([]byte(types.AsString(v)))
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as object: %w`, v.V(), err)
 		}

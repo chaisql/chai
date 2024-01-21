@@ -70,7 +70,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 		}
 
 		if v.Type() == types.TypeDouble && targetType == types.TypeInteger {
-			f := types.As[float64](v)
+			f := types.AsFloat64(v)
 			if float64(int64(f)) == f {
 				return object.CastAsInteger(v)
 			}
@@ -147,24 +147,3 @@ func (r *Range) IsEqual(other *Range) bool {
 
 	return true
 }
-
-// type Ranges []Range
-
-// // Append rng to r and return the new slice.
-// // Duplicate ranges are ignored.
-// func (r Ranges) Append(rng Range) Ranges {
-// 	// ensure we don't keep duplicate ranges
-// 	isDuplicate := false
-// 	for _, e := range r {
-// 		if e.IsEqual(&rng) {
-// 			isDuplicate = true
-// 			break
-// 		}
-// 	}
-
-// 	if isDuplicate {
-// 		return r
-// 	}
-
-// 	return append(r, rng)
-// }
