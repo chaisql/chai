@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stringutil"
 	"github.com/chaisql/chai/internal/tree"
@@ -158,18 +159,8 @@ func (f FieldConstraints) convertScalarAtPath(path object.Path, v types.Value, c
 	}
 
 	// no constraint have been found for this path.
-	// check if this is an integer and convert it to double.
-	if v.Type() == types.TypeInteger {
-		newV, _ := object.CastAsDouble(v)
-		return newV, nil
-	}
-
-	if v.Type() == types.TypeTimestamp {
-		newV, _ := object.CastAsText(v)
-		return newV, nil
-	}
-
-	return v, nil
+	// convert the value to the type that is stored in the index.
+	return encoding.ConvertAsIndexType(v, types.TypeAny)
 }
 
 func (f FieldConstraints) GetFieldConstraintForPath(path object.Path) *FieldConstraint {

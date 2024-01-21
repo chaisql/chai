@@ -3,6 +3,7 @@ package database
 import (
 	"math"
 
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
@@ -65,10 +66,6 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 	// is lossless.
 	// if a timestamp is encountered, ensure the field constraint is also a timestamp, otherwise convert it to text.
 	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path object.Path, targetType types.Type) (types.Value, error) {
-		if v.Type() == types.TypeInteger && targetType == types.TypeDouble {
-			return object.CastAsDouble(v)
-		}
-
 		if v.Type() == types.TypeDouble && targetType == types.TypeInteger {
 			f := types.AsFloat64(v)
 			if float64(int64(f)) == f {
@@ -102,10 +99,8 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 				// and thus have to set exclusive to false.
 				r.Exclusive = r.Min == nil || len(r.Min) == 0
 			}
-		}
-
-		if v.Type() == types.TypeTimestamp && targetType == types.TypeText {
-			return object.CastAsText(v)
+		} else {
+			return encoding.ConvertAsIndexType(v, targetType)
 		}
 
 		return v, nil

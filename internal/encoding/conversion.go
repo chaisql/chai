@@ -43,13 +43,32 @@ func convertIntegerFromStore(src types.Value, target types.Type) (types.Value, e
 // ConvertAsStoreType converts the value to the type that is stored in the store
 // when there is no constraint on the column.
 func ConvertAsStoreType(src types.Value) (types.Value, error) {
-	// integers are stored as the smallest integer type that can hold the value
-	// even though they are read as doubles.
 	switch src.Type() {
 	case types.TypeTimestamp:
 		// without a type constraint, timestamp values must
 		// always be stored as text to avoid mixed representations.
 		return object.CastAsText(src)
+	}
+
+	return src, nil
+}
+
+// ConvertAsIndexType converts the value to the type that is stored in the index
+// as a key.
+func ConvertAsIndexType(src types.Value, target types.Type) (types.Value, error) {
+	switch src.Type() {
+	case types.TypeInteger:
+		if target == types.TypeAny || target == types.TypeDouble {
+			return object.CastAsDouble(src)
+		}
+		return src, nil
+	case types.TypeTimestamp:
+		// without a type constraint, timestamp values must
+		// always be stored as text to avoid mixed representations.
+		if target == types.TypeAny {
+			return object.CastAsText(src)
+		}
+		return src, nil
 	}
 
 	return src, nil
