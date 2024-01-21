@@ -2,7 +2,6 @@ package database
 
 import (
 	"encoding/binary"
-	"strings"
 
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/object"
@@ -58,10 +57,8 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 			if err != nil {
 				return nil, err
 			}
-		} else if v.Type() == types.TypeTimestamp {
-			// without a type constraint, timestamp values must
-			// always be stored as text to avoid mixed representations.
-			v, err = object.CastAsText(v)
+		} else {
+			v, err = encoding.ConvertAsStoreType(v)
 			if err != nil {
 				return nil, err
 			}
@@ -133,14 +130,10 @@ func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Object) ([]byt
 		// encode the field name first
 		dst = encoding.EncodeText(dst, field)
 
-		// then encode the value
-		if value.Type() == types.TypeTimestamp {
-			// without a type constraint, timestamp values must
-			// always be stored as text to avoid mixed representations.
-			value, err = object.CastAsText(value)
-			if err != nil {
-				return err
-			}
+		// then make sure the value is stored as the correct type
+		value, err = encoding.ConvertAsStoreType(value)
+		if err != nil {
+			return err
 		}
 
 		dst, err = encoding.EncodeValue(dst, value, false)
@@ -203,22 +196,10 @@ func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value,
 
 	v, n := encoding.DecodeValue(b, fc.Type == types.TypeAny || fc.Type == types.TypeArray /* intAsDouble */)
 
-	if fc.Type == types.TypeTimestamp && v.Type() == types.TypeInteger {
-		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.AsInt64(v)))
-	}
-
-	// ensure the returned value is of the correct type
-	if fc.Type != types.TypeAny {
-		var err error
-		v, err = object.CastAs(v, fc.Type)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
-	if v.Type() == types.TypeText {
-		s := strings.Clone(types.AsString(v))
-		v = types.NewTextValue(s)
+	var err error
+	v, err = encoding.ConvertFromStoreTo(v, fc.Type)
+	if err != nil {
+		return nil, 0, err
 	}
 
 	return v, n, nil
