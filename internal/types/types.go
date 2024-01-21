@@ -15,13 +15,13 @@ var (
 	errStop = errors.New("stop")
 )
 
-// ValueType represents a value type supported by the database.
-type ValueType uint8
+// Type represents a type supported by the database.
+type Type uint8
 
-// List of supported value types.
+// List of supported types.
 const (
 	// TypeAny denotes the absence of type
-	TypeAny ValueType = iota
+	TypeAny Type = iota
 	TypeNull
 	TypeBoolean
 	TypeInteger
@@ -33,7 +33,7 @@ const (
 	TypeObject
 )
 
-func (t ValueType) String() string {
+func (t Type) String() string {
 	switch t {
 	case TypeNull:
 		return "null"
@@ -59,16 +59,16 @@ func (t ValueType) String() string {
 }
 
 // IsNumber returns true if t is either an integer or a float.
-func (t ValueType) IsNumber() bool {
+func (t Type) IsNumber() bool {
 	return t == TypeInteger || t == TypeDouble
 }
 
 // IsTimestampCompatible returns true if t is either a timestamp, an integer, or a text.
-func (t ValueType) IsTimestampCompatible() bool {
+func (t Type) IsTimestampCompatible() bool {
 	return t == TypeTimestamp || t == TypeText
 }
 
-func (t ValueType) IsComparableWith(other ValueType) bool {
+func (t Type) IsComparableWith(other Type) bool {
 	if t == other {
 		return true
 	}
@@ -85,14 +85,14 @@ func (t ValueType) IsComparableWith(other ValueType) bool {
 }
 
 // IsAny returns whether this is type is Any or a real type
-func (t ValueType) IsAny() bool {
+func (t Type) IsAny() bool {
 	return t == TypeAny
 }
 
 type Value interface {
 	Comparable
 
-	Type() ValueType
+	Type() Type
 	V() any
 	IsZero() (bool, error)
 	String() string

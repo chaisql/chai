@@ -18,7 +18,7 @@ func (v DoubleValue) V() any {
 	return float64(v)
 }
 
-func (v DoubleValue) Type() ValueType {
+func (v DoubleValue) Type() Type {
 	return TypeDouble
 }
 

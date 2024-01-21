@@ -18,7 +18,7 @@ func (v TextValue) V() any {
 	return string(v)
 }
 
-func (v TextValue) Type() ValueType {
+func (v TextValue) Type() Type {
 	return TypeText
 }
 

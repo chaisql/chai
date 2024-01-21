@@ -426,7 +426,7 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 	}
 }
 
-func (p *Parser) parseType() (types.ValueType, error) {
+func (p *Parser) parseType() (types.Type, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.TYPEANY:

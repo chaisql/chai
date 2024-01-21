@@ -15,7 +15,7 @@ func (v BooleanValue) V() any {
 	return bool(v)
 }
 
-func (v BooleanValue) Type() ValueType {
+func (v BooleanValue) Type() Type {
 	return TypeBoolean
 }
 

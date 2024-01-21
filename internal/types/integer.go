@@ -18,7 +18,7 @@ func (v IntegerValue) V() any {
 	return int64(v)
 }
 
-func (v IntegerValue) Type() ValueType {
+func (v IntegerValue) Type() Type {
 	return TypeInteger
 }
 

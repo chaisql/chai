@@ -359,7 +359,7 @@ func (t *Tree) buildEndKeyExclusive(key *Key, desc bool) ([]byte, error) {
 	return key.Encode(t.Namespace, t.Order)
 }
 
-func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
+func (t *Tree) NewMinValueForType(tp types.Type) types.Value {
 	switch tp {
 	case types.TypeNull:
 		return types.NewNullValue()
@@ -384,7 +384,7 @@ func (t *Tree) NewMinValueForType(tp types.ValueType) types.Value {
 	}
 }
 
-func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
+func (t *Tree) NewMinTypeForType(tp types.Type) byte {
 	switch tp {
 	case types.TypeNull:
 		return encoding.NullValue
@@ -409,7 +409,7 @@ func (t *Tree) NewMinTypeForType(tp types.ValueType) byte {
 	}
 }
 
-func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
+func (t *Tree) NewMinTypeForTypeDesc(tp types.Type) byte {
 	switch tp {
 	case types.TypeNull:
 		return encoding.DESC_NullValue
@@ -434,7 +434,7 @@ func (t *Tree) NewMinTypeForTypeDesc(tp types.ValueType) byte {
 	}
 }
 
-func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
+func (t *Tree) NewMaxTypeForTypeDesc(tp types.Type) byte {
 	switch tp {
 	case types.TypeNull:
 		return encoding.DESC_NullValue + 1
@@ -459,7 +459,7 @@ func (t *Tree) NewMaxTypeForTypeDesc(tp types.ValueType) byte {
 	}
 }
 
-func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
+func (t *Tree) NewMinValueForTypeDesc(tp types.Type) types.Value {
 	switch tp {
 	case types.TypeNull:
 		return types.NewNullValue()
@@ -484,7 +484,7 @@ func (t *Tree) NewMinValueForTypeDesc(tp types.ValueType) types.Value {
 	}
 }
 
-func (t *Tree) NewMaxTypeForType(tp types.ValueType) byte {
+func (t *Tree) NewMaxTypeForType(tp types.Type) byte {
 	switch tp {
 	case types.TypeNull:
 		return encoding.NullValue + 1

@@ -23,7 +23,7 @@ func (o *ObjectValue) V() any {
 	return o.o
 }
 
-func (o *ObjectValue) Type() ValueType {
+func (o *ObjectValue) Type() Type {
 	return TypeObject
 }
 

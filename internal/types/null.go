@@ -13,7 +13,7 @@ func (v NullValue) V() any {
 	return nil
 }
 
-func (v NullValue) Type() ValueType {
+func (v NullValue) Type() Type {
 	return TypeNull
 }
 

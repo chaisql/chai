@@ -15,7 +15,7 @@ import (
 type FieldConstraint struct {
 	Position      int
 	Field         string
-	Type          types.ValueType
+	Type          types.Type
 	IsNotNull     bool
 	DefaultValue  TableExpression
 	AnonymousType *AnonymousType
@@ -117,10 +117,10 @@ func (f *FieldConstraints) Add(newFc *FieldConstraint) error {
 
 // ConversionFunc is called when the type of a value is different than the expected type
 // and the value needs to be converted.
-type ConversionFunc func(v types.Value, path object.Path, targetType types.ValueType) (types.Value, error)
+type ConversionFunc func(v types.Value, path object.Path, targetType types.Type) (types.Value, error)
 
 // CastConversion is a ConversionFunc that casts the value to the target type.
-func CastConversion(v types.Value, path object.Path, targetType types.ValueType) (types.Value, error) {
+func CastConversion(v types.Value, path object.Path, targetType types.Type) (types.Value, error) {
 	return object.CastAs(v, targetType)
 }
 

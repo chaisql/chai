@@ -225,7 +225,7 @@ func (ti *TableInfo) Clone() *TableInfo {
 
 type PrimaryKey struct {
 	Paths     object.Paths
-	Types     []types.ValueType
+	Types     []types.Type
 	SortOrder tree.SortOrder
 }
 

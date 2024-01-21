@@ -30,7 +30,7 @@ func TestCastAs(t *testing.T) {
 		Add("a", integerV).
 		Add("b", textV))
 
-	check := func(t *testing.T, targetType types.ValueType, tests []test) {
+	check := func(t *testing.T, targetType types.Type, tests []test) {
 		t.Helper()
 
 		for _, test := range tests {

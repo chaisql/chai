@@ -114,7 +114,7 @@ func (op *ConcatOperator) Eval(env *environment.Environment) (types.Value, error
 // Cast represents the CAST expression.
 type Cast struct {
 	Expr   Expr
-	CastAs types.ValueType
+	CastAs types.Type
 }
 
 // Eval returns the primary key of the current object.

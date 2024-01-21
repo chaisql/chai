@@ -19,7 +19,7 @@ func (v *ArrayValue) V() any {
 	return v.a
 }
 
-func (v *ArrayValue) Type() ValueType {
+func (v *ArrayValue) Type() Type {
 	return TypeArray
 }
 

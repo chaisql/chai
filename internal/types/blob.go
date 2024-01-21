@@ -19,7 +19,7 @@ func (v BlobValue) V() any {
 	return []byte(v)
 }
 
-func (v BlobValue) Type() ValueType {
+func (v BlobValue) Type() Type {
 	return TypeBlob
 }
 

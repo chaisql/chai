@@ -11,7 +11,7 @@ import (
 )
 
 // CastAs casts v as the selected type when possible.
-func CastAs(v types.Value, t types.ValueType) (types.Value, error) {
+func CastAs(v types.Value, t types.Type) (types.Value, error) {
 	if v.Type() == t {
 		return v, nil
 	}

@@ -64,7 +64,7 @@ func (r *Range) Convert(constraints *FieldConstraints, v types.Value, p object.P
 	// if a number is encountered, try to convert it to the right type if and only if the conversion
 	// is lossless.
 	// if a timestamp is encountered, ensure the field constraint is also a timestamp, otherwise convert it to text.
-	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path object.Path, targetType types.ValueType) (types.Value, error) {
+	v, err := constraints.ConvertValueAtPath(p, v, func(v types.Value, path object.Path, targetType types.Type) (types.Value, error) {
 		if v.Type() == types.TypeInteger && targetType == types.TypeDouble {
 			return object.CastAsDouble(v)
 		}

@@ -28,7 +28,7 @@ func (v TimestampValue) V() any {
 	return time.Time(v)
 }
 
-func (v TimestampValue) Type() ValueType {
+func (v TimestampValue) Type() Type {
 	return TypeTimestamp
 }
 
