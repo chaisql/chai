@@ -1,6 +1,6 @@
 # ChaiSQL
 
-ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers. It provides a fresh alternative to traditional embedded databases by offering advanced features tailored for modern applications.
+ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers.
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
@@ -8,10 +8,10 @@ ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of u
 
 ## Key Features
 
-- **Modern SQL Experience**: ChaiSQL introduces a modern twist to traditional SQL embedded databases
+- **PostgreSQL API**: ChaiSQL SQL API is compatible with PostgreSQL
 - **Optimized for Go**: Native Go implementation with no CGO dependency.
+- **Storage flexibility**: Store data on-disk or in-memory.
 - **Solid foundations**: ChaiSQL is backed by [Pebble](https://github.com/cockroachdb/pebble) for native Go toolchains, and [RocksDB](https://rocksdb.org/) for non-Go or CGO builds (coming soon).
-- **Schema Flexibility**: Support for strict, partial, and schemaless table designs, catering to various data modeling needs.
 
 ## Roadmap
 
@@ -22,6 +22,7 @@ Here is a high level list of features that we want to implement in the near futu
 - [ ] Stable storage format (90% completed)
 - [ ] Implement most of the SQL-92 standard (detailed roadmap coming soon)
 - [ ] Provide clients for other languages (JS/TS, Python, etc) and add support for RocksDB as the backend
+- [ ] Compatibility with PostgreSQL drivers and ORMs
 
 ## Installation
 
@@ -52,63 +53,29 @@ func main() {
     }
     defer db.Close()
 
-    // Create a table.
-    // Notice that it is possible to define constraints on nested columns.
     err = db.Exec(`
         CREATE TABLE user (
             id              INT         PRIMARY KEY,
             name            TEXT        NOT NULL UNIQUE,
-            created_at      TIMESTAMP   NOT NULL,
-            address (
-                city        TEXT    DEFAULT "unknown",
-                zipcode     TEXT
-            ),
-            friends         ARRAY,
-
-            CHECK len(friends) > 0
+            created_at      TIMESTAMP   NOT NULL
         )
     `)
 
-    err = db.Exec(`
-        INSERT INTO user (id, name, age, address, friends)
-        VALUES (
-            11,
-            'Foo2',
-            20,
-            {city: "Lyon", zipcode: "69001"},
-            ["foo", "bar", "baz"]
-        )`)
+    err = db.Exec(`INSERT INTO user (id, name, age) VALUES ($1, $2, $3)`, 20, "foo", 40)
 
-    // Go structures can be passed directly
-    type User struct {
-        ID              uint
-        Name            string
-        TheAgeOfTheUser float64 `chai:"age"`
-        Address         struct {
-            City    string
-            ZipCode string
-        }
-    }
-
-    // Let's create a user
-    u := User{
-        ID:              20,
-        Name:            "foo",
-        TheAgeOfTheUser: 40,
-    }
-    u.Address.City = "Lyon"
-    u.Address.ZipCode = "69001"
-
-    err = db.Exec(`INSERT INTO user VALUES ?`, &u)
-
-    // Query data
-    rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= ?", 18)
+    rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= $1", 18)
     defer rows.Close()
 
     err = rows.Iterate(func(r *chai.Row) error {
-        err = r.Scan(...)
-        err = r.StructScan(...)
-        err = r.MapScan(...)
+        // scan each column
+        var id, name, age
+        err = r.Scan(&id, &name, &age)
+        // or into a struct
+        var u User
+        err = r.StructScan(&u)
+        // or even a map
+        var m map[string]any
+        err = r.MapScan(&m)
         return nil
     })
 }
