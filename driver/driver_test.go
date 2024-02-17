@@ -269,7 +269,7 @@ func TestDriverWithTimeValues(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	_, err = db.Exec("CREATE TABLE test(a TIMESTAMP); INSERT INTO test (a) VALUES (?)", now)
 	assert.NoError(t, err)
 
