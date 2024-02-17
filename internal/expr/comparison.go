@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
 )
@@ -143,25 +142,69 @@ func IsComparisonOperator(op Operator) bool {
 }
 
 type InOperator struct {
-	*simpleOperator
+	a  Expr
+	b  Expr
+	op scanner.Token
 }
 
 // In creates an expression that evaluates to the result of a IN b.
-func In(a, b Expr) Expr {
-	return &InOperator{&simpleOperator{a, b, scanner.IN}}
+func In(a Expr, b Expr) Expr {
+	return &InOperator{a, b, scanner.IN}
+}
+
+func (op InOperator) Precedence() int {
+	return op.op.Precedence()
+}
+
+func (op InOperator) LeftHand() Expr {
+	return op.a
+}
+
+func (op InOperator) RightHand() Expr {
+	return op.b
+}
+
+func (op *InOperator) SetLeftHandExpr(a Expr) {
+	op.a = a
+}
+
+func (op *InOperator) SetRightHandExpr(b Expr) {}
+
+func (op *InOperator) Token() scanner.Token {
+	return op.op
+}
+
+func (op *InOperator) String() string {
+	return fmt.Sprintf("%v IN %v", op.a, op.b)
 }
 
 func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
-			return NullLiteral, nil
+	a, err := op.validateLeftExpression(op.a)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	b, err := op.validateRightExpression(op.b)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	va, err := a.Eval(env)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	if va.Type() == types.TypeNull {
+		return NullLiteral, nil
+	}
+
+	for _, bb := range b {
+		v, err := bb.Eval(env)
+		if err != nil {
+			return NullLiteral, err
 		}
 
-		if b.Type() != types.TypeArray {
-			return FalseLiteral, nil
-		}
-
-		ok, err := object.ArrayContains(types.AsArray(b), a)
+		ok, err := va.EQ(v)
 		if err != nil {
 			return NullLiteral, err
 		}
@@ -169,8 +212,33 @@ func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
 		if ok {
 			return TrueLiteral, nil
 		}
-		return FalseLiteral, nil
-	})
+	}
+
+	return FalseLiteral, nil
+}
+
+func (op *InOperator) validateLeftExpression(a Expr) (Expr, error) {
+	switch t := a.(type) {
+	case Parentheses:
+		return op.validateLeftExpression(t.E)
+	case Column:
+		return a, nil
+	case LiteralValue:
+		return a, nil
+	}
+
+	return nil, fmt.Errorf("invalid left expression for IN operator: %v", a)
+}
+
+func (op *InOperator) validateRightExpression(b Expr) (LiteralExprList, error) {
+	switch t := b.(type) {
+	case Parentheses:
+		return LiteralExprList{b.(Parentheses).E}, nil
+	case LiteralExprList:
+		return t, nil
+	}
+
+	return nil, fmt.Errorf("invalid right expression for IN operator: %v", b)
 }
 
 type NotInOperator struct {
@@ -178,8 +246,8 @@ type NotInOperator struct {
 }
 
 // NotIn creates an expression that evaluates to the result of a NOT IN b.
-func NotIn(a, b Expr) Expr {
-	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.NIN}}}
+func NotIn(a Expr, b Expr) Expr {
+	return &NotInOperator{InOperator{a, b, scanner.NIN}}
 }
 
 func (op *NotInOperator) Eval(env *environment.Environment) (types.Value, error) {

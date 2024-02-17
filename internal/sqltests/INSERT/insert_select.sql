@@ -1,52 +1,76 @@
 -- setup:
-CREATE TABLE foo;
-CREATE TABLE bar;
+CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
+CREATE TABLE bar(a INT, b INT);
 INSERT INTO bar (a, b) VALUES (1, 10);
 
 -- test: same table
 INSERT INTO foo SELECT * FROM foo;
 -- error:
 
--- test: No fields / No projection
+-- test: No columns / No projection
 INSERT INTO foo SELECT * FROM bar;
-SELECT pk(), * FROM foo;
+SELECT * FROM foo;
 /* result:
-{"pk()": [1], "a":1.0, "b":10.0}
+{
+    "a":1,
+    "b":10,
+    "c":null,
+    "d":null,
+    "e":null
+}
 */
 
--- test: No fields / Projection
+-- test: No columns / Projection
 INSERT INTO foo SELECT a FROM bar;
-SELECT pk(), * FROM foo;
+SELECT * FROM foo;
 /* result:
-{"pk()": [1], "a":1.0}
+{
+    "a":1,
+    "b":null,
+    "c":null,
+    "d":null,
+    "e":null
+}
 */
 
--- test: With fields / No Projection
+-- test: With columns / No Projection
 INSERT INTO foo (a, b) SELECT * FROM bar;
-SELECT pk(), * FROM foo;
+SELECT * FROM foo;
 /* result:
-{"pk()": [1], "a":1.0, "b":10.0}
+{
+    "a":1,
+    "b":10,
+    "c":null,
+    "d":null,
+    "e":null
+}
 */
 
--- test: With fields / Projection
+-- test: With columns / Projection
 INSERT INTO foo (c, d) SELECT a, b FROM bar;
-SELECT pk(), * FROM foo;
+SELECT * FROM foo;
 /* result:
-{"pk()": [1], "c":1.0, "d":10.0}
+{
+    "a":null,
+    "b":null,
+    "c":1,
+    "d":10,
+    "e":null
+}
 */
 
--- test: Too many fields / No Projection
+-- test: Too many columns / No Projection
 INSERT INTO foo (c) SELECT * FROM bar;
 -- error:
 
--- test: Too many fields / Projection
+-- test: Too many columns / Projection
 INSERT INTO foo (c, d) SELECT a, b, c FROM bar;
 -- error:
 
--- test: Too few fields / No Projection
+-- test: Too few columns / No Projection
 INSERT INTO foo (c, d, e) SELECT * FROM bar;
 -- error:
 
--- test: Too few fields / Projection
-INSERT INTO foo (c, d) SELECT a FROM bar`;
+-- test: Too few columns / Projection
+INSERT INTO foo (c, d) SELECT a FROM bar;
 -- error:

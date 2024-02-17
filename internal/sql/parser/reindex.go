@@ -10,7 +10,7 @@ func (p *Parser) parseReIndexStatement() (statement.Statement, error) {
 	stmt := statement.NewReIndexStatement()
 
 	// Parse "REINDEX".
-	if err := p.parseTokens(scanner.REINDEX); err != nil {
+	if err := p.ParseTokens(scanner.REINDEX); err != nil {
 		return nil, err
 	}
 

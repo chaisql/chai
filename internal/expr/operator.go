@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -117,14 +116,14 @@ type Cast struct {
 	CastAs types.Type
 }
 
-// Eval returns the primary key of the current object.
+// Eval returns the primary key of the current row.
 func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
 	}
 
-	return object.CastAs(v, c.CastAs)
+	return v.CastAs(c.CastAs)
 }
 
 // IsEqual compares this expression with the other expression and returns

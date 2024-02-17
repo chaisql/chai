@@ -39,7 +39,7 @@ func TestRunTablesCmd(t *testing.T) {
 			defer db.Close()
 
 			for _, tb := range test.tables {
-				err := db.Exec("CREATE TABLE " + tb)
+				err := db.Exec("CREATE TABLE " + tb + "(a INT)")
 				assert.NoError(t, err)
 			}
 
@@ -71,10 +71,10 @@ func TestIndexesCmd(t *testing.T) {
 			defer db.Close()
 
 			err = db.Exec(`
-				CREATE TABLE foo(a, b);
+				CREATE TABLE foo(a INT, b INT);
 				CREATE INDEX idx_foo_a ON foo (a);
 				CREATE INDEX idx_foo_b ON foo (b);
-				CREATE TABLE bar(a, b);
+				CREATE TABLE bar(a INT, b INT);
 				CREATE INDEX idx_bar_a_b ON bar (a, b);
 			`)
 			assert.NoError(t, err)
@@ -101,7 +101,7 @@ func TestSaveCommand(t *testing.T) {
 	defer db.Close()
 
 	err = db.Exec(`
-		CREATE TABLE test (a DOUBLE, b, ...);
+		CREATE TABLE test (a DOUBLE, b INT);
 		CREATE INDEX idx_a_b ON test (a, b);
 	`)
 	assert.NoError(t, err)

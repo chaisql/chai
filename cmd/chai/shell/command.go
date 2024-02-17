@@ -13,9 +13,8 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
-	"github.com/chaisql/chai/cmd/chai/doc"
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 )
 
 type command struct {
@@ -59,12 +58,6 @@ var commands = []command{
 		Options:     "[table_name]",
 		DisplayName: ".dump",
 		Description: "Dump database content or table content as SQL statements.",
-	},
-	{
-		Name:        ".doc",
-		Options:     "[function_name]",
-		DisplayName: ".doc",
-		Description: "Display inline documentation for a function",
 	},
 	{
 		Name:        ".save",
@@ -117,16 +110,6 @@ func runHelpCmd(out io.Writer) error {
 		fmt.Fprintf(out, "%s %s %*s %s\n", c.DisplayName, c.Options, indent, "", c.Description)
 	}
 
-	return nil
-}
-
-// runDocCommand prints the docstring for a given function
-func runDocCmd(expr string, out io.Writer) error {
-	doc, err := doc.DocString(expr)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "%s\n", doc)
 	return nil
 }
 
@@ -233,9 +216,9 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	baseQ := fmt.Sprintf("INSERT INTO %s VALUES ", table)
 
 	buf := make([][]string, csvBatchSize)
-	fbs := make([]*object.FieldBuffer, csvBatchSize)
+	fbs := make([]*row.ColumnBuffer, csvBatchSize)
 	for i := range fbs {
-		fbs[i] = object.NewFieldBuffer()
+		fbs[i] = row.NewColumnBuffer()
 	}
 	args := make([]any, csvBatchSize)
 	for i := range args {

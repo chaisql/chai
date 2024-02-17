@@ -127,7 +127,7 @@ SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 EXPLAIN SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\", [{\"min\": [100], \"exact\": true}]) | rows.Project(a, b)"
+    plan: "table.Scan(\"test\", [{\"min\": (100), \"exact\": true}]) | rows.Project(a, b)"
 }
 */
 

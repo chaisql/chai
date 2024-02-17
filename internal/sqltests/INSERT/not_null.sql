@@ -13,7 +13,7 @@ CREATE TABLE test (a INT NOT NULL, b INT);
 INSERT INTO test (a, b) VALUES (NULL, 1);
 -- error:
 
--- test: with missing field and default
+-- test: with missing column and default
 CREATE TABLE test (a INT NOT NULL DEFAULT 10, b INT);
 INSERT INTO test (b) VALUES (1);
 SELECT a, b FROM test;

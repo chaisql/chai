@@ -6,7 +6,7 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
@@ -38,10 +38,10 @@ func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *envi
 	}
 
 	return op.Prev.Iterate(in, func(env *environment.Environment) error {
-		row, ok := env.GetRow()
+		r, ok := env.GetDatabaseRow()
 		if ok {
-			mask.tableName = row.TableName()
-			mask.key = row.Key()
+			mask.tableName = r.TableName()
+			mask.key = r.Key()
 		}
 		mask.Env = env
 		mask.Exprs = op.Exprs
@@ -76,19 +76,11 @@ func (m *RowMask) Key() *tree.Key {
 	return m.key
 }
 
-func (m *RowMask) Object() types.Object {
-	return m
-}
-
 func (m *RowMask) TableName() string {
 	return m.tableName
 }
 
 func (m *RowMask) Get(column string) (v types.Value, err error) {
-	return m.GetByField(column)
-}
-
-func (m *RowMask) GetByField(field string) (v types.Value, err error) {
 	for _, e := range m.Exprs {
 		if _, ok := e.(expr.Wildcard); ok {
 			r, ok := m.Env.GetRow()
@@ -96,23 +88,27 @@ func (m *RowMask) GetByField(field string) (v types.Value, err error) {
 				continue
 			}
 
-			v, err = r.Get(field)
-			if errors.Is(err, types.ErrFieldNotFound) {
+			v, err = r.Get(column)
+			if errors.Is(err, types.ErrColumnNotFound) {
 				continue
 			}
 			return
 		}
 
-		if ne, ok := e.(*expr.NamedExpr); ok && ne.Name() == field {
+		if ne, ok := e.(*expr.NamedExpr); ok && ne.Name() == column {
 			return e.Eval(m.Env)
 		}
 
-		if e.(fmt.Stringer).String() == field {
+		if col, ok := e.(expr.Column); ok && col.String() == column {
+			return e.Eval(m.Env)
+		}
+
+		if e.(fmt.Stringer).String() == column {
 			return e.Eval(m.Env)
 		}
 	}
 
-	err = types.ErrFieldNotFound
+	err = errors.Wrapf(types.ErrColumnNotFound, "%s not found", column)
 	return
 }
 
@@ -126,7 +122,7 @@ func (m *RowMask) Iterate(fn func(field string, value types.Value) error) error 
 
 			err := r.Iterate(fn)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "wildcard iteration")
 			}
 
 			continue
@@ -153,11 +149,6 @@ func (m *RowMask) Iterate(fn func(field string, value types.Value) error) error 
 	return nil
 }
 
-func (m *RowMask) String() string {
-	b, _ := types.NewObjectValue(m).MarshalText()
-	return string(b)
-}
-
-func (d *RowMask) MarshalJSON() ([]byte, error) {
-	return object.MarshalJSON(d)
+func (m *RowMask) MarshalJSON() ([]byte, error) {
+	return row.MarshalJSON(m)
 }

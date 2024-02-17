@@ -62,7 +62,7 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 		}
 
 		v, err := r.Get("seq")
-		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 			return nil, err
 		}
 
@@ -139,7 +139,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 	ti.StoreNamespace = tree.Namespace(storeNamespace)
 
 	v, err = r.Get("rowid_sequence_name")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.TypeNull {
@@ -176,15 +176,11 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 
 	i.StoreNamespace = tree.Namespace(storeNamespace)
 
-	v, err = r.Get("owner")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	owner, err := ownerFromRow(r)
+	if err != nil {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.TypeNull {
-		owner, err := ownerFromObject(types.AsObject(v))
-		if err != nil {
-			return nil, err
-		}
+	if owner != nil {
 		i.Owner = *owner
 	}
 
@@ -204,48 +200,37 @@ func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
 
 	i := stmt.(*statement.CreateSequenceStmt).Info
 
-	v, err := r.Get("owner")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
-		return nil, errors.Wrap(err, "failed to get owner field")
+	owner, err := ownerFromRow(r)
+	if err != nil {
+		return nil, err
 	}
-	if err == nil && v.Type() != types.TypeNull {
-		owner, err := ownerFromObject(types.AsObject(v))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get owner")
-		}
+	if owner != nil {
 		i.Owner = *owner
 	}
 
 	return &i, nil
 }
 
-func ownerFromObject(o types.Object) (*database.Owner, error) {
+func ownerFromRow(r database.Row) (*database.Owner, error) {
 	var owner database.Owner
 
-	v, err := o.GetByField("table_name")
-	if err != nil {
+	v, err := r.Get("owner_table_name")
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
+	}
+	if err != nil || v.Type() == types.TypeNull {
+		return nil, nil
 	}
 
 	owner.TableName = types.AsString(v)
 
-	v, err = o.GetByField("paths")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	v, err = r.Get("owner_table_columns")
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}
 	if err == nil && v.Type() != types.TypeNull {
-		err = types.AsArray(v).Iterate(func(i int, value types.Value) error {
-			pp, err := parser.ParsePath(types.AsString(value))
-			if err != nil {
-				return err
-			}
-
-			owner.Paths = append(owner.Paths, pp)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
+		cols := types.AsString(v)
+		owner.Columns = strings.Split(cols, ",")
 	}
 
 	return &owner, nil

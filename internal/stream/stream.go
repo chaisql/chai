@@ -118,7 +118,7 @@ type DiscardOperator struct {
 	BaseOperator
 }
 
-// Discard is an operator that doesn't produce any object.
+// Discard is an operator that doesn't produce any row.
 // It iterates over the previous operator and discards all the objects.
 func Discard() *DiscardOperator {
 	return &DiscardOperator{}

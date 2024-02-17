@@ -16,7 +16,7 @@ type DeleteStmt struct {
 	TableName        string
 	WhereExpr        expr.Expr
 	OffsetExpr       expr.Expr
-	OrderBy          expr.Path
+	OrderBy          expr.Column
 	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
 }
@@ -36,10 +36,15 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
+		err := ensureExprColumnsExist(c, stmt.TableName, stmt.WhereExpr)
+		if err != nil {
+			return nil, err
+		}
+
 		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
-	if stmt.OrderBy != nil {
+	if stmt.OrderBy != "" {
 		if stmt.OrderByDirection == scanner.DESC {
 			s = s.Pipe(rows.TempTreeSortReverse(stmt.OrderBy))
 		} else {
@@ -48,10 +53,18 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	if stmt.OffsetExpr != nil {
+		err := ensureExprColumnsExist(c, stmt.TableName, stmt.OffsetExpr)
+		if err != nil {
+			return nil, err
+		}
 		s = s.Pipe(rows.Skip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
+		err := ensureExprColumnsExist(c, stmt.TableName, stmt.LimitExpr)
+		if err != nil {
+			return nil, err
+		}
 		s = s.Pipe(rows.Take(stmt.LimitExpr))
 	}
 

@@ -31,7 +31,7 @@ type Index struct {
 func NewIndex(tr *tree.Tree, opts IndexInfo) *Index {
 	return &Index{
 		Tree:  tr,
-		Arity: len(opts.Paths),
+		Arity: len(opts.Columns),
 	}
 }
 

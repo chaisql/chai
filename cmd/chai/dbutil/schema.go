@@ -1,6 +1,8 @@
 package dbutil
 
 import (
+	"fmt"
+
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
@@ -8,11 +10,24 @@ import (
 
 func QueryTables(tx *chai.Tx, tables []string, fn func(name, query string) error) error {
 	query := "SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'"
+	var args []any
 	if len(tables) > 0 {
-		query += " AND name IN ?"
+		var arg string
+
+		for i := range tables {
+			arg += "?"
+
+			if i < len(tables)-1 {
+				arg += ", "
+			}
+
+			args = append(args, tables[i])
+		}
+
+		query += fmt.Sprintf(" AND name IN (%s)", arg)
 	}
 
-	res, err := tx.Query(query, tables)
+	res, err := tx.Query(query, args...)
 	if err != nil {
 		return err
 	}
@@ -33,7 +48,7 @@ func ListIndexes(db *chai.DB, tableName string) ([]string, error) {
 	var listName []string
 	q := "SELECT sql FROM __chai_catalog WHERE type = 'index'"
 	if tableName != "" {
-		q += " AND owner.table_name = ?"
+		q += " AND owner_table_name = ?"
 	}
 	res, err := db.Query(q, tableName)
 	if err != nil {

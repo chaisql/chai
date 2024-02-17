@@ -3,8 +3,8 @@ package planner_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
@@ -13,7 +13,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -81,7 +80,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			sctx := planner.NewStreamContext(test.in)
+			sctx := planner.NewStreamContext(test.in, nil)
 			err := planner.SplitANDConditionRule(sctx)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
@@ -111,66 +110,35 @@ func TestPrecalculateExprRule(t *testing.T) {
 		},
 		{
 			"constant sub-expr: a > 1 - 40 -> a > -39",
-			expr.Gt(expr.Path{object.PathFragment{FieldName: "a"}}, expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
-			expr.Gt(expr.Path{object.PathFragment{FieldName: "a"}}, testutil.DoubleValue(-39)),
+			expr.Gt(expr.Column("a"), expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
+			expr.Gt(expr.Column("a"), testutil.DoubleValue(-39)),
 		},
 		{
-			"constant sub-expr: a IN [1, 2] -> a IN array([1, 2])",
-			expr.In(expr.Path{object.PathFragment{FieldName: "a"}}, expr.LiteralExprList{testutil.IntegerValue(1), testutil.IntegerValue(2)}),
-			expr.In(expr.Path{object.PathFragment{FieldName: "a"}}, expr.LiteralValue{Value: types.NewArrayValue(object.NewValueBuffer().
-				Append(types.NewIntegerValue(1)).
-				Append(types.NewIntegerValue(2)))}),
-		},
-		{
-			"non-constant expr list: [a, 1 - 40] -> [a, -39]",
+			"non-constant expr list: (a, 1 - 40) -> (a, -39)",
 			expr.LiteralExprList{
-				expr.Path{object.PathFragment{FieldName: "a"}},
+				expr.Column("a"),
 				expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
-				expr.Path{object.PathFragment{FieldName: "a"}},
+				expr.Column("a"),
 				testutil.DoubleValue(-39),
 			},
-		},
-		{
-			"constant expr list: [3, 1 - 40] -> array([3, -39])",
-			expr.LiteralExprList{
-				testutil.IntegerValue(3),
-				expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40)),
-			},
-			expr.LiteralValue{Value: types.NewArrayValue(object.NewValueBuffer().
-				Append(types.NewIntegerValue(3)).
-				Append(types.NewDoubleValue(-39)))},
-		},
-		{
-			`non-constant kvpair: {"a": d, "b": 1 - 40} -> {"a": 3, "b": -39}`,
-			&expr.KVPairs{Pairs: []expr.KVPair{
-				{K: "a", V: expr.Path{object.PathFragment{FieldName: "d"}}},
-				{K: "b", V: expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))},
-			}},
-			&expr.KVPairs{Pairs: []expr.KVPair{
-				{K: "a", V: expr.Path{object.PathFragment{FieldName: "d"}}},
-				{K: "b", V: testutil.DoubleValue(-39)},
-			}},
-		},
-		{
-			`constant kvpair: {"a": 3, "b": 1 - 40} -> object({"a": 3, "b": -39})`,
-			&expr.KVPairs{Pairs: []expr.KVPair{
-				{K: "a", V: testutil.IntegerValue(3)},
-				{K: "b", V: expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))},
-			}},
-			expr.LiteralValue{Value: types.NewObjectValue(object.NewFieldBuffer().
-				Add("a", types.NewIntegerValue(3)).
-				Add("b", types.NewDoubleValue(-39)),
-			)},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			db, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+
+			testutil.MustExec(t, db, tx, `
+				CREATE TABLE foo (k INT PRIMARY KEY, a INT);
+			`)
+
 			s := stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(test.e))
-			sctx := planner.NewStreamContext(s)
+
+			sctx := planner.NewStreamContext(s, tx.Catalog)
 			err := planner.PrecalculateExprRule(sctx)
 			assert.NoError(t, err)
 			require.Equal(t, stream.New(table.Scan("foo")).Pipe(rows.Filter(test.expected)).String(), sctx.Stream.String())
@@ -194,14 +162,6 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 			stream.New(table.Scan("foo")),
 		},
 		{
-			"truthy constant expr with IN",
-			stream.New(table.Scan("foo")).Pipe(rows.Filter(expr.In(
-				expr.Path(object.NewPath("a")),
-				testutil.ArrayValue(object.NewValueBuffer()),
-			))),
-			&stream.Stream{},
-		},
-		{
 			"falsy constant expr",
 			stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("0"))),
 			&stream.Stream{},
@@ -210,7 +170,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			sctx := planner.NewStreamContext(test.root)
+			sctx := planner.NewStreamContext(test.root, nil)
 			err := planner.RemoveUnnecessaryFilterNodesRule(sctx)
 			assert.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
@@ -272,31 +232,21 @@ func TestSelectIndex_Simple(t *testing.T) {
 				Pipe(rows.Project(parser.MustParseExpr("a"))),
 		},
 		{
-			"SELECT a FROM foo WHERE c = 'hello' AND b = 2",
+			"SELECT a FROM foo WHERE c = 3 AND d = 2",
 			stream.New(table.Scan("foo")).
-				Pipe(rows.Filter(parser.MustParseExpr("c = 'hello'"))).
-				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(rows.Project(parser.MustParseExpr("a"))),
-			stream.New(index.Scan("idx_foo_c", stream.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
-				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(rows.Project(parser.MustParseExpr("a"))),
-		},
-		{
-			"SELECT a FROM foo WHERE c = 'hello' AND d = 2",
-			stream.New(table.Scan("foo")).
-				Pipe(rows.Filter(parser.MustParseExpr("c = 'hello'"))).
+				Pipe(rows.Filter(parser.MustParseExpr("c = 3"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(rows.Project(parser.MustParseExpr("a"))),
-			stream.New(index.Scan("idx_foo_c", stream.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
+			stream.New(index.Scan("idx_foo_c", stream.Range{Min: exprList(testutil.IntegerValue(3)), Exact: true})).
 				Pipe(rows.Filter(parser.MustParseExpr("d = 2"))).
 				Pipe(rows.Project(parser.MustParseExpr("a"))),
 		},
 		{
-			"FROM foo WHERE a IN [1, 2]",
+			"FROM foo WHERE a IN (1, 2)",
 			stream.New(table.Scan("foo")).Pipe(rows.Filter(
 				expr.In(
 					parser.MustParseExpr("a"),
-					testutil.ExprList(t, `[1, 2]`),
+					testutil.ExprList(t, `(1, 2)`),
 				),
 			)),
 			stream.New(index.Scan("idx_foo_a", stream.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true}, stream.Range{Min: exprList(testutil.IntegerValue(2)), Exact: true})),
@@ -340,18 +290,10 @@ func TestSelectIndex_Simple(t *testing.T) {
 			stream.New(index.Scan("idx_foo_a", stream.Range{Min: exprList(testutil.IntegerValue(1)), Exact: true})).
 				Pipe(rows.Filter(parser.MustParseExpr("k < 2"))),
 		},
-		{
-			"FROM foo WHERE a = 1 AND k = 'hello'",
-			stream.New(table.Scan("foo")).
-				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(rows.Filter(parser.MustParseExpr("k = 'hello'"))),
-			stream.New(table.Scan("foo", stream.Range{Min: exprList(testutil.TextValue("hello")), Exact: true})).
-				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))),
-		},
 		{ // c is an INT, 1.1 cannot be converted to int without precision loss, don't use the index
 			"FROM foo WHERE c < 1.1",
 			stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c < 1.1"))),
-			stream.New(index.Scan("idx_foo_c", stream.Range{Max: exprList(testutil.DoubleValue(1.1)), Exclusive: true})),
+			stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c < 1.1"))),
 		},
 		// {
 		// 	"FROM foo WHERE a = 1 OR b = 2",
@@ -390,7 +332,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo (k INT PRIMARY KEY, a INT, b INT, c INT, d ANY);
+				CREATE TABLE foo (k INT PRIMARY KEY, a INT, b INT, c INT, d INT);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
@@ -400,70 +342,14 @@ func TestSelectIndex_Simple(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			sctx := planner.NewStreamContext(test.root)
+			sctx := planner.NewStreamContext(test.root, tx.Catalog)
 			sctx.Catalog = tx.Catalog
-			err := planner.SelectIndex(sctx)
+			st, err := planner.Optimize(test.root, tx.Catalog, nil)
+			// err := planner.SelectIndex(sctx)
 			assert.NoError(t, err)
-			require.Equal(t, test.expected.String(), sctx.Stream.String())
+			require.Equal(t, test.expected.String(), st.String())
 		})
 	}
-
-	t.Run("array indexes", func(t *testing.T) {
-		tests := []struct {
-			name           string
-			root, expected *stream.Stream
-		}{
-			{
-				"non-indexed path",
-				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("b = [1, 1]"))),
-				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("b = [1, 1]"))),
-			},
-			{
-				"FROM foo WHERE k = [1, 1]",
-				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("k = [1, 1]"))),
-				stream.New(table.Scan("foo", stream.Range{Min: exprList(testutil.ExprList(t, `[1, 1]`)), Exact: true})),
-			},
-			{ // constraint on k[0] INT should not modify the operand
-				"FROM foo WHERE k = [1.5, 1.5]",
-				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("k = [1.5, 1.5]"))),
-				stream.New(table.Scan("foo", stream.Range{Min: exprList(testutil.ExprList(t, `[1.5, 1.5]`)), Exact: true})),
-			},
-			{
-				"FROM foo WHERE a = [1, 1]",
-				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("a = [1, 1]"))),
-				stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `[[1, 1]]`), Exact: true})),
-			},
-		}
-
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				db, tx, cleanup := testutil.NewTestTx(t)
-				defer cleanup()
-
-				testutil.MustExec(t, db, tx, `
-					CREATE TABLE foo (
-						k ARRAY PRIMARY KEY,
-						a ARRAY,
-						b ARRAY
-					);
-					CREATE INDEX idx_foo_a ON foo(a);
-					INSERT INTO foo (k, a, b) VALUES
-						([1, 1], [1, 1], [1, 1]),
-						([2, 2], [2, 2], [2, 2]),
-						([3, 3], [3, 3], [3, 3])
-				`)
-
-				sctx := planner.NewStreamContext(test.root)
-				sctx.Catalog = tx.Catalog
-				err := planner.PrecalculateExprRule(sctx)
-				assert.NoError(t, err)
-
-				err = planner.SelectIndex(sctx)
-				assert.NoError(t, err)
-				require.Equal(t, test.expected.String(), sctx.Stream.String())
-			})
-		}
-	})
 }
 
 func TestSelectIndex_Composite(t *testing.T) {
@@ -476,42 +362,42 @@ func TestSelectIndex_Composite(t *testing.T) {
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d = 2"))),
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d > 2",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d < 2",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d < 2"))),
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Max: testutil.ExprList(t, `(1, 2)`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d <= 2",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d <= 2"))),
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Max: testutil.ExprList(t, `[1, 2]`)})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Max: testutil.ExprList(t, `(1, 2)`)})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND d >= 2",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d >= 2"))),
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`)})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`)})),
 		},
 		{
 			"FROM foo WHERE a > 1 AND d > 2",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a > 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
-			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `[1]`), Exclusive: true})).
+			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `(1)`), Exclusive: true})).
 				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
 		},
 		{
@@ -519,8 +405,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a > ?"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d > ?"))),
-			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `[?]`), Exclusive: true})).
-				Pipe(rows.Filter(parser.MustParseExpr("d > ?"))),
+			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `(1)`), Exclusive: true})).
+				Pipe(rows.Filter(parser.MustParseExpr("d > 1"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 AND c = 3",
@@ -528,28 +414,28 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(rows.Filter(parser.MustParseExpr("c = 3"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `[1, 2, 3]`), Exact: true})),
+			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `(1, 2, 3)`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2", // c is omitted, but it can still use idx_foo_a_b_c
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b > 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("b > 2"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b < 2", // c is omitted, but it can still use idx_foo_a_b_c, with > b
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("b < 2"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Max: testutil.ExprList(t, `[1, 2]`), Exclusive: true})),
+			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Max: testutil.ExprList(t, `(1, 2)`), Exclusive: true})),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 and k = 3", // c is omitted, but it can still use idx_foo_a_b_c
@@ -557,7 +443,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))).
 				Pipe(rows.Filter(parser.MustParseExpr("k = 3"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})).
+			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})).
 				Pipe(rows.Filter(parser.MustParseExpr("k = 3"))),
 		},
 		// If a path is missing from the query, we can still the index, with paths after the missing one are
@@ -589,98 +475,89 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(rows.Filter(parser.MustParseExpr("b = 1"))),
 		},
 		{
-			"FROM foo WHERE a = 1 AND b = 2 AND c = 'a'",
-			stream.New(table.Scan("foo")).
-				Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
-				Pipe(rows.Filter(parser.MustParseExpr("b = 2"))).
-				Pipe(rows.Filter(parser.MustParseExpr("c = 'a'"))),
-			stream.New(index.Scan("idx_foo_a_b_c", stream.Range{Min: exprList(testutil.IntegerValue(1), testutil.IntegerValue(2), testutil.TextValue("a")), Exact: true})),
-		},
-
-		{
-			"FROM foo WHERE a IN [1, 2] AND d = 4",
+			"FROM foo WHERE a IN (1, 2) AND d = 4",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ExprList(t, `[1, 2]`),
+						testutil.ExprList(t, `(1, 2)`),
 					),
 				)).
 				Pipe(rows.Filter(parser.MustParseExpr("d = 4"))),
 			stream.New(index.Scan("idx_foo_a_d",
-				stream.Range{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 4)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 4)`), Exact: true},
 			)),
 		},
 		{
-			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c = 4",
+			"FROM foo WHERE a IN (1, 2) AND b = 3 AND c = 4",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ExprList(t, `[1, 2]`),
+						testutil.ExprList(t, `(1, 2)`),
 					),
 				)).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(rows.Filter(parser.MustParseExpr("c = 4"))),
 			stream.New(index.Scan("idx_foo_a_b_c",
-				stream.Range{Min: testutil.ExprList(t, `[1, 3, 4]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 3, 4]`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 3, 4)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 3, 4)`), Exact: true},
 			)),
 		},
 		{
-			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c > 4",
+			"FROM foo WHERE a IN (1, 2) AND b = 3 AND c > 4",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ExprList(t, `[1, 2]`),
+						testutil.ExprList(t, `(1, 2)`),
 					),
 				)).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(rows.Filter(parser.MustParseExpr("c > 4"))),
 			stream.New(index.Scan("idx_foo_a_b_c",
-				stream.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 3)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 3)`), Exact: true},
 			)).Pipe(rows.Filter(parser.MustParseExpr("c > 4"))),
 		},
 		{
-			"FROM foo WHERE a IN [1, 2] AND b = 3 AND c < 4",
+			"FROM foo WHERE a IN (1, 2) AND b = 3 AND c < 4",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ExprList(t, `[1, 2]`),
+						testutil.ExprList(t, `(1, 2)`),
 					),
 				)).
 				Pipe(rows.Filter(parser.MustParseExpr("b = 3"))).
 				Pipe(rows.Filter(parser.MustParseExpr("c < 4"))),
 			stream.New(index.Scan("idx_foo_a_b_c",
-				stream.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 3)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 3)`), Exact: true},
 			)).Pipe(rows.Filter(parser.MustParseExpr("c < 4"))),
 		},
 		{
-			"FROM foo WHERE a IN [1, 2] AND b IN [3, 4] AND c > 5",
+			"FROM foo WHERE a IN (1, 2) AND b IN (3, 4) AND c > 5",
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("a"),
-						testutil.ExprList(t, `[1, 2]`),
+						testutil.ExprList(t, `(1, 2)`),
 					),
 				)).
 				Pipe(rows.Filter(
 					expr.In(
 						parser.MustParseExpr("b"),
-						testutil.ExprList(t, `[3, 4]`),
+						testutil.ExprList(t, `(3, 4)`),
 					),
 				)).
 				Pipe(rows.Filter(parser.MustParseExpr("c > 5"))),
 			stream.New(index.Scan("idx_foo_a_b_c",
-				stream.Range{Min: testutil.ExprList(t, `[1, 3]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[1, 4]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 3]`), Exact: true},
-				stream.Range{Min: testutil.ExprList(t, `[2, 4]`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 3)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(1, 4)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 3)`), Exact: true},
+				stream.Range{Min: testutil.ExprList(t, `(2, 4)`), Exact: true},
 			)).Pipe(rows.Filter(parser.MustParseExpr("c > 5"))),
 		},
 		{
@@ -700,7 +577,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo (k INT PRIMARY KEY, a ANY, b ANY, c INT, d ANY, x ANY, y ANY, z ANY);
+				CREATE TABLE foo (k INT PRIMARY KEY, a INT, b INT, c INT, d INT, x INT, y INT, z INT);
 				CREATE INDEX idx_foo_a ON foo(a);
 				CREATE INDEX idx_foo_b ON foo(b);
 				CREATE UNIQUE INDEX idx_foo_c ON foo(c);
@@ -713,68 +590,16 @@ func TestSelectIndex_Composite(t *testing.T) {
 					(3, 3, 3, 3, 3)
 			`)
 
-			sctx := planner.NewStreamContext(test.root)
+			sctx := planner.NewStreamContext(test.root, tx.Catalog)
 			sctx.Catalog = tx.Catalog
-			err := planner.SelectIndex(sctx)
+			st, err := planner.Optimize(test.root, tx.Catalog, []environment.Param{
+				{Value: 1},
+				{Value: 2},
+			})
 			assert.NoError(t, err)
-			require.Equal(t, test.expected.String(), sctx.Stream.String())
+			require.Equal(t, test.expected.String(), st.String())
 		})
 	}
-
-	t.Run("array indexes", func(t *testing.T) {
-		tests := []struct {
-			name           string
-			root, expected *stream.Stream
-		}{
-			{
-				"FROM foo WHERE a = [1, 1] AND b = [2, 2]",
-				stream.New(table.Scan("foo")).
-					Pipe(rows.Filter(parser.MustParseExpr("a = [1, 1]"))).
-					Pipe(rows.Filter(parser.MustParseExpr("b = [2, 2]"))),
-				stream.New(index.Scan("idx_foo_a_b", stream.Range{
-					Min:   testutil.ExprList(t, `[[1, 1], [2, 2]]`),
-					Exact: true})),
-			},
-			{
-				"FROM foo WHERE a = [1, 1] AND b > [2, 2]",
-				stream.New(table.Scan("foo")).
-					Pipe(rows.Filter(parser.MustParseExpr("a = [1, 1]"))).
-					Pipe(rows.Filter(parser.MustParseExpr("b > [2, 2]"))),
-				stream.New(index.Scan("idx_foo_a_b", stream.Range{
-					Min:       testutil.ExprList(t, `[[1, 1], [2, 2]]`),
-					Exclusive: true})),
-			},
-		}
-
-		for _, test := range tests {
-			t.Run(test.name, func(t *testing.T) {
-				db, tx, cleanup := testutil.NewTestTx(t)
-				defer cleanup()
-
-				testutil.MustExec(t, db, tx, `
-						CREATE TABLE foo (
-							k ARRAY PRIMARY KEY,
-							a ARRAY,
-							b ANY
-						);
-						CREATE INDEX idx_foo_a_b ON foo(a, b);
-						INSERT INTO foo (k, a, b) VALUES
-							([1, 1], [1, 1], [1, 1]),
-							([2, 2], [2, 2], [2, 2]),
-							([3, 3], [3, 3], [3, 3])
-	`)
-
-				sctx := planner.NewStreamContext(test.root)
-				sctx.Catalog = tx.Catalog
-				err := planner.PrecalculateExprRule(sctx)
-				assert.NoError(t, err)
-
-				err = planner.SelectIndex(sctx)
-				assert.NoError(t, err)
-				require.Equal(t, test.expected.String(), sctx.Stream.String())
-			})
-		}
-	})
 }
 
 func TestOptimize(t *testing.T) {
@@ -783,20 +608,24 @@ func TestOptimize(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 			testutil.MustExec(t, db, tx, `
-						CREATE TABLE foo;
-						CREATE TABLE bar;
+				CREATE TABLE foo(a INT, b INT, c INT, d INT);
+				CREATE TABLE bar(a INT, b INT, c INT, d INT);
 			`)
 
 			got, err := planner.Optimize(
 				stream.New(stream.Union(
 					stream.New(stream.Concat(
 						stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("a = 1 + 2"))),
-						stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("b = 1 + 2"))),
+						stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("b = 1 + $1"))),
 					)),
 					stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c = 1 + 2"))),
-					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 1 + 2"))),
+					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 1 + $2"))),
 				)),
-				tx.Catalog)
+				tx.Catalog, []environment.Param{
+					{Name: "1", Value: 2},
+					{Name: "2", Value: 3},
+				})
+			assert.NoError(t, err)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -804,10 +633,9 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("b = 3"))),
 				)),
 				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c = 3"))),
-				stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 3"))),
+				stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 4"))),
 			))
 
-			assert.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 
@@ -815,8 +643,8 @@ func TestOptimize(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 			testutil.MustExec(t, db, tx, `
-						CREATE TABLE foo;
-						CREATE TABLE bar;
+				CREATE TABLE foo(a INT, b INT, c INT, d INT);
+				CREATE TABLE bar(a INT, b INT, c INT, d INT);
 			`)
 
 			got, err := planner.Optimize(
@@ -828,7 +656,7 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("12"))),
 					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("13"))),
 				)),
-				tx.Catalog)
+				tx.Catalog, nil)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -848,8 +676,8 @@ func TestOptimize(t *testing.T) {
 		db, tx, cleanup := testutil.NewTestTx(t)
 		defer cleanup()
 		testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a any, d any);
-				CREATE TABLE bar(a, d);
+				CREATE TABLE foo(a INT, d INT);
+				CREATE TABLE bar(a INT, d INT);
 				CREATE INDEX idx_foo_a_d ON foo(a, d);
 				CREATE INDEX idx_bar_a_d ON bar(a, d);
 			`)
@@ -863,11 +691,11 @@ func TestOptimize(t *testing.T) {
 					Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 					Pipe(rows.Filter(parser.MustParseExpr("d = 2"))),
 			)),
-			tx.Catalog)
+			tx.Catalog, nil)
 
 		want := stream.New(stream.Concat(
-			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
-			stream.New(index.Scan("idx_bar_a_d", stream.Range{Min: testutil.ExprList(t, `[1, 2]`), Exact: true})),
+			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),
+			stream.New(index.Scan("idx_bar_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),
 		))
 
 		assert.NoError(t, err)

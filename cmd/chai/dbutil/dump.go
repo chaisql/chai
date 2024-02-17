@@ -3,6 +3,7 @@ package dbutil
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/chaisql/chai"
 	"go.uber.org/multierr"
@@ -57,14 +58,35 @@ func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
 	defer res.Close()
 
 	// Inserts statements.
-	insert := fmt.Sprintf("INSERT INTO %s VALUES", tableName)
 	return res.Iterate(func(r *chai.Row) error {
-		data, err := r.MarshalJSON()
+		cols, err := r.Columns()
 		if err != nil {
 			return err
 		}
 
-		if _, err := fmt.Fprintf(w, "%s %s;\n", insert, string(data)); err != nil {
+		m := make(map[string]interface{}, len(cols))
+		err = r.MapScan(m)
+		if err != nil {
+			return err
+		}
+
+		var sb strings.Builder
+
+		for i, c := range cols {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+
+			v := m[c]
+			if v == nil {
+				sb.WriteString("NULL")
+				continue
+			}
+
+			fmt.Fprintf(&sb, "%v", v)
+		}
+
+		if _, err := fmt.Fprintf(w, "INSERT INTO %s VALUES (%s);\n", tableName, sb.String()); err != nil {
 			return err
 		}
 
@@ -105,8 +127,8 @@ func dumpSchema(tx *chai.Tx, w io.Writer, query string, tableName string) error 
 	// Indexes statements.
 	res, err := tx.Query(`
 		SELECT sql FROM __chai_catalog WHERE 
-			type = 'index' AND owner.table_name = ? OR
-			type = 'sequence' AND owner IS NULL
+			type = 'index' AND owner_table_name = ? OR
+			type = 'sequence' AND owner_table_name IS NULL
 	`, tableName)
 	if err != nil {
 		return err

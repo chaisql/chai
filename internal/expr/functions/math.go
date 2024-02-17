@@ -5,27 +5,8 @@ import (
 	"math"
 	"math/rand"
 
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/types"
 )
-
-// MathFunctions returns all math package functions.
-func MathFunctions() Definitions {
-	return mathFunctions
-}
-
-var mathFunctions = Definitions{
-	"floor":  floor,
-	"abs":    abs,
-	"acos":   acos,
-	"acosh":  acosh,
-	"asin":   asin,
-	"asinh":  asinh,
-	"atan":   atan,
-	"atan2":  atan2,
-	"random": random,
-	"sqrt":   sqrt,
-}
 
 var floor = &ScalarDefinition{
 	name:  "floor",
@@ -34,7 +15,7 @@ var floor = &ScalarDefinition{
 		switch args[0].Type() {
 		case types.TypeDouble:
 			return types.NewDoubleValue(math.Floor(types.AsFloat64(args[0]))), nil
-		case types.TypeInteger:
+		case types.TypeInteger, types.TypeBigint:
 			return args[0], nil
 		default:
 			return nil, fmt.Errorf("floor(arg1) expects arg1 to be a number")
@@ -49,13 +30,16 @@ var abs = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
 		res := math.Abs(types.AsFloat64(v))
 		if args[0].Type() == types.TypeInteger {
-			return object.CastAs(types.NewDoubleValue(res), types.TypeInteger)
+			return types.NewDoubleValue(res).CastAs(types.TypeInteger)
+		}
+		if args[0].Type() == types.TypeBigint {
+			return types.NewDoubleValue(res).CastAs(types.TypeBigint)
 		}
 		return types.NewDoubleValue(res), nil
 	},
@@ -68,7 +52,7 @@ var acos = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +72,7 @@ var acosh = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -108,7 +92,7 @@ var asin = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}
@@ -125,7 +109,7 @@ var asinh = &ScalarDefinition{
 	name:  "asinh",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
@@ -139,7 +123,7 @@ var atan = &ScalarDefinition{
 	name:  "atan",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
@@ -153,12 +137,12 @@ var atan2 = &ScalarDefinition{
 	name:  "atan2",
 	arity: 2,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		vA, err := object.CastAs(args[0], types.TypeDouble)
+		vA, err := args[0].CastAs(types.TypeDouble)
 		if err != nil || vA.Type() == types.TypeNull {
 			return vA, err
 		}
 		vvA := types.AsFloat64(vA)
-		vB, err := object.CastAs(args[1], types.TypeDouble)
+		vB, err := args[1].CastAs(types.TypeDouble)
 		if err != nil || vB.Type() == types.TypeNull {
 			return vB, err
 		}
@@ -173,7 +157,7 @@ var random = &ScalarDefinition{
 	arity: 0,
 	callFn: func(args ...types.Value) (types.Value, error) {
 		randomNum := rand.Int63()
-		return types.NewIntegerValue(randomNum), nil
+		return types.NewBigintValue(randomNum), nil
 	},
 }
 
@@ -184,7 +168,7 @@ var sqrt = &ScalarDefinition{
 		if args[0].Type() != types.TypeDouble && args[0].Type() != types.TypeInteger {
 			return types.NewNullValue(), nil
 		}
-		v, err := object.CastAs(args[0], types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDouble)
 		if err != nil {
 			return nil, err
 		}

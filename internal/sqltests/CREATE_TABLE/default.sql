@@ -1,13 +1,3 @@
--- test: basic
-CREATE TABLE test(a DEFAULT 10);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ANY DEFAULT 10)"
-}
-*/
-
 -- test: same type
 CREATE TABLE test(a INT DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
@@ -58,12 +48,3 @@ CREATE TABLE test(a BLOB DEFAULT 1 AND 1);
 CREATE TABLE test(a BLOB DEFAULT b);
 -- error:
 
--- test: nested doc
-CREATE TABLE test(a (b INT DEFAULT 10));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a (b INTEGER DEFAULT 10))"
-}
-*/

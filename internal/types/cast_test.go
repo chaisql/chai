@@ -1,4 +1,4 @@
-package object
+package types_test
 
 import (
 	"math"
@@ -23,12 +23,6 @@ func TestCastAs(t *testing.T) {
 	tsV := types.NewTimestampValue(now)
 	textV := types.NewTextValue("foo")
 	blobV := types.NewBlobValue([]byte("asdine"))
-	arrayV := types.NewArrayValue(NewValueBuffer().
-		Append(types.NewTextValue("bar")).
-		Append(integerV))
-	docV := types.NewObjectValue(NewFieldBuffer().
-		Add("a", integerV).
-		Add("b", textV))
 
 	check := func(t *testing.T, targetType types.Type, tests []test) {
 		t.Helper()
@@ -37,7 +31,7 @@ func TestCastAs(t *testing.T) {
 			t.Run(test.v.String(), func(t *testing.T) {
 				t.Helper()
 
-				got, err := CastAs(test.v, targetType)
+				got, err := test.v.CastAs(targetType)
 				if test.fails {
 					assert.Error(t, err)
 				} else {
@@ -58,8 +52,6 @@ func TestCastAs(t *testing.T) {
 			{types.NewTextValue("true"), boolV, false},
 			{types.NewTextValue("false"), types.NewBooleanValue(false), false},
 			{blobV, nil, true},
-			{arrayV, nil, true},
-			{docV, nil, true},
 		})
 	})
 
@@ -73,8 +65,6 @@ func TestCastAs(t *testing.T) {
 			{types.NewTextValue("10"), integerV, false},
 			{types.NewTextValue("10.5"), integerV, false},
 			{blobV, nil, true},
-			{arrayV, nil, true},
-			{docV, nil, true},
 			{types.NewDoubleValue(math.MaxInt64 + 1), nil, true},
 		})
 	})
@@ -88,8 +78,6 @@ func TestCastAs(t *testing.T) {
 			{types.NewTextValue("10"), types.NewDoubleValue(10), false},
 			{types.NewTextValue("10.5"), doubleV, false},
 			{blobV, nil, true},
-			{arrayV, nil, true},
-			{docV, nil, true},
 		})
 	})
 
@@ -100,8 +88,6 @@ func TestCastAs(t *testing.T) {
 			{doubleV, nil, true},
 			{types.NewTextValue(now.Format(time.RFC3339Nano)), tsV, false},
 			{blobV, nil, true},
-			{arrayV, nil, true},
-			{docV, nil, true},
 		})
 	})
 
@@ -112,10 +98,6 @@ func TestCastAs(t *testing.T) {
 			{doubleV, types.NewTextValue("10.5"), false},
 			{textV, textV, false},
 			{blobV, types.NewTextValue(`YXNkaW5l`), false},
-			{arrayV, types.NewTextValue(`["bar", 10]`), false},
-			{docV,
-				types.NewTextValue(`{"a": 10, "b": "foo"}`),
-				false},
 		})
 	})
 
@@ -127,34 +109,6 @@ func TestCastAs(t *testing.T) {
 			{types.NewTextValue("YXNkaW5l"), types.NewBlobValue([]byte{0x61, 0x73, 0x64, 0x69, 0x6e, 0x65}), false},
 			{types.NewTextValue("not base64"), nil, true},
 			{blobV, blobV, false},
-			{arrayV, nil, true},
-			{docV, nil, true},
-		})
-	})
-
-	t.Run("array", func(t *testing.T) {
-		check(t, types.TypeArray, []test{
-			{boolV, nil, true},
-			{integerV, nil, true},
-			{doubleV, nil, true},
-			{types.NewTextValue(`["bar", 10]`), arrayV, false},
-			{types.NewTextValue("abc"), nil, true},
-			{blobV, nil, true},
-			{arrayV, arrayV, false},
-			{docV, nil, true},
-		})
-	})
-
-	t.Run("object", func(t *testing.T) {
-		check(t, types.TypeObject, []test{
-			{boolV, nil, true},
-			{integerV, nil, true},
-			{doubleV, nil, true},
-			{types.NewTextValue(`{"a": 10, "b": "foo"}`), docV, false},
-			{types.NewTextValue("abc"), nil, true},
-			{blobV, nil, true},
-			{arrayV, nil, true},
-			{docV, docV, false},
 		})
 	})
 }

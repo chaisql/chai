@@ -1,7 +1,7 @@
 -- setup:
 CREATE TABLE test(a int);
 
--- test: field constraints are updated
+-- test: column constraints are updated
 INSERT INTO test VALUES (1), (2);
 ALTER TABLE test ADD COLUMN b int DEFAULT 0;
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
@@ -39,7 +39,7 @@ SELECT * FROM test;
 /* result:
 {
   "a": 1,
-  "b": 10
+  "b": 10,
 }
 {
   "a": 2,
@@ -53,10 +53,12 @@ ALTER TABLE test ADD COLUMN b int UNIQUE;
 SELECT * FROM test;
 /* result:
 {
-  "a": 1
+  "a": 1,
+  "b": null
 }
 {
-  "a": 2
+  "a": 2,
+  "b": null
 }
 */
 
@@ -78,13 +80,15 @@ ALTER TABLE test ADD COLUMN b int PRIMARY KEY;
 -- test: primary key: without data
 ALTER TABLE test ADD COLUMN b int PRIMARY KEY;
 INSERT INTO test VALUES (1, 10), (2, 20);
-SELECT pk() FROM test;
+SELECT a, b FROM test;
 /* result:
 {
-  "pk()": [10]
+  "a": 1,
+  "b": 10
 }
 {
-  "pk()": [20]
+  "a": 2,
+  "b": 20
 }
 */
 
@@ -113,32 +117,15 @@ SELECT * FROM test;
 }
 */
 
--- test: no type
+-- test: bad syntax: no type
 INSERT INTO test VALUES (1), (2);
 ALTER TABLE test ADD COLUMN b;
-INSERT INTO test VALUES (3, 30), (4, 'hello');
-SELECT * FROM test;
-/* result:
-{
-  "a": 1
-}
-{
-  "a": 2
-}
-{
-  "a": 3,
-  "b": 30.0
-}
-{
-  "a": 4,
-  "b": "hello"
-}
-*/
+-- error:
 
--- test: bad syntax: no field name
+-- test: bad syntax: no column name
 ALTER TABLE test ADD COLUMN;
 -- error:
 
--- test: bad syntax: missing FIELD keyword
+-- test: bad syntax: missing column keyword
 ALTER TABLE test ADD a int;
 -- error:

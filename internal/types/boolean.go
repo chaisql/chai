@@ -1,6 +1,36 @@
 package types
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/cockroachdb/errors"
+)
+
+var _ TypeDefinition = BooleanTypeDef{}
+
+type BooleanTypeDef struct{}
+
+func (BooleanTypeDef) New(v any) Value {
+	return NewBooleanValue(v.(bool))
+}
+
+func (BooleanTypeDef) Type() Type {
+	return TypeBoolean
+}
+
+func (t BooleanTypeDef) Decode(src []byte) (Value, int) {
+	b := encoding.DecodeBoolean(src)
+	return NewBooleanValue(b), 1
+}
+
+func (BooleanTypeDef) IsComparableWith(other Type) bool {
+	return other == TypeBoolean
+}
+
+func (BooleanTypeDef) IsIndexComparableWith(other Type) bool {
+	return other == TypeBoolean
+}
 
 var _ Value = NewBooleanValue(false)
 
@@ -19,6 +49,10 @@ func (v BooleanValue) Type() Type {
 	return TypeBoolean
 }
 
+func (v BooleanValue) TypeDef() TypeDefinition {
+	return BooleanTypeDef{}
+}
+
 func (v BooleanValue) IsZero() (bool, error) {
 	return !bool(v), nil
 }
@@ -33,6 +67,35 @@ func (v BooleanValue) MarshalText() ([]byte, error) {
 
 func (v BooleanValue) MarshalJSON() ([]byte, error) {
 	return v.MarshalText()
+}
+
+func (v BooleanValue) Encode(dst []byte) ([]byte, error) {
+	return encoding.EncodeBoolean(dst, bool(v)), nil
+}
+
+func (v BooleanValue) EncodeAsKey(dst []byte) ([]byte, error) {
+	return v.Encode(dst)
+}
+
+func (v BooleanValue) CastAs(target Type) (Value, error) {
+	switch target {
+	case TypeBoolean:
+		return v, nil
+	case TypeInteger:
+		if bool(v) {
+			return NewIntegerValue(1), nil
+		}
+
+		return NewIntegerValue(0), nil
+	case TypeText:
+		return NewTextValue(v.String()), nil
+	}
+
+	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
+}
+
+func (v BooleanValue) ConvertToIndexedType(t Type) (Value, error) {
+	return v, nil
 }
 
 func (v BooleanValue) EQ(other Value) (bool, error) {

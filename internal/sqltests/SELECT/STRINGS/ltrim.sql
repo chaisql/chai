@@ -6,7 +6,7 @@ CREATE TABLE test(
 INSERT INTO test (a) VALUES (" hello "), ("!hello!"),  ("     !hello!  ");
 
 -- test: LTRIM TEXT default
-SELECT strings.LTRIM(a) FROM test;
+SELECT LTRIM(a) FROM test;
 /* result:
 {
     "LTRIM(a)": "hello "
@@ -21,7 +21,7 @@ SELECT strings.LTRIM(a) FROM test;
 
 
 -- test: LTRIM TEXT with param
-SELECT strings.LTRIM(a, "!") FROM test;
+SELECT LTRIM(a, "!") FROM test;
 /* result:
 {
     "LTRIM(a, \"!\")": " hello "
@@ -35,7 +35,7 @@ SELECT strings.LTRIM(a, "!") FROM test;
 */
 
 -- test: LTRIM TEXT with multiple char params
-SELECT strings.LTRIM(a, " !") FROM test;
+SELECT LTRIM(a, " !") FROM test;
 /* result:
 {
     "LTRIM(a, \" !\")": "hello "
@@ -50,7 +50,7 @@ SELECT strings.LTRIM(a, " !") FROM test;
 
 
 -- test: LTRIM TEXT with multiple char params
-SELECT strings.LTRIM(a, "hel !") FROM test;
+SELECT LTRIM(a, "hel !") FROM test;
 /* result:
 {
     "LTRIM(a, \"hel !\")": "o "
@@ -65,7 +65,7 @@ SELECT strings.LTRIM(a, "hel !") FROM test;
 
 
 -- test: LTRIM BOOL
-SELECT strings.LTRIM(true);
+SELECT LTRIM(true);
 /* result:
 {
     "LTRIM(true)": NULL
@@ -73,7 +73,7 @@ SELECT strings.LTRIM(true);
 */
 
 -- test: LTRIM INT
-SELECT strings.LTRIM(42);
+SELECT LTRIM(42);
 /* result:
 {
     "LTRIM(42)": NULL
@@ -81,30 +81,15 @@ SELECT strings.LTRIM(42);
 */
 
 -- test: LTRIM DOUBLE
-SELECT strings.LTRIM(42.42);
+SELECT LTRIM(42.42);
 /* result:
 {
     "LTRIM(42.42)": NULL
 }
 */
 
--- test: LTRIM ARRAY
-SELECT strings.LTRIM([1, 2]);
-/* result:
-{
-    "LTRIM([1, 2])": NULL
-}
-*/
--- test: LTRIM OBJECT
-SELECT strings.LTRIM({a: 1});
-/* result:
-{
-    "LTRIM({a: 1})": NULL
-}
-*/
-
 -- test: LTRIM STRING wrong param
-SELECT strings.LTRIM(" hello ", 42);
+SELECT LTRIM(" hello ", 42);
 /* result:
 {
     "LTRIM(\" hello \", 42)": NULL

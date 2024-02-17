@@ -12,7 +12,7 @@ VALUES
     (4, 4, 4),
     (5, 5, 5);
 
--- test: non-indexed field path, ASC
+-- test: non-indexed column path, ASC
 EXPLAIN SELECT * FROM test ORDER BY c;
 /* result:
 {
@@ -20,7 +20,7 @@ EXPLAIN SELECT * FROM test ORDER BY c;
 }
 */
 
--- test: non-indexed field path, DESC
+-- test: non-indexed column path, DESC
 EXPLAIN SELECT * FROM test ORDER BY c DESC;
 /* result:
 {
@@ -28,7 +28,7 @@ EXPLAIN SELECT * FROM test ORDER BY c DESC;
 }
 */
 
--- test: indexed field path, ASC
+-- test: indexed column path, ASC
 EXPLAIN SELECT * FROM test ORDER BY a;
 /* result:
 {
@@ -36,7 +36,7 @@ EXPLAIN SELECT * FROM test ORDER BY a;
 }
 */
 
--- test: indexed field path, DESC
+-- test: indexed column path, DESC
 EXPLAIN SELECT * FROM test ORDER BY a DESC;
 /* result:
 {
@@ -44,7 +44,7 @@ EXPLAIN SELECT * FROM test ORDER BY a DESC;
 }
 */
 
--- test: indexed field path in second position, ASC
+-- test: indexed column path in second position, ASC
 EXPLAIN SELECT * FROM test ORDER BY b;
 /* result:
 {
@@ -52,7 +52,7 @@ EXPLAIN SELECT * FROM test ORDER BY b;
 }
 */
 
--- test: indexed field path in second position, DESC
+-- test: indexed column path in second position, DESC
 EXPLAIN SELECT * FROM test ORDER BY b DESC;
 /* result:
 {
@@ -64,7 +64,7 @@ EXPLAIN SELECT * FROM test ORDER BY b DESC;
 EXPLAIN SELECT * FROM test WHERE a > 10 ORDER BY b DESC;
 /* result:
 {
-    "plan": 'index.Scan("test_a_b", [{"min": [10], "exclusive": true}]) | rows.TempTreeSortReverse(b)'
+    "plan": 'index.Scan("test_a_b", [{"min": (10), "exclusive": true}]) | rows.TempTreeSortReverse(b)'
 }
 */
 
@@ -72,7 +72,7 @@ EXPLAIN SELECT * FROM test WHERE a > 10 ORDER BY b DESC;
 EXPLAIN SELECT * FROM test WHERE a = 10 ORDER BY b DESC;
 /* result:
 {
-    "plan": 'index.ScanReverse("test_a_b", [{"min": [10], "exact": true}])'
+    "plan": 'index.ScanReverse("test_a_b", [{"min": (10), "exact": true}])'
 }
 */
 

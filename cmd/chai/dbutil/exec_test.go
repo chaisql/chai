@@ -18,7 +18,7 @@ func TestExecSQL(t *testing.T) {
 
 	var got bytes.Buffer
 	err = ExecSQL(context.Background(), db, strings.NewReader(`
-		CREATE TABLE test(a, ...);
+		CREATE TABLE test(a INT, b INT);
 		CREATE INDEX idx_a ON test (a);
 		INSERT INTO test (a, b) VALUES (1, 2), (2, 2), (3, 2);
 		SELECT * FROM test;

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/pkg/atomic"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -169,7 +169,7 @@ func NewCatalogWriter(c *Catalog) *CatalogWriter {
 }
 
 func (c *CatalogWriter) Init(tx *Transaction) error {
-	// ensure the catalog schema is store in the catalog table
+	// ensure the catalog schema is stored in the catalog table
 	err := c.ensureTableExists(tx, c.Catalog.CatalogTable.info)
 	if err != nil {
 		return err
@@ -309,9 +309,9 @@ func (c *CatalogWriter) CreateIndex(tx *Transaction, info *IndexInfo) (*IndexInf
 		return nil, err
 	}
 
-	// check if the indexed fields exist
-	for _, p := range info.Paths {
-		fc := ti.GetFieldConstraintForPath(p)
+	// check if the indexed columns exist
+	for _, p := range info.Columns {
+		fc := ti.GetColumnConstraint(p)
 		if fc == nil {
 			return nil, errors.Errorf("field %q does not exist for table %q", p, ti.TableName)
 		}
@@ -345,8 +345,8 @@ func (c *CatalogWriter) DropIndex(tx *Transaction, name string) error {
 	}
 
 	// check if the index has been created by a table constraint
-	if len(info.Owner.Paths) > 0 {
-		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.Owner.TableName, info.Owner.Paths)
+	if len(info.Owner.Columns) > 0 {
+		return fmt.Errorf("cannot drop index %s because constraint on %s(%s) requires it", info.IndexName, info.Owner.TableName, info.Owner.Columns)
 	}
 
 	_, err = c.Cache.Delete(tx, RelationIndexType, name)
@@ -366,8 +366,8 @@ func (c *CatalogWriter) dropIndex(tx *Transaction, info *IndexInfo) error {
 	return c.CatalogTable.Delete(tx, info.IndexName)
 }
 
-// AddFieldConstraint adds a field constraint to a table.
-func (c *CatalogWriter) AddFieldConstraint(tx *Transaction, tableName string, fc *FieldConstraint, tcs TableConstraints) error {
+// AddColumnConstraint adds a field constraint to a table.
+func (c *CatalogWriter) AddColumnConstraint(tx *Transaction, tableName string, cc *ColumnConstraint, tcs TableConstraints) error {
 	r, err := c.Cache.Get(RelationTableType, tableName)
 	if err != nil {
 		return err
@@ -375,8 +375,8 @@ func (c *CatalogWriter) AddFieldConstraint(tx *Transaction, tableName string, fc
 	ti := r.(*TableInfoRelation).Info
 
 	clone := ti.Clone()
-	if fc != nil {
-		err = clone.AddFieldConstraint(fc)
+	if cc != nil {
+		err = clone.AddColumnConstraint(cc)
 		if err != nil {
 			return err
 		}
@@ -580,7 +580,7 @@ func (r *IndexInfoRelation) SetName(name string) {
 }
 
 func (r *IndexInfoRelation) GenerateBaseName() string {
-	return fmt.Sprintf("%s_%s_idx", r.Info.Owner.TableName, pathsToIndexName(r.Info.Paths))
+	return fmt.Sprintf("%s_%s_idx", r.Info.Owner.TableName, columnsToIndexName(r.Info.Columns))
 }
 
 func (r *IndexInfoRelation) Clone() Relation {
@@ -589,18 +589,8 @@ func (r *IndexInfoRelation) Clone() Relation {
 	return &clone
 }
 
-func pathsToIndexName(paths []object.Path) string {
-	var s strings.Builder
-
-	for i, p := range paths {
-		if i > 0 {
-			s.WriteRune('_')
-		}
-
-		s.WriteString(p.String())
-	}
-
-	return s.String()
+func columnsToIndexName(columns []string) string {
+	return strings.Join(columns, "_")
 }
 
 type catalogCache struct {
@@ -723,7 +713,7 @@ func (c *catalogCache) Replace(tx *Transaction, o Relation) error {
 
 	old, ok := m[o.Name()]
 	if !ok {
-		return errors.WithStack(errs.NotFoundError{Name: o.Name()})
+		return errs.NewNotFoundError(o.Name())
 	}
 
 	m[o.Name()] = o
@@ -740,7 +730,7 @@ func (c *catalogCache) Delete(tx *Transaction, tp, name string) (Relation, error
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errors.WithStack(errs.NotFoundError{Name: name})
+		return nil, errs.NewNotFoundError(name)
 	}
 
 	delete(m, name)
@@ -757,7 +747,7 @@ func (c *catalogCache) Get(tp, name string) (Relation, error) {
 
 	o, ok := m[name]
 	if !ok {
-		return nil, errors.WithStack(&errs.NotFoundError{Name: name})
+		return nil, errs.NewNotFoundError(name)
 	}
 
 	return o, nil
@@ -800,58 +790,48 @@ func newCatalogStore() *CatalogStore {
 			{
 				Name:       CatalogTableName + "_pk",
 				PrimaryKey: true,
-				Paths: []object.Path{
-					object.NewPath("name"),
+				Columns: []string{
+					"name",
 				},
 			},
 		},
-		FieldConstraints: MustNewFieldConstraints(
-			&FieldConstraint{
+		ColumnConstraints: MustNewColumnConstraints(
+			&ColumnConstraint{
 				Position:  0,
-				Field:     "name",
+				Column:    "name",
 				Type:      types.TypeText,
 				IsNotNull: true,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position:  1,
-				Field:     "type",
+				Column:    "type",
 				Type:      types.TypeText,
 				IsNotNull: true,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position: 2,
-				Field:    "namespace",
-				Type:     types.TypeInteger,
+				Column:   "namespace",
+				Type:     types.TypeBigint,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position: 3,
-				Field:    "sql",
+				Column:   "sql",
 				Type:     types.TypeText,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position: 4,
-				Field:    "rowid_sequence_name",
+				Column:   "rowid_sequence_name",
 				Type:     types.TypeText,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position: 5,
-				Field:    "owner",
-				Type:     types.TypeObject,
-				AnonymousType: &AnonymousType{
-					FieldConstraints: MustNewFieldConstraints(
-						&FieldConstraint{
-							Position:  0,
-							Field:     "table_name",
-							Type:      types.TypeText,
-							IsNotNull: true,
-						},
-						&FieldConstraint{
-							Position: 1,
-							Field:    "paths",
-							Type:     types.TypeArray,
-						},
-					),
-				},
+				Column:   "owner_table_name",
+				Type:     types.TypeText,
+			},
+			&ColumnConstraint{
+				Position: 6,
+				Column:   "owner_table_columns",
+				Type:     types.TypeText, // TODO: change to array
 			},
 		),
 	}
@@ -878,7 +858,7 @@ func (s *CatalogStore) Table(tx *Transaction) *Table {
 func (s *CatalogStore) Insert(tx *Transaction, r Relation) error {
 	tb := s.Table(tx)
 
-	_, _, err := tb.Insert(relationToObject(r))
+	_, _, err := tb.Insert(relationToRow(r))
 	if cerr, ok := err.(*ConstraintViolationError); ok && cerr.Constraint == "PRIMARY KEY" {
 		return errors.WithStack(errs.AlreadyExistsError{Name: r.Name()})
 	}
@@ -891,7 +871,7 @@ func (s *CatalogStore) Replace(tx *Transaction, name string, r Relation) error {
 	tb := s.Table(tx)
 
 	key := tree.NewKey(types.NewTextValue(name))
-	_, err := tb.Replace(key, relationToObject(r))
+	_, err := tb.Replace(key, relationToRow(r))
 	return err
 }
 
@@ -903,24 +883,24 @@ func (s *CatalogStore) Delete(tx *Transaction, name string) error {
 	return tb.Delete(key)
 }
 
-func relationToObject(r Relation) types.Object {
+func relationToRow(r Relation) row.Row {
 	switch t := r.(type) {
 	case *TableInfoRelation:
-		return tableInfoToObject(t.Info)
+		return tableInfoToRow(t.Info)
 	case *IndexInfoRelation:
-		return indexInfoToObject(t.Info)
+		return indexInfoToRow(t.Info)
 	case *Sequence:
-		return sequenceInfoToObject(t.Info)
+		return sequenceInfoToRow(t.Info)
 	}
 
 	panic(fmt.Sprintf("relationToObject: unknown type %q", r.Type()))
 }
 
-func tableInfoToObject(ti *TableInfo) types.Object {
-	buf := object.NewFieldBuffer()
+func tableInfoToRow(ti *TableInfo) row.Row {
+	buf := row.NewColumnBuffer()
 	buf.Add("name", types.NewTextValue(ti.TableName))
 	buf.Add("type", types.NewTextValue(RelationTableType))
-	buf.Add("namespace", types.NewIntegerValue(int64(ti.StoreNamespace)))
+	buf.Add("namespace", types.NewBigintValue(int64(ti.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(ti.String()))
 	if ti.RowidSequenceName != "" {
 		buf.Add("rowid_sequence_name", types.NewTextValue(ti.RowidSequenceName))
@@ -929,40 +909,33 @@ func tableInfoToObject(ti *TableInfo) types.Object {
 	return buf
 }
 
-func indexInfoToObject(i *IndexInfo) types.Object {
-	buf := object.NewFieldBuffer()
+func indexInfoToRow(i *IndexInfo) row.Row {
+	buf := row.NewColumnBuffer()
 	buf.Add("name", types.NewTextValue(i.IndexName))
 	buf.Add("type", types.NewTextValue(RelationIndexType))
-	buf.Add("namespace", types.NewIntegerValue(int64(i.StoreNamespace)))
+	buf.Add("namespace", types.NewBigintValue(int64(i.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(i.String()))
 	if i.Owner.TableName != "" {
-		buf.Add("owner", types.NewObjectValue(ownerToObject(&i.Owner)))
+		buf.Add("owner_table_name", types.NewTextValue(i.Owner.TableName))
+		if len(i.Owner.Columns) > 0 {
+			buf.Add("owner_table_columns", types.NewTextValue(strings.Join(i.Owner.Columns, ",")))
+		}
 	}
 
 	return buf
 }
 
-func sequenceInfoToObject(seq *SequenceInfo) types.Object {
-	buf := object.NewFieldBuffer()
+func sequenceInfoToRow(seq *SequenceInfo) row.Row {
+	buf := row.NewColumnBuffer()
 	buf.Add("name", types.NewTextValue(seq.Name))
 	buf.Add("type", types.NewTextValue(RelationSequenceType))
 	buf.Add("sql", types.NewTextValue(seq.String()))
 
 	if seq.Owner.TableName != "" {
-		buf.Add("owner", types.NewObjectValue(ownerToObject(&seq.Owner)))
-	}
-
-	return buf
-}
-
-func ownerToObject(owner *Owner) types.Object {
-	buf := object.NewFieldBuffer().Add("table_name", types.NewTextValue(owner.TableName))
-	if owner.Paths != nil {
-		vb := object.NewValueBuffer()
-		for _, p := range owner.Paths {
-			vb.Append(types.NewTextValue(p.String()))
+		buf.Add("owner_table_name", types.NewTextValue(seq.Owner.TableName))
+		if len(seq.Owner.Columns) > 0 {
+			buf.Add("owner_table_columns", types.NewTextValue(strings.Join(seq.Owner.Columns, ",")))
 		}
-		buf.Add("paths", types.NewArrayValue(vb))
 	}
 
 	return buf

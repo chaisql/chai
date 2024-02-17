@@ -133,10 +133,10 @@ func TestSQL(t *testing.T) {
 									}
 								} else {
 									res, err := db.Query(test.Expr)
-									assert.NoError(t, err)
+									require.NoError(t, err, "Source: %s:%d", absPath, test.Line)
 									defer res.Close()
 
-									testutil.RequireStreamEqf(t, test.Result, res, test.Sorted, "Source: %s:%d", absPath, test.Line)
+									testutil.RequireStreamEqf(t, test.Result, res, "Source: %s:%d", absPath, test.Line)
 								}
 							})
 						}
@@ -157,7 +157,6 @@ type test struct {
 	Result     string
 	ErrorMatch string
 	Fails      bool
-	Sorted     bool
 	Line       int
 	Only       bool
 }
@@ -243,9 +242,6 @@ func parse(r io.Reader, filename string) *testSuite {
 			}
 		case strings.HasPrefix(line, "/* result:"), strings.HasPrefix(line, "/*result:"):
 			readingResult = true
-		case strings.HasPrefix(line, "/* sorted-result:"):
-			readingResult = true
-			curTest.Sorted = true
 		case strings.HasPrefix(line, "-- error:"):
 			error := strings.TrimPrefix(line, "-- error:")
 			error = strings.TrimSpace(error)

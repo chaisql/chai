@@ -65,7 +65,7 @@ func TestParserDelete(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
 
-			testutil.MustExec(t, db, nil, "CREATE TABLE test")
+			testutil.MustExec(t, db, nil, "CREATE TABLE test(age int)")
 
 			q, err := parser.ParseQuery(test.s)
 			assert.NoError(t, err)

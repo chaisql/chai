@@ -2,10 +2,10 @@ package functions
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -16,13 +16,6 @@ var builtinFunctions = Definitions{
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &TypeOf{Expr: args[0]}, nil
-		},
-	},
-	"pk": &definition{
-		name:  "pk",
-		arity: 0,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &PK{}, nil
 		},
 	},
 	"count": &definition{
@@ -82,29 +75,52 @@ var builtinFunctions = Definitions{
 		},
 	},
 
-	// strings alias
-	"lower": stringsFunctions["lower"],
-	"upper": stringsFunctions["upper"],
-	"trim":  stringsFunctions["trim"],
-	"ltrim": stringsFunctions["ltrim"],
-	"rtrim": stringsFunctions["rtrim"],
+	"lower": &definition{
+		name:  "lower",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Lower{Expr: args[0]}, nil
+		},
+	},
+	"upper": &definition{
+		name:  "upper",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Upper{Expr: args[0]}, nil
+		},
+	},
+	"trim": &definition{
+		name:  "trim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
+		},
+	},
+	"ltrim": &definition{
+		name:  "ltrim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
+		},
+	},
+	"rtrim": &definition{
+		name:  "rtrim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
+		},
+	},
 
-	// math alias
-	"floor":  mathFunctions["floor"],
-	"abs":    mathFunctions["abs"],
-	"acos":   mathFunctions["acos"],
-	"acosh":  mathFunctions["acosh"],
-	"asin":   mathFunctions["asin"],
-	"asinh":  mathFunctions["asinh"],
-	"atan":   mathFunctions["atan"],
-	"atan2":  mathFunctions["atan2"],
-	"random": mathFunctions["random"],
-	"sqrt":   mathFunctions["sqrt"],
-}
-
-// BuiltinDefinitions returns a map of builtin functions.
-func BuiltinDefinitions() Definitions {
-	return builtinFunctions
+	"floor":  floor,
+	"abs":    abs,
+	"acos":   acos,
+	"acosh":  acosh,
+	"asin":   asin,
+	"asinh":  asinh,
+	"atan":   atan,
+	"atan2":  atan2,
+	"random": random,
+	"sqrt":   sqrt,
 }
 
 type TypeOf struct {
@@ -139,66 +155,6 @@ func (t *TypeOf) Params() []expr.Expr { return []expr.Expr{t.Expr} }
 
 func (t *TypeOf) String() string {
 	return fmt.Sprintf("typeof(%v)", t.Expr)
-}
-
-// PK represents the pk() function.
-// It returns the primary key of the current object.
-type PK struct{}
-
-// Eval returns the primary key of the current object.
-func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
-	row, ok := env.GetRow()
-	if !ok {
-		return expr.NullLiteral, nil
-	}
-
-	key := row.Key()
-	if key == nil {
-		return expr.NullLiteral, nil
-	}
-
-	vs, err := key.Decode()
-	if err != nil {
-		return expr.NullLiteral, err
-	}
-
-	info, err := env.GetTx().Catalog.GetTableInfo(row.TableName())
-	if err != nil {
-		return nil, err
-	}
-
-	pk := info.PrimaryKey
-	if pk != nil {
-		for i, tp := range pk.Types {
-			if !tp.IsAny() {
-				vs[i], err = object.CastAs(vs[i], tp)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
-	vb := object.NewValueBuffer()
-
-	for _, v := range vs {
-		vb.Append(v)
-	}
-
-	return types.NewArrayValue(vb), nil
-}
-
-func (*PK) Params() []expr.Expr { return nil }
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (k *PK) IsEqual(other expr.Expr) bool {
-	_, ok := other.(*PK)
-	return ok
-}
-
-func (k *PK) String() string {
-	return "pk()"
 }
 
 var _ expr.AggregatorBuilder = (*Count)(nil)
@@ -270,7 +226,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	v, err := c.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
 	if v.Type() != types.TypeNull {
@@ -282,7 +238,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 
 // Eval returns the result of the aggregation as an integer.
 func (c *CountAggregator) Eval(_ *environment.Environment) (types.Value, error) {
-	return types.NewIntegerValue(c.Count), nil
+	return types.NewBigintValue(c.Count), nil
 }
 
 func (c *CountAggregator) String() string {
@@ -344,18 +300,18 @@ type MinAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
 	if v.Type() == types.TypeNull {
 		return nil
 	}
 
-	// clone the value to avoid it being reused during next aggregation
-	v, err = object.CloneValue(v)
-	if err != nil {
-		return err
-	}
+	// // clone the value to avoid it being reused during next aggregation
+	// v, err = row.CloneValue(v)
+	// if err != nil {
+	// 	return err
+	// }
 
 	if m.Min == nil {
 		m.Min = v
@@ -448,17 +404,11 @@ type MaxAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
 	if v.Type() == types.TypeNull {
 		return nil
-	}
-
-	// clone the value to avoid it being reused during next aggregation
-	v, err = object.CloneValue(v)
-	if err != nil {
-		return err
 	}
 
 	if m.Max == nil {
@@ -555,17 +505,18 @@ type SumAggregator struct {
 // If any of the value is a double, the returned result will be a double.
 func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
-	if v.Type() != types.TypeInteger && v.Type() != types.TypeDouble {
+	if !v.Type().IsNumber() {
 		return nil
 	}
 
 	if s.SumF != nil {
-		if v.Type() == types.TypeInteger {
+		switch v.Type() {
+		case types.TypeInteger, types.TypeBigint:
 			*s.SumF += float64(types.AsInt64(v))
-		} else {
+		default:
 			*s.SumF += float64(types.AsFloat64(v))
 		}
 
@@ -598,7 +549,7 @@ func (s *SumAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 		return types.NewDoubleValue(*s.SumF), nil
 	}
 	if s.SumI != nil {
-		return types.NewIntegerValue(*s.SumI), nil
+		return types.NewBigintValue(*s.SumI), nil
 	}
 
 	return types.NewNullValue(), nil
@@ -663,12 +614,12 @@ type AvgAggregator struct {
 // Aggregate stores the average value of all non-NULL numeric values in the group.
 func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
 
 	switch v.Type() {
-	case types.TypeInteger:
+	case types.TypeInteger, types.TypeBigint:
 		s.Avg += float64(types.AsInt64(v))
 	case types.TypeDouble:
 		s.Avg += types.AsFloat64(v)
@@ -694,7 +645,7 @@ func (s *AvgAggregator) String() string {
 }
 
 // Len represents the len() function.
-// It returns the length of string, array or object.
+// It returns the length of string, array or row.
 // For other types len() returns NULL.
 type Len struct {
 	Expr expr.Expr
@@ -710,23 +661,11 @@ func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	switch val.Type() {
 	case types.TypeText:
 		length = len(types.AsString(val))
-	case types.TypeArray:
-		arrayLen, err := object.ArrayLength(types.AsArray(val))
-		if err != nil {
-			return nil, err
-		}
-		length = arrayLen
-	case types.TypeObject:
-		docLen, err := object.Length(types.AsObject(val))
-		if err != nil {
-			return nil, err
-		}
-		length = docLen
 	default:
 		return types.NewNullValue(), nil
 	}
 
-	return types.NewIntegerValue(int64(length)), nil
+	return types.NewBigintValue(int64(length)), nil
 }
 
 // IsEqual compares this expression with the other expression and returns

@@ -28,12 +28,6 @@ SELECT "'A'";
 {`"'A'"`: "'A'"}
 */
 
--- test: document
-SELECT {a: 1, b: 2 + 1};
-/* result:
-{"{a: 1, b: 2 + 1}":{"a":1,"b":3}}
-*/
-
 -- test: aliases
 SELECT 1 AS A;
 /* result:
@@ -46,13 +40,7 @@ SELECT CAST(1 AS DOUBLE) AS A;
 {"A": 1.0}
 */
 
--- test: pk()
-SELECT pk();
-/* result:
-{"pk()": null}
-*/
-
--- test: field
+-- test: column
 SELECT a;
 -- error:
 

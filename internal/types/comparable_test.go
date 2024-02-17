@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/golang-module/carbon/v2"
@@ -14,11 +13,19 @@ import (
 )
 
 func jsonToInteger(t testing.TB, x string) types.Value {
-	var i int64
+	var i int32
 	err := json.Unmarshal([]byte(x), &i)
 	assert.NoError(t, err)
 
 	return types.NewIntegerValue(i)
+}
+
+func jsonToBigint(t testing.TB, x string) types.Value {
+	var i int64
+	err := json.Unmarshal([]byte(x), &i)
+	assert.NoError(t, err)
+
+	return types.NewBigintValue(i)
 }
 
 func jsonToDouble(t testing.TB, x string) types.Value {
@@ -53,22 +60,6 @@ func toText(t testing.TB, x string) types.Value {
 
 func toBlob(t testing.TB, x string) types.Value {
 	return types.NewBlobValue([]byte(x))
-}
-
-func jsonToArray(t testing.TB, x string) types.Value {
-	var vb object.ValueBuffer
-	err := json.Unmarshal([]byte(x), &vb)
-	assert.NoError(t, err)
-
-	return types.NewArrayValue(&vb)
-}
-
-func jsonToObject(t testing.TB, x string) types.Value {
-	var fb object.FieldBuffer
-	err := json.Unmarshal([]byte(x), &fb)
-	assert.NoError(t, err)
-
-	return types.NewObjectValue(&fb)
 }
 
 var now = time.Now().Format(time.RFC3339Nano)
@@ -116,6 +107,24 @@ func TestCompare(t *testing.T) {
 		{"<=", "2", "1", false, jsonToInteger},
 		{"<=", "1", "2", true, jsonToInteger},
 		{"<=", "2", "2", true, jsonToInteger},
+
+		// bigint
+		{"=", "2", "1", false, jsonToBigint},
+		{"=", "2", "2", true, jsonToBigint},
+		{"!=", "2", "1", true, jsonToBigint},
+		{"!=", "2", "2", false, jsonToBigint},
+		{">", "2", "1", true, jsonToBigint},
+		{">", "1", "2", false, jsonToBigint},
+		{">", "2", "2", false, jsonToBigint},
+		{">=", "2", "1", true, jsonToBigint},
+		{">=", "1", "2", false, jsonToBigint},
+		{">=", "2", "2", true, jsonToBigint},
+		{"<", "2", "1", false, jsonToBigint},
+		{"<", "1", "2", true, jsonToBigint},
+		{"<", "2", "2", false, jsonToBigint},
+		{"<=", "2", "1", false, jsonToBigint},
+		{"<=", "1", "2", true, jsonToBigint},
+		{"<=", "2", "2", true, jsonToBigint},
 
 		// double
 		{"=", "2", "1", false, jsonToDouble},
@@ -189,76 +198,6 @@ func TestCompare(t *testing.T) {
 		{"<=", "b", "a", false, toBlob},
 		{"<=", "a", "b", true, toBlob},
 		{"<=", "b", "b", true, toBlob},
-
-		// array
-		{"=", `[]`, `[]`, true, jsonToArray},
-		{"=", `[1]`, `[1]`, true, jsonToArray},
-		{"=", `[1]`, `[]`, false, jsonToArray},
-		{"=", `[1.0, 2]`, `[1, 2]`, true, jsonToArray},
-		{"=", `[1,2,3]`, `[1,2,3]`, true, jsonToArray},
-		{"!=", `[1]`, `[5]`, true, jsonToArray},
-		{"!=", `[1]`, `[1, 1]`, true, jsonToArray},
-		{"!=", `[1,2,3]`, `[1,2,3]`, false, jsonToArray},
-		{"!=", `[1]`, `[]`, true, jsonToArray},
-		{">", `[2]`, `[1]`, true, jsonToArray},
-		{">", `[2]`, `[1, 1000]`, true, jsonToArray},
-		{">", `[1]`, `[1, 1000]`, false, jsonToArray},
-		{">", `[1, 2]`, `[1, 1000]`, false, jsonToArray},
-		{">", `[1, 10]`, `[1, true]`, true, jsonToArray},
-		{">", `[1, true]`, `[1, 10]`, false, jsonToArray},
-		{">", `[2, 1000]`, `[1]`, true, jsonToArray},
-		{">", `[2, 1000]`, `[2]`, true, jsonToArray},
-		{">", `[1,2,3]`, `[1,2,3]`, false, jsonToArray},
-		{">", `[1,2,3]`, `[]`, true, jsonToArray},
-		{">=", `[2]`, `[1]`, true, jsonToArray},
-		{">=", `[2]`, `[2]`, true, jsonToArray},
-		{">=", `[2]`, `[1, 1000]`, true, jsonToArray},
-		{">=", `[1]`, `[1, 1000]`, false, jsonToArray},
-		{">=", `[1, 2]`, `[1, 2]`, true, jsonToArray},
-		{">=", `[1, 2]`, `[1, 1000]`, false, jsonToArray},
-		{">=", `[1, 10]`, `[1, true]`, true, jsonToArray},
-		{">=", `[1, true]`, `[1, 10]`, false, jsonToArray},
-		{">=", `[2, 1000]`, `[1]`, true, jsonToArray},
-		{">=", `[2, 1000]`, `[2]`, true, jsonToArray},
-		{">=", `[1,2,3]`, `[1,2,3]`, true, jsonToArray},
-		{">=", `[1,2,3]`, `[]`, true, jsonToArray},
-		{"<", `[1]`, `[2]`, true, jsonToArray},
-		{"<", `[1,2,3]`, `[1,2]`, false, jsonToArray},
-		{"<", `[1,2,3]`, `[1,2,3]`, false, jsonToArray},
-		{"<", `[1,2]`, `[1,2,3]`, true, jsonToArray},
-		{"<", `[1, 1000]`, `[2]`, true, jsonToArray},
-		{"<", `[2]`, `[2, 1000]`, true, jsonToArray},
-		{"<", `[1,2,3]`, `[]`, false, jsonToArray},
-		{"<", `[]`, `[1,2,3]`, true, jsonToArray},
-		{"<", `[1, 10]`, `[1, true]`, false, jsonToArray},
-		{"<", `[1, true]`, `[1, 10]`, true, jsonToArray},
-		{"<=", `[1]`, `[2]`, true, jsonToArray},
-		{"<=", `[1, 1000]`, `[2]`, true, jsonToArray},
-		{"<=", `[1,2,3]`, `[1,2]`, false, jsonToArray},
-		{">=", `[2]`, `[1]`, true, jsonToArray},
-		{">=", `[2]`, `[2]`, true, jsonToArray},
-		{">=", `[2]`, `[1, 1000]`, true, jsonToArray},
-		{">=", `[2, 1000]`, `[1]`, true, jsonToArray},
-		{"<=", `[1,2,3]`, `[1,2,3]`, true, jsonToArray},
-		{"<=", `[]`, `[]`, true, jsonToArray},
-		{"<=", `[]`, `[1,2,3]`, true, jsonToArray},
-
-		// object
-		{"=", `{}`, `{}`, true, jsonToObject},
-		{"=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
-		{"=", `{"a": 1.0}`, `{"a": 1}`, true, jsonToObject},
-		{"=", `{"a": 1, "b": 2}`, `{"b": 2, "a": 1}`, true, jsonToObject},
-		{"=", `{"a": 1, "b": {"a": 1}}`, `{"b": {"a": 1}, "a": 1}`, true, jsonToObject},
-		{">", `{"a": 2}`, `{"a": 1}`, true, jsonToObject},
-		{">", `{"b": 1}`, `{"a": 1}`, true, jsonToObject},
-		{">", `{"a": 1}`, `{"a": 1}`, false, jsonToObject},
-		{">", `{"a": 1}`, `{"a": true}`, true, jsonToObject},
-		{"<", `{"a": 1}`, `{"a": 2}`, true, jsonToObject},
-		{"<", `{"a": 1}`, `{"b": 1}`, true, jsonToObject},
-		{"<", `{"a": 1}`, `{"a": 1}`, false, jsonToObject},
-		{"<", `{"a": 1}`, `{"a": true}`, false, jsonToObject},
-		{">=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
-		{"<=", `{"a": 1}`, `{"a": 1}`, true, jsonToObject},
 	}
 
 	for _, test := range tests {

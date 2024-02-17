@@ -2,7 +2,7 @@
 ! typeof()
 
 ! typeof(a)
-'field not found'
+'no table specified'
 
 > typeof(1)
 'integer'
@@ -24,12 +24,6 @@
 
 > typeof('\xAA')
 'blob'
-
-> typeof([])
-'array'
-
-> typeof({})
-'object'
 
 > typeof(NULL)
 'null'

@@ -6,14 +6,13 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 )
 
 // Range represents a range to select values after or before
 // a given boundary.
 type Range struct {
 	Min, Max expr.LiteralExprList
-	Paths    []object.Path
+	Columns  []string
 	// Exclude Min and Max from the results.
 	// By default, min and max are inclusive.
 	// Exclusive and Exact cannot be set to true at the same time.
@@ -29,23 +28,20 @@ func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 		Exclusive: r.Exclusive,
 		Exact:     r.Exact,
 	}
+	var err error
 
 	if len(r.Min) > 0 {
-		min, err := r.Min.Eval(env)
+		rng.Min, err = r.Min.EvalAll(env)
 		if err != nil {
 			return nil, err
 		}
-
-		rng.Min = min.V().(*object.ValueBuffer).Values
 	}
 
 	if len(r.Max) > 0 {
-		max, err := r.Max.Eval(env)
+		rng.Max, err = r.Max.EvalAll(env)
 		if err != nil {
 			return nil, err
 		}
-
-		rng.Max = max.V().(*object.ValueBuffer).Values
 	}
 
 	return &rng, nil

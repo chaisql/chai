@@ -9,7 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// InsertOperator reads the input stream and indexes each object.
+// InsertOperator reads the input stream and indexes each row.
 type InsertOperator struct {
 	stream.BaseOperator
 
@@ -41,14 +41,14 @@ func (op *InsertOperator) Iterate(in *environment.Environment, fn func(out *envi
 	}
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		r, ok := out.GetRow()
+		r, ok := out.GetDatabaseRow()
 		if !ok {
 			return errors.New("missing row")
 		}
 
-		vs := make([]types.Value, 0, len(info.Paths))
-		for _, path := range info.Paths {
-			v, err := path.GetValueFromObject(r.Object())
+		vs := make([]types.Value, 0, len(info.Columns))
+		for _, column := range info.Columns {
+			v, err := r.Get(column)
 			if err != nil {
 				v = types.NewNullValue()
 			}

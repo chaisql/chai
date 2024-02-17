@@ -5,7 +5,6 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 )
@@ -32,7 +31,7 @@ func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environ
 		return fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 	}
 
-	v, err = object.CastAsInteger(v)
+	v, err = v.CastAs(types.TypeBigint)
 	if err != nil {
 		return err
 	}

@@ -9,48 +9,6 @@ import (
 	"github.com/chaisql/chai/internal/types"
 )
 
-var stringsFunctions = Definitions{
-	"lower": &definition{
-		name:  "lower",
-		arity: 1,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Lower{Expr: args[0]}, nil
-		},
-	},
-	"upper": &definition{
-		name:  "upper",
-		arity: 1,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Upper{Expr: args[0]}, nil
-		},
-	},
-	"trim": &definition{
-		name:  "trim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
-		},
-	},
-	"ltrim": &definition{
-		name:  "ltrim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
-		},
-	},
-	"rtrim": &definition{
-		name:  "rtrim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
-		},
-	},
-}
-
-func StringsDefinitions() Definitions {
-	return stringsFunctions
-}
-
 // Lower is the LOWER function
 // It returns the lower-case version of a string
 type Lower struct {

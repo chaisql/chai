@@ -3,27 +3,18 @@ CREATE TABLE test(
     a TEXT,
     b INT,
     c BOOL,
-    d DOUBLE,
-    e ARRAY,
-    f (
-        ...
-    )
+    d DOUBLE
 );
 
-INSERT INTO test (a, b, c, d, e, f) VALUES (
+INSERT INTO test (a, b, c, d) VALUES (
     "foo",
     42,
     true,
     42.42,
-    ["A", "b", "C", "d", "E"],
-    {
-        a: "hello",
-        b: "WorlD"
-    }
 );
 
 -- test: TEXT value
-SELECT strings.UPPER(a) FROM test;
+SELECT UPPER(a) FROM test;
 /* result:
 {
     "UPPER(a)": "FOO" 
@@ -32,7 +23,7 @@ SELECT strings.UPPER(a) FROM test;
 
 
 -- test: INT value
-SELECT strings.UPPER(b) FROM test;
+SELECT UPPER(b) FROM test;
 /* result:
 {
     "UPPER(b)": NULL 
@@ -41,7 +32,7 @@ SELECT strings.UPPER(b) FROM test;
 
 
 -- test: BOOL value
-SELECT strings.UPPER(c) FROM test;
+SELECT UPPER(c) FROM test;
 /* result:
 {
     "UPPER(c)": NULL 
@@ -49,31 +40,15 @@ SELECT strings.UPPER(c) FROM test;
 */
 
 -- test: DOUBLE value
-SELECT strings.UPPER(d) FROM test;
+SELECT UPPER(d) FROM test;
 /* result:
 {
     "UPPER(d)": NULL 
 }
 */
 
--- test: ARRAY value
-SELECT strings.UPPER(e) FROM test;
-/* result:
-{
-    "UPPER(e)": NULL 
-}
-*/
-
--- test: OBJECT value
-SELECT strings.UPPER(f) FROM test;
-/* result:
-{
-    "UPPER(f)": NULL 
-}
-*/
-
 -- test: cast INT
-SELECT strings.UPPER(CAST(b as TEXT)) FROM test;
+SELECT UPPER(CAST(b as TEXT)) FROM test;
 /* result:
 {
     "UPPER(CAST(b AS text))": "42" 
@@ -81,7 +56,7 @@ SELECT strings.UPPER(CAST(b as TEXT)) FROM test;
 */
 
 -- test: cast BOOL
-SELECT strings.UPPER(CAST(c as TEXT)) FROM test;
+SELECT UPPER(CAST(c as TEXT)) FROM test;
 /* result:
 {
     "UPPER(CAST(c AS text))": "TRUE" 
@@ -89,25 +64,10 @@ SELECT strings.UPPER(CAST(c as TEXT)) FROM test;
 */
 
 -- test: cast DOUBLE
-SELECT strings.UPPER(CAST(d as TEXT)) FROM test;
+SELECT UPPER(CAST(d as TEXT)) FROM test;
 /* result:
 {
     "UPPER(CAST(d AS text))": "42.42" 
 }
 */
 
--- test: cast ARRAY
-SELECT strings.UPPER(CAST(e as TEXT)) FROM test;
-/* result:
-{
-    "UPPER(CAST(e AS text))": "[\"A\", \"B\", \"C\", \"D\", \"E\"]" 
-}
-*/
-
--- test: cast OBJECT
-SELECT strings.UPPER(CAST(f as TEXT)) FROM test;
-/* result:
-{
-    "UPPER(CAST(f AS text))": "{\"A\": \"HELLO\", \"B\": \"WORLD\"}" 
-}
-*/

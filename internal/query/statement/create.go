@@ -56,11 +56,11 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
 			_, err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
-				Paths:  tc.Paths,
-				Unique: true,
+				Columns: tc.Columns,
+				Unique:  true,
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
-					Paths:     tc.Paths,
+					Columns:   tc.Columns,
 				},
 				KeySortOrder: tc.SortOrder,
 			})

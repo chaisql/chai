@@ -7,20 +7,19 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStream(t *testing.T) {
 	s := stream.New(rows.Emit(
-		testutil.ParseExpr(t, `{"a": 1}`),
-		testutil.ParseExpr(t, `{"a": 2}`),
+		testutil.MakeRowExpr(t, `{"a": 1}`),
+		testutil.MakeRowExpr(t, `{"a": 2}`),
 	))
 
 	s = s.Pipe(rows.Filter(parser.MustParseExpr("a > 1")))
@@ -43,40 +42,35 @@ func TestStream(t *testing.T) {
 func TestUnion(t *testing.T) {
 	tests := []struct {
 		name                 string
-		first, second, third []expr.Expr
-		expected             testutil.Objs
-		fails                bool
+		first, second, third []expr.Row
+		expected             testutil.Rows
 	}{
 		{
-			"same docs",
-			testutil.ParseExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.ParseExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.ParseExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			false,
+			"same rows",
+			testutil.MakeRowExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
 		},
 		{
-			"different docs",
-			testutil.ParseExprs(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 2}`),
-			testutil.ParseExprs(t, `{"a": 2, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.ParseExprs(t, `{"a": 3, "b": 1}`, `{"a": 3, "b": 2}`),
-			testutil.MakeObjects(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 2}`, `{"a": 2, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 3, "b": 1}`, `{"a": 3, "b": 2}`),
-			false,
+			"different rows",
+			testutil.MakeRowExprs(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 2, "b": 1}`, `{"a": 2, "b": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 3, "b": 1}`, `{"a": 3, "b": 2}`),
+			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 1, "b": 2}`, `{"a": 2, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 3, "b": 1}`, `{"a": 3, "b": 2}`),
 		},
 		{
 			"mixed",
-			testutil.ParseExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
-			testutil.ParseExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
-			testutil.ParseExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
-			false,
+			testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
 		},
 		{
 			"only one",
-			testutil.ParseExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
+			testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 1}`, `{"a": 2}`),
 			nil, nil,
-			testutil.MakeObjects(t, `{"a": 1}`, `{"a": 2}`),
-			false,
+			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
 		},
 	}
 
@@ -101,57 +95,36 @@ func TestUnion(t *testing.T) {
 			env.Tx = tx
 			env.DB = db
 
-			var i int
-			var got testutil.Objs
-			err := st.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
-
-				clone, err := object.CloneValue(types.NewObjectValue(r.Object()))
-				if err != nil {
-					return err
-				}
-
-				got = append(got, types.AsObject(clone))
-				i++
-				return nil
-			})
-			if test.fails {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				require.Equal(t, len(test.expected), i)
-				test.expected.RequireEqual(t, got)
-			}
+			test.expected.RequireEqualStream(t, &env, st)
 		})
 	}
 
 	t.Run("String", func(t *testing.T) {
 		st := stream.New(stream.Union(
-			stream.New(rows.Emit(testutil.ParseExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
-			stream.New(rows.Emit(testutil.ParseExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
-			stream.New(rows.Emit(testutil.ParseExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
+			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
+			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
+			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
 		))
 
-		require.Equal(t, `union(rows.Emit({a: 1}, {a: 2}), rows.Emit({a: 3}, {a: 4}), rows.Emit({a: 5}, {a: 6}))`, st.String())
+		require.Equal(t, `union(rows.Emit((1), (2)), rows.Emit((3), (4)), rows.Emit((5), (6)))`, st.String())
 	})
 }
 
 func TestConcatOperator(t *testing.T) {
-	in1 := testutil.ParseExprs(t, `{"a": 10}`, `{"a": 11}`)
-	in2 := testutil.ParseExprs(t, `{"a": 12}`, `{"a": 13}`)
+	in1 := testutil.MakeRowExprs(t, `{"a": 10}`, `{"a": 11}`)
+	in2 := testutil.MakeRowExprs(t, `{"a": 12}`, `{"a": 13}`)
 
 	s1 := stream.New(rows.Emit(in1...))
 	s2 := stream.New(rows.Emit(in2...))
 	s := stream.Concat(s1, s2)
 
-	var got []types.Object
+	var got []row.Row
 	s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
 		r, ok := env.GetRow()
 		require.True(t, ok)
 
-		var fb object.FieldBuffer
-		err := fb.Copy(r.Object())
+		var fb row.ColumnBuffer
+		err := fb.Copy(r)
 		if err != nil {
 			return err
 		}
@@ -161,8 +134,7 @@ func TestConcatOperator(t *testing.T) {
 
 	want := append(in1, in2...)
 	for i, w := range want {
-		v, _ := w.Eval(new(environment.Environment))
-		d := types.AsObject(v)
-		testutil.RequireObjEqual(t, d, got[i])
+		r, _ := w.Eval(new(environment.Environment))
+		testutil.RequireRowEqual(t, r, got[i])
 	}
 }

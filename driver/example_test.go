@@ -3,7 +3,6 @@ package driver_test
 import (
 	"database/sql"
 	"fmt"
-	"log"
 
 	"github.com/chaisql/chai/driver"
 )
@@ -17,33 +16,28 @@ type User struct {
 func Example() {
 	db, err := sql.Open("chai", ":memory:")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE IF NOT EXISTS user (name, ...)")
+	_, err = db.Exec("CREATE TABLE IF NOT EXISTS user (id INT, name TEXT, age INT)")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	_, err = db.Exec("CREATE INDEX IF NOT EXISTS idx_user_name ON user (name)")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	_, err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	_, err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "bar", Age: 100}, &User{ID: 2, Name: "baz"})
+	rows, err := db.Query("SELECT * FROM user WHERE name = ?", "foo")
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	rows, err := db.Query("SELECT * FROM user WHERE name = ?", "bar")
-	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -51,15 +45,15 @@ func Example() {
 		var u User
 		err = rows.Scan(driver.Scanner(&u))
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		fmt.Println(u)
 	}
 
 	err = rows.Err()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
-	// Output: {1 bar 100}
+	// Output: {10 foo 15}
 }

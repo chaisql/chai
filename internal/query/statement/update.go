@@ -2,13 +2,11 @@ package statement
 
 import (
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/index"
 	"github.com/chaisql/chai/internal/stream/path"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
-	"github.com/cockroachdb/errors"
 )
 
 // UpdateConfig holds UPDATE configuration.
@@ -18,13 +16,9 @@ type UpdateStmt struct {
 	TableName string
 
 	// SetPairs is used along with the Set clause. It holds
-	// each path with its corresponding value that
-	// should be set in the object.
+	// each column with its corresponding value that
+	// should be set in the row.
 	SetPairs []UpdateSetPair
-
-	// UnsetFields is used along with the Unset clause. It holds
-	// each path that should be unset from the object.
-	UnsetFields []string
 
 	WhereExpr expr.Expr
 }
@@ -41,8 +35,8 @@ func NewUpdateStatement() *UpdateStmt {
 }
 
 type UpdateSetPair struct {
-	Path object.Path
-	E    expr.Expr
+	Column expr.Column
+	E      expr.Expr
 }
 
 // Prepare implements the Preparer interface.
@@ -56,36 +50,33 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
+		err := ensureExprColumnsExist(c, stmt.TableName, stmt.WhereExpr)
+		if err != nil {
+			return nil, err
+		}
+
 		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
 	var pkModified bool
 	if stmt.SetPairs != nil {
 		for _, pair := range stmt.SetPairs {
+			err := ensureExprColumnsExist(c, stmt.TableName, pair.Column)
+			if err != nil {
+				return nil, err
+			}
+
 			// if we modify the primary key,
 			// we must remove the old row and create an new one
 			if pk != nil && !pkModified {
-				for _, p := range pk.Paths {
-					if p.IsEqual(pair.Path) {
+				for _, c := range pk.Columns {
+					if c == string(pair.Column) {
 						pkModified = true
 						break
 					}
 				}
 			}
-			s = s.Pipe(path.Set(pair.Path, pair.E))
-		}
-	} else if stmt.UnsetFields != nil {
-		for _, name := range stmt.UnsetFields {
-			// ensure we do not unset any path the is used in the primary key
-			if pk != nil {
-				path := object.NewPath(name)
-				for _, p := range pk.Paths {
-					if p.IsEqual(path) {
-						return nil, errors.New("cannot unset primary key path")
-					}
-				}
-			}
-			s = s.Pipe(path.Unset(name))
+			s = s.Pipe(path.Set(string(pair.Column), pair.E))
 		}
 	}
 

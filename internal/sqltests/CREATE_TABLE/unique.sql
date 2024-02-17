@@ -1,22 +1,3 @@
--- test: ANY
-CREATE TABLE test(a UNIQUE);
-SELECT name, sql 
-FROM __chai_catalog 
-WHERE 
-    (type = "table" AND name = "test") 
-  OR
-    (type = "index" AND name = "test_a_idx");
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ANY, CONSTRAINT test_a_unique UNIQUE (a))"
-}
-{
-  "name": "test_a_idx",
-  "sql": "CREATE UNIQUE INDEX test_a_idx ON test (a)"
-}
-*/
-
 -- test: with type
 CREATE TABLE test(a INT UNIQUE);
 SELECT name, sql 
@@ -43,7 +24,7 @@ FROM __chai_catalog
 WHERE 
     (type = "table" AND name = "test") 
   OR
-    (type = "index" AND owner.table_name = "test");
+    (type = "index" AND owner_table_name = "test");
 /* result:
 {
   "name": "test",
@@ -59,7 +40,7 @@ WHERE
 }
 */
 
--- test: table constraint: one field
+-- test: table constraint: one column
 CREATE TABLE test(a INT, UNIQUE(a));
 SELECT name, sql
 FROM __chai_catalog 
@@ -78,7 +59,7 @@ WHERE
 }
 */
 
--- test: table constraint: multiple fields
+-- test: table constraint: multiple columns
 CREATE TABLE test(a INT, b INT, UNIQUE(a, b));
 SELECT name, sql 
 FROM __chai_catalog 
@@ -97,7 +78,7 @@ WHERE
 }
 */
 
--- test: table constraint: multiple fields with order
+-- test: table constraint: multiple columns with order
 CREATE TABLE test(a INT, b INT, c INT, UNIQUE(a DESC, b ASC, c));
 SELECT name, sql 
 FROM __chai_catalog 
@@ -116,30 +97,30 @@ WHERE
 }
 */
 
--- test: table constraint: undeclared field
+-- test: table constraint: undeclared column
 CREATE TABLE test(a INT, UNIQUE(b));
 -- error:
 
--- test: table constraint: undeclared fields
+-- test: table constraint: undeclared columns
 CREATE TABLE test(a INT, b INT, UNIQUE(a, b, c));
 -- error:
 
--- test: table constraint: same field twice
+-- test: table constraint: same column twice
 CREATE TABLE test(a INT, b INT, UNIQUE(a, a));
 -- error:
 
--- test: table constraint: same field twice, field constraint + table constraint
+-- test: table constraint: same column twice, column constraint + table constraint
 CREATE TABLE test(a INT UNIQUE, b INT, UNIQUE(a));
 -- error:
 
--- test: table constraint: different fields
+-- test: table constraint: different columns
 CREATE TABLE test(a INT UNIQUE, b INT, UNIQUE(b));
 SELECT name, sql 
 FROM __chai_catalog 
 WHERE 
     (type = "table" AND name = "test") 
   OR
-    (type = "index" AND owner.table_name = "test");
+    (type = "index" AND owner_table_name = "test");
 /* result:
 {
   "name": "test",

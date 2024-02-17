@@ -9,7 +9,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// ValidateOperator validates and converts incoming rows against table and field constraints.
+// ValidateOperator validates and converts incoming rows against table and column constraints.
 type ValidateOperator struct {
 	stream.BaseOperator
 
@@ -38,7 +38,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 	var newEnv environment.Environment
 
 	var br database.BasicRow
-	var eo database.EncodedObject
+	var eo database.EncodedRow
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		buf = buf[:0]
 		newEnv.SetOuter(out)
@@ -49,16 +49,21 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 		}
 
 		// generate default values, validate and encode row
-		buf, err = info.EncodeObject(tx, buf, row.Object())
+		buf, err = info.EncodeRow(tx, buf, row)
 		if err != nil {
 			return err
 		}
 
 		// use the encoded row as the new row
-		eo.ResetWith(&info.FieldConstraints, buf)
+		eo.ResetWith(&info.ColumnConstraints, buf)
 
-		br.ResetWith(row.TableName(), row.Key(), &eo)
-		newEnv.SetRow(&br)
+		if dRow, ok := row.(database.Row); ok {
+			br.ResetWith(op.tableName, dRow.Key(), &eo)
+			newEnv.SetRow(&br)
+		} else {
+			br.ResetWith(op.tableName, nil, &eo)
+			newEnv.SetRow(&br)
+		}
 
 		// validate CHECK constraints if any
 		err := info.TableConstraints.ValidateRow(tx, newEnv.Row)

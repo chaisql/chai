@@ -17,7 +17,7 @@ type InsertStmt struct {
 
 	TableName  string
 	Values     []expr.Expr
-	Fields     []string
+	Columns    []string
 	SelectStmt Preparer
 	Returning  []expr.Expr
 	OnConflict database.OnConflictAction
@@ -43,35 +43,48 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 			return nil, err
 		}
 
-		// if no fields have been specified, we need to inject the fields from the defined table info
-		if len(stmt.Fields) == 0 {
+		var rowList []expr.Row
+		// if no columns have been specified, we need to inject the columns from the defined table info
+		if len(stmt.Columns) == 0 {
+			rowList = make([]expr.Row, 0, len(stmt.Values))
 			for i := range stmt.Values {
-				kvs, ok := stmt.Values[i].(*expr.KVPairs)
+				var r expr.Row
+				var ok bool
+
+				r.Exprs, ok = stmt.Values[i].(expr.LiteralExprList)
 				if !ok {
 					continue
 				}
 
-				for i := range kvs.Pairs {
-					if kvs.Pairs[i].K == "" {
-						if i >= len(ti.FieldConstraints.Ordered) {
-							return nil, errors.Errorf("too many values for %s", stmt.TableName)
-						}
-
-						kvs.Pairs[i].K = ti.FieldConstraints.Ordered[i].Field
-					}
+				for i := range r.Exprs {
+					r.Columns = append(r.Columns, ti.ColumnConstraints.Ordered[i].Column)
 				}
+
+				rowList = append(rowList, r)
 			}
 		} else {
-			if !ti.FieldConstraints.AllowExtraFields {
-				for i := range stmt.Fields {
-					_, ok := ti.FieldConstraints.ByField[stmt.Fields[i]]
-					if !ok {
-						return nil, errors.Errorf("table has no field %s", stmt.Fields[i])
-					}
+			rowList = make([]expr.Row, 0, len(stmt.Values))
+			for i := range stmt.Columns {
+				_, ok := ti.ColumnConstraints.ByColumn[stmt.Columns[i]]
+				if !ok {
+					return nil, errors.Errorf("table has no column %s", stmt.Columns[i])
 				}
 			}
+
+			for i := range stmt.Values {
+				var r expr.Row
+				var ok bool
+
+				r.Exprs, ok = stmt.Values[i].(expr.LiteralExprList)
+				if !ok {
+					continue
+				}
+
+				r.Columns = stmt.Columns
+				rowList = append(rowList, r)
+			}
 		}
-		s = stream.New(rows.Emit(stmt.Values...))
+		s = stream.New(rows.Emit(rowList...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {
@@ -86,8 +99,8 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 			return nil, errors.New("cannot read and write to the same table")
 		}
 
-		if len(stmt.Fields) > 0 {
-			s = s.Pipe(path.PathsRename(stmt.Fields...))
+		if len(stmt.Columns) > 0 {
+			s = s.Pipe(path.PathsRename(stmt.Columns...))
 		}
 	}
 

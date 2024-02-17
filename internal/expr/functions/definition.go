@@ -15,36 +15,16 @@ type Definition interface {
 	Name() string
 	String() string
 	Function(...expr.Expr) (expr.Function, error)
-	Arity() int
 }
 
 // Definitions table holds a map of definition, indexed by their names.
 type Definitions map[string]Definition
 
-// Packages represent a table of SQL functions grouped by their packages
-type Packages map[string]Definitions
-
-func DefaultPackages() Packages {
-	return Packages{
-		"":        BuiltinDefinitions(),
-		"math":    MathFunctions(),
-		"strings": StringsDefinitions(),
-		"objects": ObjectsDefinitions(),
-	}
-}
-
 // GetFunc return a function definition by its package and name.
-func (t Packages) GetFunc(pkg string, fname string) (Definition, error) {
-	fs, ok := t[pkg]
+func GetFunc(fname string) (Definition, error) {
+	def, ok := builtinFunctions[strings.ToLower(fname)]
 	if !ok {
-		return nil, fmt.Errorf("no such package: %q", fname)
-	}
-	def, ok := fs[strings.ToLower(fname)]
-	if !ok {
-		if pkg == "" {
-			return nil, fmt.Errorf("no such function: %q", fname)
-		}
-		return nil, fmt.Errorf("no such function: %q.%q", pkg, fname)
+		return nil, fmt.Errorf("no such function: %q", fname)
 	}
 	return def, nil
 }

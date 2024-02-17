@@ -1,7 +1,7 @@
 -- setup:
-CREATE TABLE foo;
-CREATE TABLE bar;
-CREATE TABLE baz;
+CREATE TABLE foo(a DOUBLE, b DOUBLE);
+CREATE TABLE bar(a DOUBLE, b DOUBLE);
+CREATE TABLE baz(x TEXT, y TEXT);
 INSERT INTO foo (a,b) VALUES (1.0, 1.0), (2.0, 2.0);
 INSERT INTO bar (a,b) VALUES (2.0, 2.0), (3.0, 3.0);
 INSERT INTO baz (x,y) VALUES ("a", "a"), ("b", "b");

@@ -1,4 +1,4 @@
-package encoding_test
+package types_test
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -71,41 +71,26 @@ func TestOrdering(t *testing.T) {
 }
 
 func TestEncodeDecode(t *testing.T) {
-	userMapDoc := object.NewFromMap(map[string]any{
+	userMapDoc := row.NewFromMap(map[string]any{
 		"age":  10,
 		"name": "john",
 	})
 
-	addressMapDoc := object.NewFromMap(map[string]any{
-		"city":    "Ajaccio",
-		"country": "France",
-	})
-
-	complexArray := object.NewValueBuffer().
-		Append(types.NewBooleanValue(true)).
-		Append(types.NewIntegerValue(-40)).
-		Append(types.NewDoubleValue(-3.14)).
-		Append(types.NewDoubleValue(3)).
-		Append(types.NewBlobValue([]byte("blob"))).
-		Append(types.NewTextValue("hello")).
-		Append(types.NewObjectValue(addressMapDoc)).
-		Append(types.NewArrayValue(object.NewValueBuffer().Append(types.NewIntegerValue(11))))
-
 	tests := []struct {
 		name     string
-		d        types.Object
+		r        row.Row
 		expected string
 		fails    bool
 	}{
 		{
 			"empty doc",
-			object.NewFieldBuffer(),
+			row.NewColumnBuffer(),
 			`{}`,
 			false,
 		},
 		{
-			"object.FieldBuffer",
-			object.NewFieldBuffer().
+			"row.ColumnBuffer",
+			row.NewColumnBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("name", types.NewTextValue("john")),
 			`{"age": 10, "name": "john"}`,
@@ -118,36 +103,26 @@ func TestEncodeDecode(t *testing.T) {
 			false,
 		},
 		{
-			"duplicate field name",
-			object.NewFieldBuffer().
+			"duplicate column name",
+			row.NewColumnBuffer().
 				Add("age", types.NewIntegerValue(10)).
 				Add("age", types.NewIntegerValue(10)),
-			``,
-			true,
-		},
-		{
-			"Nested types.Object",
-			object.NewFieldBuffer().
-				Add("age", types.NewIntegerValue(10)).
-				Add("name", types.NewTextValue("john")).
-				Add("address", types.NewObjectValue(addressMapDoc)).
-				Add("array", types.NewArrayValue(complexArray)),
-			`{"age": 10, "name": "john", "address": {"city": "Ajaccio", "country": "France"}, "array": [true, -40, -3.14, 3, "YmxvYg==", "hello", {"city": "Ajaccio", "country": "France"}, [11]]}`,
+			`{"age": 10}`,
 			false,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			buf, err := encoding.EncodeValue(nil, types.NewObjectValue(test.d), false)
+			buf, err := types.EncodeValuesAsKey(nil, row.Flatten(test.r)...)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			v, _ := encoding.DecodeValue(buf, false)
+			r := row.Unflatten(types.DecodeValues(buf))
 
-			data, err := v.MarshalJSON()
+			data, err := r.MarshalJSON()
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, string(data))
 		})

@@ -6,36 +6,36 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
 
-// A SetOperator sets the value of a column or nested field in the current row.
+// A SetOperator sets the value of a column in the current row.
 type SetOperator struct {
 	stream.BaseOperator
-	Path object.Path
-	Expr expr.Expr
+	Column string
+	Expr   expr.Expr
 }
 
-// Set returns a SetOperator that sets the value of a column or nested field in the current row.
-func Set(path object.Path, e expr.Expr) *SetOperator {
+// Set returns a SetOperator that sets the value of a column in the current row.
+func Set(column string, e expr.Expr) *SetOperator {
 	return &SetOperator{
-		Path: path,
-		Expr: e,
+		Column: column,
+		Expr:   e,
 	}
 }
 
 // Iterate implements the Operator interface.
 func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var fb object.FieldBuffer
+	var cb row.ColumnBuffer
 	var br database.BasicRow
 	var newEnv environment.Environment
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		v, err := op.Expr.Eval(out)
-		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 			return err
 		}
 
@@ -44,29 +44,32 @@ func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environm
 			return errors.New("missing row")
 		}
 
-		fb.Reset()
-		err = fb.Copy(r.Object())
+		cb.Reset()
+		err = cb.Copy(r)
 		if err != nil {
 			return err
 		}
 
-		err = fb.Set(op.Path, v)
-		if errors.Is(err, types.ErrFieldNotFound) {
+		err = cb.Set(op.Column, v)
+		if errors.Is(err, types.ErrColumnNotFound) {
 			return nil
 		}
 		if err != nil {
 			return err
 		}
 
-		br.ResetWith(r.TableName(), r.Key(), &fb)
-
 		newEnv.SetOuter(out)
-		newEnv.SetRow(&br)
+		if dr, ok := r.(database.Row); ok {
+			br.ResetWith(dr.TableName(), dr.Key(), &cb)
+			newEnv.SetRow(&br)
+		} else {
+			newEnv.SetRow(&cb)
+		}
 
 		return f(&newEnv)
 	})
 }
 
 func (op *SetOperator) String() string {
-	return fmt.Sprintf("paths.Set(%s, %s)", op.Path, op.Expr)
+	return fmt.Sprintf("paths.Set(%s, %s)", op.Column, op.Expr)
 }

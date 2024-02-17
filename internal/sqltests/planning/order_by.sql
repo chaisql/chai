@@ -14,7 +14,7 @@ VALUES
     (4, 4, 4),
     (5, 5, 5);
 
--- test: non-indexed field path, ASC
+-- test: non-indexed column path, ASC
 EXPLAIN SELECT * FROM test ORDER BY c;
 /* result:
 {
@@ -22,7 +22,7 @@ EXPLAIN SELECT * FROM test ORDER BY c;
 }
 */
 
--- test: non-indexed field path, DESC
+-- test: non-indexed column path, DESC
 EXPLAIN SELECT * FROM test ORDER BY c DESC;
 /* result:
 {
@@ -30,7 +30,7 @@ EXPLAIN SELECT * FROM test ORDER BY c DESC;
 }
 */
 
--- test: indexed field path, ASC
+-- test: indexed column path, ASC
 EXPLAIN SELECT * FROM test ORDER BY a;
 /* result:
 {
@@ -38,7 +38,7 @@ EXPLAIN SELECT * FROM test ORDER BY a;
 }
 */
 
--- test: indexed field path, DESC
+-- test: indexed column path, DESC
 EXPLAIN SELECT * FROM test ORDER BY a DESC;
 /* result:
 {

@@ -251,7 +251,7 @@ func TestQueries(t *testing.T) {
 		assert.NoError(t, err)
 
 		r, err := db.QueryRow(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT COUNT(*) FROM test;
 		`)
@@ -286,7 +286,7 @@ func TestQueries(t *testing.T) {
 		assert.NoError(t, err)
 
 		err = db.Exec(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
 		assert.NoError(t, err)
@@ -299,7 +299,7 @@ func TestQueries(t *testing.T) {
 		assert.NoError(t, err)
 
 		st, err := db.Query(`
-				CREATE TABLE test;
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
@@ -318,7 +318,7 @@ func TestQueries(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		assert.NoError(t, err)
 
-		err = db.Exec("CREATE TABLE test")
+		err = db.Exec("CREATE TABLE test(a INT)")
 		assert.NoError(t, err)
 
 		err = db.Update(func(tx *chai.Tx) error {
@@ -352,7 +352,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		err = db.Update(func(tx *chai.Tx) error {
 			r, err := tx.QueryRow(`
-				CREATE TABLE test;
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`)
@@ -374,7 +374,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		err = db.Update(func(tx *chai.Tx) error {
 			err = tx.Exec(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
 			assert.NoError(t, err)
@@ -391,7 +391,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		err = db.Update(func(tx *chai.Tx) error {
 			st, err := tx.Query(`
-				CREATE TABLE test;
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
@@ -415,7 +415,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		err = db.Update(func(tx *chai.Tx) error {
 			r, err := tx.QueryRow(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;

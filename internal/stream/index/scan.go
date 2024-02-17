@@ -76,7 +76,7 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	}
 
 	for _, rng := range ranges {
-		r, err := rng.ToTreeRange(&table.Info.FieldConstraints, info.Paths)
+		r, err := rng.ToTreeRange(&table.Info.ColumnConstraints, info.Columns)
 		if err != nil {
 			return err
 		}

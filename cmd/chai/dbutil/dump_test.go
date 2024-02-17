@@ -53,7 +53,7 @@ func TestDump(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b ANY, c ANY, ...);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b INTEGER, c INTEGER);", table)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")
@@ -68,17 +68,17 @@ func TestDump(t *testing.T) {
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 1, 2, 3)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 1, 2, 3)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 2, 2, 2)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 2, 2, 2)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 3, 2, 1)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 3, 2, 1)
 				err = db.Exec(q)
 				assert.NoError(t, err)
 				writeToBuf(q + "\n")

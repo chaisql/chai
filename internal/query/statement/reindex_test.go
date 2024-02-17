@@ -29,8 +29,8 @@ func TestReIndex(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE test1(a any, b any);
-				CREATE TABLE test2(a any, b any);
+				CREATE TABLE test1(a TEXT, b TEXT);
+				CREATE TABLE test2(a TEXT, b TEXT);
 
 				CREATE INDEX idx_test1_a ON test1(a);
 				CREATE INDEX idx_test1_b ON test1(b);

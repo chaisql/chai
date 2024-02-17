@@ -1,15 +1,5 @@
 -- test: basic
-CREATE TABLE test(a PRIMARY KEY);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ANY NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
-}
-*/
-
--- test: with type
-CREATE TABLE test(a INT PRIMARY KEY);
+CREATE TABLE test(a INTEGER PRIMARY KEY);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
@@ -46,7 +36,7 @@ CREATE TABLE test(a INT PRIMARY KEY PRIMARY KEY);
 CREATE TABLE test(a INT PRIMARY KEY, b INT PRIMARY KEY);
 -- error:
 
--- test: table constraint: one field
+-- test: table constraint: one column
 CREATE TABLE test(a INT, PRIMARY KEY(a));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
@@ -56,7 +46,7 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: table constraint: multiple fields
+-- test: table constraint: multiple columns
 CREATE TABLE test(a INT, b INT, PRIMARY KEY(a, b));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
@@ -66,36 +56,25 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: table constraint: nested fields
-CREATE TABLE test(a (b INT), PRIMARY KEY(a.b));
+-- test: table constraint: multiple columns: with order
+CREATE TABLE test(a INT, b INT, c INT, PRIMARY KEY(a DESC, b, c ASC));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a (b INTEGER NOT NULL), CONSTRAINT test_pk PRIMARY KEY (a.b))"
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, c INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC, b, c))"
 }
 */
 
-
--- test: table constraint: multiple fields: with order
-CREATE TABLE test(a INT, b INT, c (d INT), PRIMARY KEY(a DESC, b, c.d ASC));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, c (d INTEGER NOT NULL), CONSTRAINT test_pk PRIMARY KEY (a DESC, b, c.d))"
-}
-*/
-
--- test: table constraint: undeclared fields
+-- test: table constraint: undeclared columns
 CREATE TABLE test(a INT, b INT, PRIMARY KEY(a, b, c));
 -- error:
 
--- test: table constraint: same field twice
+-- test: table constraint: same column twice
 CREATE TABLE test(a INT, b INT, PRIMARY KEY(a, a));
 -- error:
 
--- test: table constraint: same field twice, field constraint + table constraint
+-- test: table constraint: same column twice, column constraint + table constraint
 CREATE TABLE test(a INT PRIMARY KEY, b INT, PRIMARY KEY(a));
 -- error:
 

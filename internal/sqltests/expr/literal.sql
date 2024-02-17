@@ -11,6 +11,19 @@
 > typeof(-1)
 'integer'
 
+-- test: literals/bigints
+> 100000000000
+100000000000
+
+> typeof(100000000000)
+'bigint'
+
+> -100000000000
+-100000000000
+
+> typeof(-100000000000)
+'bigint'
+
 -- test: literals/doubles
 
 > 1.0
@@ -82,28 +95,3 @@ false
 
 ! '\xhello'
 'invalid hexadecimal digit: h'
-
--- test: literals/arrays
-
-> [1, true, ['hello'], {a: [1]}]
-[1, true, ['hello'], {a: [1]}]
-
-> typeof([1, true, ['hello'], {a: [1]}])
-'array'
-
--- test: literals/objects
-
-> {a: 1}
-{a: 1}
-
-> {"a": 1}
-{a: 1}
-
-> {'a': 1}
-{a: 1}
-
-> {a: 1, b: {c: [1, true, ['hello'], {a: [1]}]}}
-{a: 1, b: {c: [1, true, ['hello'], {a: [1]}]}}
-
-> typeof({a: 1, b: {c: [1, true, ['hello'], {a: [1]}]}})
-'object'

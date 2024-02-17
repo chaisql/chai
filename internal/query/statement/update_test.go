@@ -21,27 +21,17 @@ func TestUpdateStmt(t *testing.T) {
 		{"No clause", `UPDATE test`, true, "", nil},
 		{"Read-only table", `UPDATE __chai_catalog SET a = 1`, true, "", nil},
 
-		// SET tests.
-		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1"},{"a":"boo","b":"bar2"},{"a":"boo","d":"bar3","e":"baz3"}]`, nil},
+		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1","d":null,"e":null},{"a":"boo","b":"bar2","c":null,"d":null,"e":null},{"a":"boo","d":"bar3","e":"baz3","c":null,"b":null}]`, nil},
+		{"SET / No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1","d":null,"e":null},{"a":"boo","b":"bar2","c":null,"d":null,"e":null},{"a":"boo","d":"bar3","e":"baz3","c":null,"b":null}]`, nil},
 		{"SET / No cond / with multiple idents and constraint", `UPDATE test SET a = c`, true, ``, nil},
-		{"SET / No cond / with multiple idents", `UPDATE test SET b = c`, false, `[{"a":"foo1","b":"baz1","c":"baz1"},{"a":"foo2","b":null},{"a":"foo3","b":null,"d":"bar3","e":"baz3"}]`, nil},
-		{"SET / No cond / with missing field", "UPDATE test SET f = 'boo'", false, `[{"a":"foo1","b":"bar1","c":"baz1","f":"boo"},{"a":"foo2","b":"bar2","f":"boo"},{"a":"foo3","d":"bar3","e":"baz3","f":"boo"}]`, nil},
+		{"SET / No cond / with multiple idents", `UPDATE test SET b = c`, false, `[{"a":"foo1","b":"baz1","c":"baz1","d":null,"e":null},{"a":"foo2","b":null,"c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
+		{"SET / No cond / with missing column", "UPDATE test SET f = 'boo'", true, "", nil},
 		{"SET / No cond / with string", `UPDATE test SET 'a' = 'boo'`, true, "", nil},
-		{"SET / With cond", "UPDATE test SET a = 'FOO2', b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"FOO2","b":2},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / With cond / with missing field", "UPDATE test SET f = 'boo' WHERE d = 'bar3'", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3","f":"boo"}]`, nil},
-		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},
-		{"SET / Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
-		{"SET / Nested objects on a / Wrong type", "UPDATE test SET a.b = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"SET / Nested objects on a / missing row", "UPDATE test SET g.h.i = 2", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-
-		// UNSET tests.
-		{"UNSET / No cond", `UPDATE test UNSET b`, false, `[{"a":"foo1","c":"baz1"},{"a":"foo2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"UNSET / No cond / with ident string", "UPDATE test UNSET `a`", true, "", nil},
-		{"UNSET / No cond / with missing field", "UPDATE test UNSET f", false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2","b":"bar2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
-		{"UNSET / No cond / with string", `UPDATE test UNSET 'a'`, true, "", nil},
-		{"UNSET / With cond", `UPDATE test UNSET b WHERE a = 'foo2'`, false, `[{"a":"foo1","b":"bar1","c":"baz1"},{"a":"foo2"},{"a":"foo3","d":"bar3","e":"baz3"}]`, nil},
+		{"SET / With cond", "UPDATE test SET a = 'FOO2', b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1","d":null,"e":null},{"a":"FOO2","b":"2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
+		{"SET / With cond / with missing column", "UPDATE test SET f = 'boo' WHERE d = 'bar3'", true, ``, nil},
+		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", true, ``, nil},
+		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1","d":null,"e":null},{"a":"foo2","b":"bar2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},
+		{"SET / Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1","d":null,"e":null},{"a":"foo2","b":"bar2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
 	}
 
 	for _, test := range tests {
@@ -51,7 +41,7 @@ func TestUpdateStmt(t *testing.T) {
 				assert.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test (a text not null, ...)")
+				err = db.Exec("CREATE TABLE test (a text not null, b text, c text, d text, e text)")
 				assert.NoError(t, err)
 
 				if indexed {
@@ -88,54 +78,4 @@ func TestUpdateStmt(t *testing.T) {
 			runTest(true)
 		})
 	}
-
-	t.Run("with arrays", func(t *testing.T) {
-		tests := []struct {
-			name     string
-			query    string
-			fails    bool
-			expected string
-			params   []interface{}
-		}{
-			{"SET / No cond add field ", `UPDATE foo set b = 0`, false, `[{"a": [1, 0, 0], "b": 0}, {"a": [2, 0], "b": 0}]`, nil},
-			{"SET / No cond / with path at existing index only", `UPDATE foo SET a[2] = 10`, false, `[{"a": [1, 0, 10]}, {"a": [2, 0]}]`, nil},
-			{"SET / No cond / with index array", `UPDATE foo SET a[1] = 10`, false, `[{"a": [1, 10, 0]}, {"a": [2, 10]}]`, nil},
-			{"SET / No cond / with path on non existing field", `UPDATE foo SET a.foo[1] = 10`, false, `[{"a": [1, 0, 0]}, {"a": [2, 0]}]`, nil},
-			{"SET / With cond / index array", `UPDATE foo SET a[0] = 1 WHERE a[0] = 2`, false, `[{"a": [1, 0, 0]}, {"a": [1, 0]}]`, nil},
-			{"SET / No cond / index out of range", `UPDATE foo SET a[10] = 1`, false, `[{"a": [1, 0, 0]}, {"a": [2, 0]}]`, nil},
-			{"SET / No cond / Nested array", `UPDATE foo SET a[1] = [1, 0, 0]`, false, `[{"a": [1, [1, 0, 0], 0]}, {"a": [2, [1, 0, 0]]}]`, nil},
-			{"SET / No cond / with multiple idents", `UPDATE foo SET a[1] = [1, 0, 0], a[1][2] = 9`, false, `[{"a": [1, [1, 0, 9], 0]}, {"a": [2, [1, 0, 9]]}]`, nil},
-			{"SET / No cond / add doc / with multiple idents with multiple indexes", `UPDATE foo SET a[1] = [1, 0, 0], a[1][2] = {"b": "foo"}`, false, `[{"a": [1, [1, 0, {"b":"foo"}], 0]}, {"a": [2, [1, 0, {"b":"foo"}]]}]`, nil},
-		}
-
-		for _, tt := range tests {
-			t.Run(tt.name, func(t *testing.T) {
-				db, err := chai.Open(":memory:")
-				assert.NoError(t, err)
-				defer db.Close()
-
-				err = db.Exec(`CREATE TABLE foo;`)
-				assert.NoError(t, err)
-				err = db.Exec(`INSERT INTO foo (a) VALUES ([1, 0, 0]), ([2, 0]);`)
-				assert.NoError(t, err)
-
-				err = db.Exec(tt.query, tt.params...)
-				if tt.fails {
-					assert.Error(t, err)
-					return
-				}
-				assert.NoError(t, err)
-
-				st, err := db.Query("SELECT * FROM foo")
-				assert.NoError(t, err)
-				defer st.Close()
-
-				var buf bytes.Buffer
-
-				err = st.MarshalJSONTo(&buf)
-				assert.NoError(t, err)
-				require.JSONEq(t, tt.expected, buf.String())
-			})
-		}
-	})
 }

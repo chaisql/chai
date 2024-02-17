@@ -3,12 +3,13 @@ package parser
 import (
 	"encoding/hex"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -167,7 +168,7 @@ func (p *Parser) parseOperator(minPrecedence int, allowed ...scanner.Token) (fun
 		if err != nil {
 			return nil, op, err
 		}
-		err = p.parseTokens(scanner.AND)
+		err = p.ParseTokens(scanner.AND)
 		if err != nil {
 			return nil, op, err
 		}
@@ -195,7 +196,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		return p.parseCastExpression()
 	case scanner.IDENT:
 		tok1, _, _ := p.ScanIgnoreWhitespace()
-		// if the next token is a left parenthesis, this is a global function
+		// if the next token is a left parenthesis, this is a function
 		if tok1 == scanner.LPAREN {
 			p.Unscan()
 			if tk, _, _ := p.s.Curr(); tk == scanner.WS {
@@ -203,22 +204,6 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			}
 			p.Unscan()
 			return p.parseFunction()
-		} else if tok1 == scanner.DOT {
-			// it may be a package function instead.
-			if tok2, _, _ := p.Scan(); tok2 == scanner.IDENT {
-				if tok3, _, _ := p.Scan(); tok3 == scanner.LPAREN {
-					p.Unscan()
-					p.Unscan()
-					p.Unscan()
-					p.Unscan()
-					return p.parseFunction()
-				} else {
-					p.Unscan()
-					p.Unscan()
-				}
-			} else {
-				p.Unscan()
-			}
 		}
 		p.Unscan()
 		if tk, _, _ := p.s.Curr(); tk == scanner.WS {
@@ -227,12 +212,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 
 		p.Unscan()
 
-		field, err := p.parsePath()
-		if err != nil {
-			return nil, err
-		}
-		fs := expr.Path(field)
-		return fs, nil
+		return p.parseColumn()
 	case scanner.NAMEDPARAM:
 		if len(lit) == 1 {
 			return nil, errors.WithStack(&ParseError{Message: "missing param name"})
@@ -286,20 +266,16 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			}
 			return nil, errors.WithStack(&ParseError{Message: "unable to parse integer", Pos: pos})
 		}
-		return expr.LiteralValue{Value: types.NewIntegerValue(v)}, nil
+		if v > math.MaxInt32 || v < math.MinInt32 {
+			return expr.LiteralValue{Value: types.NewBigintValue(v)}, nil
+		}
+		return expr.LiteralValue{Value: types.NewIntegerValue(int32(v))}, nil
 	case scanner.TRUE, scanner.FALSE:
 		return expr.LiteralValue{Value: types.NewBooleanValue(tok == scanner.TRUE)}, nil
 	case scanner.NULL:
 		return expr.LiteralValue{Value: types.NewNullValue()}, nil
 	case scanner.MUL:
 		return expr.Wildcard{}, nil
-	case scanner.LBRACKET:
-		p.Unscan()
-		e, err := p.ParseObject()
-		return e, err
-	case scanner.LSBRACKET:
-		p.Unscan()
-		return p.parseExprList(scanner.LSBRACKET, scanner.RSBRACKET)
 	case scanner.LPAREN:
 		e, err := p.ParseExpr()
 		if err != nil {
@@ -329,7 +305,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		}
 		return expr.Not(e), nil
 	case scanner.NEXT:
-		err := p.parseTokens(scanner.VALUE, scanner.FOR)
+		err := p.ParseTokens(scanner.VALUE, scanner.FOR)
 		if err != nil {
 			return nil, err
 		}
@@ -429,16 +405,10 @@ func (p *Parser) parseParam() (expr.Expr, error) {
 func (p *Parser) parseType() (types.Type, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
-	case scanner.TYPEANY:
-		return types.TypeAny, nil
-	case scanner.TYPEARRAY:
-		return types.TypeArray, nil
 	case scanner.TYPEBLOB, scanner.TYPEBYTES:
 		return types.TypeBlob, nil
 	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
 		return types.TypeBoolean, nil
-	case scanner.TYPEOBJECT:
-		return types.TypeObject, nil
 	case scanner.TYPEREAL:
 		return types.TypeDouble, nil
 	case scanner.TYPEDOUBLE:
@@ -448,9 +418,11 @@ func (p *Parser) parseType() (types.Type, error) {
 		}
 		p.Unscan()
 		return types.TypeDouble, nil
-	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPEINT8, scanner.TYPETINYINT,
-		scanner.TYPEBIGINT, scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
+	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPETINYINT,
+		scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
 		return types.TypeInteger, nil
+	case scanner.TYPEINT8, scanner.TYPEBIGINT:
+		return types.TypeBigint, nil
 	case scanner.TYPETEXT:
 		return types.TypeText, nil
 	case scanner.TYPETIMESTAMP:
@@ -475,135 +447,15 @@ func (p *Parser) parseType() (types.Type, error) {
 	return 0, newParseError(scanner.Tokstr(tok, lit), []string{"type"}, pos)
 }
 
-// ParseObject parses an object
-func (p *Parser) ParseObject() (*expr.KVPairs, error) {
-	// Parse { token.
-	if err := p.parseTokens(scanner.LBRACKET); err != nil {
-		return nil, err
-	}
-
-	var pairs expr.KVPairs
-	pairs.SelfReferenced = true
-	var pair expr.KVPair
-	var err error
-
-	// Parse kv pairs.
-	for {
-		if pair, err = p.parseKV(); err != nil {
-			p.Unscan()
-			break
-		}
-
-		pairs.Pairs = append(pairs.Pairs, pair)
-
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
-	}
-
-	// Parse required } token.
-	if err := p.parseTokens(scanner.RBRACKET); err != nil {
-		return nil, err
-	}
-
-	return &pairs, nil
-}
-
-// parseKV parses a key-value pair in the form IDENT : Expr.
-func (p *Parser) parseKV() (expr.KVPair, error) {
-	var k string
-
-	tok, pos, lit := p.ScanIgnoreWhitespace()
-	if tok == scanner.IDENT || tok == scanner.STRING {
-		k = lit
-	} else {
-		return expr.KVPair{}, newParseError(scanner.Tokstr(tok, lit), []string{"ident", "string"}, pos)
-	}
-
-	if err := p.parseTokens(scanner.COLON); err != nil {
-		p.Unscan()
-		return expr.KVPair{}, err
-	}
-
-	e, err := p.ParseExpr()
-	if err != nil {
-		return expr.KVPair{}, err
-	}
-
-	return expr.KVPair{
-		K: k,
-		V: e,
-	}, nil
-}
-
 // parsePath parses a path to a specific value.
-func (p *Parser) parsePath() (object.Path, error) {
-	var path object.Path
+func (p *Parser) parseColumn() (expr.Column, error) {
 	// parse first mandatory ident
-	chunk, err := p.parseIdent()
+	col, err := p.parseIdent()
 	if err != nil {
-		return nil, err
-	}
-	path = append(path, object.PathFragment{
-		FieldName: chunk,
-	})
-
-LOOP:
-	for {
-		// scan the very next token.
-		// if can be either a '.' or a '['
-		// Otherwise, unscan and return the path
-		tok, _, _ := p.Scan()
-		switch tok {
-		case scanner.DOT:
-			// scan the next token for an ident
-			tok, pos, lit := p.Scan()
-			if tok != scanner.IDENT {
-				return nil, newParseError(lit, []string{"identifier"}, pos)
-			}
-			path = append(path, object.PathFragment{
-				FieldName: lit,
-			})
-		case scanner.LSBRACKET:
-			// the next token can be either an integer or a quoted string
-			// if it's an integer, we have an array index
-			// if it's a quoted string, we have a field name
-			tok, pos, lit := p.Scan()
-			switch tok {
-			case scanner.INTEGER:
-				// is the number negative?
-				if lit[0] == '-' {
-					return nil, newParseError(lit, []string{"integer"}, pos)
-				}
-				// is the number too big?
-				if len(lit) > 10 {
-					return nil, newParseError(lit, []string{"integer"}, pos)
-				}
-				// parse the integer
-				i, err := strconv.ParseInt(lit, 10, 64)
-				if err != nil {
-					return nil, newParseError(lit, []string{"integer"}, pos)
-				}
-				path = append(path, object.PathFragment{
-					ArrayIndex: int(i),
-				})
-			case scanner.STRING:
-				path = append(path, object.PathFragment{
-					FieldName: lit,
-				})
-			}
-			// scan the next token for a closing left bracket
-			if err := p.parseTokens(scanner.RSBRACKET); err != nil {
-				return nil, err
-			}
-		default:
-			p.Unscan()
-			break LOOP
-		}
+		return "", err
 	}
 
-	return path, nil
+	return expr.Column(col), nil
 }
 
 func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {
@@ -627,7 +479,7 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 	}
 
 	// Parse required ) or ] token.
-	if err := p.parseTokens(rightToken); err != nil {
+	if err := p.ParseTokens(rightToken); err != nil {
 		return nil, err
 	}
 
@@ -636,7 +488,7 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 
 func (p *Parser) parseExprList(leftToken, rightToken scanner.Token) (expr.LiteralExprList, error) {
 	// Parse ( or [ token.
-	if err := p.parseTokens(leftToken); err != nil {
+	if err := p.ParseTokens(leftToken); err != nil {
 		return nil, err
 	}
 
@@ -653,26 +505,14 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 		return nil, err
 	}
 
-	// Parse optional package name
-	var pkgName string
-	if tok, _, _ := p.Scan(); tok == scanner.DOT {
-		pkgName = funcName
-		funcName, err = p.parseIdent()
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		p.Unscan()
-	}
-
 	// Parse required ( token.
-	if err := p.parseTokens(scanner.LPAREN); err != nil {
+	if err := p.ParseTokens(scanner.LPAREN); err != nil {
 		return nil, err
 	}
 
 	// Check if the function is called without arguments.
 	if tok, _, _ := p.ScanIgnoreWhitespace(); tok == scanner.RPAREN {
-		def, err := p.packagesTable.GetFunc(pkgName, funcName)
+		def, err := functions.GetFunc(funcName)
 		if err != nil {
 			return nil, err
 		}
@@ -698,11 +538,11 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 	}
 
 	// Parse required ) token.
-	if err := p.parseTokens(scanner.RPAREN); err != nil {
+	if err := p.ParseTokens(scanner.RPAREN); err != nil {
 		return nil, err
 	}
 
-	def, err := p.packagesTable.GetFunc(pkgName, funcName)
+	def, err := functions.GetFunc(funcName)
 	if err != nil {
 		return nil, err
 	}
@@ -712,7 +552,7 @@ func (p *Parser) parseFunction() (expr.Expr, error) {
 // parseCastExpression parses a string of the form CAST(expr AS type).
 func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	// Parse required CAST and ( tokens.
-	if err := p.parseTokens(scanner.CAST, scanner.LPAREN); err != nil {
+	if err := p.ParseTokens(scanner.CAST, scanner.LPAREN); err != nil {
 		return nil, err
 	}
 
@@ -723,7 +563,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// Parse required AS token.
-	if err := p.parseTokens(scanner.AS); err != nil {
+	if err := p.ParseTokens(scanner.AS); err != nil {
 		return nil, err
 	}
 
@@ -734,7 +574,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	// Parse required ) token.
-	if err := p.parseTokens(scanner.RPAREN); err != nil {
+	if err := p.ParseTokens(scanner.RPAREN); err != nil {
 		return nil, err
 	}
 

@@ -48,33 +48,33 @@ NULL
 NULL
 
 -- test: divide by zero
-> 1 / 0
-NULL
+! 1 / 0
+'division by zero'
 
--- test: arithmetic with unexisting field
+-- test: arithmetic with unexisting column
 ! 1 + a
-'field not found'
+'no table specified'
 
 ! 1 - a
-'field not found'
+'no table specified'
 
 ! 1 * a
-'field not found'
+'no table specified'
 
 ! 1 / a
-'field not found'
+'no table specified'
 
 ! 1 % a
-'field not found'
+'no table specified'
 
 ! 1 & a
-'field not found'
+'no table specified'
 
 ! 1 | a
-'field not found'
+'no table specified'
 
 ! 1 ^ a
-'field not found'
+'no table specified'
 
 -- test: division
 > 1 / 2
@@ -93,23 +93,9 @@ NULL
 > 1 + true
 NULL
 
-> 1 + [1]
-NULL
-
-> 1 + {a: 1}
-NULL
-
-> [1] + [1]
-NULL
-
-> {a: 1} + {a: 1}
-NULL
-
 > 4.5 + 4.5
 9.0
 
-> 1000000000 * 1000000000
-1000000000000000000
+! 1000000000 * 1000000000
 
-> 1000000000000000000 * 1000000000000000000 * 1000000000000000000
-1000000000000000000000000000000000000000000000000000000
+! 1000000000000000000 * 1000000000000000000 * 1000000000000000000

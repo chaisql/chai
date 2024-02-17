@@ -4,7 +4,35 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
+
+	"github.com/chaisql/chai/internal/encoding"
+	"github.com/cockroachdb/errors"
 )
+
+var _ TypeDefinition = BlobTypeDef{}
+
+type BlobTypeDef struct{}
+
+func (BlobTypeDef) New(v any) Value {
+	return NewBlobValue(v.([]byte))
+}
+
+func (BlobTypeDef) Type() Type {
+	return TypeBlob
+}
+
+func (BlobTypeDef) Decode(src []byte) (Value, int) {
+	x, n := encoding.DecodeBlob(src)
+	return NewBlobValue(x), n
+}
+
+func (BlobTypeDef) IsComparableWith(other Type) bool {
+	return other == TypeBlob
+}
+
+func (BlobTypeDef) IsIndexComparableWith(other Type) bool {
+	return other == TypeBlob
+}
 
 var _ Value = NewBlobValue(nil)
 
@@ -21,6 +49,10 @@ func (v BlobValue) V() any {
 
 func (v BlobValue) Type() Type {
 	return TypeBlob
+}
+
+func (v BlobValue) TypeDef() TypeDefinition {
+	return BlobTypeDef{}
 }
 
 func (v BlobValue) IsZero() (bool, error) {
@@ -46,6 +78,25 @@ func (v BlobValue) MarshalJSON() ([]byte, error) {
 	dst[len(dst)-1] = '"'
 	base64.StdEncoding.Encode(dst[1:], v)
 	return dst, nil
+}
+
+func (v BlobValue) Encode(dst []byte) ([]byte, error) {
+	return encoding.EncodeBlob(dst, v), nil
+}
+
+func (v BlobValue) EncodeAsKey(dst []byte) ([]byte, error) {
+	return encoding.EncodeBlob(dst, v), nil
+}
+
+func (v BlobValue) CastAs(target Type) (Value, error) {
+	switch target {
+	case TypeBlob:
+		return v, nil
+	case TypeText:
+		return NewTextValue(base64.StdEncoding.EncodeToString([]byte(v))), nil
+	}
+
+	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
 }
 
 func (v BlobValue) EQ(other Value) (bool, error) {

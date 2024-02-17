@@ -1,23 +1,23 @@
--- test: as field constraint
+-- test: as column constraint
 CREATE TABLE test (
-    a CHECK(a > 10 AND a < 20)
+    a INT CHECK(a > 10 AND a < 20)
 );
 SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 /* result:
 {
   name: "test",
   type: "table",
-  sql: "CREATE TABLE test (a ANY, CONSTRAINT test_check CHECK (a > 10 AND a < 20))"
+  sql: "CREATE TABLE test (a INTEGER, CONSTRAINT test_check CHECK (a > 10 AND a < 20))"
 }
 */
 
--- test: as field constraint: undeclared field
+-- test: as column constraint: undeclared column
 CREATE TABLE test (
-    a CHECK(b > 10)
+    a INT CHECK(b > 10)
 );
 -- error:
 
--- test: as field constraint, with other constraints
+-- test: as column constraint, with other constraints
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 100 NOT NULL PRIMARY KEY
 );
@@ -30,13 +30,13 @@ SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 }
 */
 
--- test: as field constraint, no parentheses
+-- test: as column constraint, no parentheses
 CREATE TABLE test (
     a INT CHECK a > 10
 );
 -- error:
 
--- test: as field constraint, incompatible default value
+-- test: as column constraint, incompatible default value
 CREATE TABLE test (
     a INT CHECK (a > 10) DEFAULT 0
 );
@@ -49,7 +49,7 @@ SELECT name, type, sql FROM __chai_catalog WHERE name = "test";
 }
 */
 
--- test: as field constraint, reference other fields
+-- test: as column constraint, reference other columns
 CREATE TABLE test (
     a INT CHECK (a > 10 AND b < 10),
     b INT

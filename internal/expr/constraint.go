@@ -3,6 +3,7 @@ package expr
 import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -17,16 +18,32 @@ func Constraint(e Expr) *ConstraintExpr {
 	}
 }
 
-func (t *ConstraintExpr) Eval(tx *database.Transaction, o types.Object) (types.Value, error) {
+func (t *ConstraintExpr) Eval(tx *database.Transaction, r row.Row) (types.Value, error) {
 	var env environment.Environment
 	env.Tx = tx
-	env.SetRowFromObject(o)
+	env.SetRow(r)
 
 	if t.Expr == nil {
 		return NullLiteral, errors.New("missing expression")
 	}
 
 	return t.Expr.Eval(&env)
+}
+
+func (t *ConstraintExpr) Validate(info *database.TableInfo) (err error) {
+	Walk(t.Expr, func(e Expr) bool {
+		switch e := e.(type) {
+		case Column:
+			if info.GetColumnConstraint(string(e)) == nil {
+				err = errors.Newf("column %q does not exist", e)
+				return false
+			}
+		}
+
+		return true
+	})
+
+	return err
 }
 
 func (t *ConstraintExpr) String() string {

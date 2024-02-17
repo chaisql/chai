@@ -15,9 +15,9 @@ import (
 	"github.com/chaisql/chai/internal/database/catalogstore"
 	"github.com/chaisql/chai/internal/environment"
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
@@ -447,13 +447,13 @@ type Row struct {
 
 func (r *Row) Clone() *Row {
 	var rr Row
-	fb := object.NewFieldBuffer()
-	err := fb.Copy(r.row.Object())
+	cb := row.NewColumnBuffer()
+	err := cb.Copy(r.row)
 	if err != nil {
 		panic(err)
 	}
 	var br database.BasicRow
-	br.ResetWith(r.row.TableName(), r.row.Key(), fb)
+	br.ResetWith(r.row.TableName(), r.row.Key(), cb)
 	rr.row = &br
 
 	return &rr
@@ -473,37 +473,29 @@ func (r *Row) Columns() ([]string, error) {
 }
 func (r *Row) GetColumnType(column string) (string, error) {
 	v, err := r.row.Get(column)
-	if errors.Is(err, types.ErrFieldNotFound) {
-		return "", errors.New("column not found")
+	if errors.Is(err, types.ErrColumnNotFound) {
+		return "", err
 	}
 
 	return v.Type().String(), err
 }
 
 func (r *Row) ScanColumn(column string, dest any) error {
-	return object.ScanField(r.row.Object(), column, dest)
+	return row.ScanColumn(r.row, column, dest)
 }
 
 func (r *Row) Scan(dest ...any) error {
-	return object.Scan(r.row.Object(), dest...)
+	return row.Scan(r.row, dest...)
 }
 
 func (r *Row) StructScan(dest any) error {
-	return object.StructScan(r.row.Object(), dest)
+	return row.StructScan(r.row, dest)
 }
 
 func (r *Row) MapScan(dest map[string]any) error {
-	return object.MapScan(r.row.Object(), dest)
+	return row.MapScan(r.row, dest)
 }
 
 func (r *Row) MarshalJSON() ([]byte, error) {
-	return r.row.Object().MarshalJSON()
-}
-
-func (r *Row) Iterate(fn func(column string, value types.Value) error) error {
-	return r.row.Object().Iterate(fn)
-}
-
-func (r *Row) Object() types.Object {
-	return r.row.Object()
+	return r.row.MarshalJSON()
 }

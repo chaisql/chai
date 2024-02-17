@@ -29,6 +29,7 @@ SELECT b FROM test ORDER BY a;
 SELECT * FROM test ORDER BY a;
 /* result:
 {
+    a: null,
     b: 1.0,
 }
 {
@@ -79,6 +80,7 @@ SELECT * FROM test ORDER BY a DESC;
     b: 2.0
 }
 {
+    a: null,
     b: 1.0
 }
 */

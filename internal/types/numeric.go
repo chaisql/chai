@@ -20,6 +20,9 @@ type Numeric interface {
 	// Only numeric values and booleans can be calculated together.
 	// If both v and u are integers, the result will be an integer.
 	Mod(other Numeric) (Value, error)
+}
+
+type Integral interface {
 	// BitwiseAnd calculates v & u and returns the result.
 	// Only numeric values and booleans can be calculated together.
 	// If both v and u are integers, the result will be an integer.
@@ -32,4 +35,46 @@ type Numeric interface {
 	// Only numeric values and booleans can be calculated together.
 	// If both v and u are integers, the result will be an integer.
 	BitwiseXor(other Numeric) (Value, error)
+}
+
+func isMulOverflow[T int32 | int64](left, right, min, max T) bool {
+	if right > 0 {
+		if left > max/right {
+			return true
+		}
+	} else {
+		if left < min/right {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isAddOverflow[T int32 | int64](left, right, min, max T) bool {
+	if right > 0 {
+		if left > max-right {
+			return true
+		}
+	} else {
+		if left < min-right {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isSubOverflow[T int32 | int64](left, right, min, max T) bool {
+	if right > 0 {
+		if left < min+right {
+			return true
+		}
+	} else {
+		if left > max+right {
+			return true
+		}
+	}
+
+	return false
 }

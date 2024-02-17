@@ -3,7 +3,7 @@ CREATE TABLE test (a int);
 
 -- test: named index
 CREATE INDEX test_a_idx ON test(a);
-SELECT name, owner.table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
+SELECT name, owner_table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
 /* result:
 {
   "name": "test_a_idx",
@@ -14,7 +14,7 @@ SELECT name, owner.table_name AS table_name, sql FROM __chai_catalog WHERE type 
 
 -- test: named unique index
 CREATE UNIQUE INDEX test_a_idx ON test(a);
-SELECT name, owner.table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
+SELECT name, owner_table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
 /* result:
 {
   "name": "test_a_idx",
@@ -36,7 +36,7 @@ CREATE UNIQUE INDEX test_a_idx ON test(a);
 -- test: IF NOT EXISTS
 CREATE INDEX test_a_idx ON test(a);
 CREATE INDEX IF NOT EXISTS test_a_idx ON test(a);
-SELECT name, owner.table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
+SELECT name, owner_table_name AS table_name, sql FROM __chai_catalog WHERE type = "index";
 /* result:
 {
   "name": "test_a_idx",
@@ -50,7 +50,7 @@ CREATE INDEX ON test(a);
 CREATE INDEX ON test(a);
 CREATE INDEX test_a_idx2 ON test(a);
 CREATE INDEX ON test(a);
-SELECT name, owner.table_name AS table_name, sql FROM __chai_catalog WHERE type = "index" ORDER BY name;
+SELECT name, owner_table_name AS table_name, sql FROM __chai_catalog WHERE type = "index" ORDER BY name;
 /* result:
 {
   "name": "test_a_idx",

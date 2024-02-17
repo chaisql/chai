@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -15,24 +15,24 @@ var sequenceTableInfo = func() *TableInfo {
 	info := &TableInfo{
 		TableName:      SequenceTableName,
 		StoreNamespace: SequenceTableNamespace,
-		FieldConstraints: MustNewFieldConstraints(
-			&FieldConstraint{
+		ColumnConstraints: MustNewColumnConstraints(
+			&ColumnConstraint{
 				Position:  0,
-				Field:     "name",
+				Column:    "name",
 				Type:      types.TypeText,
 				IsNotNull: true,
 			},
-			&FieldConstraint{
+			&ColumnConstraint{
 				Position: 1,
-				Field:    "seq",
-				Type:     types.TypeInteger,
+				Column:   "seq",
+				Type:     types.TypeBigint,
 			},
 		),
 		TableConstraints: []*TableConstraint{
 			{
 				Name: SequenceTableName + "_pk",
-				Paths: []object.Path{
-					object.NewPath("name"),
+				Columns: []string{
+					"name",
 				},
 				PrimaryKey: true,
 			},
@@ -85,7 +85,7 @@ func (s *Sequence) Init(tx *Transaction) error {
 		return err
 	}
 
-	_, _, err = tb.Insert(object.NewFieldBuffer().Add("name", types.NewTextValue(s.Info.Name)))
+	_, _, err = tb.Insert(row.NewColumnBuffer().Add("name", types.NewTextValue(s.Info.Name)))
 	return err
 }
 
@@ -180,9 +180,9 @@ func (s *Sequence) SetLease(tx *Transaction, name string, v int64) error {
 	k := s.key()
 
 	_, err = tb.Put(k,
-		object.NewFieldBuffer().
+		row.NewColumnBuffer().
 			Add("name", types.NewTextValue(name)).
-			Add("seq", types.NewIntegerValue(v)),
+			Add("seq", types.NewBigintValue(v)),
 	)
 	return err
 }
@@ -216,9 +216,9 @@ func (s *Sequence) SetName(name string) {
 func (s *Sequence) GenerateBaseName() string {
 	var sb strings.Builder
 	sb.WriteString(s.Info.Owner.TableName)
-	if len(s.Info.Owner.Paths) > 0 {
+	if len(s.Info.Owner.Columns) > 0 {
 		sb.WriteString("_")
-		sb.WriteString(s.Info.Owner.Paths.String())
+		sb.WriteString(strings.Join(s.Info.Owner.Columns, "_"))
 	}
 	sb.WriteString("_seq")
 	return sb.String()

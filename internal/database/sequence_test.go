@@ -24,7 +24,7 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	}
 
 	v, err := d.Get("seq")
-	if errors.Is(err, types.ErrFieldNotFound) {
+	if errors.Is(err, types.ErrColumnNotFound) {
 		return nil, nil
 	}
 	if err != nil {

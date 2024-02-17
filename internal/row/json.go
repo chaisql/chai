@@ -1,8 +1,11 @@
-package object
+package row
 
 import (
+	"math"
+
 	"github.com/buger/jsonparser"
 	"github.com/chaisql/chai/internal/types"
+	"github.com/cockroachdb/errors"
 )
 
 func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, err error) {
@@ -27,31 +30,18 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, 
 			return types.NewDoubleValue(f), nil
 		}
 
-		return types.NewIntegerValue(i), nil
+		if i < math.MinInt32 || i > math.MaxInt32 {
+			return types.NewBigintValue(i), nil
+		}
+
+		return types.NewIntegerValue(int32(i)), nil
 	case jsonparser.String:
 		s, err := jsonparser.ParseString(data)
 		if err != nil {
 			return nil, err
 		}
 		return types.NewTextValue(s), nil
-	case jsonparser.Array:
-		buf := NewValueBuffer()
-		err := buf.UnmarshalJSON(data)
-		if err != nil {
-			return nil, err
-		}
-
-		return types.NewArrayValue(buf), nil
-	case jsonparser.Object:
-		buf := NewFieldBuffer()
-		err = buf.UnmarshalJSON(data)
-		if err != nil {
-			return nil, err
-		}
-
-		return types.NewObjectValue(buf), nil
 	default:
+		return nil, errors.Errorf("unsupported JSON type: %v", dataType)
 	}
-
-	return nil, nil
 }

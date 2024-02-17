@@ -16,7 +16,7 @@ func TestDropTable(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2; CREATE TABLE test3")
+	err = db.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
 	assert.NoError(t, err)
 
 	err = db.Exec("DROP TABLE test1")

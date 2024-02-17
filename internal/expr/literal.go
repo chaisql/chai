@@ -1,12 +1,10 @@
 package expr
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
-	"github.com/chaisql/chai/internal/stringutil"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 )
 
@@ -41,11 +39,7 @@ type LiteralExprList []Expr
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (l LiteralExprList) IsEqual(other Expr) bool {
-	o, ok := other.(LiteralExprList)
-	if !ok {
-		return false
-	}
+func (l LiteralExprList) IsEqual(o LiteralExprList) bool {
 	if len(l) != len(o) {
 		return false
 	}
@@ -63,115 +57,59 @@ func (l LiteralExprList) IsEqual(other Expr) bool {
 func (l LiteralExprList) String() string {
 	var b strings.Builder
 
-	b.WriteRune('[')
+	b.WriteRune('(')
 	for i, e := range l {
 		if i > 0 {
 			b.WriteString(", ")
 		}
 		b.WriteString(e.String())
 	}
-	b.WriteRune(']')
+	b.WriteRune(')')
 
 	return b.String()
 }
 
-// Eval evaluates all the expressions and returns a literalValueList. It implements the Expr interface.
 func (l LiteralExprList) Eval(env *environment.Environment) (types.Value, error) {
+	panic("not implemented")
+}
+
+// Eval evaluates all the expressions and returns a literalValueList. It implements the Expr interface.
+func (l LiteralExprList) EvalAll(env *environment.Environment) ([]types.Value, error) {
 	var err error
 	if len(l) == 0 {
-		return types.NewArrayValue(object.NewValueBuffer()), nil
+		return nil, nil
 	}
 	values := make([]types.Value, len(l))
 	for i, e := range l {
 		values[i], err = e.Eval(env)
 		if err != nil {
-			return NullLiteral, err
+			return nil, err
 		}
 	}
 
-	return types.NewArrayValue(object.NewValueBuffer(values...)), nil
+	return values, nil
 }
 
-// KVPair associates an identifier with an expression.
-type KVPair struct {
-	K string
-	V Expr
+type Row struct {
+	Columns []string
+	Exprs   []Expr
 }
 
-// String implements the fmt.Stringer interface.
-func (p KVPair) String() string {
-	if stringutil.NeedsQuotes(p.K) {
-		return fmt.Sprintf("%q: %v", p.K, p.V)
-	}
-	return fmt.Sprintf("%s: %v", p.K, p.V)
-}
+func (r *Row) Eval(env *environment.Environment) (row.Row, error) {
+	var cb row.ColumnBuffer
 
-// KVPairs is a list of KVPair.
-type KVPairs struct {
-	Pairs          []KVPair
-	SelfReferenced bool
-}
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (kvp *KVPairs) IsEqual(other Expr) bool {
-	o, ok := other.(*KVPairs)
-	if !ok {
-		return false
-	}
-	if kvp.SelfReferenced != o.SelfReferenced {
-		return false
-	}
-
-	if len(kvp.Pairs) != len(o.Pairs) {
-		return false
-	}
-
-	for i := range kvp.Pairs {
-		if kvp.Pairs[i].K != o.Pairs[i].K {
-			return false
-		}
-		if !Equal(kvp.Pairs[i].V, o.Pairs[i].V) {
-			return false
-		}
-	}
-
-	return true
-}
-
-// Eval turns a list of KVPairs into an object.
-func (kvp *KVPairs) Eval(env *environment.Environment) (types.Value, error) {
-	var fb object.FieldBuffer
-	if kvp.SelfReferenced {
-		if _, ok := env.GetRow(); !ok {
-			env.SetRowFromObject(&fb)
-		}
-	}
-
-	for _, kv := range kvp.Pairs {
-		v, err := kv.V.Eval(env)
+	for i, e := range r.Exprs {
+		v, err := e.Eval(env)
 		if err != nil {
 			return nil, err
 		}
 
-		fb.Add(kv.K, v)
+		cb.Set(r.Columns[i], v)
 	}
 
-	return types.NewObjectValue(&fb), nil
+	return &cb, nil
 }
 
-// String implements the fmt.Stringer interface.
-func (kvp *KVPairs) String() string {
-	var b strings.Builder
-
-	b.WriteRune('{')
-	for i, p := range kvp.Pairs {
-		if i > 0 {
-			b.WriteString(", ")
-		}
-		b.WriteString(p.String())
-	}
-	b.WriteRune('}')
-
-	return b.String()
+func (r *Row) String() string {
+	return LiteralExprList(r.Exprs).String()
 }

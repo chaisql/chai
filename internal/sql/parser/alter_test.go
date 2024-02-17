@@ -5,7 +5,6 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil/assert"
@@ -40,58 +39,53 @@ func TestParserAlterTable(t *testing.T) {
 	}
 }
 
-func TestParserAlterTableAddField(t *testing.T) {
+func TestParserAlterTableAddColumn(t *testing.T) {
 	tests := []struct {
 		name     string
 		s        string
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo ADD COLUMN bar", &statement.AlterTableAddColumnStmt{
-			TableName: "foo",
-			FieldConstraint: &database.FieldConstraint{
-				Field: "bar",
-				Type:  types.TypeAny,
-			},
-		}, false},
+		{"Without type", "ALTER TABLE foo ADD COLUMN bar", nil, true},
 		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
-			FieldConstraint: &database.FieldConstraint{
-				Field: "bar",
-				Type:  types.TypeInteger,
+			ColumnConstraint: &database.ColumnConstraint{
+				Column: "bar",
+				Type:   types.TypeInteger,
 			},
 		}, false},
-		{"With not null", "ALTER TABLE foo ADD COLUMN bar NOT NULL", &statement.AlterTableAddColumnStmt{
+		{"With not null", "ALTER TABLE foo ADD COLUMN bar TEXT NOT NULL", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
-			FieldConstraint: &database.FieldConstraint{
-				Field:     "bar",
+			ColumnConstraint: &database.ColumnConstraint{
+				Column:    "bar",
+				Type:      types.TypeText,
 				IsNotNull: true,
 			},
 		}, false},
-		{"With primary key", "ALTER TABLE foo ADD COLUMN bar PRIMARY KEY", &statement.AlterTableAddColumnStmt{
+		{"With primary key", "ALTER TABLE foo ADD COLUMN bar TEXT PRIMARY KEY", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
-			FieldConstraint: &database.FieldConstraint{
-				Field: "bar",
-				Type:  types.TypeAny,
+			ColumnConstraint: &database.ColumnConstraint{
+				Column: "bar",
+				Type:   types.TypeText,
 			},
 			TableConstraints: database.TableConstraints{
 				&database.TableConstraint{
-					Paths:      object.Paths{object.NewPath("bar")},
+					Columns:    []string{"bar"},
 					PrimaryKey: true,
 				},
 			},
 		}, false},
 		{"With multiple constraints", "ALTER TABLE foo ADD COLUMN bar integer NOT NULL DEFAULT 0", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
-			FieldConstraint: &database.FieldConstraint{
-				Field:        "bar",
+			ColumnConstraint: &database.ColumnConstraint{
+				Column:       "bar",
 				Type:         types.TypeInteger,
 				IsNotNull:    true,
 				DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
 			},
 		}, false},
-		{"With error / missing FIELD keyword", "ALTER TABLE foo ADD bar", nil, true},
-		{"With error / missing field name", "ALTER TABLE foo ADD COLUMN", nil, true},
+		{"With error / missing COLUMN keyword", "ALTER TABLE foo ADD bar", nil, true},
+		{"With error / missing column name", "ALTER TABLE foo ADD COLUMN", nil, true},
 	}
 
 	for _, test := range tests {

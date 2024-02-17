@@ -1,5 +1,5 @@
 -- test: read-only tables
-INSERT INTO __chai_catalog VALUES {a: 400, b: a * 4};
+INSERT INTO __chai_catalog (name, namespace) VALUES ('foo', 100);
 -- error: cannot write to read-only table
 
 -- test: insert with primary keys
@@ -13,31 +13,13 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 INSERT INTO testpk (bar, foo) VALUES (1, 2);
 -- error:
 
--- test: insert with shadowing
-CREATE TABLE test (`pk()` INT);
-INSERT INTO test (`pk()`) VALUES (10);
-SELECT pk() AS pk, `pk()` from test;
-/* result:
-{
-  "pk": [1],
-  "pk()": 10
-}
-*/
-
 -- test: insert with types constraints
 CREATE TABLE test_tc(
     b bool, db double,
-    i integer, bb blob, byt bytes,
-    t text, a array, d object
+    i bigint, bb blob, byt bytes,
+    t text
 );
-
-INSERT INTO test_tc
-VALUES {
-    i: 10000000000, db: 21.21, b: true,
-    bb: "YmxvYlZhbHVlCg==", byt: "Ynl0ZXNWYWx1ZQ==",
-    t: "text", a: [1, "foo", true], d: {"foo": "bar"}
-};
-
+INSERT INTO test_tc (i, db, b, bb, byt, t) VALUES (10000000000, 21.21, true, "YmxvYlZhbHVlCg==", "Ynl0ZXNWYWx1ZQ==", "text");
 SELECT * FROM test_tc;
 /* result:
 {
@@ -46,15 +28,7 @@ SELECT * FROM test_tc;
   "i": 10000000000,
   "bb": CAST("YmxvYlZhbHVlCg==" AS BLOB),
   "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
-  "t": "text",
-  "a": [
-    1.0,
-    "foo",
-    true
-  ],
-  "d": {
-    "foo": "bar"
-  }
+  "t": "text"
 }
 */
 
@@ -120,33 +94,33 @@ SELECT * FROM test_oc;
 */
 
 -- test: insert with on conflict do replace, pk
-CREATE TABLE test_oc(a INTEGER PRIMARY KEY, ...);
+CREATE TABLE test_oc(a INTEGER PRIMARY KEY, b INTEGER, c INTEGER);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
 INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
 /* result:
 {
   a: 1,
-  b: 2.0,
-  c: 3.0
+  b: 2,
+  c: 3
 }
 */
 
 -- test: insert with on conflict do replace, unique
-CREATE TABLE test_oc(a INTEGER UNIQUE, ...);
+CREATE TABLE test_oc(a INTEGER UNIQUE, b INTEGER, c INTEGER);
 INSERT INTO test_oc (a, b, c) VALUES (1, 1, 1);
 INSERT INTO test_oc (a, b, c) VALUES (1, 2, 3) ON CONFLICT DO REPLACE;
 SELECT * FROM test_oc;
 /* result:
 {
   a: 1,
-  b: 2.0,
-  c: 3.0
+  b: 2,
+  c: 3
 }
 */
 
 -- test: insert with on conflict do replace, not null
-CREATE TABLE test_oc(a INTEGER NOT NULL, ...);
+CREATE TABLE test_oc(a INTEGER NOT NULL, b INTEGER, c INTEGER);
 INSERT INTO test_oc (b, c) VALUES (1, 1) ON CONFLICT DO REPLACE;
 -- error:
 
@@ -168,23 +142,9 @@ SELECT * FROM test_oc;
 }
 */
 
--- test: default on nested fields 
-CREATE TABLE test_df (a (b TEXT DEFAULT "foo"));
-INSERT INTO test_df VALUES {};
-SELECT * FROM test_df;
-/* result:
-{
-}
-*/
-
--- test: duplicate field names: root
+-- test: duplicate column names: root
 CREATE TABLE test_df;
 INSERT INTO test_df(a, a) VALUES (1, 10);
--- error:
-
--- test: duplicate field names: nested
-CREATE TABLE test_df;
-insert into test_df(a) values ({b: 1, b: 10});
 -- error:
 
 -- test: inserts must be silent
@@ -197,5 +157,5 @@ INSERT INTO test VALUES (1);
 CREATE TABLE test (a int);
 EXPLAIN INSERT INTO test (a) VALUES (1);
 /* result:
-{plan: "rows.Emit({a: 1}) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
+{plan: "rows.Emit((1)) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
 */

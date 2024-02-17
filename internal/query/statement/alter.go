@@ -43,7 +43,7 @@ func (stmt AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
 
 type AlterTableAddColumnStmt struct {
 	TableName        string
-	FieldConstraint  *database.FieldConstraint
+	ColumnConstraint *database.ColumnConstraint
 	TableConstraints database.TableConstraints
 }
 
@@ -58,7 +58,7 @@ func (stmt *AlterTableAddColumnStmt) IsReadOnly() bool {
 func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	var err error
 
-	// get the table before adding the field constraint
+	// get the table before adding the column constraint
 	// and assign the table to the table.Scan operator
 	// so that it can decode the records properly
 	scan := table.Scan(stmt.TableName)
@@ -70,11 +70,11 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	// get the current list of indexes
 	indexNames := ctx.Tx.Catalog.ListIndexes(stmt.TableName)
 
-	// add the field constraint to the table
-	err = ctx.Tx.CatalogWriter().AddFieldConstraint(
+	// add the column constraint to the table
+	err = ctx.Tx.CatalogWriter().AddColumnConstraint(
 		ctx.Tx,
 		stmt.TableName,
-		stmt.FieldConstraint,
+		stmt.ColumnConstraint,
 		stmt.TableConstraints)
 	if err != nil {
 		return Result{}, err
@@ -86,11 +86,11 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	for _, tc := range stmt.TableConstraints {
 		if tc.Unique {
 			idx, err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
-				Paths:  tc.Paths,
-				Unique: true,
+				Columns: tc.Columns,
+				Unique:  true,
 				Owner: database.Owner{
 					TableName: stmt.TableName,
-					Paths:     tc.Paths,
+					Columns:   tc.Columns,
 				},
 			})
 			if err != nil {

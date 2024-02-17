@@ -6,7 +6,6 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/kv"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
@@ -33,11 +32,11 @@ func getIndex(t testing.TB, arity int) *database.Index {
 
 	tr := tree.New(session, 10, 0)
 
-	var paths []object.Path
+	var columns []string
 	for i := 0; i < arity; i++ {
-		paths = append(paths, object.NewPath(fmt.Sprintf("[%d]", i)))
+		columns = append(columns, fmt.Sprintf("[%d]", i))
 	}
-	idx := database.NewIndex(tr, database.IndexInfo{Paths: paths})
+	idx := database.NewIndex(tr, database.IndexInfo{Columns: columns})
 
 	t.Cleanup(func() {
 		session.Close()

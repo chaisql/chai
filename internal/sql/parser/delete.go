@@ -7,13 +7,13 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-// parseDeleteStatement parses a delete string and returns a Statement AST object.
+// parseDeleteStatement parses a delete string and returns a Statement AST row.
 func (p *Parser) parseDeleteStatement() (statement.Statement, error) {
 	stmt := statement.NewDeleteStatement()
 	var err error
 
 	// Parse "DELETE FROM".
-	if err := p.parseTokens(scanner.DELETE, scanner.FROM); err != nil {
+	if err := p.ParseTokens(scanner.DELETE, scanner.FROM); err != nil {
 		return nil, err
 	}
 

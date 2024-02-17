@@ -28,19 +28,19 @@ func ExampleTx() {
 	}
 	defer tx.Rollback()
 
-	err = tx.Exec("CREATE TABLE IF NOT EXISTS user")
+	err = tx.Exec("CREATE TABLE IF NOT EXISTS user (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 
 	r, err := tx.QueryRow("SELECT id, name, age FROM user WHERE name = ?", "foo")
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("%+v", err))
 	}
 
 	var u User
@@ -67,7 +67,7 @@ func ExampleTx() {
 		panic(err)
 	}
 
-	// Output: {10 foo 15 { }}
+	// Output: {10 foo 15}
 	// 10 foo 15
 }
 
@@ -80,9 +80,9 @@ func TestOpen(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = db.Exec(`
-		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b (c (d DOUBLE PRIMARY KEY)));
+		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b DOUBLE PRIMARY KEY);
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
-		CREATE TABLE tableC (a INTEGER, b BOOL);
+		CREATE TABLE tableC (a INTEGER, b INTEGER);
 		CREATE INDEX tableC_a_b_idx ON tableC(a, b);
 		CREATE SEQUENCE seqD INCREMENT BY 10 CYCLE MINVALUE 100 NO MAXVALUE START 500;
 
@@ -105,16 +105,16 @@ func TestOpen(t *testing.T) {
 
 	var count int
 	want := []string{
-		`{"name":"__chai_catalog", "namespace":1, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace INTEGER, sql TEXT, rowid_sequence_name TEXT, owner (table_name TEXT NOT NULL, paths ARRAY), CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
-		`{"name":"__chai_sequence", "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq INTEGER, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "namespace":2, "type":"table"}`,
-		`{"name":"__chai_store_seq", "owner":{"table_name":"__chai_catalog"}, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
-		`{"name":"seqD", "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
-		`{"name":"tableA", "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b (c (d DOUBLE NOT NULL)), CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b.c.d))", "namespace":10, "type":"table"}`,
-		`{"name":"tableA_a_idx", "owner":{"table_name":"tableA", "paths":["a"]}, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "namespace":11, "type":"index"}`,
-		`{"name":"tableB", "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "namespace":12, "type":"table"}`,
-		`{"name":"tableC", "rowid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b BOOLEAN)", "namespace":13, "type":"table"}`,
-		`{"name":"tableC_a_b_idx", "owner":{"table_name":"tableC"}, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "namespace":14, "type":"index"}`,
-		`{"name":"tableC_seq", "owner":{"table_name":"tableC"}, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
+		`{"name":"__chai_catalog", "namespace":1, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace BIGINT, sql TEXT, rowid_sequence_name TEXT, owner_table_name TEXT, owner_table_columns TEXT, CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__chai_sequence", "namespace":2, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq BIGINT, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__chai_store_seq", "namespace":null, "owner_table_columns":null, "owner_table_name":"__chai_catalog", "rowid_sequence_name":null, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
+		`{"name":"seqD", "namespace":null, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
+		`{"name":"tableA", "namespace":10, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b DOUBLE NOT NULL, CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b))", "type":"table"}`,
+		`{"name":"tableA_a_idx", "namespace":11, "owner_table_columns":"a", "owner_table_name":"tableA", "rowid_sequence_name":null, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "type":"index"}`,
+		`{"name":"tableB", "namespace":12, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "type":"table"}`,
+		`{"name":"tableC", "namespace":13, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b INTEGER)",  "type":"table"}`,
+		`{"name":"tableC_a_b_idx", "namespace":14, "owner_table_columns":null, "owner_table_name":"tableC", "rowid_sequence_name":null, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "type":"index"}`,
+		`{"name":"tableC_seq", "namespace":null, "owner_table_columns":null, "owner_table_name":"tableC", "rowid_sequence_name":null, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
 	err = res1.Iterate(func(r *chai.Row) error {
 		count++
@@ -149,7 +149,7 @@ func TestQueryRow(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = tx.Exec(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INTEGER PRIMARY KEY, b TEXT NOT NULL);
 			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
 		`)
 	assert.NoError(t, err)

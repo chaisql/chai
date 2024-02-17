@@ -2,6 +2,7 @@ package statement
 
 import (
 	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/types"
@@ -28,6 +29,12 @@ func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 	s, ok := st.(*PreparedStreamStmt)
 	if !ok {
 		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	}
+
+	// Optimize the stream.
+	s.Stream, err = planner.Optimize(s.Stream, ctx.Tx.Catalog, ctx.Params)
+	if err != nil {
+		return Result{}, err
 	}
 
 	var plan string

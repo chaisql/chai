@@ -7,10 +7,10 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-// parseDropStatement parses a drop string and returns a Statement AST object.
+// parseDropStatement parses a drop string and returns a Statement AST row.
 func (p *Parser) parseDropStatement() (statement.Statement, error) {
 	// Parse "DROP".
-	if err := p.parseTokens(scanner.DROP); err != nil {
+	if err := p.ParseTokens(scanner.DROP); err != nil {
 		return nil, err
 	}
 
@@ -27,7 +27,7 @@ func (p *Parser) parseDropStatement() (statement.Statement, error) {
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"TABLE", "INDEX", "SEQUENCE"}, pos)
 }
 
-// parseDropTableStatement parses a drop table string and returns a Statement AST object.
+// parseDropTableStatement parses a drop table string and returns a Statement AST row.
 // This function assumes the DROP TABLE tokens have already been consumed.
 func (p *Parser) parseDropTableStatement() (statement.DropTableStmt, error) {
 	var stmt statement.DropTableStmt
@@ -49,7 +49,7 @@ func (p *Parser) parseDropTableStatement() (statement.DropTableStmt, error) {
 	return stmt, nil
 }
 
-// parseDropIndexStatement parses a drop index string and returns a Statement AST object.
+// parseDropIndexStatement parses a drop index string and returns a Statement AST row.
 // This function assumes the DROP INDEX tokens have already been consumed.
 func (p *Parser) parseDropIndexStatement() (statement.DropIndexStmt, error) {
 	var stmt statement.DropIndexStmt
@@ -71,7 +71,7 @@ func (p *Parser) parseDropIndexStatement() (statement.DropIndexStmt, error) {
 	return stmt, nil
 }
 
-// parseDropSequenceStatement parses a drop sequence string and returns a Statement AST object.
+// parseDropSequenceStatement parses a drop sequence string and returns a Statement AST row.
 // This function assumes the DROP SEQUENCE tokens have already been consumed.
 func (p *Parser) parseDropSequenceStatement() (statement.DropSequenceStmt, error) {
 	var stmt statement.DropSequenceStmt

@@ -11,7 +11,7 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -167,28 +167,6 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
-// CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
-// it allows types.Object to be passed as parameters.
-// It implements the driver.NamedValueChecker interface.
-func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
-	if _, ok := nv.Value.(types.Object); ok {
-		return nil
-	}
-
-	if _, ok := nv.Value.(object.Scanner); ok {
-		return nil
-	}
-
-	var err error
-	val, err := driver.DefaultParameterConverter.ConvertValue(nv.Value)
-	if err == nil {
-		nv.Value = val
-		return nil
-	}
-
-	return nil
-}
-
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
 func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
@@ -258,12 +236,12 @@ var errStop = errors.New("stop")
 type recordStream struct {
 	res      *chai.Result
 	cancelFn func()
-	c        chan row
+	c        chan recordRow
 	wg       sync.WaitGroup
 	columns  []string
 }
 
-type row struct {
+type recordRow struct {
 	r   *chai.Row
 	err error
 }
@@ -274,7 +252,7 @@ func newRecordStream(res *chai.Result) *recordStream {
 	ds := recordStream{
 		res:      res,
 		cancelFn: cancel,
-		c:        make(chan row),
+		c:        make(chan recordRow),
 	}
 	ds.wg.Add(1)
 
@@ -297,7 +275,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return errStop
-		case rs.c <- row{
+		case rs.c <- recordRow{
 			r: r,
 		}:
 
@@ -314,7 +292,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		return
 	}
 	if err != nil {
-		rs.c <- row{
+		rs.c <- recordRow{
 			err: err,
 		}
 		return
@@ -334,7 +312,7 @@ func (rs *recordStream) Close() error {
 }
 
 func (rs *recordStream) Next(dest []driver.Value) error {
-	rs.c <- row{}
+	rs.c <- recordRow{}
 
 	row, ok := <-rs.c
 	if !ok {
@@ -365,12 +343,18 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 			}
 			dest[i] = b
 		case types.TypeInteger.String():
-			var ii int64
+			var ii int32
 			err = row.r.ScanColumn(rs.columns[i], &ii)
 			if err != nil {
 				return err
 			}
 			dest[i] = ii
+		case types.TypeBigint.String():
+			var bi int64
+			err = row.r.ScanColumn(rs.columns[i], &bi)
+			if err != nil {
+				return err
+			}
 		case types.TypeDouble.String():
 			var d float64
 			err = row.r.ScanColumn(rs.columns[i], &d)
@@ -399,20 +383,6 @@ func (rs *recordStream) Next(dest []driver.Value) error {
 				return err
 			}
 			dest[i] = b
-		case types.TypeArray.String():
-			var a []any
-			err = row.r.ScanColumn(rs.columns[i], &a)
-			if err != nil {
-				return err
-			}
-			dest[i] = a
-		case types.TypeObject.String():
-			m := make(map[string]any)
-			err = row.r.ScanColumn(rs.columns[i], &m)
-			if err != nil {
-				return err
-			}
-			dest[i] = m
 		default:
 			err = row.r.ScanColumn(rs.columns[i], dest[i])
 			if err != nil {
@@ -433,12 +403,12 @@ func (v valueScanner) Scan(src any) error {
 		return r.StructScan(v.dest)
 	}
 
-	vv, err := object.NewValue(src)
+	vv, err := row.NewValue(src)
 	if err != nil {
 		return err
 	}
 
-	return object.ScanValue(vv, v.dest)
+	return row.ScanValue(vv, v.dest)
 }
 
 // Scanner turns a variable into a sql.Scanner.

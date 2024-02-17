@@ -349,11 +349,6 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 		}
 
 		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
-	case ".doc":
-		if len(cmd) != 2 {
-			return fmt.Errorf(getUsage(".doc"))
-		}
-		return runDocCmd(cmd[1], out)
 	case ".restore":
 		if len(cmd) != 2 {
 			return fmt.Errorf(getUsage(".restore"))

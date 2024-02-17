@@ -12,7 +12,6 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/testutil/genexprtests"
@@ -20,14 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// BlobValue creates a literal value of type Blob.
-func BlobValue(v []byte) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewBlobValue(v)}
-}
-
-// TextValue creates a literal value of type Text.
-func TextValue(v string) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewTextValue(v)}
+// NullValue creates a literal value of type Null.
+func NullValue() expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewNullValue()}
 }
 
 // BoolValue creates a literal value of type Bool.
@@ -36,8 +30,13 @@ func BoolValue(v bool) expr.LiteralValue {
 }
 
 // IntegerValue creates a literal value of type Integer.
-func IntegerValue(v int64) expr.LiteralValue {
+func IntegerValue(v int32) expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewIntegerValue(v)}
+}
+
+// BigintValue creates a literal value of type Bigint.
+func BigintValue(v int64) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewBigintValue(v)}
 }
 
 // DoubleValue creates a literal value of type Double.
@@ -45,19 +44,14 @@ func DoubleValue(v float64) expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewDoubleValue(v)}
 }
 
-// NullValue creates a literal value of type Null.
-func NullValue() expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewNullValue()}
+// TextValue creates a literal value of type Text.
+func TextValue(v string) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewTextValue(v)}
 }
 
-// ObjectValue creates a literal value of type Object.
-func ObjectValue(d types.Object) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewObjectValue(d)}
-}
-
-// ArrayValue creates a literal value of type Array.
-func ArrayValue(a types.Array) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewArrayValue(a)}
+// BlobValue creates a literal value of type Blob.
+func BlobValue(v []byte) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewBlobValue(v)}
 }
 
 func ExprList(t testing.TB, s string) expr.LiteralExprList {
@@ -65,32 +59,16 @@ func ExprList(t testing.TB, s string) expr.LiteralExprList {
 
 	e, err := parser.ParseExpr(s)
 	assert.NoError(t, err)
-	require.IsType(t, e, expr.LiteralExprList{})
-
-	return e.(expr.LiteralExprList)
-}
-
-func ParsePath(t testing.TB, p string) expr.Path {
-	t.Helper()
-
-	return expr.Path(ParseObjectPath(t, p))
-}
-
-func ParseObjectPath(t testing.TB, p string) object.Path {
-	t.Helper()
-
-	vp, err := parser.ParsePath(p)
-	assert.NoError(t, err)
-	return vp
-}
-
-func ParseObjectPaths(t testing.TB, str ...string) []object.Path {
-	var paths []object.Path
-	for _, s := range str {
-		paths = append(paths, ParseObjectPath(t, s))
+	switch e := e.(type) {
+	case expr.LiteralExprList:
+		return e
+	case expr.Parentheses:
+		return expr.LiteralExprList{e.E}
+	default:
+		t.Fatalf("unexpected expression type: %T", e)
 	}
 
-	return paths
+	return nil
 }
 
 func ParseNamedExpr(t testing.TB, s string, name ...string) expr.Expr {
@@ -128,6 +106,24 @@ func ParseExprs(t testing.TB, s ...string) []expr.Expr {
 	return ex
 }
 
+func ParseExprList(t testing.TB, s string) expr.LiteralExprList {
+	t.Helper()
+
+	e, err := parser.ParseExpr(s)
+	assert.NoError(t, err)
+
+	switch e := e.(type) {
+	case expr.LiteralExprList:
+		return e
+	case expr.Parentheses:
+		return expr.LiteralExprList{e.E}
+	default:
+		t.Fatalf("unexpected expression type: %T", e)
+	}
+
+	return e.(expr.LiteralExprList)
+}
+
 func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
 	t.Helper()
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
@@ -143,8 +139,7 @@ func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want t
 
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	t.Helper()
-	n := strings.Split(name, ".")
-	def, err := functions.DefaultPackages().GetFunc(n[0], n[1])
+	def, err := functions.GetFunc(name)
 	assert.NoError(t, err)
 	require.NotNil(t, def)
 	expr, err := def.Function(args...)
@@ -208,7 +203,7 @@ func ExprRunner(t *testing.T, testfile string) {
 						} else {
 							// eval it, it should return an error
 							_, err = e.Eval(env)
-							require.NotNilf(t, err, "expected expr to return an error at %s:%\n`%s`, got nil", testfile, stmt.ExprLine, stmt.Expr)
+							require.NotNilf(t, err, "expected expr to return an error at %s:%d\n`%s`, got nil", testfile, stmt.ExprLine, stmt.Expr)
 							require.Regexpf(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error(), "expected error message to match at %s:%d", testfile, stmt.ResLine)
 						}
 					})

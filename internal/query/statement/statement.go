@@ -3,6 +3,7 @@ package statement
 import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/expr"
 	"github.com/cockroachdb/errors"
 )
 
@@ -78,6 +79,27 @@ func (r *Result) Close() (err error) {
 			err = r.Tx.Rollback()
 		}
 	}
+
+	return err
+}
+
+func ensureExprColumnsExist(ctx *Context, tableName string, e expr.Expr) (err error) {
+	info, err := ctx.Tx.Catalog.GetTableInfo(tableName)
+	if err != nil {
+		return err
+	}
+	expr.Walk(e, func(e expr.Expr) bool {
+		switch t := e.(type) {
+		case expr.Column:
+			cc := info.ColumnConstraints.GetColumnConstraint(string(t))
+			if cc == nil {
+				err = errors.Newf("column %s does not exist", t)
+				return false
+			}
+		}
+
+		return true
+	})
 
 	return err
 }

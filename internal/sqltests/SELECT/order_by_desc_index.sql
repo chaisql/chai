@@ -128,7 +128,7 @@ SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 EXPLAIN SELECT a, b FROM test WHERE a = 100 ORDER BY b DESC;
 /* result:
 {
-    plan: "index.Scan(\"test_a_b_idx\", [{\"min\": [100], \"exact\": true}]) | rows.Project(a, b)"
+    plan: "index.Scan(\"test_a_b_idx\", [{\"min\": (100), \"exact\": true}]) | rows.Project(a, b)"
 }
 */
 

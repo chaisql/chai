@@ -14,11 +14,11 @@ func TestAlterTable(t *testing.T) {
 	assert.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE foo")
+	err = db.Exec("CREATE TABLE foo(name TEXT, age INT)")
 	assert.NoError(t, err)
 
 	// Insert some data into foo
-	err = db.Exec(`INSERT INTO foo VALUES {name: "John Doe", age: 99}`)
+	err = db.Exec(`INSERT INTO foo VALUES ('John Doe', 99)`)
 	assert.NoError(t, err)
 
 	// Renaming the table to the same name should fail.
@@ -31,7 +31,7 @@ func TestAlterTable(t *testing.T) {
 	// Selecting from the old name should fail.
 	err = db.Exec("SELECT * FROM foo")
 	if !errs.IsNotFoundError(err) {
-		assert.ErrorIs(t, err, errs.NotFoundError{Name: "foo"})
+		assert.ErrorIs(t, err, errs.NewNotFoundError("foo"))
 	}
 
 	r, err := db.QueryRow("SELECT * FROM bar")

@@ -40,12 +40,25 @@ func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, e
 			return a.Div(b)
 		case scanner.MOD:
 			return a.Mod(b)
+		}
+
+		ia, ok := a.(types.Integral)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		_, ok = b.(types.Integral)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		switch op.simpleOperator.Tok {
 		case scanner.BITWISEAND:
-			return a.BitwiseAnd(b)
+			return ia.BitwiseAnd(b)
 		case scanner.BITWISEOR:
-			return a.BitwiseOr(b)
+			return ia.BitwiseOr(b)
 		case scanner.BITWISEXOR:
-			return a.BitwiseXor(b)
+			return ia.BitwiseXor(b)
 		}
 
 		panic("unknown arithmetic token")

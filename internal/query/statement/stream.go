@@ -16,13 +16,8 @@ type StreamStmt struct {
 
 // Prepare implements the Preparer interface.
 func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
-	st, err := planner.Optimize(s.Stream, ctx.Tx.Catalog)
-	if err != nil {
-		return nil, err
-	}
-
 	return &PreparedStreamStmt{
-		Stream:   st,
+		Stream:   s.Stream,
 		ReadOnly: s.ReadOnly,
 	}, nil
 }
@@ -36,9 +31,14 @@ type PreparedStreamStmt struct {
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
+	st, err := planner.Optimize(s.Stream, ctx.Tx.Catalog, ctx.Params)
+	if err != nil {
+		return Result{}, err
+	}
+
 	return Result{
 		Iterator: &StreamStmtIterator{
-			Stream:  s.Stream,
+			Stream:  st,
 			Context: ctx,
 		},
 	}, nil
@@ -73,7 +73,7 @@ func (s *StreamStmtIterator) Iterate(fn func(r database.Row) error) error {
 			return nil
 		}
 
-		return fn(env.Row)
+		return fn(env.Row.(database.Row))
 	})
 	if errors.Is(err, stream.ErrStreamClosed) {
 		err = nil

@@ -2,12 +2,9 @@ package tree
 
 import (
 	"fmt"
-	"math"
-	"time"
 
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/engine"
-	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
 
@@ -128,7 +125,16 @@ func (t *Tree) Get(key *Key) ([]byte, error) {
 		return nil, err
 	}
 
-	return t.Session.Get(k)
+	v, err := t.Session.Get(k)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(v) == 0 || v[0] == 0 {
+		return nil, nil
+	}
+
+	return v, nil
 }
 
 // Exists returns true if the key exists in the tree.
@@ -208,6 +214,10 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		if err != nil {
 			return err
 		}
+		if len(v) == 0 || v[0] == 0 {
+			v = nil
+		}
+
 		err = fn(&k, v)
 		if err != nil {
 			return err
@@ -285,10 +295,10 @@ func (t *Tree) buildMinKeyForType(max *Key, desc bool) ([]byte, error) {
 	if len(max.values) == 1 {
 		buf := encoding.EncodeInt(nil, int64(t.Namespace))
 		if desc {
-			return append(buf, byte(t.NewMinTypeForTypeDesc(max.values[0].Type()))), nil
+			return append(buf, max.values[0].Type().MinEnctypeDesc()), nil
 		}
 
-		return append(buf, byte(t.NewMinTypeForType(max.values[0].Type()))), nil
+		return append(buf, max.values[0].Type().MinEnctype()), nil
 	}
 
 	buf, err := NewKey(max.values[:len(max.values)-1]...).Encode(t.Namespace, t.Order)
@@ -297,10 +307,10 @@ func (t *Tree) buildMinKeyForType(max *Key, desc bool) ([]byte, error) {
 	}
 	i := len(max.values) - 1
 	if desc {
-		return append(buf, byte(t.NewMinTypeForTypeDesc(max.values[i].Type()))), nil
+		return append(buf, max.values[i].Type().MinEnctypeDesc()), nil
 	}
 
-	return append(buf, byte(t.NewMinTypeForType(max.values[i].Type()))), nil
+	return append(buf, max.values[i].Type().MinEnctype()), nil
 }
 
 func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
@@ -311,9 +321,9 @@ func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
 	if len(min.values) == 1 {
 		buf := encoding.EncodeInt(nil, int64(t.Namespace))
 		if desc {
-			return append(buf, byte(t.NewMaxTypeForTypeDesc(min.values[0].Type()))), nil
+			return append(buf, min.values[0].Type().MaxEnctypeDesc()), nil
 		}
-		return append(buf, byte(t.NewMaxTypeForType(min.values[0].Type()))), nil
+		return append(buf, min.values[0].Type().MaxEnctype()), nil
 	}
 
 	buf, err := NewKey(min.values[:len(min.values)-1]...).Encode(t.Namespace, t.Order)
@@ -322,10 +332,10 @@ func (t *Tree) buildMaxKeyForType(min *Key, desc bool) ([]byte, error) {
 	}
 	i := len(min.values) - 1
 	if desc {
-		return append(buf, byte(t.NewMaxTypeForTypeDesc(min.values[i].Type()))), nil
+		return append(buf, min.values[i].Type().MaxEnctypeDesc()), nil
 	}
 
-	return append(buf, byte(t.NewMaxTypeForType(min.values[i].Type()))), nil
+	return append(buf, min.values[i].Type().MaxEnctype()), nil
 }
 
 func (t *Tree) buildLastKey() []byte {
@@ -357,156 +367,6 @@ func (t *Tree) buildEndKeyInclusive(key *Key, desc bool) ([]byte, error) {
 
 func (t *Tree) buildEndKeyExclusive(key *Key, desc bool) ([]byte, error) {
 	return key.Encode(t.Namespace, t.Order)
-}
-
-func (t *Tree) NewMinValueForType(tp types.Type) types.Value {
-	switch tp {
-	case types.TypeNull:
-		return types.NewNullValue()
-	case types.TypeBoolean:
-		return types.NewBooleanValue(false)
-	case types.TypeInteger:
-		return types.NewIntegerValue(math.MinInt64)
-	case types.TypeDouble:
-		return types.NewDoubleValue(-math.MaxFloat64)
-	case types.TypeTimestamp:
-		return types.NewTimestampValue(time.Time{})
-	case types.TypeText:
-		return types.NewTextValue("")
-	case types.TypeBlob:
-		return types.NewBlobValue(nil)
-	case types.TypeArray:
-		return types.NewArrayValue(nil)
-	case types.TypeObject:
-		return types.NewObjectValue(nil)
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
-}
-
-func (t *Tree) NewMinTypeForType(tp types.Type) byte {
-	switch tp {
-	case types.TypeNull:
-		return encoding.NullValue
-	case types.TypeBoolean:
-		return encoding.FalseValue
-	case types.TypeInteger:
-		return encoding.Int64Value
-	case types.TypeDouble:
-		return encoding.Float64Value
-	case types.TypeTimestamp:
-		return encoding.Int64Value
-	case types.TypeText:
-		return encoding.TextValue
-	case types.TypeBlob:
-		return encoding.BlobValue
-	case types.TypeArray:
-		return encoding.ArrayValue
-	case types.TypeObject:
-		return encoding.ObjectValue
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
-}
-
-func (t *Tree) NewMinTypeForTypeDesc(tp types.Type) byte {
-	switch tp {
-	case types.TypeNull:
-		return encoding.DESC_NullValue
-	case types.TypeBoolean:
-		return encoding.DESC_TrueValue
-	case types.TypeInteger:
-		return encoding.DESC_Uint64Value
-	case types.TypeDouble:
-		return encoding.DESC_Float64Value
-	case types.TypeTimestamp:
-		return encoding.DESC_Uint64Value
-	case types.TypeText:
-		return encoding.DESC_TextValue
-	case types.TypeBlob:
-		return encoding.DESC_BlobValue
-	case types.TypeArray:
-		return encoding.DESC_ArrayValue
-	case types.TypeObject:
-		return encoding.DESC_ObjectValue
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
-}
-
-func (t *Tree) NewMaxTypeForTypeDesc(tp types.Type) byte {
-	switch tp {
-	case types.TypeNull:
-		return encoding.DESC_NullValue + 1
-	case types.TypeBoolean:
-		return encoding.DESC_FalseValue + 1
-	case types.TypeInteger:
-		return encoding.DESC_Int64Value + 1
-	case types.TypeDouble:
-		return encoding.DESC_Float64Value + 1
-	case types.TypeTimestamp:
-		return encoding.DESC_Int64Value + 1
-	case types.TypeText:
-		return encoding.DESC_TextValue + 1
-	case types.TypeBlob:
-		return encoding.DESC_BlobValue + 1
-	case types.TypeArray:
-		return encoding.DESC_ArrayValue + 1
-	case types.TypeObject:
-		return encoding.DESC_ObjectValue + 1
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
-}
-
-func (t *Tree) NewMinValueForTypeDesc(tp types.Type) types.Value {
-	switch tp {
-	case types.TypeNull:
-		return types.NewNullValue()
-	case types.TypeBoolean:
-		return types.NewBooleanValue(true)
-	case types.TypeInteger:
-		return types.NewIntegerValue(math.MaxInt64)
-	case types.TypeDouble:
-		return types.NewDoubleValue(math.MaxFloat64)
-	case types.TypeTimestamp:
-		return types.NewIntegerValue(math.MaxInt64)
-	case types.TypeText:
-		return types.NewTextValue("")
-	case types.TypeBlob:
-		return types.NewBlobValue(nil)
-	case types.TypeArray:
-		return types.NewArrayValue(nil)
-	case types.TypeObject:
-		return types.NewObjectValue(nil)
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
-}
-
-func (t *Tree) NewMaxTypeForType(tp types.Type) byte {
-	switch tp {
-	case types.TypeNull:
-		return encoding.NullValue + 1
-	case types.TypeBoolean:
-		return encoding.TrueValue + 1
-	case types.TypeInteger:
-		return encoding.Uint64Value + 1
-	case types.TypeDouble:
-		return encoding.Float64Value + 1
-	case types.TypeTimestamp:
-		return encoding.Uint64Value + 1
-	case types.TypeText:
-		return encoding.TextValue + 1
-	case types.TypeBlob:
-		return encoding.BlobValue + 1
-	case types.TypeArray:
-		return encoding.ArrayValue + 1
-	case types.TypeObject:
-		return encoding.ObjectValue + 1
-	default:
-		panic(fmt.Sprintf("unsupported type %v", t))
-	}
 }
 
 // A Range of keys to iterate on.

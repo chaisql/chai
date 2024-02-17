@@ -7,7 +7,7 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -18,9 +18,9 @@ func TestScalarFunctionDef(t *testing.T) {
 		"foo",
 		3,
 		func(args ...types.Value) (types.Value, error) {
-			arg1 := args[0].V().(int64)
-			arg2 := args[1].V().(int64)
-			arg3 := args[2].V().(int64)
+			arg1 := args[0].V().(int32)
+			arg2 := args[1].V().(int32)
+			arg3 := args[2].V().(int32)
 
 			return types.NewIntegerValue(arg1 + arg2 + arg3), nil
 		},
@@ -30,21 +30,17 @@ func TestScalarFunctionDef(t *testing.T) {
 		require.Equal(t, "foo", def.Name())
 	})
 
-	t.Run("Arity()", func(t *testing.T) {
-		require.Equal(t, 3, def.Arity())
-	})
-
 	t.Run("String()", func(t *testing.T) {
 		require.Equal(t, "foo(arg1, arg2, arg3)", def.String())
 	})
 
 	t.Run("Function()", func(t *testing.T) {
-		fb := object.NewFieldBuffer()
+		fb := row.NewColumnBuffer()
 		fb = fb.Add("a", types.NewIntegerValue(2))
 		r := database.NewBasicRow(fb)
 		env := environment.New(r)
 		expr1 := expr.Add(expr.LiteralValue{Value: types.NewIntegerValue(1)}, expr.LiteralValue{Value: types.NewIntegerValue(0)})
-		expr2 := expr.Path(object.NewPath("a"))
+		expr2 := expr.Column("a")
 		expr3 := expr.Div(expr.LiteralValue{Value: types.NewIntegerValue(6)}, expr.LiteralValue{Value: types.NewIntegerValue(2)})
 
 		t.Run("OK", func(t *testing.T) {

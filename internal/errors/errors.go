@@ -31,23 +31,23 @@ func IsAlreadyExistsError(err error) bool {
 // NotFoundError is returned when the requested table, index or sequence
 // doesn't exist.
 type NotFoundError struct {
-	Name string
+	name string
 }
 
 func NewRowNotFoundError() error {
-	return NewNotFoundError("row")
+	return errors.WithStack(NewNotFoundError("row"))
 }
 
 func NewNotFoundError(name string) error {
-	return &NotFoundError{Name: name}
+	return errors.WithStack(&NotFoundError{name: name})
 }
 
 func (a NotFoundError) Error() string {
-	if a.Name == "row" {
+	if a.name == "row" {
 		return "row not found"
 	}
 
-	return fmt.Sprintf("%q not found", a.Name)
+	return fmt.Sprintf("%q not found", a.name)
 }
 
 func IsNotFoundError(err error) bool {

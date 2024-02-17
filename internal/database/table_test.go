@@ -7,8 +7,8 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/database/catalogstore"
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
@@ -42,8 +42,21 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 
 	_, tx, fn := testutil.NewTestTx(t)
 
-	ti := database.TableInfo{TableName: "test"}
-	ti.FieldConstraints.AllowExtraFields = true
+	ti := database.TableInfo{
+		TableName: "test",
+		ColumnConstraints: database.MustNewColumnConstraints(
+			&database.ColumnConstraint{
+				Position: 0,
+				Column:   "a",
+				Type:     types.TypeText,
+			},
+			&database.ColumnConstraint{
+				Position: 0,
+				Column:   "b",
+				Type:     types.TypeText,
+			},
+		),
+	}
 	return createTable(t, tx, ti), fn
 }
 
@@ -79,14 +92,14 @@ func createTableIfNotExists(t testing.TB, tx *database.Transaction, info databas
 	return tb
 }
 
-func newObject() *object.FieldBuffer {
-	return object.NewFieldBuffer().
-		Add("fielda", types.NewTextValue("a")).
-		Add("fieldb", types.NewTextValue("b"))
+func newRow() *row.ColumnBuffer {
+	return row.NewColumnBuffer().
+		Add("a", types.NewTextValue("a")).
+		Add("b", types.NewTextValue("b"))
 }
 
-// TestTableGetObject verifies GetObject behaviour.
-func TestTableGetObject(t *testing.T) {
+// TestTableGetRow verifies GetRow behaviour.
+func TestTableGetRow(t *testing.T) {
 	t.Run("Should fail if not found", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
@@ -96,29 +109,26 @@ func TestTableGetObject(t *testing.T) {
 		require.Nil(t, r)
 	})
 
-	t.Run("Should return the right object", func(t *testing.T) {
+	t.Run("Should return the right row", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		// create two objects, one with an additional field
-		doc1 := newObject()
-		vc := types.NewDoubleValue(40)
-		doc1.Add("fieldc", vc)
-		doc2 := newObject()
+		// create two rows
+		row1 := newRow()
+		row2 := newRow()
+		row2.Set("a", types.NewTextValue("c"))
 
-		key, _, err := tb.Insert(doc1)
+		key, _, err := tb.Insert(row1)
 		assert.NoError(t, err)
-		_, _, err = tb.Insert(doc2)
+		_, _, err = tb.Insert(row2)
 		assert.NoError(t, err)
 
-		// fetch doc1 and make sure it returns the right one
+		// fetch row1 and make sure it returns the right one
 		res, err := tb.GetRow(key)
 		assert.NoError(t, err)
-		fc, err := res.Get("fieldc")
+		v, err := res.Get("a")
 		assert.NoError(t, err)
-		ok, err := vc.EQ(fc)
-		assert.NoError(t, err)
-		require.True(t, ok)
+		require.Equal(t, "a", types.AsString(v))
 	})
 }
 
@@ -131,19 +141,33 @@ func TestTableInsert(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		insertDoc := func(db *database.Database) (rawKey *tree.Key) {
+		insertRow := func(db *database.Database) (rawKey *tree.Key) {
 			t.Helper()
 
 			update(t, db, func(tx *database.Transaction) error {
 				t.Helper()
 
 				// create table if not exists
-				ti := database.TableInfo{TableName: "test"}
-				ti.FieldConstraints.AllowExtraFields = true
+				ti := database.TableInfo{
+					TableName: "test",
+					ColumnConstraints: database.MustNewColumnConstraints(
+						&database.ColumnConstraint{
+							Position: 0,
+							Column:   "a",
+							Type:     types.TypeText,
+						},
+						&database.ColumnConstraint{
+							Position: 0,
+							Column:   "b",
+							Type:     types.TypeText,
+						},
+					),
+				}
+
 				tb := createTableIfNotExists(t, tx, ti)
 
-				doc := newObject()
-				key, _, err := tb.Insert(doc)
+				r := newRow()
+				key, _, err := tb.Insert(r)
 				assert.NoError(t, err)
 				require.NotEmpty(t, key)
 				rawKey = key
@@ -152,7 +176,7 @@ func TestTableInsert(t *testing.T) {
 			return
 		}
 
-		key1 := insertDoc(db1)
+		key1 := insertRow(db1)
 
 		err = db1.Close()
 		assert.NoError(t, err)
@@ -163,7 +187,7 @@ func TestTableInsert(t *testing.T) {
 		})
 		assert.NoError(t, err)
 
-		key2 := insertDoc(db2)
+		key2 := insertRow(db2)
 
 		vs, err := key1.Decode()
 		assert.NoError(t, err)
@@ -192,13 +216,13 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 
 		// create two objects, one with an additional field
-		doc1 := newObject()
-		doc1.Add("fieldc", types.NewIntegerValue(40))
-		doc2 := newObject()
+		row1 := newRow()
+		row1.Add("fieldc", types.NewIntegerValue(40))
+		row2 := newRow()
 
-		key1, _, err := tb.Insert(testutil.CloneObject(t, doc1))
+		key1, _, err := tb.Insert(testutil.CloneRow(t, row1))
 		assert.NoError(t, err)
-		key2, _, err := tb.Insert(testutil.CloneObject(t, doc2))
+		key2, _, err := tb.Insert(testutil.CloneRow(t, row2))
 		assert.NoError(t, err)
 
 		// delete the object
@@ -223,47 +247,47 @@ func TestTableReplace(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
-		_, err := tb.Replace(tree.NewKey(types.NewIntegerValue(10)), newObject())
+		_, err := tb.Replace(tree.NewKey(types.NewIntegerValue(10)), newRow())
 		require.True(t, errs.IsNotFoundError(err))
 	})
 
-	t.Run("Should replace the right object", func(t *testing.T) {
+	t.Run("Should replace the right row", func(t *testing.T) {
 		tb, cleanup := newTestTable(t)
 		defer cleanup()
 
 		// create two different objects
-		doc1 := newObject()
-		doc2 := object.NewFieldBuffer().
-			Add("fielda", types.NewTextValue("c")).
-			Add("fieldb", types.NewTextValue("d"))
+		row1 := newRow()
+		row2 := row.NewColumnBuffer().
+			Add("a", types.NewTextValue("c")).
+			Add("b", types.NewTextValue("d"))
 
-		key1, _, err := tb.Insert(doc1)
+		key1, _, err := tb.Insert(row1)
 		assert.NoError(t, err)
-		key2, _, err := tb.Insert(doc2)
+		key2, _, err := tb.Insert(row2)
 		assert.NoError(t, err)
 
 		// create a third object
-		doc3 := object.NewFieldBuffer().
-			Add("fielda", types.NewTextValue("e")).
-			Add("fieldb", types.NewTextValue("f"))
+		doc3 := row.NewColumnBuffer().
+			Add("a", types.NewTextValue("e")).
+			Add("b", types.NewTextValue("f"))
 
-		// replace doc1 with doc3
+		// replace row1 with doc3
 		d3, err := tb.Replace(key1, doc3)
 		assert.NoError(t, err)
 
 		// make sure it replaced it correctly
 		res, err := tb.GetRow(key1)
 		assert.NoError(t, err)
-		f, err := res.Get("fielda")
+		f, err := res.Get("a")
 		assert.NoError(t, err)
 		require.Equal(t, "e", f.V().(string))
 
-		testutil.RequireObjEqual(t, d3.Object(), res.Object())
+		testutil.RequireRowEqual(t, d3, res)
 
 		// make sure it didn't also replace the other one
 		res, err = tb.GetRow(key2)
 		assert.NoError(t, err)
-		f, err = res.Get("fielda")
+		f, err = res.Get("a")
 		assert.NoError(t, err)
 		require.Equal(t, "c", f.V().(string))
 	})
@@ -284,12 +308,12 @@ func TestTableTruncate(t *testing.T) {
 		defer cleanup()
 
 		// create two objects
-		doc1 := newObject()
-		doc2 := newObject()
+		row1 := newRow()
+		row2 := newRow()
 
-		_, _, err := tb.Insert(doc1)
+		_, _, err := tb.Insert(row1)
 		assert.NoError(t, err)
-		_, _, err = tb.Insert(doc2)
+		_, _, err = tb.Insert(row2)
 		assert.NoError(t, err)
 
 		err = tb.Truncate()
@@ -307,10 +331,10 @@ func TestTableTruncate(t *testing.T) {
 func BenchmarkTableInsert(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			var fb object.FieldBuffer
+			var fb row.ColumnBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
+				fb.Add(fmt.Sprintf("name-%d", i), types.NewBigintValue(i))
 			}
 
 			b.ResetTimer()
@@ -336,10 +360,10 @@ func BenchmarkTableScan(b *testing.B) {
 			tb, cleanup := newTestTable(b)
 			defer cleanup()
 
-			var fb object.FieldBuffer
+			var fb row.ColumnBuffer
 
 			for i := int64(0); i < 10; i++ {
-				fb.Add(fmt.Sprintf("name-%d", i), types.NewIntegerValue(i))
+				fb.Add(fmt.Sprintf("name-%d", i), types.NewBigintValue(i))
 			}
 
 			for i := 0; i < size; i++ {

@@ -1,18 +1,16 @@
 package types
 
 import (
+	"fmt"
+
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/cockroachdb/errors"
 )
 
 var (
-	// ErrFieldNotFound must be returned by object implementations, when calling the GetByField method and
-	// the field wasn't found in the object.
-	ErrFieldNotFound = errors.New("field not found")
-	// ErrValueNotFound must be returned by Array implementations, when calling the GetByIndex method and
-	// the index wasn't found in the array.
-	ErrValueNotFound = errors.New("value not found")
-
-	errStop = errors.New("stop")
+	// ErrColumnNotFound must be returned by row implementations, when calling the Get method and
+	// the column doesn't exist.
+	ErrColumnNotFound = errors.New("column not found")
 )
 
 // Type represents a type supported by the database.
@@ -25,13 +23,35 @@ const (
 	TypeNull
 	TypeBoolean
 	TypeInteger
+	TypeBigint
 	TypeDouble
 	TypeTimestamp
 	TypeText
 	TypeBlob
-	TypeArray
-	TypeObject
 )
+
+func (t Type) Def() TypeDefinition {
+	switch t {
+	case TypeNull:
+		return NullTypeDef{}
+	case TypeBoolean:
+		return BooleanTypeDef{}
+	case TypeInteger:
+		return IntegerTypeDef{}
+	case TypeBigint:
+		return BigintTypeDef{}
+	case TypeDouble:
+		return DoubleTypeDef{}
+	case TypeTimestamp:
+		return TimestampTypeDef{}
+	case TypeText:
+		return TextTypeDef{}
+	case TypeBlob:
+		return BlobTypeDef{}
+	}
+
+	return nil
+}
 
 func (t Type) String() string {
 	switch t {
@@ -41,6 +61,8 @@ func (t Type) String() string {
 		return "boolean"
 	case TypeInteger:
 		return "integer"
+	case TypeBigint:
+		return "bigint"
 	case TypeDouble:
 		return "double"
 	case TypeTimestamp:
@@ -49,18 +71,108 @@ func (t Type) String() string {
 		return "blob"
 	case TypeText:
 		return "text"
-	case TypeArray:
-		return "array"
-	case TypeObject:
-		return "object"
 	}
 
-	return "any"
+	panic(fmt.Sprintf("unsupported type %#v", t))
+}
+
+func (t Type) MinEnctype() byte {
+	switch t {
+	case TypeNull:
+		return encoding.NullValue
+	case TypeBoolean:
+		return encoding.FalseValue
+	case TypeInteger:
+		return encoding.Int32Value
+	case TypeBigint:
+		return encoding.Int64Value
+	case TypeDouble:
+		return encoding.Float64Value
+	case TypeTimestamp:
+		return encoding.Int64Value
+	case TypeText:
+		return encoding.TextValue
+	case TypeBlob:
+		return encoding.BlobValue
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t Type) MinEnctypeDesc() byte {
+	switch t {
+	case TypeNull:
+		return encoding.DESC_NullValue
+	case TypeBoolean:
+		return encoding.DESC_TrueValue
+	case TypeInteger:
+		return encoding.DESC_Uint32Value
+	case TypeBigint:
+		return encoding.DESC_Uint64Value
+	case TypeDouble:
+		return encoding.DESC_Float64Value
+	case TypeTimestamp:
+		return encoding.DESC_Uint64Value
+	case TypeText:
+		return encoding.DESC_TextValue
+	case TypeBlob:
+		return encoding.DESC_BlobValue
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t Type) MaxEnctype() byte {
+	switch t {
+	case TypeNull:
+		return encoding.NullValue + 1
+	case TypeBoolean:
+		return encoding.TrueValue + 1
+	case TypeInteger:
+		return encoding.Uint32Value + 1
+	case TypeBigint:
+		return encoding.Uint64Value + 1
+	case TypeDouble:
+		return encoding.Float64Value + 1
+	case TypeTimestamp:
+		return encoding.Uint64Value + 1
+	case TypeText:
+		return encoding.TextValue + 1
+	case TypeBlob:
+		return encoding.BlobValue + 1
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
+}
+
+func (t Type) MaxEnctypeDesc() byte {
+	switch t {
+	case TypeNull:
+		return encoding.DESC_NullValue + 1
+	case TypeBoolean:
+		return encoding.DESC_FalseValue + 1
+	case TypeInteger:
+		return encoding.DESC_Int64Value + 1
+	case TypeDouble:
+		return encoding.DESC_Float64Value + 1
+	case TypeTimestamp:
+		return encoding.DESC_Int64Value + 1
+	case TypeText:
+		return encoding.DESC_TextValue + 1
+	case TypeBlob:
+		return encoding.DESC_BlobValue + 1
+	default:
+		panic(fmt.Sprintf("unsupported type %v", t))
+	}
 }
 
 // IsNumber returns true if t is either an integer or a float.
 func (t Type) IsNumber() bool {
-	return t == TypeInteger || t == TypeDouble
+	return t == TypeInteger || t == TypeBigint || t == TypeDouble
+}
+
+func (t Type) IsInteger() bool {
+	return t == TypeInteger || t == TypeBigint
 }
 
 // IsTimestampCompatible returns true if t is either a timestamp, an integer, or a text.
@@ -98,31 +210,25 @@ type Value interface {
 	String() string
 	MarshalJSON() ([]byte, error)
 	MarshalText() ([]byte, error)
+	TypeDef() TypeDefinition
+	Encode(dst []byte) ([]byte, error)
+	EncodeAsKey(dst []byte) ([]byte, error)
+	CastAs(t Type) (Value, error)
 }
 
-// A Object represents a group of key value pairs.
-type Object interface {
-	// Iterate goes through all the fields of the object and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(field string, value Value) error) error
-	// GetByField returns a value by field name.
-	// Must return ErrFieldNotFound if the field doesn't exist.
-	GetByField(field string) (Value, error)
-
-	// MarshalJSON implements the json.Marshaler interface.
-	// It returns a JSON representation of the object.
-	MarshalJSON() ([]byte, error)
+type TypeDefinition interface {
+	New(v any) Value
+	Type() Type
+	Decode(src []byte) (Value, int)
+	IsComparableWith(other Type) bool
+	IsIndexComparableWith(other Type) bool
 }
 
-// An Array contains a set of values.
-type Array interface {
-	// Iterate goes through all the values of the array and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(i int, value Value) error) error
-	// GetByIndex returns a value by index of the array.
-	GetByIndex(i int) (Value, error)
-
-	// MarshalJSON implements the json.Marshaler interface.
-	// It returns a JSON representation of the array.
-	MarshalJSON() ([]byte, error)
+type Comparable interface {
+	EQ(other Value) (bool, error)
+	GT(other Value) (bool, error)
+	GTE(other Value) (bool, error)
+	LT(other Value) (bool, error)
+	LTE(other Value) (bool, error)
+	Between(a, b Value) (bool, error)
 }

@@ -1,12 +1,11 @@
 -- setup:
-CREATE TABLE test;
+CREATE TABLE test(a INT, b TEXT, c bool);
 INSERT INTO test(a, b, c) VALUES
-    (1, {d: 1}, [true]),
-    (1, {d: 2}, [false]),
-    (1, {d: 2}, []),
-    (2, {d: 3}, []),
-    (2, {d: 3}, []),
-    ([true], 1, 1.5);
+    (1, 'foo', true),
+    (1, 'bar', false),
+    (1, 'bar', NULL),
+    (2, 'baz', NULL),
+    (2, 'baz', NULL);
 
 -- test: literal
 SELECT DISTINCT 'a' FROM test;
@@ -20,77 +19,62 @@ SELECT DISTINCT 'a' FROM test;
 SELECT DISTINCT * FROM test;
 /* result:
 {
-    a: 1.0,
-    b: {d: 1.0},
-    c: [true]
+    a: 1,
+    b: "bar",
+    c: null
 }
 {
-    a: 1.0,
-    b: {d: 2.0},
-    c: []
+    a: 1,
+    b: "bar",
+    c: false
 }
 {
-    a: 1.0,
-    b: {d: 2.0},
-    c: [false]
+    a: 1,
+    b: "foo",
+    c: true
 }
 {
-    a: 2.0,
-    b: {d: 3.0},
-    c: []
-}
-{
-    a: [true],
-    b: 1.0,
-    c: 1.5
+    a: 2,
+    b: "baz",
+    c: null
 }
 */
 
--- test: field path
+-- test: column
 SELECT DISTINCT a FROM test;
 /* result:
 {
-    a: 1.0,
+    a: 1,
 }
 {
-    a: 2.0,
-}
-{
-    a: [true],
+    a: 2,
 }
 */
 
--- test: field path
+-- test: column
 SELECT DISTINCT a FROM test;
 /* result:
 {
-    a: 1.0,
+    a: 1,
 }
 {
-    a: 2.0,
-}
-{
-    a: [true],
+    a: 2,
 }
 */
 
--- test: multiple field paths
-SELECT DISTINCT a, b.d FROM test;
+-- test: multiple columns
+SELECT DISTINCT a, b FROM test;
 /* result:
 {
-    a: 1.0,
-    "b.d": 1.0
+    a: 1,
+    b: "bar"
 }
 {
-    a: 1.0,
-    "b.d": 2.0
+    a: 1,
+    b: "foo"
 }
 {
-    a: 2.0,
-    "b.d": 3.0
-}
-{
-    a: [true],
-    "b.d": NULL
+    a: 2,
+    b: "baz"
 }
 */

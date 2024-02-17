@@ -1,13 +1,3 @@
--- test: no constraint
-CREATE TABLE test(a, b, c);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ANY, b ANY, c ANY)"
-}
-*/
-
 -- test: type
 CREATE TABLE test(a INTEGER);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
@@ -19,42 +9,42 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: NOT NULL
-CREATE TABLE test(a NOT NULL);
+CREATE TABLE test(a INT NOT NULL);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a ANY NOT NULL)"
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL)"
 }
 */
 
 -- test: default
-CREATE TABLE test(a DEFAULT 10);
+CREATE TABLE test(a INT DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a ANY DEFAULT 10)"
+  "sql": "CREATE TABLE test (a INTEGER DEFAULT 10)"
 }
 */
 
 -- test: unique
-CREATE TABLE test(a UNIQUE);
+CREATE TABLE test(a INT UNIQUE);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a ANY, CONSTRAINT test_a_unique UNIQUE (a))"
+  "sql": "CREATE TABLE test (a INTEGER, CONSTRAINT test_a_unique UNIQUE (a))"
 }
 */
 
 -- test: check
-CREATE TABLE test(a CHECK(a > 10));
+CREATE TABLE test(a INT CHECK(a > 10));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a ANY, CONSTRAINT test_check CHECK (a > 10))"
+  "sql": "CREATE TABLE test (a INTEGER, CONSTRAINT test_check CHECK (a > 10))"
 }
 */
 

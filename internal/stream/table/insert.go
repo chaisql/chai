@@ -41,7 +41,7 @@ func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		_, r, err = table.Insert(r.Object())
+		_, r, err = table.Insert(r)
 		if err != nil {
 			return err
 		}

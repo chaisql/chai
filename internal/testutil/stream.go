@@ -2,16 +2,15 @@ package testutil
 
 import (
 	"errors"
-	"sort"
 	"strings"
 	"testing"
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/chaisql/chai/internal/types"
+	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,13 +19,69 @@ type ResultStream struct {
 	env *environment.Environment
 }
 
-func (ds *ResultStream) Next() (types.Value, error) {
-	exp, err := ds.Parser.ParseObject()
-	if err != nil {
+func (ds *ResultStream) Next() (row.Row, error) {
+	return ds.ParseObject()
+}
+
+func (p *ResultStream) ParseObject() (row.Row, error) {
+	// Parse { token.
+	if err := p.Parser.ParseTokens(scanner.LBRACKET); err != nil {
 		return nil, err
 	}
 
-	return exp.Eval(ds.env)
+	var cb row.ColumnBuffer
+
+	// Parse kv pairs.
+	for {
+		column, e, err := p.parseKV()
+		if err != nil {
+			p.Unscan()
+			break
+		}
+
+		v, err := e.Eval(p.env)
+		if err != nil {
+			return nil, err
+		}
+
+		cb.Add(column, v)
+
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+	}
+
+	// Parse required } token.
+	if err := p.ParseTokens(scanner.RBRACKET); err != nil {
+		return nil, err
+	}
+
+	return &cb, nil
+}
+
+// parseKV parses a key-value pair in the form IDENT : Expr.
+func (p *ResultStream) parseKV() (string, expr.Expr, error) {
+	var k string
+
+	tok, _, lit := p.ScanIgnoreWhitespace()
+	if tok == scanner.IDENT || tok == scanner.STRING {
+		k = lit
+	} else {
+		return "", nil, errors.New("expected IDENT or STRING")
+	}
+
+	if err := p.ParseTokens(scanner.COLON); err != nil {
+		p.Unscan()
+		return "", nil, err
+	}
+
+	e, err := p.ParseExpr()
+	if err != nil {
+		return "", nil, err
+	}
+
+	return k, e, nil
 }
 
 func ParseResultStream(stream string) *ResultStream {
@@ -36,19 +91,20 @@ func ParseResultStream(stream string) *ResultStream {
 	return &ResultStream{p, env}
 }
 
-func RequireStreamEq(t *testing.T, raw string, res *chai.Result, sorted bool) {
+func RequireStreamEq(t *testing.T, raw string, res *chai.Result) {
 	t.Helper()
-	RequireStreamEqf(t, raw, res, sorted, "")
+	RequireStreamEqf(t, raw, res, "")
 }
 
-func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, sorted bool, msg string, args ...any) {
+func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, msg string, args ...any) {
+	errMsg := append([]any{msg}, args...)
 	t.Helper()
-	objs := ParseResultStream(raw)
+	rows := ParseResultStream(raw)
 
-	want := object.NewValueBuffer()
+	var want []row.Row
 
 	for {
-		v, err := objs.Next()
+		v, err := rows.Next()
 		if err != nil {
 			if perr, ok := err.(*parser.ParseError); ok {
 				if perr.Found == "EOF" {
@@ -60,63 +116,48 @@ func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, sorted bool, m
 				}
 			}
 		}
-		require.NoError(t, err, append([]any{msg}, args...)...)
+		require.NoError(t, err, errMsg...)
 
-		v, err = object.CloneValue(v)
-		require.NoError(t, err, append([]any{msg}, args...)...)
-		want.Append(v)
+		want = append(want, v)
 	}
 
-	got := object.NewValueBuffer()
+	var got []row.Row
 
 	err := res.Iterate(func(r *chai.Row) error {
-		var fb object.FieldBuffer
-		err := fb.Copy(r.Object())
-		assert.NoError(t, err)
+		var cb row.ColumnBuffer
+		err := r.StructScan(&cb)
+		require.NoError(t, err, errMsg...)
 
-		got.Append(types.NewObjectValue(&fb))
+		got = append(got, &cb)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err, errMsg...)
 
-	if sorted {
-		swant := sortableValueBuffer(*want)
-		sgot := sortableValueBuffer(*got)
-		sort.Sort(&swant)
-		sort.Sort(&sgot)
+	var expected strings.Builder
+	for i := range want {
+		data, err := row.MarshalTextIndent(want[i], "\n", "  ")
+		require.NoError(t, err, errMsg...)
+		if i > 0 {
+			expected.WriteString("\n")
+		}
+
+		expected.WriteString(string(data))
 	}
 
-	expected, err := types.MarshalTextIndent(types.NewArrayValue(want), "\n", "  ")
-	assert.NoError(t, err)
+	var actual strings.Builder
+	for i := range got {
+		data, err := row.MarshalTextIndent(got[i], "\n", "  ")
+		require.NoError(t, err, errMsg...)
+		if i > 0 {
+			actual.WriteString("\n")
+		}
 
-	actual, err := types.MarshalTextIndent(types.NewArrayValue(got), "\n", "  ")
-	assert.NoError(t, err)
+		actual.WriteString(string(data))
+	}
 
 	if msg != "" {
-		require.Equal(t, string(expected), string(actual), append([]any{msg}, args...)...)
+		require.Equal(t, expected.String(), actual.String(), errMsg...)
 	} else {
-		require.Equal(t, string(expected), string(actual))
+		require.Equal(t, expected.String(), actual.String())
 	}
-}
-
-type sortableValueBuffer object.ValueBuffer
-
-func (vb *sortableValueBuffer) Len() int {
-	return len(vb.Values)
-}
-
-func (vb *sortableValueBuffer) Swap(i, j int) {
-	vb.Values[i], vb.Values[j] = vb.Values[j], vb.Values[i]
-}
-
-func (vb *sortableValueBuffer) Less(i, j int) (ok bool) {
-	it, jt := vb.Values[i].Type(), vb.Values[j].Type()
-	if it == jt || (it.IsNumber() && jt.IsNumber()) {
-		// TODO(asdine) make the types package work with static objects
-		// to avoid having to deal with errors?
-		ok, _ = vb.Values[i].LT(vb.Values[j])
-		return
-	}
-
-	return it < jt
 }

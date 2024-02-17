@@ -3,16 +3,16 @@ package rows_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,23 +20,19 @@ func TestTempTreeSort(t *testing.T) {
 	tests := []struct {
 		name     string
 		sortExpr expr.Expr
-		values   []types.Object
-		want     []types.Object
+		values   []any
+		want     []row.Row
 		fails    bool
 		desc     bool
 	}{
 		{
 			"ASC",
 			parser.MustParseExpr("a"),
-			[]types.Object{
-				testutil.MakeObject(t, `{"a": 0}`),
-				testutil.MakeObject(t, `{"a": null}`),
-				testutil.MakeObject(t, `{"a": true}`),
-			},
-			[]types.Object{
-				testutil.MakeObject(t, `{}`),
-				testutil.MakeObject(t, `{"a": 0}`),
-				testutil.MakeObject(t, `{"a": 1}`),
+			[]any{0, nil, true},
+			[]row.Row{
+				testutil.MakeRow(t, `{"a": null}`),
+				testutil.MakeRow(t, `{"a": 0}`),
+				testutil.MakeRow(t, `{"a": 1}`),
 			},
 			false,
 			false,
@@ -44,15 +40,11 @@ func TestTempTreeSort(t *testing.T) {
 		{
 			"DESC",
 			parser.MustParseExpr("a"),
-			[]types.Object{
-				testutil.MakeObject(t, `{"a": 0}`),
-				testutil.MakeObject(t, `{"a": null}`),
-				testutil.MakeObject(t, `{"a": true}`),
-			},
-			[]types.Object{
-				testutil.MakeObject(t, `{"a": 1}`),
-				testutil.MakeObject(t, `{"a": 0}`),
-				testutil.MakeObject(t, `{}`),
+			[]any{0, nil, true},
+			[]row.Row{
+				testutil.MakeRow(t, `{"a": 1}`),
+				testutil.MakeRow(t, `{"a": 0}`),
+				testutil.MakeRow(t, `{"a": null}`),
 			},
 			false,
 			true,
@@ -66,10 +58,18 @@ func TestTempTreeSort(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
 
-			for _, doc := range test.values {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
+			for _, val := range test.values {
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: val})
 			}
 
+			testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {
+				d, err := r.MarshalJSON()
+				require.NoError(t, err)
+
+				t.Log(string(d))
+				return nil
+
+			})
 			var env environment.Environment
 			env.DB = db
 			env.Tx = tx
@@ -81,13 +81,13 @@ func TestTempTreeSort(t *testing.T) {
 				s = s.Pipe(rows.TempTreeSort(test.sortExpr))
 			}
 
-			var got []types.Object
+			var got []row.Row
 			err := s.Iterate(&env, func(env *environment.Environment) error {
 				r, ok := env.GetRow()
 				require.True(t, ok)
 
-				fb := object.NewFieldBuffer()
-				fb.Copy(r.Object())
+				fb := row.NewColumnBuffer()
+				fb.Copy(r)
 				got = append(got, fb)
 				return nil
 			})
@@ -98,7 +98,7 @@ func TestTempTreeSort(t *testing.T) {
 				assert.NoError(t, err)
 				require.Equal(t, len(got), len(test.want))
 				for i := range got {
-					testutil.RequireObjEqual(t, test.want[i], got[i])
+					testutil.RequireRowEqual(t, test.want[i], got[i])
 				}
 			}
 		})

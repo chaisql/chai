@@ -1,137 +1,137 @@
--- test: math.floor
-> math.floor(2.3)
+-- test: floor
+> floor(2.3)
 2.0
-> math.floor(2)
+> floor(2)
 2
-! math.floor('a')
+! floor('a')
 'floor(arg1) expects arg1 to be a number'
 
--- test: math.abs
-> math.abs(NULL)
+-- test: abs
+> abs(NULL)
 NULL
-> math.abs(-2)
+> abs(-2)
 2
-> math.abs(-2.0)
+> abs(-2.0)
 2.0
-> math.abs('-2.0')
+> abs('-2.0')
 2.0
-! math.abs('foo')
+! abs('foo')
 'cannot cast "foo" as double'
-! math.abs(-9223372036854775808)
+! abs(-9223372036854775808)
 'integer out of range'
 
--- test: math.acos
-> math.acos(NULL)
+-- test: acos
+> acos(NULL)
 NULL
-> math.acos(1)
+> acos(1)
 0.0
-> math.acos(0.5)
+> acos(0.5)
 1.0471975511965976
-> math.acos('0.5')
+> acos('0.5')
 1.0471975511965976
-! math.acos(2)
+! acos(2)
 'out of range'
-! math.acos(-2)
+! acos(-2)
 'out of range'
-! math.acos(2.2)
+! acos(2.2)
 'out of range'
-! math.acos(-2.2)
+! acos(-2.2)
 'out of range'
-! math.acos('foo')
+! acos('foo')
 'cannot cast "foo" as double'
 
--- test: math.acosh
-> math.acosh(NULL)
+-- test: acosh
+> acosh(NULL)
 NULL
-> math.acosh(1)
+> acosh(1)
 0.0
-> math.acosh(2)
+> acosh(2)
 1.3169578969248166
-> math.acosh('2')
+> acosh('2')
 1.3169578969248166
-> math.acosh(2.5)
+> acosh(2.5)
 1.566799236972411
-! math.acosh(0)
+! acosh(0)
 'out of range'
-! math.acosh(0.99999999)
+! acosh(0.99999999)
 'out of range'
-! math.acosh('foo')
+! acosh('foo')
 'cannot cast "foo" as double'
 
--- test: math.asin
-> math.asin(NULL)
+-- test: asin
+> asin(NULL)
 NULL
-> math.asin(0)
+> asin(0)
 0.0
-> math.asin(0.5)
+> asin(0.5)
 0.5235987755982989
-! math.asin(2)
+! asin(2)
 'out of range'
-! math.asin(-2)
+! asin(-2)
 'out of range'
-! math.asin(2.2)
+! asin(2.2)
 'out of range'
-! math.asin(-2.2)
+! asin(-2.2)
 'out of range'
-! math.asin('foo')
+! asin('foo')
 'cannot cast "foo" as double'
 
--- test: math.asinh
-> math.asinh(NULL)
+-- test: asinh
+> asinh(NULL)
 NULL
-> math.asinh(0)
+> asinh(0)
 0.0
-> math.asinh(0.5)
+> asinh(0.5)
 0.48121182505960347
-> math.asinh(1)
+> asinh(1)
 0.881373587019543
-> math.asinh(-1)
+> asinh(-1)
 -0.881373587019543
-! math.asinh('foo')
+! asinh('foo')
 'cannot cast "foo" as double'
 
--- test: math.atan
-> math.atan(NULL)
+-- test: atan
+> atan(NULL)
 NULL
-> math.atan(0)
+> atan(0)
 0.0
-> math.atan(0.5)
+> atan(0.5)
 0.4636476090008061
-> math.atan(1)
+> atan(1)
 0.7853981633974483
-> math.atan(-1)
+> atan(-1)
 -0.7853981633974483
-! math.atan('foo')
+! atan('foo')
 'cannot cast "foo" as double'
 
--- test: math.atan2
-> math.atan2(NULL, NULL)
+-- test: atan2
+> atan2(NULL, NULL)
 NULL
-> math.atan2(1, NULL)
+> atan2(1, NULL)
 NULL
-> math.atan2(NULL, 1)
+> atan2(NULL, 1)
 NULL
-> math.atan2(0, 0)
+> atan2(0, 0)
 0.0
-> math.atan2(1, 1)
+> atan2(1, 1)
 0.7853981633974483
-> math.atan2(1.1, 1.1)
+> atan2(1.1, 1.1)
 0.7853981633974483
-> math.atan2(1.1, -1.1)
+> atan2(1.1, -1.1)
 2.356194490192345
-! math.atan2('foo', 1)
+! atan2('foo', 1)
 'cannot cast "foo" as double'
 
--- test: math.sqrt
-> math.sqrt(NULL)
+-- test: sqrt
+> sqrt(NULL)
 NULL
-> math.sqrt(4)
+> sqrt(4)
 2.0
-> math.sqrt(81)
+> sqrt(81)
 9.0
-> math.sqrt(15)
+> sqrt(15)
 3.872983346207417
-> math.sqrt(1.1)
+> sqrt(1.1)
 1.0488088481701516
-> math.sqrt('foo')
+> sqrt('foo')
 NULL

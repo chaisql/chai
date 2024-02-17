@@ -33,7 +33,7 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *envir
 			}
 		}
 
-		r, ok := out.GetRow()
+		r, ok := out.GetDatabaseRow()
 		if !ok {
 			return errors.New("missing row")
 		}

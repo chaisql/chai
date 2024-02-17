@@ -8,6 +8,16 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
+-- test: BIGINT
+CREATE TABLE test (a BIGINT);
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a BIGINT)"
+}
+*/
+
 -- test: DOUBLE
 CREATE TABLE test (a DOUBLE);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
@@ -48,36 +58,6 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: ARRAY
-CREATE TABLE test (a ARRAY);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ARRAY)"
-}
-*/
-
--- test: OBJECT
-CREATE TABLE test (a OBJECT);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a (...))"
-}
-*/
-
--- test: ANY
-CREATE TABLE test (a ANY);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a ANY)"
-}
-*/
-
 -- test: duplicate type
 CREATE TABLE test (a INT, a TEXT);
 -- error:
@@ -94,16 +74,6 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 
 -- test: INT ALIAS: TINYINT
 CREATE TABLE test (a INTEGER);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
-/* result:
-{
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER)"
-}
-*/
-
--- test: INT ALIAS: BIGINT
-CREATE TABLE test (a BIGINT);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
@@ -132,13 +102,13 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: INT ALIAS: INT8
+-- test: BIGINT ALIAS: INT8
 CREATE TABLE test (a int8);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER)"
+  "sql": "CREATE TABLE test (a BIGINT)"
 }
 */
 

@@ -5,9 +5,35 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chaisql/chai/internal/encoding"
 	"github.com/cockroachdb/errors"
 	"github.com/golang-module/carbon/v2"
 )
+
+var _ TypeDefinition = TimestampTypeDef{}
+
+type TimestampTypeDef struct{}
+
+func (TimestampTypeDef) New(v any) Value {
+	return NewTimestampValue(v.(time.Time))
+}
+
+func (TimestampTypeDef) Type() Type {
+	return TypeTimestamp
+}
+
+func (t TimestampTypeDef) Decode(src []byte) (Value, int) {
+	ts, n := encoding.DecodeTimestamp(src)
+	return NewTimestampValue(ts), n
+}
+
+func (TimestampTypeDef) IsComparableWith(other Type) bool {
+	return other == TypeTimestamp || other == TypeText
+}
+
+func (TimestampTypeDef) IsIndexComparableWith(other Type) bool {
+	return other == TypeTimestamp
+}
 
 var _ Value = NewTimestampValue(time.Time{})
 
@@ -32,6 +58,10 @@ func (v TimestampValue) Type() Type {
 	return TypeTimestamp
 }
 
+func (v TimestampValue) TypeDef() TypeDefinition {
+	return TimestampTypeDef{}
+}
+
 func (v TimestampValue) IsZero() (bool, error) {
 	return time.Time(v).IsZero(), nil
 }
@@ -46,6 +76,25 @@ func (v TimestampValue) MarshalText() ([]byte, error) {
 
 func (v TimestampValue) MarshalJSON() ([]byte, error) {
 	return v.MarshalText()
+}
+
+func (v TimestampValue) Encode(dst []byte) ([]byte, error) {
+	return encoding.EncodeTimestamp(dst, time.Time(v)), nil
+}
+
+func (v TimestampValue) EncodeAsKey(dst []byte) ([]byte, error) {
+	return v.Encode(dst)
+}
+
+func (v TimestampValue) CastAs(target Type) (Value, error) {
+	switch target {
+	case TypeTimestamp:
+		return v, nil
+	case TypeText:
+		return NewTextValue(v.String()), nil
+	}
+
+	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
 }
 
 func (v TimestampValue) EQ(other Value) (bool, error) {

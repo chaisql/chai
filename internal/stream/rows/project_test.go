@@ -6,7 +6,7 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/testutil"
@@ -19,35 +19,35 @@ func TestProject(t *testing.T) {
 	tests := []struct {
 		name  string
 		exprs []expr.Expr
-		in    types.Object
+		in    row.Row
 		out   string
 		fails bool
 	}{
 		{
 			"Constant",
 			[]expr.Expr{parser.MustParseExpr("10")},
-			testutil.MakeObject(t, `{"a":1,"b":[true]}`),
+			testutil.MakeRow(t, `{"a":1,"b":true}`),
 			`{"10":10}`,
 			false,
 		},
 		{
 			"Wildcard",
 			[]expr.Expr{expr.Wildcard{}},
-			testutil.MakeObject(t, `{"a":1,"b":[true]}`),
-			`{"a":1,"b":[true]}`,
+			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			`{"a":1,"b":true}`,
 			false,
 		},
 		{
 			"Multiple",
 			[]expr.Expr{expr.Wildcard{}, expr.Wildcard{}, parser.MustParseExpr("10")},
-			testutil.MakeObject(t, `{"a":1,"b":[true]}`),
-			`{"a":1,"b":[true],"a":1,"b":[true],"10":10}`,
+			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			`{"a":1,"b":true,"a":1,"b":true,"10":10}`,
 			false,
 		},
 		{
 			"Named",
 			[]expr.Expr{&expr.NamedExpr{Expr: parser.MustParseExpr("10"), ExprName: "foo"}},
-			testutil.MakeObject(t, `{"a":1,"b":[true]}`),
+			testutil.MakeRow(t, `{"a":1,"b":true}`),
 			`{"foo":10}`,
 			false,
 		},
@@ -56,13 +56,13 @@ func TestProject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var inEnv environment.Environment
-			inEnv.SetRowFromObject(test.in)
+			inEnv.SetRow(test.in)
 
 			err := rows.Project(test.exprs...).Iterate(&inEnv, func(out *environment.Environment) error {
 				require.Equal(t, &inEnv, out.GetOuter())
 				r, ok := out.GetRow()
 				require.True(t, ok)
-				tt, err := json.Marshal(types.NewObjectValue(r.Object()))
+				tt, err := json.Marshal(r)
 				require.NoError(t, err)
 				require.JSONEq(t, test.out, string(tt))
 
@@ -96,7 +96,7 @@ func TestProject(t *testing.T) {
 		rows.Project(parser.MustParseExpr("1 + 1")).Iterate(new(environment.Environment), func(out *environment.Environment) error {
 			r, ok := out.GetRow()
 			require.True(t, ok)
-			enc, err := object.MarshalJSON(r.Object())
+			enc, err := row.MarshalJSON(r)
 			assert.NoError(t, err)
 			require.JSONEq(t, `{"1 + 1": 2}`, string(enc))
 			return nil

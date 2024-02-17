@@ -46,14 +46,14 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 			return errors.New("missing row")
 		}
 
-		vs := make([]types.Value, 0, len(info.Paths))
+		vs := make([]types.Value, 0, len(info.Columns))
 
 		// if the indexes values contain NULL somewhere,
 		// we don't check for unicity.
 		// cf: https://sqlite.org/lang_createindex.html#unique_indexes
 		var hasNull bool
-		for _, path := range info.Paths {
-			v, err := path.GetValueFromObject(r.Object())
+		for _, column := range info.Columns {
+			v, err := r.Get(column)
 			if err != nil {
 				hasNull = true
 				v = types.NewNullValue()
@@ -72,7 +72,7 @@ func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *en
 			if duplicate {
 				return &database.ConstraintViolationError{
 					Constraint: "UNIQUE",
-					Paths:      info.Paths,
+					Columns:    info.Columns,
 					Key:        key,
 				}
 			}
