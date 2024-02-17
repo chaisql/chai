@@ -112,6 +112,7 @@ type Function interface {
 
 	// Params returns the list of parameters this function has received.
 	Params() []Expr
+	Clone() Expr
 }
 
 // An Aggregator is an expression that aggregates objects into one result.
@@ -238,3 +239,39 @@ func (n NextValueFor) String() string {
 
 // 	return types.TypeNull, fmt.Errorf("unexpected expression type: %T", e)
 // }
+
+func Clone(e Expr) Expr {
+	if e == nil {
+		return nil
+	}
+
+	switch e := e.(type) {
+	case cloner:
+		return e.Clone()
+	case Parentheses:
+		return Parentheses{E: Clone(e.E)}
+	case *NamedExpr:
+		return &NamedExpr{
+			Expr:     Clone(e.Expr),
+			ExprName: e.ExprName,
+		}
+	case *Cast:
+		return &Cast{
+			Expr:   Clone(e.Expr),
+			CastAs: e.CastAs,
+		}
+	case LiteralValue,
+		Column,
+		NamedParam,
+		PositionalParam,
+		NextValueFor,
+		Wildcard:
+		return e
+	}
+
+	panic(fmt.Sprintf("clone: unexpected expression type: %T", e))
+}
+
+type cloner interface {
+	Clone() Expr
+}

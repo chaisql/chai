@@ -31,6 +31,14 @@ func TempTreeSortReverse(e expr.Expr) *TempTreeSortOperator {
 	return &TempTreeSortOperator{Expr: e, Desc: true}
 }
 
+func (op *TempTreeSortOperator) Clone() stream.Operator {
+	return &TempTreeSortOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Expr:         expr.Clone(op.Expr),
+		Desc:         op.Desc,
+	}
+}
+
 func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	db := in.GetDB()
 

@@ -25,6 +25,18 @@ func GroupAggregate(groupBy expr.Expr, builders ...expr.AggregatorBuilder) *Grou
 	return &GroupAggregateOperator{E: groupBy, Builders: builders}
 }
 
+func (op *GroupAggregateOperator) Clone() stream.Operator {
+	builders := make([]expr.AggregatorBuilder, len(op.Builders))
+	for i, b := range op.Builders {
+		builders[i] = expr.Clone(b).(expr.AggregatorBuilder)
+	}
+	return &GroupAggregateOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Builders:     builders,
+		E:            expr.Clone(op.E),
+	}
+}
+
 func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var lastGroup types.Value
 	var ga *groupAggregator

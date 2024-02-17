@@ -24,6 +24,17 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 	return &ProjectOperator{Exprs: exprs}
 }
 
+func (op *ProjectOperator) Clone() stream.Operator {
+	exprs := make([]expr.Expr, len(op.Exprs))
+	for i, e := range op.Exprs {
+		exprs[i] = expr.Clone(e)
+	}
+	return &ProjectOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Exprs:        exprs,
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var mask RowMask

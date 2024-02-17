@@ -31,7 +31,7 @@ type PreparedStreamStmt struct {
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
-	st, err := planner.Optimize(s.Stream, ctx.Tx.Catalog, ctx.Params)
+	st, err := planner.Optimize(s.Stream.Clone(), ctx.Tx.Catalog, ctx.Params)
 	if err != nil {
 		return Result{}, err
 	}

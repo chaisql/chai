@@ -20,6 +20,13 @@ func Delete(tableName string) *DeleteOperator {
 	return &DeleteOperator{Name: tableName}
 }
 
+func (op *DeleteOperator) Clone() stream.Operator {
+	return &DeleteOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Name:         op.Name,
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var table *database.Table

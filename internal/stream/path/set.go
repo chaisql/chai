@@ -27,6 +27,14 @@ func Set(column string, e expr.Expr) *SetOperator {
 	}
 }
 
+func (op *SetOperator) Clone() stream.Operator {
+	return &SetOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Column:       op.Column,
+		Expr:         expr.Clone(op.Expr),
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var cb row.ColumnBuffer

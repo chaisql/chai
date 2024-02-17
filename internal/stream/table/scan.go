@@ -33,6 +33,16 @@ func ScanReverse(tableName string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
 }
 
+func (op *ScanOperator) Clone() stream.Operator {
+	return &ScanOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		TableName:    op.TableName,
+		Ranges:       op.Ranges.Clone(),
+		Reverse:      op.Reverse,
+		Table:        op.Table,
+	}
+}
+
 // Iterate over the objects of the table. Each object is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
 func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {

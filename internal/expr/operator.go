@@ -38,6 +38,14 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
+func (op *simpleOperator) Clone() *simpleOperator {
+	return &simpleOperator{
+		a:   Clone(op.a),
+		b:   Clone(op.b),
+		Tok: op.Tok,
+	}
+}
+
 func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b types.Value) (types.Value, error)) (types.Value, error) {
 	if op.a == nil || op.b == nil {
 		return NullLiteral, errors.New("missing operand")
@@ -117,7 +125,7 @@ type Cast struct {
 }
 
 // Eval returns the primary key of the current row.
-func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
+func (c *Cast) Eval(env *environment.Environment) (types.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
@@ -128,12 +136,12 @@ func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c Cast) IsEqual(other Expr) bool {
+func (c *Cast) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(Cast)
+	o, ok := other.(*Cast)
 	if !ok {
 		return false
 	}
@@ -149,8 +157,8 @@ func (c Cast) IsEqual(other Expr) bool {
 	return o.Expr != nil
 }
 
-func (c Cast) Params() []Expr { return []Expr{c.Expr} }
+func (c *Cast) Params() []Expr { return []Expr{c.Expr} }
 
-func (c Cast) String() string {
+func (c *Cast) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }

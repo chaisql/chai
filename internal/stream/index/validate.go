@@ -23,6 +23,13 @@ func Validate(indexName string) *ValidateOperator {
 	}
 }
 
+func (op *ValidateOperator) Clone() stream.Operator {
+	return &ValidateOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		indexName:    op.indexName,
+	}
+}
+
 func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	tx := in.GetTx()
 

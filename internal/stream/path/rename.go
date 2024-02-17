@@ -27,6 +27,14 @@ func PathsRename(columnNames ...string) *RenameOperator {
 	}
 }
 
+func (op *RenameOperator) Clone() stream.Operator {
+	return &RenameOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		// No need to clone the column names, they are immutable.
+		ColumnNames: op.ColumnNames,
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *RenameOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var cb row.ColumnBuffer

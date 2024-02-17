@@ -21,6 +21,13 @@ func OnConflict(onConflict *Stream) *OnConflictOperator {
 	}
 }
 
+func (it *OnConflictOperator) Clone() Operator {
+	return &OnConflictOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+		OnConflict:   it.OnConflict.Clone(),
+	}
+}
+
 func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
 

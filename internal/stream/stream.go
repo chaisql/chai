@@ -82,6 +82,25 @@ func (s *Stream) String() string {
 	return sb.String()
 }
 
+func (s *Stream) Clone() *Stream {
+	if s == nil {
+		return nil
+	}
+
+	if s.Op == nil {
+		return New(nil)
+	}
+
+	op := s.First()
+	var ops []Operator
+	for op != nil {
+		ops = append(ops, op.Clone())
+		op = op.GetNext()
+	}
+
+	return New(Pipe(ops...))
+}
+
 func InsertBefore(op, newOp Operator) Operator {
 	if op != nil {
 		prev := op.GetPrev()
@@ -122,6 +141,11 @@ type DiscardOperator struct {
 // It iterates over the previous operator and discards all the objects.
 func Discard() *DiscardOperator {
 	return &DiscardOperator{}
+}
+func (it *DiscardOperator) Clone() Operator {
+	return &DiscardOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+	}
 }
 
 // Iterate iterates over all the streams and returns their union.

@@ -23,6 +23,17 @@ type Range struct {
 	Exact bool
 }
 
+func (r *Range) Clone() Range {
+	return Range{
+		Min: expr.Clone(r.Min).(expr.LiteralExprList),
+		Max: expr.Clone(r.Max).(expr.LiteralExprList),
+		// No need to clone the columns, they are immutable.
+		Columns:   r.Columns,
+		Exclusive: r.Exclusive,
+		Exact:     r.Exact,
+	}
+}
+
 func (r *Range) Eval(env *environment.Environment) (*database.Range, error) {
 	rng := database.Range{
 		Exclusive: r.Exclusive,
@@ -118,6 +129,19 @@ func (r *Range) IsEqual(other *Range) bool {
 }
 
 type Ranges []Range
+
+func (r Ranges) Clone() Ranges {
+	if r == nil {
+		return nil
+	}
+
+	clone := make(Ranges, len(r))
+	for i := range r {
+		clone[i] = r[i].Clone()
+	}
+
+	return clone
+}
 
 // Encode each range using the given value encoder.
 func (r Ranges) Eval(env *environment.Environment) ([]*database.Range, error) {

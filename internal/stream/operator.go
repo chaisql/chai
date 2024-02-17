@@ -25,6 +25,7 @@ type Operator interface {
 	GetNext() Operator
 	GetPrev() Operator
 	String() string
+	Clone() Operator
 }
 
 // An OperatorFunc is the function that will receive each value of the stream.
@@ -58,4 +59,8 @@ func (op *BaseOperator) GetPrev() Operator {
 
 func (op *BaseOperator) GetNext() Operator {
 	return op.Next
+}
+
+func (op BaseOperator) Clone() BaseOperator {
+	return op
 }

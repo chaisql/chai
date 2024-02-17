@@ -22,6 +22,18 @@ func Union(s ...*Stream) *UnionOperator {
 	return &UnionOperator{Streams: s}
 }
 
+func (it *UnionOperator) Clone() Operator {
+	streams := make([]*Stream, len(it.Streams))
+	for i, s := range it.Streams {
+		streams[i] = s.Clone()
+	}
+
+	return &UnionOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+		Streams:      streams,
+	}
+}
+
 // Iterate iterates over all the streams and returns their union.
 func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
 	var temp *tree.Tree

@@ -20,6 +20,13 @@ func Insert(tableName string) *InsertOperator {
 	return &InsertOperator{Name: tableName}
 }
 
+func (op *InsertOperator) Clone() stream.Operator {
+	return &InsertOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Name:         op.Name,
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var newEnv environment.Environment

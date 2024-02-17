@@ -22,6 +22,13 @@ func Delete(indexName string) *DeleteOperator {
 	}
 }
 
+func (op *DeleteOperator) Clone() stream.Operator {
+	return &DeleteOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		indexName:    op.indexName,
+	}
+}
+
 func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	tx := in.GetTx()
 

@@ -40,6 +40,13 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	return nil
 }
 
+func (op *EmitOperator) Clone() stream.Operator {
+	return &EmitOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Rows:         op.Rows,
+	}
+}
+
 func (op *EmitOperator) String() string {
 	var sb strings.Builder
 

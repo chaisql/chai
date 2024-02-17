@@ -578,7 +578,7 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 		return nil, err
 	}
 
-	return expr.Cast{Expr: e, CastAs: tp}, nil
+	return &expr.Cast{Expr: e, CastAs: tp}, nil
 }
 
 // tokenIsAllowed is a helper function that determines if a token is allowed.

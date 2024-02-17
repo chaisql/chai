@@ -20,6 +20,13 @@ func Skip(e expr.Expr) *SkipOperator {
 	return &SkipOperator{E: e}
 }
 
+func (op *SkipOperator) Clone() stream.Operator {
+	return &SkipOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		E:            expr.Clone(op.E),
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	v, err := op.E.Eval(in)
