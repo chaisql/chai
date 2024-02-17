@@ -1,0 +1,8 @@
+go 1.22
+
+use (
+    .
+    ./cmd/chai
+)
+
+replace github.com/chaisql/chai v0.16.0 => ./

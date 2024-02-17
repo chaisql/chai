@@ -22,7 +22,7 @@ jobs:
           go-version: 1.22
 
       - name: Vendor
-        run: go mod vendor
+        run: go work vendor
 
       - name: Build
         run: make
