@@ -224,7 +224,10 @@ func (s *BatchSession) Iterator(opts *engine.IterOptions) (engine.Iterator, erro
 		}
 	}
 
-	it := s.DB.NewIter(popts)
+	it, err := s.DB.NewIter(popts)
+	if err != nil {
+		return nil, err
+	}
 
 	return &iterator{
 		Iterator: it,

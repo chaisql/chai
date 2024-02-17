@@ -100,6 +100,8 @@ func NewEngine(path string, opts Options) (*PebbleEngine, error) {
 		pbpath = filepath.Join(path, "pebble")
 	}
 
+	popts.FormatMajorVersion = pebble.FormatVirtualSSTables
+
 	return NewEngineWith(pbpath, opts, &popts)
 }
 

@@ -119,8 +119,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	g.Go(func() error {
 		ui := newTUI(&sh, promptExecCh)
-
-		p := tea.NewProgram(ui)
+		p := tea.NewProgram(ui, tea.WithFPS(120))
 		_, err = p.Run()
 		if err == nil {
 			return errExitCommand
