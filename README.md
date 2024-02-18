@@ -4,7 +4,7 @@ ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of u
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
-![Status](https://img.shields.io/badge/status-alpha-yellow)
+![Status](https://img.shields.io/badge/Project%20Stage-Development-yellow)
 
 ## Key Features
 
