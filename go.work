@@ -1,8 +1,9 @@
-go 1.22
+go 1.22.0
 
 use (
-    .
-    ./cmd/chai
+	.
+	./cmd/chai
+	./sqltests
 )
 
 replace github.com/chaisql/chai v0.16.0 => ./
