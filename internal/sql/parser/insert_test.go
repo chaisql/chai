@@ -25,6 +25,7 @@ func TestParserInsert(t *testing.T) {
 	}{
 		{"Values / With fields", "INSERT INTO test (a, b) VALUES ('c', 'd')",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -41,6 +42,7 @@ func TestParserInsert(t *testing.T) {
 			nil, true},
 		{"Values / Multiple", "INSERT INTO test (a, b) VALUES ('c', 'd'), ('e', 'f')",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -62,6 +64,7 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Values / Returning", "INSERT INTO test (a, b) VALUES ('c', 'd') RETURNING *, a, b as B, c",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -80,6 +83,7 @@ func TestParserInsert(t *testing.T) {
 			nil, true},
 		{"Values / ON CONFLICT DO NOTHING", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO NOTHING RETURNING *",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -95,6 +99,7 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Values / ON CONFLICT IGNORE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT IGNORE RETURNING *",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -109,6 +114,7 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Values / ON CONFLICT DO REPLACE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT DO REPLACE RETURNING *",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{
@@ -124,6 +130,7 @@ func TestParserInsert(t *testing.T) {
 			false},
 		{"Values / ON CONFLICT REPLACE", "INSERT INTO test (a, b) VALUES ('c', 'd') ON CONFLICT REPLACE RETURNING *",
 			stream.New(rows.Emit(
+				[]string{"a", "b"},
 				expr.Row{
 					Columns: []string{"a", "b"},
 					Exprs: []expr.Expr{

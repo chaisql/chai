@@ -10,13 +10,14 @@ import (
 
 type EmitOperator struct {
 	stream.BaseOperator
-	Rows []expr.Row
+	Rows    []expr.Row
+	columns []string
 }
 
 // Emit creates an operator that iterates over the given expressions.
 // Each expression must evaluate to an row.
-func Emit(rows ...expr.Row) *EmitOperator {
-	return &EmitOperator{Rows: rows}
+func Emit(columns []string, rows ...expr.Row) *EmitOperator {
+	return &EmitOperator{columns: columns, Rows: rows}
 }
 
 func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
@@ -38,6 +39,10 @@ func (op *EmitOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	}
 
 	return nil
+}
+
+func (it *EmitOperator) Columns(env *environment.Environment) ([]string, error) {
+	return it.columns, nil
 }
 
 func (op *EmitOperator) Clone() stream.Operator {

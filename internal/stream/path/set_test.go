@@ -40,7 +40,7 @@ func TestSet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.column, func(t *testing.T) {
-			s := stream.New(rows.Emit(test.in...)).Pipe(path.Set(test.column, test.e))
+			s := stream.New(rows.Emit([]string{"a"}, test.in...)).Pipe(path.Set(test.column, test.e))
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				r, _ := out.GetRow()

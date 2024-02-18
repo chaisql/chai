@@ -34,6 +34,14 @@ func (it *UnionOperator) Clone() Operator {
 	}
 }
 
+func (it *UnionOperator) Columns(env *environment.Environment) ([]string, error) {
+	if len(it.Streams) == 0 {
+		return nil, nil
+	}
+
+	return it.Streams[0].Columns(env)
+}
+
 // Iterate iterates over all the streams and returns their union.
 func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
 	var temp *tree.Tree

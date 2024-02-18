@@ -26,6 +26,14 @@ func (s *Stream) Pipe(op Operator) *Stream {
 	return s
 }
 
+func (s *Stream) Columns(env *environment.Environment) ([]string, error) {
+	if s.Op == nil {
+		return nil, nil
+	}
+
+	return s.Op.Columns(env)
+}
+
 func (s *Stream) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	if s.Op == nil {
 		return nil

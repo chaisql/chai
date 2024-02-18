@@ -35,6 +35,28 @@ func (op *ProjectOperator) Clone() stream.Operator {
 	}
 }
 
+func (op *ProjectOperator) Columns(env *environment.Environment) ([]string, error) {
+	var cols, prev []string
+	var err error
+
+	for _, e := range op.Exprs {
+		if _, ok := e.(expr.Wildcard); ok {
+			if prev == nil {
+				prev, err = op.Prev.Columns(env)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			cols = append(cols, prev...)
+		} else {
+			cols = append(cols, e.String())
+		}
+	}
+
+	return cols, nil
+}
+
 // Iterate implements the Operator interface.
 func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	var mask RowMask

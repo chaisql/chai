@@ -37,6 +37,7 @@ func NewInsertStatement() *InsertStmt {
 func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
+	var columns []string
 	if stmt.Values != nil {
 		ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
 		if err != nil {
@@ -46,6 +47,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		var rowList []expr.Row
 		// if no columns have been specified, we need to inject the columns from the defined table info
 		if len(stmt.Columns) == 0 {
+
 			rowList = make([]expr.Row, 0, len(stmt.Values))
 			for i := range stmt.Values {
 				var r expr.Row
@@ -60,9 +62,13 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 					r.Columns = append(r.Columns, ti.ColumnConstraints.Ordered[i].Column)
 				}
 
+				columns = r.Columns
+
 				rowList = append(rowList, r)
 			}
 		} else {
+			columns = stmt.Columns
+
 			rowList = make([]expr.Row, 0, len(stmt.Values))
 			for i := range stmt.Columns {
 				_, ok := ti.ColumnConstraints.ByColumn[stmt.Columns[i]]
@@ -81,10 +87,14 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 				}
 
 				r.Columns = stmt.Columns
+				if len(stmt.Columns) != len(r.Exprs) {
+					return nil, errors.Errorf("expected %d columns, got %d", len(stmt.Columns), len(stmt.Values))
+				}
 				rowList = append(rowList, r)
 			}
 		}
-		s = stream.New(rows.Emit(rowList...))
+
+		s = stream.New(rows.Emit(columns, rowList...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {

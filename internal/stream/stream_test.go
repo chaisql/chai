@@ -17,6 +17,7 @@ import (
 
 func TestStream(t *testing.T) {
 	s := stream.New(rows.Emit(
+		[]string{"a"},
 		testutil.MakeRowExpr(t, `{"a": 1}`),
 		testutil.MakeRowExpr(t, `{"a": 2}`),
 	))
@@ -80,13 +81,13 @@ func TestUnion(t *testing.T) {
 
 			var streams []*stream.Stream
 			if test.first != nil {
-				streams = append(streams, stream.New(rows.Emit(test.first...)))
+				streams = append(streams, stream.New(rows.Emit([]string{"a", "b"}, test.first...)))
 			}
 			if test.second != nil {
-				streams = append(streams, stream.New(rows.Emit(test.second...)))
+				streams = append(streams, stream.New(rows.Emit([]string{"a", "b"}, test.second...)))
 			}
 			if test.third != nil {
-				streams = append(streams, stream.New(rows.Emit(test.third...)))
+				streams = append(streams, stream.New(rows.Emit([]string{"a", "b"}, test.third...)))
 			}
 
 			st := stream.New(stream.Union(streams...))
@@ -100,9 +101,9 @@ func TestUnion(t *testing.T) {
 
 	t.Run("String", func(t *testing.T) {
 		st := stream.New(stream.Union(
-			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
-			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
-			stream.New(rows.Emit(testutil.MakeRowExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
+			stream.New(rows.Emit([]string{"a"}, testutil.MakeRowExprs(t, `{"a": 1}`, `{"a": 2}`)...)),
+			stream.New(rows.Emit([]string{"a"}, testutil.MakeRowExprs(t, `{"a": 3}`, `{"a": 4}`)...)),
+			stream.New(rows.Emit([]string{"a"}, testutil.MakeRowExprs(t, `{"a": 5}`, `{"a": 6}`)...)),
 		))
 
 		require.Equal(t, `union(rows.Emit((1), (2)), rows.Emit((3), (4)), rows.Emit((5), (6)))`, st.String())
@@ -113,8 +114,8 @@ func TestConcatOperator(t *testing.T) {
 	in1 := testutil.MakeRowExprs(t, `{"a": 10}`, `{"a": 11}`)
 	in2 := testutil.MakeRowExprs(t, `{"a": 12}`, `{"a": 13}`)
 
-	s1 := stream.New(rows.Emit(in1...))
-	s2 := stream.New(rows.Emit(in2...))
+	s1 := stream.New(rows.Emit([]string{"a"}, in1...))
+	s2 := stream.New(rows.Emit([]string{"a"}, in2...))
 	s := stream.Concat(s1, s2)
 
 	var got []row.Row

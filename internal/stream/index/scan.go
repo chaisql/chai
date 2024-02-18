@@ -106,6 +106,27 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	return nil
 }
 
+func (it *ScanOperator) Columns(env *environment.Environment) ([]string, error) {
+	tx := env.GetTx()
+
+	idxInfo, err := tx.Catalog.GetIndexInfo(it.IndexName)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := tx.Catalog.GetTableInfo(idxInfo.Owner.TableName)
+	if err != nil {
+		return nil, err
+	}
+
+	columns := make([]string, len(info.ColumnConstraints.Ordered))
+	for i, c := range info.ColumnConstraints.Ordered {
+		columns[i] = c.Column
+	}
+
+	return columns, nil
+}
+
 func (it *ScanOperator) String() string {
 	var s strings.Builder
 

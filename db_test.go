@@ -1,7 +1,6 @@
 package chai_test
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +9,6 @@ import (
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 )
 
 func ExampleTx() {
@@ -210,42 +208,6 @@ func TestQueryRow(t *testing.T) {
 		require.True(t, chai.IsNotFoundError(err))
 		require.Nil(t, r)
 	})
-}
-
-func TestPrepareThreadSafe(t *testing.T) {
-	db, err := chai.Open(":memory:")
-	require.NoError(t, err)
-	defer db.Close()
-
-	conn, err := db.Connect()
-	require.NoError(t, err)
-	defer conn.Close()
-
-	err = conn.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
-	require.NoError(t, err)
-
-	stmt, err := conn.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
-	require.NoError(t, err)
-
-	g, _ := errgroup.WithContext(context.Background())
-
-	for i := 1; i <= 3; i++ {
-		arg := i
-		g.Go(func() error {
-			res, err := stmt.Query(arg)
-			if err != nil {
-				return err
-			}
-			defer res.Close()
-
-			return res.Iterate(func(d *chai.Row) error {
-				return nil
-			})
-		})
-	}
-
-	err = g.Wait()
-	require.NoError(t, err)
 }
 
 func TestIterateDeepCopy(t *testing.T) {

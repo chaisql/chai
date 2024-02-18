@@ -117,6 +117,19 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 	return f(e)
 }
 
+func (op *GroupAggregateOperator) Columns(env *environment.Environment) ([]string, error) {
+	columns := make([]string, 0, len(op.Builders)+1)
+	if op.E != nil {
+		columns = append(columns, op.E.String())
+	}
+
+	for _, agg := range op.Builders {
+		columns = append(columns, agg.String())
+	}
+
+	return columns, nil
+}
+
 func (op *GroupAggregateOperator) String() string {
 	var sb strings.Builder
 

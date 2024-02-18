@@ -3,8 +3,6 @@ package driver_test
 import (
 	"database/sql"
 	"fmt"
-
-	"github.com/chaisql/chai/driver"
 )
 
 type User struct {
@@ -43,7 +41,7 @@ func Example() {
 
 	for rows.Next() {
 		var u User
-		err = rows.Scan(driver.Scanner(&u))
+		err = rows.Scan(&u.ID, &u.Name, &u.Age)
 		if err != nil {
 			panic(err)
 		}

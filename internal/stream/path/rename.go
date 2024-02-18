@@ -89,6 +89,10 @@ func (op *RenameOperator) Iterate(in *environment.Environment, f func(out *envir
 	})
 }
 
+func (op *RenameOperator) Columns(env *environment.Environment) ([]string, error) {
+	return op.ColumnNames, nil
+}
+
 func (op *RenameOperator) String() string {
 	return fmt.Sprintf("paths.Rename(%s)", strings.Join(op.ColumnNames, ", "))
 }

@@ -29,6 +29,14 @@ func (it *ConcatOperator) Clone() Operator {
 	}
 }
 
+func (it *ConcatOperator) Columns(env *environment.Environment) ([]string, error) {
+	if len(it.Streams) == 0 {
+		return nil, nil
+	}
+
+	return it.Streams[0].Columns(env)
+}
+
 func (it *ConcatOperator) Iterate(in *environment.Environment, fn func(*environment.Environment) error) error {
 	for _, s := range it.Streams {
 		if err := s.Iterate(in, fn); err != nil {

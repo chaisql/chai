@@ -55,7 +55,7 @@ func TestFilter(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.e.String(), func(t *testing.T) {
-			s := stream.New(rows.Emit(test.in...)).Pipe(rows.Filter(test.e))
+			s := stream.New(rows.Emit([]string{"a"}, test.in...)).Pipe(rows.Filter(test.e))
 			i := 0
 			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
 				r, _ := out.GetRow()
@@ -97,7 +97,7 @@ func TestTake(t *testing.T) {
 				ds = append(ds, testutil.MakeRowExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(rows.Emit(ds...))
+			s := stream.New(rows.Emit([]string{"a"}, ds...))
 			s = s.Pipe(rows.Take(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
@@ -142,7 +142,7 @@ func TestSkip(t *testing.T) {
 				ds = append(ds, testutil.MakeRowExpr(t, `{"a": `+strconv.Itoa(i)+`}`))
 			}
 
-			s := stream.New(rows.Emit(ds...))
+			s := stream.New(rows.Emit([]string{"a"}, ds...))
 			s = s.Pipe(rows.Skip(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
@@ -174,7 +174,7 @@ func TestTableInsert(t *testing.T) {
 	}{
 		{
 			"doc with no key",
-			rows.Emit(testutil.MakeRowExpr(t, `{"a": 10}`), testutil.MakeRowExpr(t, `{"a": 11}`)),
+			rows.Emit([]string{"a"}, testutil.MakeRowExpr(t, `{"a": 10}`), testutil.MakeRowExpr(t, `{"a": 11}`)),
 			[]row.Row{testutil.MakeRow(t, `{"a": 10}`), testutil.MakeRow(t, `{"a": 11}`)},
 			1,
 			false,

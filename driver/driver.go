@@ -10,7 +10,6 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -192,9 +191,7 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 		return nil, err
 	}
 
-	rs := newRows(res)
-	rs.columns = res.Columns()
-	return rs, nil
+	return newRows(res)
 }
 
 func namedValueToParams(args []driver.NamedValue) []any {
@@ -229,7 +226,7 @@ type Row struct {
 	err error
 }
 
-func newRows(res *chai.Result) *Rows {
+func newRows(res *chai.Result) (*Rows, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	rs := Rows{
@@ -239,9 +236,16 @@ func newRows(res *chai.Result) *Rows {
 	}
 	rs.wg.Add(1)
 
+	cols, err := rs.res.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	rs.columns = cols
+
 	go rs.iterate(ctx)
 
-	return &rs
+	return &rs, nil
 }
 
 func (rs *Rows) iterate(ctx context.Context) {
@@ -284,7 +288,7 @@ func (rs *Rows) iterate(ctx context.Context) {
 
 // Columns returns the fields selected by the SELECT statement.
 func (rs *Rows) Columns() []string {
-	return rs.res.Columns()
+	return rs.columns
 }
 
 // Close closes the rows iterator.
@@ -375,27 +379,4 @@ func (rs *Rows) Next(dest []driver.Value) error {
 	}
 
 	return nil
-}
-
-type valueScanner struct {
-	dest any
-}
-
-func (v valueScanner) Scan(src any) error {
-	if r, ok := src.(*chai.Row); ok {
-		return r.StructScan(v.dest)
-	}
-
-	vv, err := row.NewValue(src)
-	if err != nil {
-		return err
-	}
-
-	return row.ScanValue(vv, v.dest)
-}
-
-// Scanner turns a variable into a sql.Scanner.
-// x must be a pointer to a valid variable.
-func Scanner(x any) sql.Scanner {
-	return valueScanner{x}
 }

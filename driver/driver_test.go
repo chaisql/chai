@@ -40,7 +40,7 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
 			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
@@ -50,7 +50,7 @@ func TestDriver(t *testing.T) {
 		require.Equal(t, 10, count)
 	})
 
-	t.Run("Multiple fields", func(t *testing.T) {
+	t.Run("Multiple columns", func(t *testing.T) {
 		rows, err := db.Query("SELECT a, c FROM test")
 		require.NoError(t, err)
 		defer rows.Close()
@@ -59,7 +59,7 @@ func TestDriver(t *testing.T) {
 		var a int
 		var c bool
 		for rows.Next() {
-			err = rows.Scan(&a, Scanner(&c))
+			err = rows.Scan(&a, &c)
 			require.NoError(t, err)
 			require.Equal(t, count, a)
 			require.Equal(t, count%2 == 0, c)
@@ -78,7 +78,7 @@ func TestDriver(t *testing.T) {
 		var a int
 		var c bool
 		for rows.Next() {
-			err = rows.Scan(&a, Scanner(&c))
+			err = rows.Scan(&a, &c)
 			require.NoError(t, err)
 			require.Equal(t, count, a)
 			require.Equal(t, count%2 == 0, c)
@@ -96,7 +96,7 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
 			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
@@ -113,7 +113,7 @@ func TestDriver(t *testing.T) {
 		var count int
 		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&rt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
 			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
@@ -134,7 +134,7 @@ func TestDriver(t *testing.T) {
 		var c bool
 		var dt1, dt2 rowtest
 		for rows.Next() {
-			err = rows.Scan(&a, Scanner(&aa), Scanner(&dt1), Scanner(&b), Scanner(&c), Scanner(&dt2))
+			err = rows.Scan(&a, &aa, &dt1.A, &dt1.B, &dt1.C, &b, &c, &dt2.A, &dt2.B, &dt2.C)
 			require.NoError(t, err)
 			require.Equal(t, count, a)
 			require.Equal(t, fmt.Sprintf("foo%d", count), b)
@@ -192,11 +192,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var dt rowtest
+		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&dt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
-			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, dt)
+			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -213,11 +213,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var dt rowtest
+		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&dt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
-			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, dt)
+			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -238,11 +238,11 @@ func TestDriver(t *testing.T) {
 		defer rows.Close()
 
 		var count int
-		var dt rowtest
+		var rt rowtest
 		for rows.Next() {
-			err = rows.Scan(Scanner(&dt))
+			err = rows.Scan(&rt.A, &rt.B, &rt.C)
 			require.NoError(t, err)
-			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, dt)
+			require.Equal(t, rowtest{count, fmt.Sprintf("foo%d", count), count%2 == 0}, rt)
 			count++
 		}
 		require.NoError(t, rows.Err())
@@ -277,7 +277,7 @@ func TestDriverWithTimeValues(t *testing.T) {
 	defer tx.Rollback()
 
 	var tt time.Time
-	err = tx.QueryRow(`SELECT a FROM test`).Scan(Scanner(&tt))
+	err = tx.QueryRow(`SELECT a FROM test`).Scan(&tt)
 	require.NoError(t, err)
 	require.Equal(t, now, tt)
 }

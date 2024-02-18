@@ -20,7 +20,6 @@ import (
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -411,35 +410,22 @@ func (r *Result) GetFirst() (*Row, error) {
 	return rr, nil
 }
 
-func (r *Result) Columns() []string {
+func (r *Result) Columns() ([]string, error) {
 	if r.result.Iterator == nil {
-		return nil
+		return nil, nil
 	}
 
 	stmt, ok := r.result.Iterator.(*statement.StreamStmtIterator)
 	if !ok || stmt.Stream.Op == nil {
-		return nil
+		return nil, nil
 	}
 
-	// Search for the ProjectOperator. If found, extract the projected expression list
-	for op := stmt.Stream.First(); op != nil; op = op.GetNext() {
-		if po, ok := op.(*rows.ProjectOperator); ok {
-			// if there are no projected expression, it's a wildcard
-			if len(po.Exprs) == 0 {
-				break
-			}
+	var env environment.Environment
+	env.DB = stmt.Context.DB
+	env.Tx = stmt.Context.Tx
+	env.SetParams(stmt.Context.Params)
 
-			columns := make([]string, len(po.Exprs))
-			for i := range po.Exprs {
-				columns[i] = po.Exprs[i].String()
-			}
-
-			return columns
-		}
-	}
-
-	// the stream will output rows in a single field
-	return []string{"*"}
+	return stmt.Stream.Columns(&env)
 }
 
 // Close the result stream.
