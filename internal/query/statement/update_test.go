@@ -40,29 +40,33 @@ func TestUpdateStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test (a text not null, b text, c text, d text, e text)")
+				conn, err := db.Connect()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				err = conn.Exec("CREATE TABLE test (a text not null, b text, c text, d text, e text)")
 				require.NoError(t, err)
 
 				if indexed {
-					err = db.Exec("CREATE INDEX idx_test_a ON test(a)")
+					err = conn.Exec("CREATE INDEX idx_test_a ON test(a)")
 					require.NoError(t, err)
 				}
 
-				err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
+				err = conn.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
+				err = conn.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
+				err = conn.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
 				require.NoError(t, err)
 
-				err = db.Exec(test.query, test.params...)
+				err = conn.Exec(test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT * FROM test")
+				st, err := conn.Query("SELECT * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 

@@ -33,6 +33,10 @@ func TestDeleteStmt(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+
 			err = db.Exec("CREATE TABLE test(id INT PRIMARY KEY, a TEXT, b TEXT, c TEXT, d TEXT, e TEXT, n INT)")
 			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (id, a, b, c, n) VALUES (1, 'foo1', 'bar1', 'baz1', 3)")
@@ -42,14 +46,14 @@ func TestDeleteStmt(t *testing.T) {
 			err = db.Exec("INSERT INTO test (id, d, b, e, n) VALUES (3, 'foo3', 'bar2', 'bar3', 1)")
 			require.NoError(t, err)
 
-			err = db.Exec(test.query, test.params...)
+			err = conn.Exec(test.query, test.params...)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			st, err := db.Query("SELECT id FROM test")
+			st, err := conn.Query("SELECT id FROM test")
 			require.NoError(t, err)
 			defer st.Close()
 

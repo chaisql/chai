@@ -13,7 +13,8 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	db *Database
+	db   *Database
+	conn *Connection
 
 	// Timestamp at which the transaction was created.
 	// The timestamp must use the local timezone.
@@ -31,6 +32,10 @@ type Transaction struct {
 
 	Catalog       *Catalog
 	catalogWriter *CatalogWriter
+}
+
+func (tx *Transaction) Connection() *Connection {
+	return tx.conn
 }
 
 // Rollback the transaction. Can be used safely after commit.

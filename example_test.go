@@ -38,8 +38,14 @@ func Example() {
 		panic(err)
 	}
 
+	conn, err := db.Connect()
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
 	// Query some rows
-	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
+	stream, err := conn.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
 	}

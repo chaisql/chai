@@ -142,6 +142,7 @@ type DiscardOperator struct {
 func Discard() *DiscardOperator {
 	return &DiscardOperator{}
 }
+
 func (it *DiscardOperator) Clone() Operator {
 	return &DiscardOperator{
 		BaseOperator: it.BaseOperator.Clone(),

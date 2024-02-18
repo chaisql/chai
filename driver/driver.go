@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"io"
-	"runtime"
 	"sync"
 	"time"
 
@@ -39,13 +38,10 @@ func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
 		return nil, err
 	}
 
-	c := &connector{
+	return &connector{
 		db:     db,
 		driver: d,
-	}
-	runtime.SetFinalizer(c, (*connector).Close)
-
-	return c, nil
+	}, nil
 }
 
 var (
@@ -54,15 +50,21 @@ var (
 )
 
 type connector struct {
-	driver driver.Driver
-
-	db *chai.DB
-
+	driver    driver.Driver
+	db        *chai.DB
 	closeOnce sync.Once
 }
 
 func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
-	return &conn{db: c.db}, nil
+	cc, err := c.db.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	return &conn{
+		db:   c.db,
+		conn: cc,
+	}, nil
 }
 
 func (c *connector) Driver() driver.Driver {
@@ -80,8 +82,8 @@ func (c *connector) Close() error {
 // conn represents a connection to the Chai database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db *chai.DB
-	tx *chai.Tx
+	db   *chai.DB
+	conn *chai.Connection
 }
 
 // Prepare returns a prepared statement, bound to this connection.
@@ -91,14 +93,7 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	var s *chai.Statement
-	var err error
-
-	if c.tx != nil {
-		s, err = c.tx.Prepare(q)
-	} else {
-		s, err = c.db.Prepare(q)
-	}
+	s, err := c.conn.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +105,21 @@ func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 
 // Close closes any ongoing transaction.
 func (c *conn) Close() error {
-	if c.tx != nil {
-		return c.tx.Rollback()
-	}
-
-	return nil
+	return c.conn.Close()
 }
 
 // Begin starts and returns a new transaction.
 func (c *conn) Begin() (driver.Tx, error) {
 	return c.BeginTx(context.Background(), driver.TxOptions{})
+}
+
+func (c *conn) ResetSession(ctx context.Context) error {
+	err := c.conn.Conn.Reset()
+	if err != nil {
+		return driver.ErrBadConn
+	}
+
+	return nil
 }
 
 // BeginTx starts and returns a new transaction.
@@ -130,26 +130,9 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		return nil, errors.New("isolation levels are not supported")
 	}
 
-	db := c.db.WithContext(ctx)
-
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
-	var err error
-	c.tx, err = db.Begin(!opts.ReadOnly)
-
-	return c, err
-}
-
-func (c *conn) Commit() error {
-	err := c.tx.Commit()
-	c.tx = nil
-	return err
-}
-
-func (c *conn) Rollback() error {
-	err := c.tx.Rollback()
-	c.tx = nil
-	return err
+	return c.conn.Begin(!opts.ReadOnly)
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not
@@ -176,18 +159,18 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	return result{}, s.stmt.Exec(driverNamedValueToParams(args)...)
+	return execResult{}, s.stmt.Exec(namedValueToParams(args)...)
 }
 
-type result struct{}
+type execResult struct{}
 
 // LastInsertId is not supported and returns an error.
-func (r result) LastInsertId() (int64, error) {
+func (r execResult) LastInsertId() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
 // RowsAffected is not supported and returns an error.
-func (r result) RowsAffected() (int64, error) {
+func (r execResult) RowsAffected() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
@@ -204,17 +187,17 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	res, err := s.stmt.Query(driverNamedValueToParams(args)...)
+	res, err := s.stmt.Query(namedValueToParams(args)...)
 	if err != nil {
 		return nil, err
 	}
 
-	rs := newRecordStream(res)
+	rs := newRows(res)
 	rs.columns = res.Columns()
 	return rs, nil
 }
 
-func driverNamedValueToParams(args []driver.NamedValue) []any {
+func namedValueToParams(args []driver.NamedValue) []any {
 	params := make([]any, len(args))
 	for i, arg := range args {
 		var p environment.Param
@@ -233,35 +216,35 @@ func (s stmt) Close() error {
 
 var errStop = errors.New("stop")
 
-type recordStream struct {
+type Rows struct {
 	res      *chai.Result
 	cancelFn func()
-	c        chan recordRow
+	c        chan Row
 	wg       sync.WaitGroup
 	columns  []string
 }
 
-type recordRow struct {
+type Row struct {
 	r   *chai.Row
 	err error
 }
 
-func newRecordStream(res *chai.Result) *recordStream {
+func newRows(res *chai.Result) *Rows {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ds := recordStream{
+	rs := Rows{
 		res:      res,
 		cancelFn: cancel,
-		c:        make(chan recordRow),
+		c:        make(chan Row),
 	}
-	ds.wg.Add(1)
+	rs.wg.Add(1)
 
-	go ds.iterate(ctx)
+	go rs.iterate(ctx)
 
-	return &ds
+	return &rs
 }
 
-func (rs *recordStream) iterate(ctx context.Context) {
+func (rs *Rows) iterate(ctx context.Context) {
 	defer rs.wg.Done()
 	defer close(rs.c)
 
@@ -275,7 +258,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return errStop
-		case rs.c <- recordRow{
+		case rs.c <- Row{
 			r: r,
 		}:
 
@@ -292,7 +275,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		return
 	}
 	if err != nil {
-		rs.c <- recordRow{
+		rs.c <- Row{
 			err: err,
 		}
 		return
@@ -300,19 +283,19 @@ func (rs *recordStream) iterate(ctx context.Context) {
 }
 
 // Columns returns the fields selected by the SELECT statement.
-func (rs *recordStream) Columns() []string {
+func (rs *Rows) Columns() []string {
 	return rs.res.Columns()
 }
 
 // Close closes the rows iterator.
-func (rs *recordStream) Close() error {
+func (rs *Rows) Close() error {
 	rs.cancelFn()
 	rs.wg.Wait()
 	return rs.res.Close()
 }
 
-func (rs *recordStream) Next(dest []driver.Value) error {
-	rs.c <- recordRow{}
+func (rs *Rows) Next(dest []driver.Value) error {
+	rs.c <- Row{}
 
 	row, ok := <-rs.c
 	if !ok {

@@ -106,7 +106,11 @@ func TestSelectStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec(`--sql
+				conn, err := db.Connect()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				err = conn.Exec(`--sql
 				CREATE TABLE test (
 					k INTEGER PRIMARY KEY,
 					color TEXT,
@@ -117,7 +121,7 @@ func TestSelectStmt(t *testing.T) {
 				)`)
 				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(`
+					err = conn.Exec(`
 						CREATE INDEX idx_color ON test (color);
 						CREATE INDEX idx_size ON test (size);
 						CREATE INDEX idx_shape ON test (shape);
@@ -127,14 +131,14 @@ func TestSelectStmt(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
+				err = conn.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
+				err = conn.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
 				require.NoError(t, err)
-				err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
+				err = conn.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
 				require.NoError(t, err)
 
-				st, err := db.Query(test.query, test.params...)
+				st, err := conn.Query(test.query, test.params...)
 				defer st.Close()
 
 				if test.fails {
@@ -159,19 +163,23 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
+		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
 		require.NoError(t, err)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
+		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
 		require.NoError(t, err)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
+		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
 		require.NoError(t, err)
-		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
+		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
+		st, err := conn.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
 		require.NoError(t, err)
 		defer st.Close()
 
@@ -195,13 +203,17 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
 		require.NoError(t, err)
 
-		err = db.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
+		err = conn.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
 		require.NoError(t, err)
 
-		st, err := db.Query("SELECT * FROM test ORDER BY foo")
+		st, err := conn.Query("SELECT * FROM test ORDER BY foo")
 		require.NoError(t, err)
 		defer st.Close()
 
@@ -233,7 +245,11 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1);
 			CREATE SEQUENCE seq;
@@ -241,7 +257,7 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		// normal query
-		r, err := db.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test")
+		r, err := conn.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test")
 		require.NoError(t, err)
 		var a, seq int
 		err = r.Scan(&a, &seq)
@@ -250,7 +266,7 @@ func TestSelectStmt(t *testing.T) {
 		require.Equal(t, 1, seq)
 
 		// query with no table
-		r, err = db.QueryRow("SELECT NEXT VALUE FOR seq")
+		r, err = conn.QueryRow("SELECT NEXT VALUE FOR seq")
 		require.NoError(t, err)
 		err = r.Scan(&seq)
 		require.NoError(t, err)
@@ -262,13 +278,17 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3);
 		`)
 		require.NoError(t, err)
 
-		r, err := db.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
+		r, err := conn.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
 		require.NoError(t, err)
 		var a int
 		err = r.Scan(&a)
@@ -302,7 +322,11 @@ func TestDistinct(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			tx, err := db.Begin(true)
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+
+			tx, err := conn.Begin(true)
 			require.NoError(t, err)
 			defer tx.Rollback()
 
@@ -334,7 +358,7 @@ func TestDistinct(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					q, err := db.Query(test.query)
+					q, err := conn.Query(test.query)
 					require.NoError(t, err)
 					defer q.Close()
 

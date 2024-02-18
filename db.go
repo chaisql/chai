@@ -47,10 +47,48 @@ func Open(path string) (*DB, error) {
 	}, nil
 }
 
+func (db *DB) Connect() (*Connection, error) {
+	conn, err := db.DB.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Connection{
+		db:   db,
+		Conn: conn,
+	}, nil
+}
+
 // WithContext creates a new database handle using the given context for every operation.
 func (db DB) WithContext(ctx context.Context) *DB {
 	db.ctx = ctx
 	return &db
+}
+
+func (db *DB) withConn(fn func(*Connection) error) error {
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	return fn(conn)
+}
+
+// QueryRow runs the query and returns the first row.
+func (db *DB) QueryRow(q string, args ...any) (r *Row, err error) {
+	err = db.withConn(func(c *Connection) error {
+		r, err = c.QueryRow(q, args...)
+		return err
+	})
+	return
+}
+
+// Exec a query against the database without returning the result.
+func (db *DB) Exec(q string, args ...any) error {
+	return db.withConn(func(c *Connection) error {
+		return c.Exec(q, args...)
+	})
 }
 
 // Close the database.
@@ -58,10 +96,15 @@ func (db *DB) Close() error {
 	return db.DB.Close()
 }
 
+type Connection struct {
+	db   *DB
+	Conn *database.Connection
+}
+
 // Begin starts a new transaction.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db *DB) Begin(writable bool) (*Tx, error) {
-	tx, err := db.DB.BeginTx(&database.TxOptions{
+func (c *Connection) Begin(writable bool) (*Tx, error) {
+	_, err := c.Conn.BeginTx(&database.TxOptions{
 		ReadOnly: !writable,
 	})
 	if err != nil {
@@ -69,14 +112,13 @@ func (db *DB) Begin(writable bool) (*Tx, error) {
 	}
 
 	return &Tx{
-		db: db,
-		tx: tx,
+		conn: c,
 	}, nil
 }
 
 // View starts a read only transaction, runs fn and automatically rolls it back.
-func (db *DB) View(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(false)
+func (c *Connection) View(fn func(tx *Tx) error) error {
+	tx, err := c.Begin(false)
 	if err != nil {
 		return err
 	}
@@ -86,8 +128,8 @@ func (db *DB) View(fn func(tx *Tx) error) error {
 }
 
 // Update starts a read-write transaction, runs fn and automatically commits it.
-func (db *DB) Update(fn func(tx *Tx) error) error {
-	tx, err := db.Begin(true)
+func (c *Connection) Update(fn func(tx *Tx) error) error {
+	tx, err := c.Begin(true)
 	if err != nil {
 		return err
 	}
@@ -103,18 +145,25 @@ func (db *DB) Update(fn func(tx *Tx) error) error {
 
 // Query the database and return the result.
 // The returned result must always be closed after usage.
-func (db *DB) Query(q string, args ...any) (*Result, error) {
-	stmt, err := db.Prepare(q)
+func (c *Connection) Query(q string, args ...any) (*Result, error) {
+	stmt, err := c.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
 
-	return stmt.Query(args...)
+	res, err := stmt.Query(args...)
+	if err != nil {
+		return nil, err
+	}
+
+	res.conn = c
+
+	return res, nil
 }
 
 // QueryRow runs the query and returns the first row.
-func (db *DB) QueryRow(q string, args ...any) (*Row, error) {
-	stmt, err := db.Prepare(q)
+func (c *Connection) QueryRow(q string, args ...any) (*Row, error) {
+	stmt, err := c.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +172,8 @@ func (db *DB) QueryRow(q string, args ...any) (*Row, error) {
 }
 
 // Exec a query against the database without returning the result.
-func (db *DB) Exec(q string, args ...any) error {
-	stmt, err := db.Prepare(q)
+func (c *Connection) Exec(q string, args ...any) error {
+	stmt, err := c.Prepare(q)
 	if err != nil {
 		return err
 	}
@@ -133,21 +182,25 @@ func (db *DB) Exec(q string, args ...any) error {
 }
 
 // Prepare parses the query and returns a prepared statement.
-func (db *DB) Prepare(q string) (*Statement, error) {
+func (c *Connection) Prepare(q string) (*Statement, error) {
 	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	err = pq.Prepare(newQueryContext(db, nil, nil))
+	err = pq.Prepare(newQueryContext(c, nil))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Statement{
-		pq: pq,
-		db: db,
+		pq:   pq,
+		conn: c,
 	}, nil
+}
+
+func (c *Connection) Close() error {
+	return c.Conn.Close()
 }
 
 // Tx represents a database transaction. It provides methods for managing the
@@ -155,19 +208,28 @@ func (db *DB) Prepare(q string) (*Statement, error) {
 // Tx is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Tx struct {
-	db *DB
-	tx *database.Transaction
+	conn *Connection
 }
 
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Tx) Rollback() error {
-	return tx.tx.Rollback()
+	t := tx.conn.Conn.GetTx()
+	if t == nil {
+		return errors.New("transaction has already been committed or rolled back")
+	}
+
+	return t.Rollback()
 }
 
 // Commit the transaction. Calling this method on read-only transactions
 // will return an error.
 func (tx *Tx) Commit() error {
-	return tx.tx.Commit()
+	t := tx.conn.Conn.GetTx()
+	if t == nil {
+		return errors.New("transaction has already been committed or rolled back")
+	}
+
+	return t.Commit()
 }
 
 // Query the database withing the transaction and returns the result.
@@ -208,15 +270,15 @@ func (tx *Tx) Prepare(q string) (*Statement, error) {
 		return nil, err
 	}
 
-	err = pq.Prepare(newQueryContext(tx.db, tx, nil))
+	err = pq.Prepare(newQueryContext(tx.conn, nil))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Statement{
-		pq: pq,
-		db: tx.db,
-		tx: tx,
+		pq:   pq,
+		conn: tx.conn,
+		tx:   tx,
 	}, nil
 }
 
@@ -225,9 +287,9 @@ func (tx *Tx) Prepare(q string) (*Statement, error) {
 // is valid until the DB closes.
 // It's safe for concurrent use by multiple goroutines.
 type Statement struct {
-	pq query.Query
-	db *DB
-	tx *Tx
+	pq   query.Query
+	conn *Connection
+	tx   *Tx
 }
 
 // Query the database and return the result.
@@ -236,12 +298,12 @@ func (s *Statement) Query(args ...any) (*Result, error) {
 	var r *statement.Result
 	var err error
 
-	r, err = s.pq.Run(newQueryContext(s.db, s.tx, argsToParams(args)))
+	r, err = s.pq.Run(newQueryContext(s.conn, argsToParams(args)))
 	if err != nil {
 		return nil, err
 	}
 
-	return &Result{result: r, ctx: s.db.ctx}, nil
+	return &Result{result: r, ctx: s.conn.db.ctx}, nil
 }
 
 func argsToParams(args []interface{}) []environment.Param {
@@ -310,6 +372,7 @@ func (s *Statement) Exec(args ...any) (err error) {
 type Result struct {
 	result *statement.Result
 	ctx    context.Context
+	conn   *Connection
 }
 
 func (r *Result) Iterate(fn func(r *Row) error) error {
@@ -366,12 +429,12 @@ func (r *Result) Columns() []string {
 				break
 			}
 
-			fields := make([]string, len(po.Exprs))
+			columns := make([]string, len(po.Exprs))
 			for i := range po.Exprs {
-				fields[i] = po.Exprs[i].String()
+				columns[i] = po.Exprs[i].String()
 			}
 
-			return fields
+			return columns
 		}
 	}
 
@@ -385,7 +448,9 @@ func (r *Result) Close() (err error) {
 		return nil
 	}
 
-	return r.result.Close()
+	err = r.result.Close()
+
+	return err
 }
 
 func (r *Result) MarshalJSON() ([]byte, error) {
@@ -427,18 +492,13 @@ func (r *Result) MarshalJSONTo(w io.Writer) error {
 	return buf.Flush()
 }
 
-func newQueryContext(db *DB, tx *Tx, params []environment.Param) *query.Context {
-	ctx := query.Context{
-		Ctx:    db.ctx,
-		DB:     db.DB,
+func newQueryContext(conn *Connection, params []environment.Param) *query.Context {
+	return &query.Context{
+		Ctx:    conn.db.ctx,
+		DB:     conn.db.DB,
+		Conn:   conn.Conn,
 		Params: params,
 	}
-
-	if tx != nil {
-		ctx.Tx = tx.tx
-	}
-
-	return &ctx
 }
 
 type Row struct {

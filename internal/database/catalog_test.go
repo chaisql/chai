@@ -441,7 +441,11 @@ func TestReadOnlyTables(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	res, err := db.Query(`
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	res, err := conn.Query(`
 		CREATE TABLE foo (a int, b double unique, c text);
 		CREATE INDEX idx_foo_a ON foo(a, c);
 		SELECT * FROM __chai_catalog
@@ -565,20 +569,28 @@ func TestCatalogConcurrency(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
+	conn1, err := db.Connect()
+	require.NoError(t, err)
+	defer conn1.Close()
+
 	// create a table
-	err = db.Exec(`
+	err = conn1.Exec(`
 		CREATE TABLE test (a int);
 		CREATE INDEX idx_test_a ON test(a);
 	`)
 	require.NoError(t, err)
 
 	// start a transaction rt1
-	rt1, err := db.Begin(false)
+	rt1, err := conn1.Begin(false)
 	require.NoError(t, err)
 	defer rt1.Rollback()
 
+	conn2, err := db.Connect()
+	require.NoError(t, err)
+	defer conn2.Close()
+
 	// start a transaction wt2
-	wt1, err := db.Begin(true)
+	wt1, err := conn2.Begin(true)
 	require.NoError(t, err)
 	defer wt1.Rollback()
 

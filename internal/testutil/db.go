@@ -60,12 +60,28 @@ func NewTestDB(t testing.TB) *database.Database {
 	return db
 }
 
+func NewTestConn(t testing.TB, db *database.Database) *database.Connection {
+	t.Helper()
+
+	conn, err := db.Connect()
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		conn.Close()
+	})
+
+	return conn
+}
+
 func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func()) {
 	t.Helper()
 
 	db := NewTestDB(t)
+	conn := NewTestConn(t, db)
 
-	tx, err := db.Begin(true)
+	tx, err := conn.BeginTx(&database.TxOptions{
+		ReadOnly: false,
+	})
 	require.NoError(t, err)
 
 	return db, tx, func() {
@@ -91,7 +107,7 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 		return nil, err
 	}
 
-	ctx := &query.Context{Ctx: context.Background(), DB: db, Tx: tx, Params: params}
+	ctx := &query.Context{Ctx: context.Background(), DB: db, Conn: tx.Connection(), Params: params}
 	err = pq.Prepare(ctx)
 	if err != nil {
 		return nil, err

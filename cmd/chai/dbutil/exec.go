@@ -19,11 +19,18 @@ func ExecSQL(ctx context.Context, db *chai.DB, r io.Reader, w io.Writer) error {
 	enc.SetEscapeHTML(false)
 	enc.SetIndent("", "  ")
 
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
 	return parser.NewParser(r).Parse(func(s statement.Statement) error {
 		qq := query.New(s)
 		qctx := query.Context{
-			Ctx: ctx,
-			DB:  db.DB,
+			Ctx:  ctx,
+			DB:   db.DB,
+			Conn: conn.Conn,
 		}
 		err := qq.Prepare(&qctx)
 		if err != nil {

@@ -111,7 +111,13 @@ func TestSQL(t *testing.T) {
 
 								if test.Fails {
 									exec := func() error {
-										res, err := db.Query(test.Expr)
+										conn, err := db.Connect()
+										if err != nil {
+											return err
+										}
+										defer conn.Close()
+
+										res, err := conn.Query(test.Expr)
 										if err != nil {
 											return err
 										}
@@ -131,7 +137,11 @@ func TestSQL(t *testing.T) {
 										require.Errorf(t, err, "\nSource:%s:%d expected\n%s\nto raise an error but got none", absPath, test.Line, test.Expr)
 									}
 								} else {
-									res, err := db.Query(test.Expr)
+									conn, err := db.Connect()
+									require.NoError(t, err, "Source: %s:%d", absPath, test.Line)
+									defer conn.Close()
+
+									res, err := conn.Query(test.Expr)
 									require.NoError(t, err, "Source: %s:%d", absPath, test.Line)
 									defer res.Close()
 

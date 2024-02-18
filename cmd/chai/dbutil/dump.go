@@ -12,7 +12,13 @@ import (
 // Dump takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
 func Dump(db *chai.DB, w io.Writer, tables ...string) error {
-	tx, err := db.Begin(false)
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	tx, err := conn.Begin(false)
 	if err != nil {
 		return err
 	}
@@ -97,7 +103,13 @@ func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
 // DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
 // If tables are provided, only selected tables will be outputted.
 func DumpSchema(db *chai.DB, w io.Writer, tables ...string) error {
-	tx, err := db.Begin(false)
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	tx, err := conn.Begin(false)
 	if err != nil {
 		return err
 	}

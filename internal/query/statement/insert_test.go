@@ -31,10 +31,14 @@ func TestInsertStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test(a TEXT, b TEXT, c TEXT)")
+				conn, err := db.Connect()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				err = conn.Exec("CREATE TABLE test(a TEXT, b TEXT, c TEXT)")
 				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(`
+					err = conn.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
@@ -42,14 +46,14 @@ func TestInsertStmt(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				err = db.Exec(test.query, test.params...)
+				err = conn.Exec(test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
 				require.NoError(t, err)
 
-				st, err := db.Query("SELECT * FROM test")
+				st, err := conn.Query("SELECT * FROM test")
 				require.NoError(t, err)
 				defer st.Close()
 
@@ -82,13 +86,17 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE test(a int unique)`)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec(`CREATE TABLE test(a int unique)`)
 		require.NoError(t, err)
 
-		err = db.Exec(`insert into test (a) VALUES (1), (1)`)
+		err = conn.Exec(`insert into test (a) VALUES (1), (1)`)
 		require.Error(t, err)
 
-		res, err := db.Query("SELECT * FROM test")
+		res, err := conn.Query("SELECT * FROM test")
 		require.NoError(t, err)
 		defer res.Close()
 
@@ -100,13 +108,17 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
 		require.NoError(t, err)
 
-		err = db.Exec(`insert into test (a) VALUES (1), (2), (3)`)
+		err = conn.Exec(`insert into test (a) VALUES (1), (2), (3)`)
 		require.NoError(t, err)
 
-		res, err := db.Query("SELECT * FROM test")
+		res, err := conn.Query("SELECT * FROM test")
 		require.NoError(t, err)
 		defer res.Close()
 
@@ -148,21 +160,25 @@ func TestInsertSelect(t *testing.T) {
 			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(`
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+
+			err = conn.Exec(`
 				CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
 				CREATE TABLE bar(a INT, b INT, c INT, d INT, e INT);
 				INSERT INTO bar (a, b) VALUES (1, 10)
 			`)
 			require.NoError(t, err)
 
-			err = db.Exec(test.query, test.params...)
+			err = conn.Exec(test.query, test.params...)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			st, err := db.Query("SELECT * FROM foo")
+			st, err := conn.Query("SELECT * FROM foo")
 			require.NoError(t, err)
 			defer st.Close()
 

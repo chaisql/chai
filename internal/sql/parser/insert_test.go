@@ -200,9 +200,10 @@ func TestParserInsert(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := testutil.NewTestDB(t)
+			db, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
 
-			testutil.MustExec(t, db, nil, "CREATE TABLE test(a TEXT, b TEXT); CREATE TABLE foo(c TEXT, d TEXT);")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(a TEXT, b TEXT); CREATE TABLE foo(c TEXT, d TEXT);")
 
 			q, err := parser.ParseQuery(test.s)
 			if test.fails {
@@ -212,8 +213,9 @@ func TestParserInsert(t *testing.T) {
 			require.NoError(t, err)
 
 			err = q.Prepare(&query.Context{
-				Ctx: context.Background(),
-				DB:  db,
+				Ctx:  context.Background(),
+				DB:   db,
+				Conn: tx.Connection(),
 			})
 			require.NoError(t, err)
 

@@ -249,6 +249,10 @@ func TestQueries(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
 		r, err := db.QueryRow(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
@@ -261,7 +265,7 @@ func TestQueries(t *testing.T) {
 		require.Equal(t, 4, count)
 
 		t.Run("ORDER BY", func(t *testing.T) {
-			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
+			st, err := conn.Query("SELECT * FROM test ORDER BY a DESC")
 			require.NoError(t, err)
 			defer st.Close()
 
@@ -297,7 +301,11 @@ func TestQueries(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		st, err := db.Query(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		st, err := conn.Query(`
 				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
@@ -317,16 +325,23 @@ func TestQueries(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		err = db.Exec("CREATE TABLE test(a INT)")
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		err = conn.Exec("CREATE TABLE test(a INT)")
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			for i := 1; i < 200; i++ {
-				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
-				require.NoError(t, err)
-			}
-			return nil
-		})
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		for i := 1; i < 200; i++ {
+			err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
+			require.NoError(t, err)
+		}
+
+		err = tx.Commit()
 		require.NoError(t, err)
 
 		r, err := db.QueryRow(`
@@ -349,19 +364,26 @@ func TestQueriesSameTransaction(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			r, err := tx.QueryRow(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		r, err := tx.QueryRow(`
 				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`)
-			require.NoError(t, err)
-			var count int
-			err = r.Scan(&count)
-			require.NoError(t, err)
-			require.Equal(t, 4, count)
-			return nil
-		})
+		require.NoError(t, err)
+		var count int
+		err = r.Scan(&count)
+		require.NoError(t, err)
+		require.Equal(t, 4, count)
+
+		err = tx.Commit()
 		require.NoError(t, err)
 	})
 
@@ -371,14 +393,21 @@ func TestQueriesSameTransaction(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			err = tx.Exec(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
-			require.NoError(t, err)
-			return nil
-		})
+		require.NoError(t, err)
+
+		err = tx.Commit()
 		require.NoError(t, err)
 	})
 
@@ -388,21 +417,28 @@ func TestQueriesSameTransaction(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			st, err := tx.Query(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err := tx.Query(`
 				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
 			`)
-			require.NoError(t, err)
-			defer st.Close()
-			var buf bytes.Buffer
-			err = st.MarshalJSONTo(&buf)
-			require.NoError(t, err)
-			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
-			return nil
-		})
+		require.NoError(t, err)
+		defer st.Close()
+		var buf bytes.Buffer
+		err = st.MarshalJSONTo(&buf)
+		require.NoError(t, err)
+		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
+
+		err = tx.Commit()
 		require.NoError(t, err)
 	})
 
@@ -412,20 +448,27 @@ func TestQueriesSameTransaction(t *testing.T) {
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			r, err := tx.QueryRow(`
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		r, err := tx.QueryRow(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
-			require.NoError(t, err)
-			var count int
-			err = r.Scan(&count)
-			require.NoError(t, err)
-			require.Equal(t, 2, count)
-			return nil
-		})
+		require.NoError(t, err)
+		var count int
+		err = r.Scan(&count)
+		require.NoError(t, err)
+		require.Equal(t, 2, count)
+
+		err = tx.Commit()
 		require.NoError(t, err)
 	})
 }

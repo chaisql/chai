@@ -25,16 +25,12 @@ func New(statements ...statement.Statement) Query {
 type Context struct {
 	Ctx    context.Context
 	DB     *database.Database
-	Tx     *database.Transaction
+	Conn   *database.Connection
 	Params []environment.Param
 }
 
 func (c *Context) GetTx() *database.Transaction {
-	if c.Tx != nil {
-		return c.Tx
-	}
-
-	return c.DB.GetAttachedTx()
+	return c.Conn.GetTx()
 }
 
 // Prepare the statements by calling their Prepare methods.
@@ -62,7 +58,7 @@ func (q *Query) Prepare(context *Context) error {
 		if tx == nil {
 			tx = context.GetTx()
 			if tx == nil {
-				tx, err = context.DB.BeginTx(&database.TxOptions{
+				tx, err = context.Conn.BeginTx(&database.TxOptions{
 					ReadOnly: true,
 				})
 				if err != nil {
@@ -73,8 +69,9 @@ func (q *Query) Prepare(context *Context) error {
 		}
 
 		stmt, err := p.Prepare(&statement.Context{
-			DB: context.DB,
-			Tx: tx,
+			DB:   context.DB,
+			Conn: context.Conn,
+			Tx:   tx,
 		})
 		if err != nil {
 			return err
@@ -110,10 +107,10 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(context.DB, &q)
+			err = qa.alterQuery(context.Conn, &q)
 			if err != nil {
 				if tx := context.GetTx(); tx != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 				}
 				return nil, err
 			}
@@ -122,7 +119,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		}
 
 		if q.tx == nil {
-			q.tx, err = context.DB.BeginTx(&database.TxOptions{
+			q.tx, err = context.Conn.BeginTx(&database.TxOptions{
 				ReadOnly: stmt.IsReadOnly(),
 			})
 			if err != nil {
@@ -132,6 +129,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 
 		res, err = stmt.Run(&statement.Context{
 			DB:     context.DB,
+			Conn:   context.Conn,
 			Tx:     q.tx,
 			Params: context.Params,
 		})
@@ -185,5 +183,5 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 }
 
 type queryAlterer interface {
-	alterQuery(db *database.Database, q *Query) error
+	alterQuery(conn *database.Connection, q *Query) error
 }

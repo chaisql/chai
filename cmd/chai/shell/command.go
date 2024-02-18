@@ -115,7 +115,13 @@ func runHelpCmd(out io.Writer) error {
 
 // runTablesCmd displays all tables.
 func runTablesCmd(db *chai.DB, w io.Writer) error {
-	res, err := db.Query("SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	res, err := conn.Query("SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
 	if err != nil {
 		return err
 	}
@@ -195,7 +201,13 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	}
 	defer f.Close()
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	tx, err := conn.Begin(true)
 	if err != nil {
 		return err
 	}

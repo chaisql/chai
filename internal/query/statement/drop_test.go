@@ -15,22 +15,26 @@ func TestDropTable(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
 	require.NoError(t, err)
 
-	err = db.Exec("DROP TABLE test1")
+	err = conn.Exec("DROP TABLE test1")
 	require.NoError(t, err)
 
-	err = db.Exec("DROP TABLE IF EXISTS test1")
+	err = conn.Exec("DROP TABLE IF EXISTS test1")
 	require.NoError(t, err)
 
 	// Dropping a table that doesn't exist without "IF EXISTS"
 	// should return an error.
-	err = db.Exec("DROP TABLE test1")
+	err = conn.Exec("DROP TABLE test1")
 	require.Error(t, err)
 
 	// Assert that no other table has been dropped.
-	res, err := db.Query("SELECT name FROM __chai_catalog WHERE type = 'table'")
+	res, err := conn.Query("SELECT name FROM __chai_catalog WHERE type = 'table'")
 	require.NoError(t, err)
 	var tables []string
 	err = res.Iterate(func(r *chai.Row) error {
@@ -49,18 +53,18 @@ func TestDropTable(t *testing.T) {
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_a_idx'")
+	_, err = conn.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_a_idx'")
 	require.Error(t, err)
 
 	// Assert the rowid sequence test1_seq, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_seq'")
+	_, err = conn.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_seq'")
 	require.Error(t, err)
-	_, err = db.QueryRow("SELECT 1 FROM __chai_sequence WHERE name = 'test1_seq'")
+	_, err = conn.QueryRow("SELECT 1 FROM __chai_sequence WHERE name = 'test1_seq'")
 	require.Error(t, err)
 
 	// Dropping a read-only table should fail.
-	err = db.Exec("DROP TABLE __chai_catalog")
+	err = conn.Exec("DROP TABLE __chai_catalog")
 	require.Error(t, err)
 }
 

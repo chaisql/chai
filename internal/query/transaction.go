@@ -6,6 +6,10 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ queryAlterer = BeginStmt{}
+var _ queryAlterer = RollbackStmt{}
+var _ queryAlterer = CommitStmt{}
+
 // BeginStmt is a statement that creates a new transaction.
 type BeginStmt struct {
 	Writable bool
@@ -16,15 +20,14 @@ func (stmt BeginStmt) Prepare(*statement.Context) (statement.Statement, error) {
 	return stmt, nil
 }
 
-func (stmt BeginStmt) alterQuery(db *database.Database, q *Query) error {
+func (stmt BeginStmt) alterQuery(conn *database.Connection, q *Query) error {
 	if q.tx != nil {
 		return errors.New("cannot begin a transaction within a transaction")
 	}
 
 	var err error
-	q.tx, err = db.BeginTx(&database.TxOptions{
+	q.tx, err = conn.BeginTx(&database.TxOptions{
 		ReadOnly: !stmt.Writable,
-		Attached: true,
 	})
 	q.autoCommit = false
 	return err
@@ -46,7 +49,7 @@ func (stmt RollbackStmt) Prepare(*statement.Context) (statement.Statement, error
 	return stmt, nil
 }
 
-func (stmt RollbackStmt) alterQuery(db *database.Database, q *Query) error {
+func (stmt RollbackStmt) alterQuery(conn *database.Connection, q *Query) error {
 	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot rollback with no active transaction")
 	}
@@ -76,7 +79,7 @@ func (stmt CommitStmt) Prepare(*statement.Context) (statement.Statement, error) 
 	return stmt, nil
 }
 
-func (stmt CommitStmt) alterQuery(db *database.Database, q *Query) error {
+func (stmt CommitStmt) alterQuery(conn *database.Connection, q *Query) error {
 	if q.tx == nil || q.autoCommit {
 		return errors.New("cannot commit with no active transaction")
 	}

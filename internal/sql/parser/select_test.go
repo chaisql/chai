@@ -353,9 +353,10 @@ func TestParserSelect(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if !test.mustFail {
-				db := testutil.NewTestDB(t)
+				db, tx, cleanup := testutil.NewTestTx(t)
+				defer cleanup()
 
-				testutil.MustExec(t, db, nil, `
+				testutil.MustExec(t, db, tx, `
 					CREATE TABLE test(a TEXT, b TEXT, age int);
 					CREATE TABLE test1(age INT, a INT);
 					CREATE TABLE test2(age INT, a INT);
@@ -367,8 +368,9 @@ func TestParserSelect(t *testing.T) {
 				)
 
 				err = q.Prepare(&query.Context{
-					Ctx: context.Background(),
-					DB:  db,
+					Ctx:  context.Background(),
+					DB:   db,
+					Conn: tx.Connection(),
 				})
 				require.NoError(t, err)
 

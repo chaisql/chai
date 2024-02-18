@@ -50,7 +50,13 @@ func ListIndexes(db *chai.DB, tableName string) ([]string, error) {
 	if tableName != "" {
 		q += " AND owner_table_name = ?"
 	}
-	res, err := db.Query(q, tableName)
+	conn, err := db.Connect()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	res, err := conn.Query(q, tableName)
 	if err != nil {
 		return nil, err
 	}

@@ -30,10 +30,14 @@ func TestTransactionRun(t *testing.T) {
 			db, err := chai.Open(":memory:")
 			require.NoError(t, err)
 			defer db.Close()
-			defer db.Exec("ROLLBACK")
+
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+			defer conn.Exec("ROLLBACK")
 
 			for _, q := range test.queries {
-				err = db.Exec(q)
+				err = conn.Exec(q)
 				if err != nil {
 					break
 				}

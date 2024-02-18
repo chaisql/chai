@@ -21,7 +21,11 @@ func TestConcurrentTransactionManagement(t *testing.T) {
 
 	go func() {
 		// 1. Start transaction T1.
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
 		require.NoError(t, err)
 
 		// Start transaction T2.
@@ -42,7 +46,11 @@ func TestConcurrentTransactionManagement(t *testing.T) {
 
 		// 2. Attempt to start transaction T2.
 		// Waits for T1 to finish.
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
 		require.NoError(t, err)
 		require.NoError(t, tx.Rollback())
 

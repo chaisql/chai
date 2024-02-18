@@ -31,12 +31,17 @@ type execer func(q string, args ...interface{}) error
 // If tables is provided, only selected tables will be outputted.
 func Bench(db *chai.DB, query string, opt BenchOptions) error {
 	var tx *chai.Tx
-	var p preparer = db
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	var p preparer = conn
 	var e execer = db.Exec
-	var err error
 
 	if opt.SameTx {
-		tx, err = db.Begin(true)
+		tx, err = conn.Begin(true)
 		if err != nil {
 			return err
 		}

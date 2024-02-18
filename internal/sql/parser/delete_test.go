@@ -62,16 +62,19 @@ func TestParserDelete(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db := testutil.NewTestDB(t)
 
-			testutil.MustExec(t, db, nil, "CREATE TABLE test(age int)")
+			db, tx, cleanup := testutil.NewTestTx(t)
+			defer cleanup()
+
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(age int)")
 
 			q, err := parser.ParseQuery(test.s)
 			require.NoError(t, err)
 
 			err = q.Prepare(&query.Context{
-				Ctx: context.Background(),
-				DB:  db,
+				Ctx:  context.Background(),
+				DB:   db,
+				Conn: tx.Connection(),
 			})
 			require.NoError(t, err)
 

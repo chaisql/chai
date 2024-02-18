@@ -3,7 +3,6 @@ package chai_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,11 +16,17 @@ import (
 func ExampleTx() {
 	db, err := chai.Open(":memory:")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer db.Close()
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	tx, err := conn.Begin(true)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +103,11 @@ func TestOpen(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	res1, err := db.Query("SELECT * FROM __chai_catalog")
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	res1, err := conn.Query("SELECT * FROM __chai_catalog")
 	require.NoError(t, err)
 	defer res1.Close()
 
@@ -144,7 +153,11 @@ func TestQueryRow(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, err)
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	tx, err := conn.Begin(true)
 	require.NoError(t, err)
 
 	err = tx.Exec(`
@@ -165,7 +178,11 @@ func TestQueryRow(t *testing.T) {
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 
-		tx, err := db.Begin(false)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -182,7 +199,11 @@ func TestQueryRow(t *testing.T) {
 		require.True(t, chai.IsNotFoundError(err))
 		require.Nil(t, r)
 
-		tx, err := db.Begin(false)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(false)
 		require.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryRow("SELECT * FROM test WHERE a > 100")
@@ -196,10 +217,14 @@ func TestPrepareThreadSafe(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	err = db.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
 	require.NoError(t, err)
 
-	stmt, err := db.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
+	stmt, err := conn.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
 	require.NoError(t, err)
 
 	g, _ := errgroup.WithContext(context.Background())
@@ -240,7 +265,11 @@ func TestIterateDeepCopy(t *testing.T) {
 	`)
 	require.NoError(t, err)
 
-	res, err := db.Query(`SELECT * FROM foo ORDER BY a DESC`)
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	res, err := conn.Query(`SELECT * FROM foo ORDER BY a DESC`)
 	require.NoError(t, err)
 
 	type item struct {
@@ -262,116 +291,4 @@ func TestIterateDeepCopy(t *testing.T) {
 	require.Equal(t, len(items), 2)
 	require.Equal(t, &item{A: 2, B: "sample text 2"}, items[0])
 	require.Equal(t, &item{A: 1, B: "sample text 1"}, items[1])
-}
-
-func BenchmarkSelect(b *testing.B) {
-	for size := 1; size <= 10000; size *= 10 {
-		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := chai.Open(":memory:")
-			require.NoError(b, err)
-
-			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
-
-			for i := 0; i < size; i++ {
-				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
-			}
-
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				res, _ := db.Query("SELECT * FROM foo")
-				res.Iterate(func(d *chai.Row) error { return nil })
-			}
-		})
-	}
-}
-
-func BenchmarkSelectWhere(b *testing.B) {
-	for size := 1; size <= 10000; size *= 10 {
-		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := chai.Open(":memory:")
-			require.NoError(b, err)
-
-			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
-
-			for i := 0; i < size; i++ {
-				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
-			}
-
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				res, _ := db.Query("SELECT b FROM foo WHERE a > 0")
-				res.Iterate(func(d *chai.Row) error { return nil })
-			}
-		})
-	}
-}
-
-func BenchmarkPreparedSelectWhere(b *testing.B) {
-	for size := 1; size <= 10000; size *= 10 {
-		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := chai.Open(":memory:")
-			require.NoError(b, err)
-
-			err = db.Exec("CREATE TABLE foo")
-			require.NoError(b, err)
-
-			for i := 0; i < size; i++ {
-				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				require.NoError(b, err)
-			}
-
-			p, _ := db.Prepare("SELECT b FROM foo WHERE a > 0")
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				res, _ := p.Query()
-				res.Iterate(func(d *chai.Row) error { return nil })
-			}
-		})
-	}
-}
-
-func BenchmarkSelectPk(b *testing.B) {
-	for size := 1; size <= 10000; size *= 10 {
-		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
-			db, err := chai.Open(":memory:")
-			require.NoError(b, err)
-
-			err = db.Exec("CREATE TABLE foo(a INT PRIMARY KEY)")
-			require.NoError(b, err)
-
-			for i := 0; i < size; i++ {
-				err = db.Exec("INSERT INTO foo(a) VALUES (?)", i)
-				require.NoError(b, err)
-			}
-
-			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
-				res, _ := db.Query("SELECT * FROM foo WHERE a = ?", size-1)
-				res.Iterate(func(d *chai.Row) error { return nil })
-			}
-		})
-	}
-}
-
-func BenchmarkInsert(b *testing.B) {
-	db, err := chai.Open(b.TempDir())
-	require.NoError(b, err)
-	defer db.Close()
-
-	err = db.Exec("CREATE TABLE foo(a INT)")
-	require.NoError(b, err)
-
-	stmt, err := db.Prepare("INSERT INTO foo(a) VALUES (?)")
-	require.NoError(b, err)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		for j := 0; j < 100; j++ {
-			stmt.Exec(j)
-		}
-	}
 }
