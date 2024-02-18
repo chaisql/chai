@@ -13,7 +13,6 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/testutil/genexprtests"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -58,7 +57,7 @@ func ExprList(t testing.TB, s string) expr.LiteralExprList {
 	t.Helper()
 
 	e, err := parser.ParseExpr(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	switch e := e.(type) {
 	case expr.LiteralExprList:
 		return e
@@ -90,7 +89,7 @@ func ParseExpr(t testing.TB, s string) expr.Expr {
 	t.Helper()
 
 	e, err := parser.ParseExpr(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return e
 }
@@ -110,7 +109,7 @@ func ParseExprList(t testing.TB, s string) expr.LiteralExprList {
 	t.Helper()
 
 	e, err := parser.ParseExpr(s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	switch e := e.(type) {
 	case expr.LiteralExprList:
@@ -127,12 +126,12 @@ func ParseExprList(t testing.TB, s string) expr.LiteralExprList {
 func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want types.Value, fails bool) {
 	t.Helper()
 	e, err := parser.NewParser(strings.NewReader(exprStr)).ParseExpr()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	res, err := e.Eval(env)
 	if fails {
-		assert.Error(t, err)
+		require.Error(t, err)
 	} else {
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, want, res)
 	}
 }
@@ -140,10 +139,10 @@ func TestExpr(t testing.TB, exprStr string, env *environment.Environment, want t
 func FunctionExpr(t testing.TB, name string, args ...expr.Expr) expr.Expr {
 	t.Helper()
 	def, err := functions.GetFunc(name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, def)
 	expr, err := def.Function(args...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, expr)
 	return expr
 }
@@ -157,7 +156,7 @@ func ExprRunner(t *testing.T, testfile string) {
 	}
 
 	ts, err := genexprtests.Parse(f)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tx := database.Transaction{
 		TxStart: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -176,19 +175,19 @@ func ExprRunner(t *testing.T, testfile string) {
 						t.Helper()
 						// parse the expected result
 						e, err := parser.NewParser(strings.NewReader(stmt.Res)).ParseExpr()
-						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
+						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// eval it to get a proper Value
 						want, err := e.Eval(env)
-						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
+						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// parse the given expr
 						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
-						assert.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
+						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// eval it to get a proper Value
 						got, err := e.Eval(env)
-						assert.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
+						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
 
 						// finally, compare those two
 						RequireValueEqual(t, want, got, "assertion error at %s:%d", testfile, stmt.ResLine)

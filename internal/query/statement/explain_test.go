@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,31 +42,31 @@ func TestExplainStmt(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.query, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec("CREATE TABLE test (k INTEGER PRIMARY KEY, a INT, b INT, c INT, d INT, x INT, y INT)")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE UNIQUE INDEX idx_b ON test (b);
 						CREATE INDEX idx_x_y ON test (x, y);
 					`)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			r, err := db.QueryRow(test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			var plan string
 			err = r.ScanColumn("plan", &plan)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			got, err := json.Marshal(plan)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			require.JSONEq(t, test.expected, string(got))
 		})

@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -104,7 +103,7 @@ func TestSelectStmt(t *testing.T) {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := chai.Open(":memory:")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec(`--sql
@@ -116,7 +115,7 @@ func TestSelectStmt(t *testing.T) {
 					height INTEGER,
 					weight INTEGER
 				)`)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`
 						CREATE INDEX idx_color ON test (color);
@@ -125,29 +124,29 @@ func TestSelectStmt(t *testing.T) {
 						CREATE INDEX idx_height ON test (height);
 						CREATE INDEX idx_weight ON test (weight);
 					`)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 
 				err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				st, err := db.Query(test.query, test.params...)
 				defer st.Close()
 
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				var buf bytes.Buffer
 				err = st.MarshalJSONTo(&buf)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 		}
@@ -157,81 +156,81 @@ func TestSelectStmt(t *testing.T) {
 
 	t.Run("with primary key only", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		st, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = st.MarshalJSONTo(&buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
 	})
 
 	t.Run("table not found", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("SELECT * FROM foo")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = db.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		st, err := db.Query("SELECT * FROM test ORDER BY foo")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer st.Close()
 
 		var buf bytes.Buffer
 		err = st.MarshalJSONTo(&buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.JSONEq(t, `[{"foo": 1},{"foo": 2}, {"foo": 3},{"foo": 4}]`, buf.String())
 	})
 
 	t.Run("empty table with aggregators", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec("CREATE TABLE test(a INTEGER, b INTEGER, id INTEGER PRIMARY KEY);")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		d, err := db.QueryRow("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		enc, err := json.Marshal(d)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		require.JSONEq(t, `{"MAX(a)": null, "MIN(b)": null, "COUNT(*)": 0, "SUM(id)": null}`, string(enc))
 	})
 
 	t.Run("using sequences in SELECT must open read-write transaction instead of read-only", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`
@@ -239,41 +238,41 @@ func TestSelectStmt(t *testing.T) {
 			INSERT INTO test (a) VALUES (1);
 			CREATE SEQUENCE seq;
 		`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// normal query
 		r, err := db.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var a, seq int
 		err = r.Scan(&a, &seq)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 1, seq)
 
 		// query with no table
 		r, err = db.QueryRow("SELECT NEXT VALUE FOR seq")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = r.Scan(&seq)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, seq)
 	})
 
 	t.Run("LIMIT / OFFSET with params", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3);
 		`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		r, err := db.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var a int
 		err = r.Scan(&a)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, a)
 	})
 }
@@ -300,26 +299,26 @@ func TestDistinct(t *testing.T) {
 
 		t.Run(typ.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
 			tx, err := db.Begin(true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer tx.Rollback()
 
 			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", c TEXT, nullable " + typ.name + ");")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = tx.Exec("CREATE UNIQUE INDEX test_c_index ON test(c);")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			for i := 0; i < total; i++ {
 				unique, nonunique := typ.generateValue(i, notUnique)
 				err = tx.Exec(`INSERT INTO test VALUES (?, ?, ?, null)`, unique, nonunique, unique)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 			err = tx.Commit()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			tests := []struct {
 				name          string
@@ -336,7 +335,7 @@ func TestDistinct(t *testing.T) {
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
 					q, err := db.Query(test.query)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					defer q.Close()
 
 					var i int
@@ -344,7 +343,7 @@ func TestDistinct(t *testing.T) {
 						i++
 						return nil
 					})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					require.Equal(t, test.expectedCount, i)
 				})
 			}

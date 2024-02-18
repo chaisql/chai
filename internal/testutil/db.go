@@ -11,7 +11,6 @@ import (
 	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
@@ -52,7 +51,7 @@ func NewTestDB(t testing.TB) *database.Database {
 	db, err := database.Open(":memory:", &database.Options{
 		CatalogLoader: catalogstore.LoadCatalog,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		db.Close()
@@ -67,7 +66,7 @@ func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	db := NewTestDB(t)
 
 	tx, err := db.Begin(true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return db, tx, func() {
 		tx.Rollback()
@@ -105,11 +104,11 @@ func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q s
 	t.Helper()
 
 	err := Exec(db, tx, q, params...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func MustQuery(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) *statement.Result {
 	res, err := Query(db, tx, q, params...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return res
 }

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,7 +21,7 @@ func TestDump(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
 			var want bytes.Buffer
@@ -55,39 +54,39 @@ func TestDump(t *testing.T) {
 
 				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b INTEGER, c INTEGER);", table)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_a ON %s (a);`, table, table)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (b, c);`, table, table)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 1, 2, 3)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 2, 2, 2)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 3, 2, 1)
 				err = db.Exec(q)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 			}
 			want.WriteString("COMMIT;\n")
 
 			var got bytes.Buffer
 			err = Dump(db, &got, tt.tables...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			require.Equal(t, want.String(), got.String())
 		})

@@ -12,7 +12,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -93,9 +92,9 @@ func TestTempTreeSort(t *testing.T) {
 			})
 
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, len(got), len(test.want))
 				for i := range got {
 					testutil.RequireRowEqual(t, test.want[i], got[i])

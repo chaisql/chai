@@ -24,7 +24,7 @@ jobs:
       - name: Build
         run: make
 
-      - name: Test Chai
+      - name: Test ChaiSQL
         run: go test -race -timeout=2m ./...
       
       - name: SQL tests

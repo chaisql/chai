@@ -8,7 +8,6 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/row"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -45,15 +44,15 @@ func TestScalarFunctionDef(t *testing.T) {
 
 		t.Run("OK", func(t *testing.T) {
 			fexpr, err := def.Function(expr1, expr2, expr3)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			v, err := fexpr.Eval(env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, types.NewIntegerValue(1+2+3), v)
 		})
 
 		t.Run("NOK", func(t *testing.T) {
 			_, err := def.Function(expr1, expr2)
-			assert.Error(t, err)
+			require.Error(t, err)
 		})
 	})
 }

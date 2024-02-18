@@ -6,7 +6,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -77,9 +76,9 @@ func TestColumnConstraintsAdd(t *testing.T) {
 			fcs := database.MustNewColumnConstraints(test.got...)
 			err := fcs.Add(&test.add)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.want, fcs.Ordered)
 			}
 		})

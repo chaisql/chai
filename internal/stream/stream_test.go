@@ -12,7 +12,6 @@ import (
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +34,7 @@ func TestStream(t *testing.T) {
 		count++
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, int64(1), count)
 }
 

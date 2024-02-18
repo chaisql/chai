@@ -12,7 +12,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,16 +55,16 @@ func TestParserUpdate(t *testing.T) {
 
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = q.Prepare(&query.Context{
 				Ctx: context.Background(),
 				DB:  db,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, &statement.PreparedStreamStmt{Stream: test.expected}, q.Statements[0].(*statement.PreparedStreamStmt))

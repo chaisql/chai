@@ -6,7 +6,6 @@ import (
 
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -62,7 +61,7 @@ func TestNewValue(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v, err := row.NewValue(test.value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected, v.V())
 		})
 	}
@@ -90,7 +89,7 @@ func TestNewFromMap(t *testing.T) {
 			}
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Len(t, counter, 3)
 		require.Equal(t, counter["name"], 1)
 		require.Equal(t, counter["age"], 1)
@@ -99,15 +98,15 @@ func TestNewFromMap(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		v, err := r.Get("name")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewTextValue("foo"), v)
 
 		v, err = r.Get("age")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewBigintValue(10), v)
 
 		v, err = r.Get("nilField")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewNullValue(), v)
 
 		_, err = r.Get("bar")

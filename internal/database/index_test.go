@@ -7,7 +7,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -48,32 +47,32 @@ func getIndex(t testing.TB, arity int) *database.Index {
 func TestIndexSet(t *testing.T) {
 	t.Run("Set nil key falls (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.Error(t, idx.Set(values(types.NewBooleanValue(true)), nil))
+		require.Error(t, idx.Set(values(types.NewBooleanValue(true)), nil))
 	})
 
 	t.Run("Set value and key succeeds (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.NoError(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set two values and key succeeds (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.NoError(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set one value fails (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.Error(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
+		require.Error(t, idx.Set(values(types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set two values fails (arity=1)", func(t *testing.T) {
 		idx := getIndex(t, 1)
-		assert.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
+		require.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 
 	t.Run("Set three values fails (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
-		assert.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
+		require.Error(t, idx.Set(values(types.NewBooleanValue(true), types.NewBooleanValue(true), types.NewBooleanValue(true)), []byte("key")))
 	})
 }
 
@@ -81,11 +80,11 @@ func TestIndexDelete(t *testing.T) {
 	t.Run("Delete valid key succeeds", func(t *testing.T) {
 		idx := getIndex(t, 1)
 
-		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10)), []byte("key")))
-		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("other-key")))
-		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("yet-another-key")))
-		assert.NoError(t, idx.Set(values(types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewDoubleValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("other-key")))
+		require.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("yet-another-key")))
+		require.NoError(t, idx.Set(values(types.NewTextValue("hello")), []byte("yet-another-different-key")))
+		require.NoError(t, idx.Delete(values(types.NewDoubleValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
@@ -101,18 +100,18 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
 	t.Run("Delete valid key succeeds (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
 
-		assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
-		assert.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("other-key")))
-		assert.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("yet-another-key")))
-		assert.NoError(t, idx.Set(values(types.NewTextValue("hello"), types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		assert.NoError(t, idx.Delete(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("other-key")))
+		require.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("yet-another-key")))
+		require.NoError(t, idx.Set(values(types.NewTextValue("hello"), types.NewTextValue("hello")), []byte("yet-another-different-key")))
+		require.NoError(t, idx.Delete(values(types.NewDoubleValue(10), types.NewDoubleValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
@@ -128,30 +127,30 @@ func TestIndexDelete(t *testing.T) {
 			i++
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
 	t.Run("Delete non existing key fails", func(t *testing.T) {
 		idx := getIndex(t, 1)
 
-		assert.Error(t, idx.Delete(values(types.NewTextValue("foo")), []byte("foo")))
+		require.Error(t, idx.Delete(values(types.NewTextValue("foo")), []byte("foo")))
 	})
 }
 
 func TestIndexExists(t *testing.T) {
 	idx := getIndex(t, 2)
 
-	assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(11)), []byte("key1")))
-	assert.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(12)), []byte("key2")))
+	require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(11)), []byte("key1")))
+	require.NoError(t, idx.Set(values(types.NewDoubleValue(10), types.NewIntegerValue(12)), []byte("key2")))
 
 	ok, key, err := idx.Exists(values(types.NewDoubleValue(10), types.NewIntegerValue(11)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, tree.NewEncodedKey([]byte("key1")), key)
 
 	ok, _, err = idx.Exists(values(types.NewDoubleValue(11), types.NewIntegerValue(11)))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.False(t, ok)
 }
 

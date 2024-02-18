@@ -11,7 +11,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -68,13 +67,13 @@ func TestParserDelete(t *testing.T) {
 			testutil.MustExec(t, db, nil, "CREATE TABLE test(age int)")
 
 			q, err := parser.ParseQuery(test.s)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = q.Prepare(&query.Context{
 				Ctx: context.Background(),
 				DB:  db,
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, &statement.PreparedStreamStmt{Stream: test.expected}, q.Statements[0].(*statement.PreparedStreamStmt))

@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +31,7 @@ func TestString(t *testing.T) {
 	testFn := func(s string, want string) {
 		t.Helper()
 		e, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, want, fmt.Sprintf("%v", e))
 	}
 

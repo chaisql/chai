@@ -9,7 +9,6 @@ import (
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/index"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -434,19 +433,19 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 				var fb row.ColumnBuffer
 
 				err := fb.Copy(r)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, types.NewBigintValue(1), v)
 				i++
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}

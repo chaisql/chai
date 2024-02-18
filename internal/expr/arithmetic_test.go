@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -37,9 +36,9 @@ func TestValueAdd(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.Add(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -73,9 +72,9 @@ func TestValueSub(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.Sub(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -107,9 +106,9 @@ func TestValueMult(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.Mul(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -142,9 +141,9 @@ func TestValueDiv(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.Div(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -179,9 +178,9 @@ func TestValueMod(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.Mod(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -213,9 +212,9 @@ func TestValueBitwiseAnd(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.BitwiseAnd(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -246,9 +245,9 @@ func TestValueBitwiseOr(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.BitwiseOr(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})
@@ -278,9 +277,9 @@ func TestValueBitwiseXor(t *testing.T) {
 			u := expr.LiteralValue{Value: test.u}
 			res, err := expr.BitwiseXor(v, u).Eval(nil)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.expected, res)
 			}
 		})

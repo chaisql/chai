@@ -10,7 +10,6 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 )
@@ -73,11 +72,11 @@ func ExampleTx() {
 
 func TestOpen(t *testing.T) {
 	dir, err := os.MkdirTemp("", "chai")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer os.RemoveAll(dir)
 
 	db, err := chai.Open(filepath.Join(dir, "testdb"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = db.Exec(`
 		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b DOUBLE PRIMARY KEY);
@@ -89,18 +88,18 @@ func TestOpen(t *testing.T) {
 		INSERT INTO tableB (a) VALUES (1);
 		INSERT INTO tableC (a, b) VALUES (1, NEXT VALUE FOR seqD);
 	`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = db.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// ensure tables are loaded properly
 	db, err = chai.Open(filepath.Join(dir, "testdb"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	res1, err := db.Query("SELECT * FROM __chai_catalog")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer res1.Close()
 
 	var count int
@@ -125,55 +124,55 @@ func TestOpen(t *testing.T) {
 		testutil.RequireJSONEq(t, r, want[count-1])
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	d, err := db.QueryRow("SELECT * FROM tableB")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testutil.RequireJSONEq(t, d, `{"a": "1"}`)
 
 	d, err = db.QueryRow("SELECT * FROM __chai_sequence")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testutil.RequireJSONEq(t, d, `{"name":"__chai_store_seq", "seq":14}`)
 
 	d, err = db.QueryRow("SELECT * FROM __chai_sequence OFFSET 1")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	testutil.RequireJSONEq(t, d, `{"name": "seqD", "seq": 500}`)
 }
 
 func TestQueryRow(t *testing.T) {
 	db, err := chai.Open(":memory:")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.NoError(t, err)
 
 	tx, err := db.Begin(true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = tx.Exec(`
 			CREATE TABLE test(a INTEGER PRIMARY KEY, b TEXT NOT NULL);
 			INSERT INTO test (a, b) VALUES (1, 'foo'), (2, 'bar')
 		`)
-	assert.NoError(t, err)
-	assert.NoError(t, tx.Commit())
+	require.NoError(t, err)
+	require.NoError(t, tx.Commit())
 
 	t.Run("Should return the first row", func(t *testing.T) {
 		var a int
 		var b string
 
 		r, err := db.QueryRow("SELECT * FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = r.Scan(&a, &b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 
 		tx, err := db.Begin(false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		r, err = tx.QueryRow("SELECT * FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = r.Scan(&a, &b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, "foo", b)
 	})
@@ -184,7 +183,7 @@ func TestQueryRow(t *testing.T) {
 		require.Nil(t, r)
 
 		tx, err := db.Begin(false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 		r, err = tx.QueryRow("SELECT * FROM test WHERE a > 100")
 		require.True(t, chai.IsNotFoundError(err))
@@ -194,14 +193,14 @@ func TestQueryRow(t *testing.T) {
 
 func TestPrepareThreadSafe(t *testing.T) {
 	db, err := chai.Open(":memory:")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	err = db.Exec("CREATE TABLE test(a int unique, b text); INSERT INTO test(a, b) VALUES (1, 'a'), (2, 'a')")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	stmt, err := db.Prepare("SELECT COUNT(a) FROM test WHERE a < ? GROUP BY b ORDER BY a DESC LIMIT 5")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	g, _ := errgroup.WithContext(context.Background())
 
@@ -221,12 +220,12 @@ func TestPrepareThreadSafe(t *testing.T) {
 	}
 
 	err = g.Wait()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestIterateDeepCopy(t *testing.T) {
 	db, err := chai.Open(":memory:")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	err = db.Exec(`
@@ -239,10 +238,10 @@ func TestIterateDeepCopy(t *testing.T) {
 		(1, 'sample text 1'),
 		(2, 'sample text 2');
 	`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	res, err := db.Query(`SELECT * FROM foo ORDER BY a DESC`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	type item struct {
 		A int
@@ -253,12 +252,12 @@ func TestIterateDeepCopy(t *testing.T) {
 	err = res.Iterate(func(r *chai.Row) error {
 		var i item
 		err := r.StructScan(&i)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		items = append(items, &i)
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, len(items), 2)
 	require.Equal(t, &item{A: 2, B: "sample text 2"}, items[0])
@@ -269,14 +268,14 @@ func BenchmarkSelect(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				assert.NoError(b, err)
+				require.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -292,14 +291,14 @@ func BenchmarkSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				assert.NoError(b, err)
+				require.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -315,14 +314,14 @@ func BenchmarkPreparedSelectWhere(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a, b) VALUES (1, 2);")
-				assert.NoError(b, err)
+				require.NoError(b, err)
 			}
 
 			p, _ := db.Prepare("SELECT b FROM foo WHERE a > 0")
@@ -339,14 +338,14 @@ func BenchmarkSelectPk(b *testing.B) {
 	for size := 1; size <= 10000; size *= 10 {
 		b.Run(fmt.Sprintf("%.05d", size), func(b *testing.B) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			err = db.Exec("CREATE TABLE foo(a INT PRIMARY KEY)")
-			assert.NoError(b, err)
+			require.NoError(b, err)
 
 			for i := 0; i < size; i++ {
 				err = db.Exec("INSERT INTO foo(a) VALUES (?)", i)
-				assert.NoError(b, err)
+				require.NoError(b, err)
 			}
 
 			b.ResetTimer()
@@ -360,14 +359,14 @@ func BenchmarkSelectPk(b *testing.B) {
 
 func BenchmarkInsert(b *testing.B) {
 	db, err := chai.Open(b.TempDir())
-	assert.NoError(b, err)
+	require.NoError(b, err)
 	defer db.Close()
 
 	err = db.Exec("CREATE TABLE foo(a INT)")
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	stmt, err := db.Prepare("INSERT INTO foo(a) VALUES (?)")
-	assert.NoError(b, err)
+	require.NoError(b, err)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

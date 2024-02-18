@@ -10,7 +10,6 @@ import (
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -21,7 +20,7 @@ func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Tra
 	t.Helper()
 
 	tx, err := db.Begin(true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer tx.Rollback()
 
 	err = fn(tx, tx.CatalogWriter())
@@ -29,10 +28,10 @@ func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Tra
 		tx.Rollback()
 		return
 	}
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = tx.Commit()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 // TestCatalogTable tests all basic operations on tables:
@@ -51,13 +50,13 @@ func TestCatalogTable(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			table, err := catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, "test", table.Info.TableName)
 
 			// Getting a table that doesn't exist should fail.
 			_, err = catalog.GetTable(tx, "unknown")
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("unknown"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("unknown"))
 			}
 
 			return nil
@@ -75,18 +74,18 @@ func TestCatalogTable(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropTable(tx, "test")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Getting a table that has been dropped should fail.
 			_, err = catalog.GetTable(tx, "test")
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("test"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("test"))
 			}
 
 			// Dropping a table that doesn't exist should fail.
 			err = catalog.DropTable(tx, "test")
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("test"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("test"))
 			}
 
 			return errDontCommit
@@ -110,12 +109,12 @@ func TestCatalogTable(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "foo", ti)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Columns: []string{"gender"}, IndexName: "idx_gender", Owner: database.Owner{TableName: "foo"}})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{Columns: []string{"city"}, IndexName: "idx_city", Owner: database.Owner{TableName: "foo"}, Unique: true})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			seq := database.SequenceInfo{
 				Name:        "seq_foo",
@@ -128,7 +127,7 @@ func TestCatalogTable(t *testing.T) {
 				},
 			}
 			err = catalog.CreateSequence(tx, &seq)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return nil
 		})
@@ -137,16 +136,16 @@ func TestCatalogTable(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.RenameTable(tx, "foo", "zoo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Getting the old table should return an error.
 			_, err = catalog.GetTable(tx, "foo")
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("foo"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("foo"))
 			}
 
 			tb, err := catalog.GetTable(tx, "zoo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			// The field constraints should be the same.
 
 			require.Equal(t, ti.ColumnConstraints, tb.Info.ColumnConstraints)
@@ -156,19 +155,19 @@ func TestCatalogTable(t *testing.T) {
 			require.Len(t, idxs, 2)
 			for _, name := range idxs {
 				info, err := catalog.GetIndexInfo(name)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, "zoo", info.Owner.TableName)
 			}
 
 			// Check that the sequences have been updated as well.
 			seq, err := catalog.GetSequence("seq_foo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, "zoo", seq.Info.Owner.TableName)
 
 			// Renaming a non existing table should return an error
 			err = catalog.RenameTable(tx, "foo", "")
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("foo"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("foo"))
 			}
 
 			return errDontCommit
@@ -207,10 +206,10 @@ func TestCatalogTable(t *testing.T) {
 				Check: expr.Constraint(testutil.ParseExpr(t, "last_name > first_name")),
 			})
 			err := catalog.AddColumnConstraint(tx, "foo", &fieldToAdd, tcs)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			tb, err := catalog.GetTable(tx, "foo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// The field constraints should not be the same.
 			require.Contains(t, tb.Info.ColumnConstraints.Ordered, &fieldToAdd)
@@ -219,18 +218,18 @@ func TestCatalogTable(t *testing.T) {
 			// Renaming a non existing table should return an error
 			err = catalog.AddColumnConstraint(tx, "bar", &fieldToAdd, nil)
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("bar"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("bar"))
 			}
 
 			// Adding a existing field should return an error
 			err = catalog.AddColumnConstraint(tx, "foo", ti.ColumnConstraints.Ordered[0], nil)
-			assert.Error(t, err)
+			require.Error(t, err)
 
 			// Adding a second primary key should return an error
 			err = catalog.AddColumnConstraint(tx, "foo", nil, database.TableConstraints{
 				{Columns: []string{"age"}, PrimaryKey: true},
 			})
-			assert.Error(t, err)
+			require.Error(t, err)
 
 			return errDontCommit
 		})
@@ -247,11 +246,11 @@ func TestCatalogCreateTable(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateTable(tx, "test", nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Creating a table that already exists should fail.
 			err = catalog.CreateTable(tx, "test", nil)
-			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
+			require.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
 
 			return errDontCommit
 		})
@@ -265,7 +264,7 @@ func TestCatalogCreateTable(t *testing.T) {
 		check := func() {
 			updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 				err := catalog.CreateTable(tx, "test", nil)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				return errDontCommit
 			})
@@ -297,9 +296,9 @@ func TestCatalogCreateIndex(t *testing.T) {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idx_a", Owner: database.Owner{TableName: "test"}, Columns: []string{"a"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			idx, err := catalog.GetIndex(tx, "idx_a")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, idx)
 
 			return errDontCommit
@@ -323,12 +322,12 @@ func TestCatalogCreateIndex(t *testing.T) {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
-			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "idxFoo"})
+			require.ErrorIs(t, err, errs.AlreadyExistsError{Name: "idxFoo"})
 			return nil
 		})
 	})
@@ -340,7 +339,7 @@ func TestCatalogCreateIndex(t *testing.T) {
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
 			if !errs.IsNotFoundError(err) {
-				assert.ErrorIs(t, err, errs.NewNotFoundError("test"))
+				require.ErrorIs(t, err, errs.NewNotFoundError("test"))
 			}
 
 			return nil
@@ -362,19 +361,19 @@ func TestCatalogCreateIndex(t *testing.T) {
 			_, err := catalog.CreateIndex(tx, &database.IndexInfo{
 				Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = catalog.GetIndex(tx, "test_foo_idx")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// create another one
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = catalog.GetIndex(tx, "test_foo_idx1")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		})
 	})
@@ -391,32 +390,32 @@ func TestTxDropIndex(t *testing.T) {
 					&database.ColumnConstraint{Column: "bar", Type: types.TypeBoolean},
 				),
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxFoo", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = catalog.CreateIndex(tx, &database.IndexInfo{
 				IndexName: "idxBar", Owner: database.Owner{TableName: "test"}, Columns: []string{"bar"},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		})
 
 		clone := db.Catalog().Clone()
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropIndex(tx, "idxFoo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = catalog.GetIndex(tx, "idxFoo")
-			assert.Error(t, err)
+			require.Error(t, err)
 
 			_, err = catalog.GetIndex(tx, "idxBar")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// cf: https://github.com/chaisql/chai/issues/360
 			_, err = catalog.GetTable(tx, "test")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			return errDontCommit
 		})
@@ -429,7 +428,9 @@ func TestTxDropIndex(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.DropIndex(tx, "idxFoo")
-			assert.ErrorIs(t, err, errs.NewNotFoundError("idxFoo"))
+			if !errors.Is(err, &errs.NotFoundError{Name: "idxFoo"}) {
+				t.Fatalf("expected NotFoundError, got %v", err)
+			}
 			return nil
 		})
 	})
@@ -437,7 +438,7 @@ func TestTxDropIndex(t *testing.T) {
 
 func TestReadOnlyTables(t *testing.T) {
 	db, err := chai.Open(":memory:")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	res, err := db.Query(`
@@ -445,7 +446,7 @@ func TestReadOnlyTables(t *testing.T) {
 		CREATE INDEX idx_foo_a ON foo(a, c);
 		SELECT * FROM __chai_catalog
 	`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer res.Close()
 
 	var i int
@@ -472,7 +473,7 @@ func TestReadOnlyTables(t *testing.T) {
 		i++
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestCatalogCreateSequence(t *testing.T) {
@@ -486,20 +487,20 @@ func TestCatalogCreateSequence(t *testing.T) {
 			}
 
 			seq, err := clog.GetSequence("test1")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, seq)
 
 			tb := db.Catalog().CatalogTable.Table(tx)
 			key := tree.NewKey(types.NewTextValue("test1"))
 
 			_, err = tb.GetRow(key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			tb, err = db.Catalog().GetTable(tx, database.SequenceTableName)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			_, err = tb.GetRow(key)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			return nil
 		})
 
@@ -511,7 +512,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 				return err
 			}
 			seq, err := catalog.GetSequence("test2")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.NotNil(t, seq)
 
 			return errDontCommit
@@ -553,7 +554,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 
 		updateCatalog(t, db, func(tx *database.Transaction, catalog *database.CatalogWriter) error {
 			err := catalog.CreateSequence(tx, &database.SequenceInfo{Name: "test"})
-			assert.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
+			require.ErrorIs(t, err, errs.AlreadyExistsError{Name: "test"})
 			return nil
 		})
 	})
@@ -561,7 +562,7 @@ func TestCatalogCreateSequence(t *testing.T) {
 
 func TestCatalogConcurrency(t *testing.T) {
 	db, err := chai.Open(":memory:")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	// create a table
@@ -569,16 +570,16 @@ func TestCatalogConcurrency(t *testing.T) {
 		CREATE TABLE test (a int);
 		CREATE INDEX idx_test_a ON test(a);
 	`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// start a transaction rt1
 	rt1, err := db.Begin(false)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer rt1.Rollback()
 
 	// start a transaction wt2
 	wt1, err := db.Begin(true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	defer wt1.Rollback()
 
 	// update the catalog in wt2
@@ -587,39 +588,39 @@ func TestCatalogConcurrency(t *testing.T) {
 		CREATE INDEX idx_test2_a ON test2(a);
 		ALTER TABLE test ADD COLUMN b int;
 	`)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
 	row, err := rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var i int
 	err = row.Scan(&i)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
 	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	var s string
 	err = row.Scan(&s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 
 	// commit wt2
 	err = wt1.Commit()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
 	row, err = rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = row.Scan(&i)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
 	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = row.Scan(&s)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 }

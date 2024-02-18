@@ -8,7 +8,6 @@ import (
 	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -131,9 +130,9 @@ func TestParserExpr(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if !expr.Equal(test.expected, ex) {
 					require.EqualValues(t, test.expected, ex)
 				}
@@ -168,9 +167,9 @@ func TestParserParams(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ex, err := parser.NewParser(strings.NewReader(test.s)).ParseExpr()
 			if test.errored {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.EqualValues(t, test.expected, ex)
 			}
 		})

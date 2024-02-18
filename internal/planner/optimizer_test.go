@@ -12,7 +12,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +81,7 @@ func TestSplitANDConditionRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sctx := planner.NewStreamContext(test.in, nil)
 			err := planner.SplitANDConditionRule(sctx)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
@@ -140,7 +139,7 @@ func TestPrecalculateExprRule(t *testing.T) {
 
 			sctx := planner.NewStreamContext(s, tx.Catalog)
 			err := planner.PrecalculateExprRule(sctx)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, stream.New(table.Scan("foo")).Pipe(rows.Filter(test.expected)).String(), sctx.Stream.String())
 		})
 	}
@@ -172,7 +171,7 @@ func TestRemoveUnnecessarySelectionNodesRule(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sctx := planner.NewStreamContext(test.root, nil)
 			err := planner.RemoveUnnecessaryFilterNodesRule(sctx)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), sctx.Stream.String())
 		})
 	}
@@ -346,7 +345,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 			sctx.Catalog = tx.Catalog
 			st, err := planner.Optimize(test.root, tx.Catalog, nil)
 			// err := planner.SelectIndex(sctx)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), st.String())
 		})
 	}
@@ -596,7 +595,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 				{Value: 1},
 				{Value: 2},
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), st.String())
 		})
 	}
@@ -625,7 +624,7 @@ func TestOptimize(t *testing.T) {
 					{Name: "1", Value: 2},
 					{Name: "2", Value: 3},
 				})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -667,7 +666,7 @@ func TestOptimize(t *testing.T) {
 				stream.New(table.Scan("bar")),
 			))
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, want.String(), got.String())
 		})
 	})
@@ -698,7 +697,7 @@ func TestOptimize(t *testing.T) {
 			stream.New(index.Scan("idx_bar_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),
 		))
 
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, want.String(), got.String())
 	})
 }

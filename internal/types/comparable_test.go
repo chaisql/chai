@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/golang-module/carbon/v2"
 	"github.com/stretchr/testify/require"
@@ -15,7 +14,7 @@ import (
 func jsonToInteger(t testing.TB, x string) types.Value {
 	var i int32
 	err := json.Unmarshal([]byte(x), &i)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return types.NewIntegerValue(i)
 }
@@ -23,7 +22,7 @@ func jsonToInteger(t testing.TB, x string) types.Value {
 func jsonToBigint(t testing.TB, x string) types.Value {
 	var i int64
 	err := json.Unmarshal([]byte(x), &i)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return types.NewBigintValue(i)
 }
@@ -31,7 +30,7 @@ func jsonToBigint(t testing.TB, x string) types.Value {
 func jsonToDouble(t testing.TB, x string) types.Value {
 	var f float64
 	err := json.Unmarshal([]byte(x), &f)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return types.NewDoubleValue(f)
 }
@@ -41,7 +40,7 @@ func textToTimestamp(t testing.TB, x string) types.Value {
 
 	var v time.Time
 	v, err := time.Parse(time.RFC3339Nano, x)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return types.NewTimestampValue(v)
 }
@@ -49,7 +48,7 @@ func textToTimestamp(t testing.TB, x string) types.Value {
 func jsonToBoolean(t testing.TB, x string) types.Value {
 	var b bool
 	err := json.Unmarshal([]byte(x), &b)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return types.NewBooleanValue(b)
 }
@@ -221,7 +220,7 @@ func TestCompare(t *testing.T) {
 			case "<=":
 				ok, err = a.LTE(b)
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.ok, ok)
 		})
 	}
@@ -275,7 +274,7 @@ func TestCompareValues(t *testing.T) {
 			case "<=":
 				ok, err = a.LTE(b)
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.ok, ok)
 		})
 	}

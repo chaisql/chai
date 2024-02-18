@@ -8,7 +8,6 @@ import (
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -48,13 +47,13 @@ func TestTreeGet(t *testing.T) {
 			tree := testutil.NewTestTree(t, 10)
 
 			err := tree.Put(key1, []byte{1})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			v, err := tree.Get(test.key)
 			if test.Fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, []byte{1}, v)
 			}
 		})
@@ -76,13 +75,13 @@ func TestTreeDelete(t *testing.T) {
 			tree := testutil.NewTestTree(t, 10)
 
 			err := tree.Put(key1, []byte{1})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = tree.Delete(test.key)
 			if test.Fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -93,24 +92,24 @@ func TestTreeTruncate(t *testing.T) {
 		tree := testutil.NewTestTree(t, 10)
 
 		err := tree.Truncate()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("Should truncate the tree", func(t *testing.T) {
 		tr := testutil.NewTestTree(t, 10)
 
 		err := tr.Put(testutil.NewKey(t, types.NewTextValue("foo")), []byte("FOO"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = tr.Put(testutil.NewKey(t, types.NewTextValue("bar")), []byte("BAR"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = tr.Truncate()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = tr.IterateOnRange(nil, false, func(k *tree.Key, b []byte) error {
 			return fmt.Errorf("expected no keys")
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -311,7 +310,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 
 				for i, k := range keys {
 					err := tt.Put(k, []byte{byte(i)})
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 
 				rng := tree.Range{
@@ -326,7 +325,7 @@ func TestTreeIterateOnRange(t *testing.T) {
 					results = append(results, k.String())
 					return nil
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				var want []string
 				if !reversed {

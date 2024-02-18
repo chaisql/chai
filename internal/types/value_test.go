@@ -8,7 +8,6 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -36,14 +35,14 @@ func TestValueMarshalText(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			v, err := row.NewValue(test.value)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			data, err := v.MarshalText()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
 			if test.name != "time" {
 				e := testutil.ParseExpr(t, string(data))
 				got, err := e.Eval(&environment.Environment{})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.value, got.V())
 			}
 		})
@@ -71,7 +70,7 @@ func TestValueMarshalJSON(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			data, err := test.value.MarshalJSON()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
 		})
 	}

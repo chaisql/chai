@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,39 +37,39 @@ func TestUpdateStmt(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			runTest := func(indexed bool) {
 				db, err := chai.Open(":memory:")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec("CREATE TABLE test (a text not null, b text, c text, d text, e text)")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				if indexed {
 					err = db.Exec("CREATE INDEX idx_test_a ON test(a)")
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 
 				err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = db.Exec(test.query, test.params...)
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				st, err := db.Query("SELECT * FROM test")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer st.Close()
 
 				var buf bytes.Buffer
 
 				err = st.MarshalJSONTo(&buf)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 

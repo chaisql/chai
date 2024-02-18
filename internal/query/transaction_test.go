@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTransactionRun(t *testing.T) {
@@ -28,7 +28,7 @@ func TestTransactionRun(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 			defer db.Exec("ROLLBACK")
 
@@ -39,10 +39,10 @@ func TestTransactionRun(t *testing.T) {
 				}
 			}
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

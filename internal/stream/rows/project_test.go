@@ -10,7 +10,6 @@ import (
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -68,17 +67,17 @@ func TestProject(t *testing.T) {
 
 				err = r.Iterate(func(field string, want types.Value) error {
 					got, err := r.Get(field)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					require.Equal(t, want, got)
 					return nil
 				})
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -97,7 +96,7 @@ func TestProject(t *testing.T) {
 			r, ok := out.GetRow()
 			require.True(t, ok)
 			enc, err := row.MarshalJSON(r)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.JSONEq(t, `{"1 + 1": 2}`, string(enc))
 			return nil
 		})

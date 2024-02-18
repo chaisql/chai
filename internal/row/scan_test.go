@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/chaisql/chai/internal/row"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +42,7 @@ func TestScan(t *testing.T) {
 	var m time.Time
 
 	err := row.Scan(r, &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.Equal(t, a, []byte("foo"))
 	require.Equal(t, b, "bar")
 	require.Equal(t, c, true)
@@ -61,14 +60,14 @@ func TestScan(t *testing.T) {
 	t.Run("Map", func(t *testing.T) {
 		m := make(map[string]interface{})
 		err := row.MapScan(r, m)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Len(t, m, 13)
 	})
 
 	t.Run("MapPtr", func(t *testing.T) {
 		var m map[string]interface{}
 		err := row.MapScan(r, &m)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Len(t, m, 13)
 	})
 
@@ -81,7 +80,7 @@ func TestScan(t *testing.T) {
 
 		d := row.NewColumnBuffer().Add("a", types.NewIntegerValue(10))
 		err := row.StructScan(d, &b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		a := 10
 		require.Equal(t, bar{A: &a}, b)
@@ -101,7 +100,7 @@ func TestScan(t *testing.T) {
 
 		d := row.NewColumnBuffer().Add("a", types.NewNullValue())
 		err := row.StructScan(d, &b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, bar{}, b)
 	})
 
@@ -112,13 +111,13 @@ func TestScan(t *testing.T) {
 
 		d := row.NewColumnBuffer().Add("a", types.NewTimestampValue(time.Now()))
 		err := row.StructScan(d, &a)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("Pointer not to struct", func(t *testing.T) {
 		var b int
 		d := row.NewColumnBuffer().Add("a", types.NewIntegerValue(10))
 		err := row.StructScan(d, &b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
@@ -24,7 +23,7 @@ func MakeRow(t testing.TB, s string) row.Row {
 	var cb row.ColumnBuffer
 
 	err := json.Unmarshal([]byte(s), &cb)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return &cb
 }
 
@@ -62,7 +61,7 @@ func MakeValue(t testing.TB, v any) types.Value {
 	t.Helper()
 
 	vv, err := row.NewValue(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return vv
 }
 
@@ -91,7 +90,7 @@ func (r Rows) RequireEqualStream(t testing.TB, env *environment.Environment, st 
 		i++
 		return nil
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	require.Equal(t, len(r), i)
 }
@@ -103,14 +102,14 @@ func Dump(t testing.TB, v interface{}) {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	err := enc.Encode(v)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func RequireJSONEq(t testing.TB, o any, expected string) {
 	t.Helper()
 
 	data, err := json.Marshal(o)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
 }
 
@@ -176,7 +175,7 @@ func CloneRow(t testing.TB, r row.Row) *row.ColumnBuffer {
 	var newFb row.ColumnBuffer
 
 	err := newFb.Copy(r)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	return &newFb
 }

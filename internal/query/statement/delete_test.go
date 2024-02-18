@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -31,32 +30,32 @@ func TestDeleteStmt(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec("CREATE TABLE test(id INT PRIMARY KEY, a TEXT, b TEXT, c TEXT, d TEXT, e TEXT, n INT)")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (id, a, b, c, n) VALUES (1, 'foo1', 'bar1', 'baz1', 3)")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (id, a, b, n) VALUES (2, 'foo2', 'bar1', 2)")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = db.Exec("INSERT INTO test (id, d, b, e, n) VALUES (3, 'foo3', 'bar2', 'bar3', 1)")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = db.Exec(test.query, test.params...)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			st, err := db.Query("SELECT id FROM test")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer st.Close()
 
 			var buf bytes.Buffer
 			err = st.MarshalJSONTo(&buf)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}

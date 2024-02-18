@@ -16,7 +16,6 @@ import (
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )
@@ -65,9 +64,9 @@ func TestFilter(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 			}
 		})
@@ -107,12 +106,12 @@ func TestTake(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
 				if errors.Is(err, stream.ErrStreamClosed) {
 					err = nil
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.output, count)
 			}
 		})
@@ -152,9 +151,9 @@ func TestSkip(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, test.output, count)
 			}
 		})
@@ -204,9 +203,9 @@ func TestTableInsert(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}
@@ -255,18 +254,18 @@ func TestTableReplace(t *testing.T) {
 				require.True(t, ok)
 
 				got, err := json.Marshal(r)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				want, err := json.Marshal(test.expected[i])
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.JSONEq(t, string(want), string(got))
 				i++
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
 			defer res.Close()
@@ -278,7 +277,7 @@ func TestTableReplace(t *testing.T) {
 				got = append(got, &fb)
 				return nil
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			test.expected.RequireEqual(t, got)
 		})
 	}
@@ -325,9 +324,9 @@ func TestTableDelete(t *testing.T) {
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			res := testutil.MustQuery(t, db, tx, "SELECT * FROM test")
@@ -340,7 +339,7 @@ func TestTableDelete(t *testing.T) {
 				got = append(got, &fb)
 				return nil
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			test.expected.RequireEqual(t, got)
 		})
 	}

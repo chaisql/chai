@@ -10,7 +10,6 @@ import (
 
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 )
 
@@ -35,7 +34,7 @@ func TestColumnBuffer(t *testing.T) {
 			i++
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, i)
 	})
 
@@ -60,7 +59,7 @@ func TestColumnBuffer(t *testing.T) {
 		buf2.Add("c", types.NewBooleanValue(true))
 
 		err := buf1.ScanRow(&buf2)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var buf row.ColumnBuffer
 		buf.Add("a", types.NewIntegerValue(10))
@@ -73,11 +72,11 @@ func TestColumnBuffer(t *testing.T) {
 
 	t.Run("Get", func(t *testing.T) {
 		v, err := buf.Get("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewIntegerValue(10), v)
 
 		v, err = buf.Get("not existing")
-		assert.ErrorIs(t, err, types.ErrColumnNotFound)
+		require.ErrorIs(t, err, types.ErrColumnNotFound)
 		require.Zero(t, v)
 	})
 
@@ -100,16 +99,16 @@ func TestColumnBuffer(t *testing.T) {
 
 				r := testutil.MakeRow(t, tt.data)
 				err := fb.Copy(r)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = fb.Set(tt.column, tt.value)
 				if tt.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
 
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				data, err := row.MarshalJSON(&fb)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, tt.want, string(data))
 			})
 		}
@@ -130,15 +129,15 @@ func TestColumnBuffer(t *testing.T) {
 			t.Run(test.object, func(t *testing.T) {
 				var buf row.ColumnBuffer
 				err := buf.Copy(testutil.MakeRow(t, test.object))
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				err = buf.Delete(test.column)
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					got, err := json.Marshal(&buf)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					require.JSONEq(t, test.expected, string(got))
 				}
 			})
@@ -151,12 +150,12 @@ func TestColumnBuffer(t *testing.T) {
 		buf.Add("b", types.NewTextValue("hello"))
 
 		err := buf.Replace("a", types.NewBooleanValue(true))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		v, err := buf.Get("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewBooleanValue(true), v)
 		err = buf.Replace("d", types.NewIntegerValue(11))
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("Apply", func(t *testing.T) {
@@ -168,15 +167,15 @@ func TestColumnBuffer(t *testing.T) {
 
 		buf := row.NewColumnBuffer()
 		err := buf.Copy(d)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = buf.Apply(func(c string, v types.Value) (types.Value, error) {
 			return types.NewIntegerValue(1), nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		got, err := json.Marshal(buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.JSONEq(t, `{"a":1, "c":1, "e":1}`, string(got))
 	})
 }
@@ -249,7 +248,7 @@ func TestNewFromStruct(t *testing.T) {
 
 	t.Run("Iterate", func(t *testing.T) {
 		doc, err := row.NewFromStruct(u)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		var counter int
 
@@ -303,61 +302,61 @@ func TestNewFromStruct(t *testing.T) {
 
 			return nil
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 19, counter)
 	})
 
 	t.Run("Get", func(t *testing.T) {
 		doc, err := row.NewFromStruct(u)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		v, err := doc.Get("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, u.A, types.AsByteSlice(v))
 		v, err = doc.Get("b")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, u.B, types.AsString(v))
 		v, err = doc.Get("c")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, u.C, types.AsBool(v))
 		v, err = doc.Get("la-reponse-d")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.D, types.AsInt64(v))
 		v, err = doc.Get("e")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.E, types.AsInt64(v))
 		v, err = doc.Get("f")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.F, types.AsInt64(v))
 		v, err = doc.Get("g")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.G, types.AsInt64(v))
 		v, err = doc.Get("h")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.H, types.AsInt64(v))
 		v, err = doc.Get("i")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.I, types.AsInt64(v))
 		v, err = doc.Get("j")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.J, types.AsInt64(v))
 		v, err = doc.Get("k")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.K, types.AsInt64(v))
 		v, err = doc.Get("l")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.L, types.AsInt64(v))
 		v, err = doc.Get("m")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.EqualValues(t, u.M, types.AsInt64(v))
 		v, err = doc.Get("n")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, u.N, types.AsFloat64(v))
 
 		v, err = doc.Get("bb")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var tm time.Time
-		assert.NoError(t, row.ScanValue(v, &tm))
+		require.NoError(t, row.ScanValue(v, &tm))
 		require.Equal(t, u.BB, tm)
 	})
 
@@ -367,16 +366,16 @@ func TestNewFromStruct(t *testing.T) {
 		}
 
 		d, err := row.NewFromStruct(new(s))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		_, err = d.Get("a")
-		assert.ErrorIs(t, err, types.ErrColumnNotFound)
+		require.ErrorIs(t, err, types.ErrColumnNotFound)
 
 		a := 10
 		ss := s{A: &a}
 		d, err = row.NewFromStruct(&ss)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		v, err := d.Get("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, types.NewBigintValue(10), v)
 	})
 }
@@ -448,9 +447,9 @@ func TestJSONObject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			data, err := json.Marshal(test.o)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, test.expected, string(data))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 )
 
 func TestParserMultiStatement(t *testing.T) {
@@ -35,7 +34,7 @@ func TestParserMultiStatement(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.EqualValues(t, test.expected, q.Statements)
 		})
 	}

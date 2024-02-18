@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -33,9 +32,9 @@ func TestCastAs(t *testing.T) {
 
 				got, err := test.v.CastAs(targetType)
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 				} else {
-					assert.NoError(t, err)
+					require.NoError(t, err)
 					require.Equal(t, test.want, got)
 				}
 			})

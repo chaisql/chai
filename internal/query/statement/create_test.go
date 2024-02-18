@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateIndex(t *testing.T) {
@@ -33,10 +33,10 @@ func TestCreateIndex(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -117,10 +117,10 @@ func TestCreateSequence(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

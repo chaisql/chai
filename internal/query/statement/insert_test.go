@@ -7,7 +7,6 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,34 +28,34 @@ func TestInsertStmt(t *testing.T) {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := chai.Open(":memory:")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer db.Close()
 
 				err = db.Exec("CREATE TABLE test(a TEXT, b TEXT, c TEXT)")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				if withIndexes {
 					err = db.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
 					`)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 
 				err = db.Exec(test.query, test.params...)
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
 				st, err := db.Query("SELECT * FROM test")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer st.Close()
 
 				var buf bytes.Buffer
 				err = st.MarshalJSONTo(&buf)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 		}
@@ -67,30 +66,30 @@ func TestInsertStmt(t *testing.T) {
 
 	t.Run("with RETURNING", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`CREATE TABLE test(a INT)`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		d, err := db.QueryRow(`insert into test (a) VALUES (1) RETURNING *, a AS A`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		testutil.RequireJSONEq(t, d, `{"a": 1,  "A": 1}`)
 	})
 
 	t.Run("ensure rollback", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`CREATE TABLE test(a int unique)`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = db.Exec(`insert into test (a) VALUES (1), (1)`)
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		res, err := db.Query("SELECT * FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer res.Close()
 
 		testutil.RequireStreamEq(t, ``, res)
@@ -98,17 +97,17 @@ func TestInsertStmt(t *testing.T) {
 
 	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
 		err = db.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = db.Exec(`insert into test (a) VALUES (1), (2), (3)`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		res, err := db.Query("SELECT * FROM test")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer res.Close()
 
 		var b bytes.Buffer
@@ -146,7 +145,7 @@ func TestInsertSelect(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
 			err = db.Exec(`
@@ -154,22 +153,22 @@ func TestInsertSelect(t *testing.T) {
 				CREATE TABLE bar(a INT, b INT, c INT, d INT, e INT);
 				INSERT INTO bar (a, b) VALUES (1, 10)
 			`)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = db.Exec(test.query, test.params...)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			st, err := db.Query("SELECT * FROM foo")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer st.Close()
 
 			var buf bytes.Buffer
 			err = st.MarshalJSONTo(&buf)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}

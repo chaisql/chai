@@ -12,7 +12,6 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -69,7 +68,7 @@ func TestSQL(t *testing.T) {
 			setup := func(t *testing.T, db *chai.DB) {
 				t.Helper()
 				err := db.Exec(ts.Setup)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			logF("Testing file %q with %d suites\n", absPath, len(ts.Suites))
@@ -97,7 +96,7 @@ func TestSQL(t *testing.T) {
 						for _, test := range tests {
 							t.Run(test.Name, func(t *testing.T) {
 								db, err := chai.Open(":memory:")
-								assert.NoError(t, err)
+								require.NoError(t, err)
 								defer db.Close()
 
 								setup(t, db)
@@ -107,7 +106,7 @@ func TestSQL(t *testing.T) {
 								// post setup
 								if suite.PostSetup != "" {
 									err = db.Exec(suite.PostSetup)
-									assert.NoError(t, err)
+									require.NoError(t, err)
 								}
 
 								if test.Fails {
@@ -129,7 +128,7 @@ func TestSQL(t *testing.T) {
 										require.NotNilf(t, err, "%s:%d expected error, got nil", absPath, test.Line)
 										require.Equal(t, test.ErrorMatch, err.Error(), "Source %s:%d", absPath, test.Line)
 									} else {
-										assert.Errorf(t, err, "\nSource:%s:%d expected\n%s\nto raise an error but got none", absPath, test.Line, test.Expr)
+										require.Errorf(t, err, "\nSource:%s:%d expected\n%s\nto raise an error but got none", absPath, test.Line, test.Expr)
 									}
 								} else {
 									res, err := db.Query(test.Expr)
@@ -148,7 +147,7 @@ func TestSQL(t *testing.T) {
 		return nil
 	})
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 type test struct {
