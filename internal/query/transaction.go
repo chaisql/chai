@@ -15,6 +15,10 @@ type BeginStmt struct {
 	Writable bool
 }
 
+func (stmt BeginStmt) Bind(ctx *statement.Context) error {
+	return nil
+}
+
 // Prepare implements the Preparer interface.
 func (stmt BeginStmt) Prepare(*statement.Context) (statement.Statement, error) {
 	return stmt, nil
@@ -43,6 +47,10 @@ func (stmt BeginStmt) Run(ctx *statement.Context) (statement.Result, error) {
 
 // RollbackStmt is a statement that rollbacks the current active transaction.
 type RollbackStmt struct{}
+
+func (stmt RollbackStmt) Bind(ctx *statement.Context) error {
+	return nil
+}
 
 // Prepare implements the Preparer interface.
 func (stmt RollbackStmt) Prepare(*statement.Context) (statement.Statement, error) {
@@ -73,6 +81,10 @@ func (stmt RollbackStmt) Run(ctx *statement.Context) (statement.Result, error) {
 
 // CommitStmt is a statement that commits the current active transaction.
 type CommitStmt struct{}
+
+func (stmt CommitStmt) Bind(ctx *statement.Context) error {
+	return nil
+}
 
 // Prepare implements the Preparer interface.
 func (stmt CommitStmt) Prepare(*statement.Context) (statement.Statement, error) {

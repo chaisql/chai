@@ -240,7 +240,7 @@ func (op *InOperator) validateLeftExpression(a Expr) (Expr, error) {
 	switch t := a.(type) {
 	case Parentheses:
 		return op.validateLeftExpression(t.E)
-	case Column:
+	case *Column:
 		return a, nil
 	case LiteralValue:
 		return a, nil

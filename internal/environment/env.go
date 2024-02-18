@@ -21,7 +21,6 @@ type Param struct {
 // the expression is evaluated.
 type Environment struct {
 	Params []Param
-	Vars   *row.ColumnBuffer
 	Row    row.Row
 	DB     *database.Database
 	Tx     *database.Transaction
@@ -44,29 +43,6 @@ func (e *Environment) GetOuter() *Environment {
 
 func (e *Environment) SetOuter(env *Environment) {
 	e.Outer = env
-}
-
-func (e *Environment) Get(column string) (v types.Value, ok bool) {
-	if e.Vars != nil {
-		v, err := e.Vars.Get(column)
-		if err == nil {
-			return v, true
-		}
-	}
-
-	if e.Outer != nil {
-		return e.Outer.Get(column)
-	}
-
-	return types.NewNullValue(), false
-}
-
-func (e *Environment) Set(column string, v types.Value) {
-	if e.Vars == nil {
-		e.Vars = row.NewColumnBuffer()
-	}
-
-	e.Vars.Set(column, v)
 }
 
 func (e *Environment) GetRow() (row.Row, bool) {

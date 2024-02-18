@@ -201,21 +201,6 @@ func (t Type) IsAny() bool {
 	return t == TypeAny
 }
 
-type Value interface {
-	Comparable
-
-	Type() Type
-	V() any
-	IsZero() (bool, error)
-	String() string
-	MarshalJSON() ([]byte, error)
-	MarshalText() ([]byte, error)
-	TypeDef() TypeDefinition
-	Encode(dst []byte) ([]byte, error)
-	EncodeAsKey(dst []byte) ([]byte, error)
-	CastAs(t Type) (Value, error)
-}
-
 type TypeDefinition interface {
 	New(v any) Value
 	Type() Type

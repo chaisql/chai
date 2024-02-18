@@ -39,7 +39,7 @@ func TestScalarFunctionDef(t *testing.T) {
 		r := database.NewBasicRow(fb)
 		env := environment.New(r)
 		expr1 := expr.Add(expr.LiteralValue{Value: types.NewIntegerValue(1)}, expr.LiteralValue{Value: types.NewIntegerValue(0)})
-		expr2 := expr.Column("a")
+		expr2 := &expr.Column{Name: "a"}
 		expr3 := expr.Div(expr.LiteralValue{Value: types.NewIntegerValue(6)}, expr.LiteralValue{Value: types.NewIntegerValue(2)})
 
 		t.Run("OK", func(t *testing.T) {

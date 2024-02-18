@@ -24,8 +24,8 @@ SELECT * FROM baz;
 /* result:
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
-{"x": "a", "y": "a"}
-{"x": "b", "y": "b"}
+{"a": "a", "b": "a"}
+{"a": "b", "b": "b"}
 */
 
 -- test: union all with conditions
@@ -34,7 +34,7 @@ UNION ALL
 SELECT * FROM baz WHERE x != "b";
 /* result:
 {"a": 2.0, "b": 2.0}
-{"x": "a", "y": "a"}
+{"a": "a", "b": "a"}
 */
 
 -- test: self union all
@@ -57,8 +57,8 @@ SELECT * FROM baz;
 {"a": 2.0, "b": 2.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"x": "a", "y": "a"}
-{"x": "b", "y": "b"}
+{"a": "a", "b": "a"}
+{"a": "b", "b": "b"}
 */
 
 -- test: basic union
@@ -78,8 +78,8 @@ SELECT * FROM baz;
 /* result:
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
-{"x": "a", "y": "a"}
-{"x": "b", "y": "b"}
+{"a": "a", "b": "a"}
+{"a": "b", "b": "b"}
 */
 
 -- test: union with conditions
@@ -88,7 +88,7 @@ UNION
 SELECT * FROM baz WHERE x != "b";
 /* result:
 {"a": 2.0, "b": 2.0}
-{"x": "a", "y": "a"}
+{"a": "a", "b": "a"}
 */
 
 -- test: self union
@@ -120,8 +120,8 @@ SELECT * FROM baz;
 {"a": 2.0, "b": 2.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"x": "a", "y": "a"}
-{"x": "b", "y": "b"}
+{"a": "a", "b": "a"}
+{"a": "b", "b": "b"}
 */
 
 -- test: combined unions
@@ -134,5 +134,5 @@ SELECT * FROM baz;
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"x": "a", "y": "a"}
-{"x": "b", "y": "b"}
+{"a": "a", "b": "a"}
+{"a": "b", "b": "b"}

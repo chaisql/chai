@@ -10,6 +10,10 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*CreateTableStmt)(nil)
+var _ Statement = (*CreateIndexStmt)(nil)
+var _ Statement = (*CreateSequenceStmt)(nil)
+
 // CreateTableStmt represents a parsed CREATE TABLE statement.
 type CreateTableStmt struct {
 	IfNotExists bool
@@ -19,6 +23,10 @@ type CreateTableStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *CreateTableStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *CreateTableStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the Create table statement in the given transaction.
@@ -84,6 +92,10 @@ func (stmt *CreateIndexStmt) IsReadOnly() bool {
 	return false
 }
 
+func (stmt *CreateIndexStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
 func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
@@ -120,6 +132,10 @@ type CreateSequenceStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *CreateSequenceStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *CreateSequenceStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run the statement in the given transaction.

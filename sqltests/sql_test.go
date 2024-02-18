@@ -2,6 +2,8 @@ package sql_test
 
 import (
 	"bufio"
+	"database/sql"
+	"errors"
 	"io"
 	"io/fs"
 	"log"
@@ -10,8 +12,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai/driver"
+	"github.com/chaisql/chai/internal/row"
+	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil"
+	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -65,9 +70,9 @@ func TestSQL(t *testing.T) {
 		}
 
 		t.Run(ts.Filename, func(t *testing.T) {
-			setup := func(t *testing.T, db *chai.DB) {
+			setup := func(t *testing.T, db *sql.DB) {
 				t.Helper()
-				err := db.Exec(ts.Setup)
+				_, err := db.Exec(ts.Setup)
 				require.NoError(t, err)
 			}
 
@@ -95,7 +100,7 @@ func TestSQL(t *testing.T) {
 
 						for _, test := range tests {
 							t.Run(test.Name, func(t *testing.T) {
-								db, err := chai.Open(":memory:")
+								db, err := sql.Open("chai", ":memory:")
 								require.NoError(t, err)
 								defer db.Close()
 
@@ -105,28 +110,14 @@ func TestSQL(t *testing.T) {
 
 								// post setup
 								if suite.PostSetup != "" {
-									err = db.Exec(suite.PostSetup)
+									_, err = db.Exec(suite.PostSetup)
 									require.NoError(t, err)
 								}
 
 								if test.Fails {
 									exec := func() error {
-										conn, err := db.Connect()
-										if err != nil {
-											return err
-										}
-										defer conn.Close()
-
-										res, err := conn.Query(test.Expr)
-										if err != nil {
-											return err
-										}
-										defer res.Close()
-
-										return res.Iterate(func(r *chai.Row) error {
-											_, err := r.MarshalJSON()
-											return err
-										})
+										_, err := db.Exec(test.Expr)
+										return err
 									}
 
 									err := exec()
@@ -137,15 +128,11 @@ func TestSQL(t *testing.T) {
 										require.Errorf(t, err, "\nSource:%s:%d expected\n%s\nto raise an error but got none", absPath, test.Line, test.Expr)
 									}
 								} else {
-									conn, err := db.Connect()
+									rows, err := db.Query(test.Expr)
 									require.NoError(t, err, "Source: %s:%d", absPath, test.Line)
-									defer conn.Close()
+									defer rows.Close()
 
-									res, err := conn.Query(test.Expr)
-									require.NoError(t, err, "Source: %s:%d", absPath, test.Line)
-									defer res.Close()
-
-									testutil.RequireStreamEqf(t, test.Result, res, "Source: %s:%d", absPath, test.Line)
+									RequireRowsEqf(t, test.Result, rows, "Source: %s:%d", absPath, test.Line)
 								}
 							})
 						}
@@ -284,4 +271,84 @@ func parse(r io.Reader, filename string) *testSuite {
 	}
 
 	return &ts
+}
+
+func RequireRowsEqf(t *testing.T, raw string, rows *sql.Rows, msg string, args ...any) {
+	errMsg := append([]any{msg}, args...)
+	t.Helper()
+	r := testutil.ParseResultStream(raw)
+
+	var want []row.Row
+
+	for {
+		v, err := r.Next()
+		if err != nil {
+			if perr, ok := err.(*parser.ParseError); ok {
+				if perr.Found == "EOF" {
+					break
+				}
+			} else if perr, ok := errors.Unwrap(err).(*parser.ParseError); ok {
+				if perr.Found == "EOF" {
+					break
+				}
+			}
+		}
+		require.NoError(t, err, errMsg...)
+
+		want = append(want, v)
+	}
+
+	var got []row.Row
+
+	cols, err := rows.Columns()
+	require.NoError(t, err, errMsg...)
+
+	for rows.Next() {
+		vals := make([]any, len(cols))
+		for i := range vals {
+			vals[i] = new(types.ValueScanner)
+		}
+		err := rows.Scan(vals...)
+		require.NoError(t, err, errMsg...)
+
+		var cb row.ColumnBuffer
+
+		for i := range vals {
+			cb.Add(cols[i], vals[i].(*types.ValueScanner).V)
+		}
+
+		got = append(got, &cb)
+	}
+
+	if err := rows.Err(); err != nil {
+		require.NoError(t, err, errMsg...)
+	}
+
+	var expected strings.Builder
+	for i := range want {
+		data, err := row.MarshalTextIndent(want[i], "\n", "  ")
+		require.NoError(t, err, errMsg...)
+		if i > 0 {
+			expected.WriteString("\n")
+		}
+
+		expected.WriteString(string(data))
+	}
+
+	var actual strings.Builder
+	for i := range got {
+		data, err := row.MarshalTextIndent(got[i], "\n", "  ")
+		require.NoError(t, err, errMsg...)
+		if i > 0 {
+			actual.WriteString("\n")
+		}
+
+		actual.WriteString(string(data))
+	}
+
+	if msg != "" {
+		require.Equal(t, expected.String(), actual.String(), errMsg...)
+	} else {
+		require.Equal(t, expected.String(), actual.String())
+	}
 }

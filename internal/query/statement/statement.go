@@ -9,6 +9,7 @@ import (
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
+	Bind(*Context) error
 	Run(*Context) (Result, error)
 	IsReadOnly() bool
 }
@@ -84,19 +85,37 @@ func (r *Result) Close() (err error) {
 	return err
 }
 
-func ensureExprColumnsExist(ctx *Context, tableName string, e expr.Expr) (err error) {
-	info, err := ctx.Tx.Catalog.GetTableInfo(tableName)
-	if err != nil {
-		return err
+func BindExpr(ctx *Context, tableName string, e expr.Expr) (err error) {
+	if e == nil {
+		return nil
 	}
+
+	var info *database.TableInfo
+	if tableName != "" {
+		info, err = ctx.Tx.Catalog.GetTableInfo(tableName)
+		if err != nil {
+			return err
+		}
+	}
+
 	expr.Walk(e, func(e expr.Expr) bool {
 		switch t := e.(type) {
-		case expr.Column:
-			cc := info.ColumnConstraints.GetColumnConstraint(string(t))
+		case *expr.Column:
+			if t == nil {
+				return true
+			}
+
+			if info == nil {
+				err = errors.New("no table specified")
+				return false
+			}
+
+			cc := info.ColumnConstraints.GetColumnConstraint(t.Name)
 			if cc == nil {
 				err = errors.Newf("column %s does not exist", t)
 				return false
 			}
+			t.Table = tableName
 		}
 
 		return true

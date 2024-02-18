@@ -33,8 +33,8 @@ func (t *ConstraintExpr) Eval(tx *database.Transaction, r row.Row) (types.Value,
 func (t *ConstraintExpr) Validate(info *database.TableInfo) (err error) {
 	Walk(t.Expr, func(e Expr) bool {
 		switch e := e.(type) {
-		case Column:
-			if info.GetColumnConstraint(string(e)) == nil {
+		case *Column:
+			if info.GetColumnConstraint(e.Name) == nil {
 				err = errors.Newf("column %q does not exist", e)
 				return false
 			}

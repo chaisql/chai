@@ -7,22 +7,22 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.AlterTableRenameStmt, err error) {
+func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ *statement.AlterTableRenameStmt, err error) {
 	var stmt statement.AlterTableRenameStmt
 	stmt.TableName = tableName
 
 	// Parse "TO".
 	if err := p.ParseTokens(scanner.TO); err != nil {
-		return stmt, err
+		return nil, err
 	}
 
 	// Parse new table name.
 	stmt.NewTableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
+		return nil, err
 	}
 
-	return stmt, nil
+	return &stmt, nil
 }
 
 func (p *Parser) parseAlterTableAddColumnStatement(tableName string) (*statement.AlterTableAddColumnStmt, error) {

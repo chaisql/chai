@@ -161,3 +161,24 @@ func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, msg string, ar
 		require.Equal(t, expected.String(), actual.String())
 	}
 }
+
+// rows, err := db.Query(test.Expr)
+// 										if err != nil {
+// 											return err
+// 										}
+// 										defer rows.Close()
+
+// 										cols, err := rows.Columns()
+// 										if err != nil {
+// 											return err
+// 										}
+
+// 										for rows.Next() {
+// 											var vals []interface{}
+// 											for range cols {
+// 												vals = append(vals, new(interface{}))
+// 											}
+// 											if err := rows.Scan(vals...); err != nil {
+// 												return err
+// 											}
+// 										}

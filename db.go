@@ -378,7 +378,7 @@ func (r *Result) Iterate(fn func(r *Row) error) error {
 	var row Row
 	if r.ctx == nil {
 		return r.result.Iterate(func(dr database.Row) error {
-			row.row = dr
+			row.Row = dr
 			return fn(&row)
 		})
 	}
@@ -388,7 +388,7 @@ func (r *Result) Iterate(fn func(r *Row) error) error {
 			return err
 		}
 
-		row.row = dr
+		row.Row = dr
 		return fn(&row)
 	})
 }
@@ -488,26 +488,26 @@ func newQueryContext(conn *Connection, params []environment.Param) *query.Contex
 }
 
 type Row struct {
-	row database.Row
+	Row database.Row
 }
 
 func (r *Row) Clone() *Row {
 	var rr Row
 	cb := row.NewColumnBuffer()
-	err := cb.Copy(r.row)
+	err := cb.Copy(r.Row)
 	if err != nil {
 		panic(err)
 	}
 	var br database.BasicRow
-	br.ResetWith(r.row.TableName(), r.row.Key(), cb)
-	rr.row = &br
+	br.ResetWith(r.Row.TableName(), r.Row.Key(), cb)
+	rr.Row = &br
 
 	return &rr
 }
 
 func (r *Row) Columns() ([]string, error) {
 	var cols []string
-	err := r.row.Iterate(func(column string, value types.Value) error {
+	err := r.Row.Iterate(func(column string, value types.Value) error {
 		cols = append(cols, column)
 		return nil
 	})
@@ -518,7 +518,7 @@ func (r *Row) Columns() ([]string, error) {
 	return cols, nil
 }
 func (r *Row) GetColumnType(column string) (string, error) {
-	v, err := r.row.Get(column)
+	v, err := r.Row.Get(column)
 	if errors.Is(err, types.ErrColumnNotFound) {
 		return "", err
 	}
@@ -527,21 +527,21 @@ func (r *Row) GetColumnType(column string) (string, error) {
 }
 
 func (r *Row) ScanColumn(column string, dest any) error {
-	return row.ScanColumn(r.row, column, dest)
+	return row.ScanColumn(r.Row, column, dest)
 }
 
 func (r *Row) Scan(dest ...any) error {
-	return row.Scan(r.row, dest...)
+	return row.Scan(r.Row, dest...)
 }
 
 func (r *Row) StructScan(dest any) error {
-	return row.StructScan(r.row, dest)
+	return row.StructScan(r.Row, dest)
 }
 
 func (r *Row) MapScan(dest map[string]any) error {
-	return row.MapScan(r.row, dest)
+	return row.MapScan(r.Row, dest)
 }
 
 func (r *Row) MarshalJSON() ([]byte, error) {
-	return r.row.MarshalJSON()
+	return r.Row.MarshalJSON()
 }

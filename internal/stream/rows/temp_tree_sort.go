@@ -68,7 +68,7 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 		if v == nil {
 			// the expression might be pointing to the original row.
-			v, err = op.Expr.Eval(out.Outer)
+			v, err = op.Expr.Eval(out.GetOuter())
 			if err != nil {
 				// the only valid error here is a missing column.
 				if !errors.Is(err, types.ErrColumnNotFound) {
@@ -81,8 +81,6 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 		if !ok {
 			return errors.New("missing row")
 		}
-
-		// TODO: we should find a way to encode using the table info.
 
 		buf, err = encodeTempRow(buf, r)
 		if err != nil {

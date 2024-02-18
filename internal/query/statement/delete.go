@@ -9,6 +9,8 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*DeleteStmt)(nil)
+
 // DeleteConfig holds DELETE configuration.
 type DeleteStmt struct {
 	basePreparedStatement
@@ -16,7 +18,7 @@ type DeleteStmt struct {
 	TableName        string
 	WhereExpr        expr.Expr
 	OffsetExpr       expr.Expr
-	OrderBy          expr.Column
+	OrderBy          *expr.Column
 	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
 }
@@ -32,19 +34,38 @@ func NewDeleteStatement() *DeleteStmt {
 	return &p
 }
 
+func (stmt *DeleteStmt) Bind(ctx *Context) error {
+	err := BindExpr(ctx, stmt.TableName, stmt.WhereExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.OffsetExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.OrderBy)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.LimitExpr)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		err := ensureExprColumnsExist(c, stmt.TableName, stmt.WhereExpr)
-		if err != nil {
-			return nil, err
-		}
-
 		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
-	if stmt.OrderBy != "" {
+	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
 			s = s.Pipe(rows.TempTreeSortReverse(stmt.OrderBy))
 		} else {
@@ -53,18 +74,10 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	if stmt.OffsetExpr != nil {
-		err := ensureExprColumnsExist(c, stmt.TableName, stmt.OffsetExpr)
-		if err != nil {
-			return nil, err
-		}
 		s = s.Pipe(rows.Skip(stmt.OffsetExpr))
 	}
 
 	if stmt.LimitExpr != nil {
-		err := ensureExprColumnsExist(c, stmt.TableName, stmt.LimitExpr)
-		if err != nil {
-			return nil, err
-		}
 		s = s.Pipe(rows.Take(stmt.LimitExpr))
 	}
 

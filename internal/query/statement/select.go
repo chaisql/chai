@@ -11,12 +11,35 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*SelectStmt)(nil)
+
 type SelectCoreStmt struct {
 	TableName       string
 	Distinct        bool
 	WhereExpr       expr.Expr
 	GroupByExpr     expr.Expr
 	ProjectionExprs []expr.Expr
+}
+
+func (stmt *SelectCoreStmt) Bind(ctx *Context) error {
+	err := BindExpr(ctx, stmt.TableName, stmt.WhereExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.GroupByExpr)
+	if err != nil {
+		return err
+	}
+
+	for i := range stmt.ProjectionExprs {
+		err = BindExpr(ctx, stmt.TableName, stmt.ProjectionExprs[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
@@ -34,20 +57,11 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 	}
 
 	if stmt.WhereExpr != nil {
-		err := ensureExprColumnsExist(ctx, stmt.TableName, stmt.WhereExpr)
-		if err != nil {
-			return nil, err
-		}
-
 		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
 	// when using GROUP BY, only aggregation functions or GroupByExpr can be selected
 	if stmt.GroupByExpr != nil {
-		err := ensureExprColumnsExist(ctx, stmt.TableName, stmt.GroupByExpr)
-		if err != nil {
-			return nil, err
-		}
 		var invalidProjectedField expr.Expr
 		var aggregators []expr.AggregatorBuilder
 
@@ -70,7 +84,10 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 				// if so, replace the expression with a column expression
 				stmt.ProjectionExprs[i] = &expr.NamedExpr{
 					ExprName: ne.ExprName,
-					Expr:     expr.Column(e.String()),
+					Expr: &expr.Column{
+						Name:  e.String(),
+						Table: stmt.TableName,
+					},
 				}
 				continue
 			}
@@ -99,14 +116,6 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 					return true
 				}
 
-				if c, ok := e.(expr.Column); ok {
-					// check if the projected expression is a column
-					err := ensureExprColumnsExist(ctx, stmt.TableName, c)
-					if err != nil {
-						return false
-					}
-				}
-
 				return true
 			})
 		}
@@ -124,7 +133,7 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 		for _, e := range stmt.ProjectionExprs {
 			expr.Walk(e, func(e expr.Expr) bool {
 				switch e.(type) {
-				case expr.Column, expr.Wildcard:
+				case *expr.Column, expr.Wildcard:
 					err = errors.New("no tables specified")
 					return false
 				default:
@@ -168,7 +177,7 @@ type SelectStmt struct {
 
 	CompoundSelect    []*SelectCoreStmt
 	CompoundOperators []scanner.Token
-	OrderBy           expr.Column
+	OrderBy           *expr.Column
 	OrderByDirection  scanner.Token
 	OffsetExpr        expr.Expr
 	LimitExpr         expr.Expr
@@ -183,6 +192,32 @@ func NewSelectStatement() *SelectStmt {
 	}
 
 	return &p
+}
+
+func (stmt *SelectStmt) Bind(ctx *Context) error {
+	for i := range stmt.CompoundSelect {
+		err := stmt.CompoundSelect[i].Bind(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.OrderBy)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.OffsetExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.LimitExpr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Prepare implements the Preparer interface.
@@ -231,7 +266,7 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 		prev = tok
 	}
 
-	if stmt.OrderBy != "" {
+	if stmt.OrderBy != nil {
 		if stmt.OrderByDirection == scanner.DESC {
 			s = s.Pipe(rows.TempTreeSortReverse(stmt.OrderBy))
 		} else {

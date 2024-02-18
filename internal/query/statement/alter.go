@@ -9,20 +9,27 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*AlterTableRenameStmt)(nil)
+var _ Statement = (*AlterTableAddColumnStmt)(nil)
+
 // AlterTableRenameStmt is a DSL that allows creating a full ALTER TABLE query.
 type AlterTableRenameStmt struct {
 	TableName    string
 	NewTableName string
 }
 
+func (stmt *AlterTableRenameStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt AlterTableRenameStmt) IsReadOnly() bool {
+func (stmt *AlterTableRenameStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
+func (stmt *AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -50,6 +57,10 @@ type AlterTableAddColumnStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *AlterTableAddColumnStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *AlterTableAddColumnStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.

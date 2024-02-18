@@ -10,6 +10,7 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -301,81 +302,84 @@ func (rs *Rows) Close() error {
 func (rs *Rows) Next(dest []driver.Value) error {
 	rs.c <- Row{}
 
-	row, ok := <-rs.c
+	r, ok := <-rs.c
 	if !ok {
 		return io.EOF
 	}
 
-	if row.err != nil {
-		return row.err
+	if r.err != nil {
+		return r.err
 	}
 
-	for i := range rs.columns {
-		if rs.columns[i] == "*" {
-			dest[i] = row.r
+	var i int
+	err := r.r.Row.Iterate(func(column string, v types.Value) error {
+		var err error
 
-			continue
-		}
-
-		tp, err := row.r.GetColumnType(rs.columns[i])
-		if err != nil {
-			return err
-		}
-		switch tp {
-		case types.TypeBoolean.String():
+		switch v.Type() {
+		case types.TypeNull:
+			dest[i] = nil
+		case types.TypeBoolean:
 			var b bool
-			err = row.r.ScanColumn(rs.columns[i], &b)
+			err = row.ScanValue(v, &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
-		case types.TypeInteger.String():
+		case types.TypeInteger:
 			var ii int32
-			err = row.r.ScanColumn(rs.columns[i], &ii)
+			err = row.ScanValue(v, &ii)
 			if err != nil {
 				return err
 			}
 			dest[i] = ii
-		case types.TypeBigint.String():
+		case types.TypeBigint:
 			var bi int64
-			err = row.r.ScanColumn(rs.columns[i], &bi)
+			err = row.ScanValue(v, &bi)
 			if err != nil {
 				return err
 			}
-		case types.TypeDouble.String():
+			dest[i] = bi
+		case types.TypeDouble:
 			var d float64
-			err = row.r.ScanColumn(rs.columns[i], &d)
+			err = row.ScanValue(v, &d)
 			if err != nil {
 				return err
 			}
 			dest[i] = d
-		case types.TypeTimestamp.String():
+		case types.TypeTimestamp:
 			var t time.Time
-			err = row.r.ScanColumn(rs.columns[i], &t)
+			err = row.ScanValue(v, &t)
 			if err != nil {
 				return err
 			}
 			dest[i] = t
-		case types.TypeText.String():
+		case types.TypeText:
 			var s string
-			err = row.r.ScanColumn(rs.columns[i], &s)
+			err = row.ScanValue(v, &s)
 			if err != nil {
 				return err
 			}
 			dest[i] = s
-		case types.TypeBlob.String():
+		case types.TypeBlob:
 			var b []byte
-			err = row.r.ScanColumn(rs.columns[i], &b)
+			err = row.ScanValue(v, &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
 		default:
-			err = row.r.ScanColumn(rs.columns[i], dest[i])
+			err = row.ScanValue(v, dest[i])
 			if err != nil {
 				return err
 			}
 		}
+
+		i++
+
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

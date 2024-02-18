@@ -9,6 +9,8 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*UpdateStmt)(nil)
+
 // UpdateConfig holds UPDATE configuration.
 type UpdateStmt struct {
 	basePreparedStatement
@@ -35,8 +37,29 @@ func NewUpdateStatement() *UpdateStmt {
 }
 
 type UpdateSetPair struct {
-	Column expr.Column
+	Column *expr.Column
 	E      expr.Expr
+}
+
+func (stmt *UpdateStmt) Bind(ctx *Context) error {
+	err := BindExpr(ctx, stmt.TableName, stmt.WhereExpr)
+	if err != nil {
+		return err
+	}
+
+	for i := range stmt.SetPairs {
+		err = BindExpr(ctx, stmt.TableName, stmt.SetPairs[i].Column)
+		if err != nil {
+			return err
+		}
+
+		err = BindExpr(ctx, stmt.TableName, stmt.SetPairs[i].E)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Prepare implements the Preparer interface.
@@ -50,33 +73,23 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	s := stream.New(table.Scan(stmt.TableName))
 
 	if stmt.WhereExpr != nil {
-		err := ensureExprColumnsExist(c, stmt.TableName, stmt.WhereExpr)
-		if err != nil {
-			return nil, err
-		}
-
 		s = s.Pipe(rows.Filter(stmt.WhereExpr))
 	}
 
 	var pkModified bool
 	if stmt.SetPairs != nil {
 		for _, pair := range stmt.SetPairs {
-			err := ensureExprColumnsExist(c, stmt.TableName, pair.Column)
-			if err != nil {
-				return nil, err
-			}
-
 			// if we modify the primary key,
 			// we must remove the old row and create an new one
 			if pk != nil && !pkModified {
 				for _, c := range pk.Columns {
-					if c == string(pair.Column) {
+					if c == pair.Column.Name {
 						pkModified = true
 						break
 					}
 				}
 			}
-			s = s.Pipe(path.Set(string(pair.Column), pair.E))
+			s = s.Pipe(path.Set(pair.Column.Name, pair.E))
 		}
 	}
 

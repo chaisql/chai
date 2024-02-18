@@ -8,6 +8,7 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/types"
@@ -18,35 +19,35 @@ func TestProject(t *testing.T) {
 	tests := []struct {
 		name  string
 		exprs []expr.Expr
-		in    row.Row
+		in    expr.Row
 		out   string
 		fails bool
 	}{
 		{
 			"Constant",
 			[]expr.Expr{parser.MustParseExpr("10")},
-			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			testutil.MakeRowExpr(t, `{"a":1,"b":true}`),
 			`{"10":10}`,
 			false,
 		},
 		{
 			"Wildcard",
 			[]expr.Expr{expr.Wildcard{}},
-			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			testutil.MakeRowExpr(t, `{"a":1,"b":true}`),
 			`{"a":1,"b":true}`,
 			false,
 		},
 		{
 			"Multiple",
 			[]expr.Expr{expr.Wildcard{}, expr.Wildcard{}, parser.MustParseExpr("10")},
-			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			testutil.MakeRowExpr(t, `{"a":1,"b":true}`),
 			`{"a":1,"b":true,"a":1,"b":true,"10":10}`,
 			false,
 		},
 		{
 			"Named",
 			[]expr.Expr{&expr.NamedExpr{Expr: parser.MustParseExpr("10"), ExprName: "foo"}},
-			testutil.MakeRow(t, `{"a":1,"b":true}`),
+			testutil.MakeRowExpr(t, `{"a":1,"b":true}`),
 			`{"foo":10}`,
 			false,
 		},
@@ -55,10 +56,9 @@ func TestProject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			var inEnv environment.Environment
-			inEnv.SetRow(test.in)
 
-			err := rows.Project(test.exprs...).Iterate(&inEnv, func(out *environment.Environment) error {
-				require.Equal(t, &inEnv, out.GetOuter())
+			err := stream.New(rows.Emit([]string{"a", "b"}, test.in)).
+				Pipe(rows.Project(test.exprs...)).Iterate(&inEnv, func(out *environment.Environment) error {
 				r, ok := out.GetRow()
 				require.True(t, ok)
 				tt, err := json.Marshal(r)

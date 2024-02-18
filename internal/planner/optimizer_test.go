@@ -109,17 +109,17 @@ func TestPrecalculateExprRule(t *testing.T) {
 		},
 		{
 			"constant sub-expr: a > 1 - 40 -> a > -39",
-			expr.Gt(expr.Column("a"), expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
-			expr.Gt(expr.Column("a"), testutil.DoubleValue(-39)),
+			expr.Gt(&expr.Column{Name: "a"}, expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40))),
+			expr.Gt(&expr.Column{Name: "a"}, testutil.DoubleValue(-39)),
 		},
 		{
 			"non-constant expr list: (a, 1 - 40) -> (a, -39)",
 			expr.LiteralExprList{
-				expr.Column("a"),
+				&expr.Column{Name: "a"},
 				expr.Sub(testutil.IntegerValue(1), testutil.DoubleValue(40)),
 			},
 			expr.LiteralExprList{
-				expr.Column("a"),
+				&expr.Column{Name: "a"},
 				testutil.DoubleValue(-39),
 			},
 		},

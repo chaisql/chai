@@ -335,11 +335,11 @@ func precalculateExpr(sctx *StreamContext, e expr.Expr) (expr.Expr, error) {
 
 		// if one operand is a column and the other is a literal
 		// we can check if the types are compatible
-		lc, leftIsCol := lh.(expr.Column)
-		rc, rightIsCol := rh.(expr.Column)
+		lc, leftIsCol := lh.(*expr.Column)
+		rc, rightIsCol := rh.(*expr.Column)
 
 		if leftIsCol && rightIsLit {
-			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(string(lc)).Type
+			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(lc.Name).Type
 			if !tp.Def().IsComparableWith(rv.Value.Type()) {
 				return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, rh)
 			}
@@ -354,7 +354,7 @@ func precalculateExpr(sctx *StreamContext, e expr.Expr) (expr.Expr, error) {
 		}
 
 		if leftIsLit && rightIsCol {
-			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(string(rc)).Type
+			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(rc.Name).Type
 			if !tp.Def().IsComparableWith(lv.Value.Type()) {
 				return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, lh)
 			}
@@ -421,8 +421,8 @@ func checkExprType(sctx *StreamContext, e expr.Expr) (err error) {
 	lh := op.LeftHand()
 	rh := op.RightHand()
 
-	lc, leftIsCol := lh.(expr.Column)
-	rc, rightIsCol := rh.(expr.Column)
+	lc, leftIsCol := lh.(*expr.Column)
+	rc, rightIsCol := rh.(*expr.Column)
 
 	lv, leftIsLit := lh.(expr.LiteralValue)
 	rv, rightIsLit := rh.(expr.LiteralValue)
@@ -432,7 +432,7 @@ func checkExprType(sctx *StreamContext, e expr.Expr) (err error) {
 	}
 
 	if leftIsCol && rightIsLit {
-		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(string(lc)).Type
+		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(lc.Name).Type
 		_, err := rv.Value.CastAs(tp)
 		if err != nil {
 			return errors.Errorf("invalid input syntax for type %s: %s", tp, rh)
@@ -442,7 +442,7 @@ func checkExprType(sctx *StreamContext, e expr.Expr) (err error) {
 	}
 
 	if leftIsLit && rightIsCol {
-		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(string(rc)).Type
+		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(rc.Name).Type
 		_, err := lv.Value.CastAs(tp)
 		if err != nil {
 			return errors.Errorf("invalid input syntax for type %s: %s", tp, lh)
@@ -514,17 +514,17 @@ func RemoveUnnecessaryTempSortNodesRule(sctx *StreamContext) error {
 		return nil
 	}
 
-	lcol, ok := sctx.TempTreeSorts[0].Expr.(expr.Column)
+	lcol, ok := sctx.TempTreeSorts[0].Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
-	rcol, ok := sctx.TempTreeSorts[1].Expr.(expr.Column)
+	rcol, ok := sctx.TempTreeSorts[1].Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
-	if lcol != rcol {
+	if lcol.Name != rcol.Name {
 		return nil
 	}
 

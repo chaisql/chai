@@ -261,14 +261,14 @@ func (i *indexSelector) isFilterIndexable(f *rows.FilterOperator) (*indexableNod
 
 func (i *indexSelector) isTempTreeSortIndexable(n *rows.TempTreeSortOperator) *indexableNode {
 	// only columns can be associated with an index
-	col, ok := n.Expr.(expr.Column)
+	col, ok := n.Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
 	return &indexableNode{
 		node:     n,
-		col:      string(col),
+		col:      col.Name,
 		desc:     n.Desc,
 		operator: scanner.ORDER,
 	}
@@ -671,14 +671,14 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 
 	lh := op.LeftHand()
 	rh := op.RightHand()
-	lc, leftIsCol := lh.(expr.Column)
-	rc, rightIsCol := rh.(expr.Column)
+	lc, leftIsCol := lh.(*expr.Column)
+	rc, rightIsCol := rh.(*expr.Column)
 
 	var cc *database.ColumnConstraint
 	if leftIsCol {
-		cc = i.info.ColumnConstraints.GetColumnConstraint(string(lc))
+		cc = i.info.ColumnConstraints.GetColumnConstraint(lc.Name)
 	} else if rightIsCol {
-		cc = i.info.ColumnConstraints.GetColumnConstraint(string(rc))
+		cc = i.info.ColumnConstraints.GetColumnConstraint(rc.Name)
 	}
 	if cc == nil {
 		return false, "", nil, nil
@@ -691,7 +691,7 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 			return false, "", nil, err
 		}
 
-		return true, string(lc), v, nil
+		return true, lc.Name, v, nil
 	}
 
 	// literal OP column
@@ -701,7 +701,7 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 			return false, "", nil, err
 		}
 
-		return true, string(rc), v, nil
+		return true, rc.Name, v, nil
 	}
 
 	return false, "", nil, nil
@@ -713,13 +713,13 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 // invalid: a IN (b + 1, 2)
 func (i *indexSelector) inOperatorCanUseIndex(op expr.Operator) (bool, string, expr.Expr, error) {
 	rh := op.RightHand()
-	_, rightIsCol := rh.(expr.Column)
+	_, rightIsCol := rh.(*expr.Column)
 	if rightIsCol {
 		return false, "", nil, nil
 	}
 
 	lh := op.LeftHand()
-	lc, leftIsCol := lh.(expr.Column)
+	lc, leftIsCol := lh.(*expr.Column)
 
 	if !leftIsCol {
 		return false, "", nil, nil
@@ -734,7 +734,7 @@ func (i *indexSelector) inOperatorCanUseIndex(op expr.Operator) (bool, string, e
 		return false, "", nil, nil
 	}
 
-	cc := i.info.ColumnConstraints.GetColumnConstraint(string(lc))
+	cc := i.info.ColumnConstraints.GetColumnConstraint(lc.Name)
 	if cc == nil {
 		return false, "", nil, nil
 	}
@@ -750,7 +750,7 @@ func (i *indexSelector) inOperatorCanUseIndex(op expr.Operator) (bool, string, e
 		rlist[i] = v
 	}
 
-	return true, string(lc), rlist, nil
+	return true, lc.Name, rlist, nil
 }
 
 // Special case for BETWEEN operator: Given this expression (x BETWEEN a AND b),
@@ -760,12 +760,12 @@ func (i *indexSelector) betweenOperatorCanUseIndex(op expr.Operator) (bool, stri
 	rh := op.RightHand()
 
 	bt := op.(*expr.BetweenOperator)
-	x, xIsCol := bt.X.(expr.Column)
+	x, xIsCol := bt.X.(*expr.Column)
 	if !xIsCol {
 		return false, "", nil, nil
 	}
 
-	cc := i.info.ColumnConstraints.GetColumnConstraint(string(x))
+	cc := i.info.ColumnConstraints.GetColumnConstraint(x.Name)
 	if cc == nil {
 		return false, "", nil, nil
 	}
@@ -782,7 +782,7 @@ func (i *indexSelector) betweenOperatorCanUseIndex(op expr.Operator) (bool, stri
 		return false, "", nil, nil
 	}
 
-	return true, string(x), expr.LiteralExprList{lv, rv}, nil
+	return true, x.Name, expr.LiteralExprList{lv, rv}, nil
 }
 
 func exprIsCompatibleLiteral(e expr.Expr, tp types.Type) (bool, expr.LiteralValue, error) {

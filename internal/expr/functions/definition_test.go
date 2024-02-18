@@ -17,7 +17,9 @@ func TestDefinitions(t *testing.T) {
 	})
 
 	t.Run("Function()", func(t *testing.T) {
-		fexpr, err := def.Function(expr.Column("a"))
+		fexpr, err := def.Function(&expr.Column{
+			Name: "a",
+		})
 		require.NoError(t, err)
 		require.NotNil(t, fexpr)
 	})

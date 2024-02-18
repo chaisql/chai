@@ -18,10 +18,10 @@ func TestParserAlterTable(t *testing.T) {
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Basic", "ALTER TABLE foo RENAME TO bar", statement.AlterTableRenameStmt{TableName: "foo", NewTableName: "bar"}, false},
-		{"With error / missing TABLE keyword", "ALTER foo RENAME TO bar", statement.AlterTableRenameStmt{}, true},
-		{"With error / two identifiers for table name", "ALTER TABLE foo baz RENAME TO bar", statement.AlterTableRenameStmt{}, true},
-		{"With error / two identifiers for new table name", "ALTER TABLE foo RENAME TO bar baz", statement.AlterTableRenameStmt{}, true},
+		{"Basic", "ALTER TABLE foo RENAME TO bar", &statement.AlterTableRenameStmt{TableName: "foo", NewTableName: "bar"}, false},
+		{"With error / missing TABLE keyword", "ALTER foo RENAME TO bar", nil, true},
+		{"With error / two identifiers for table name", "ALTER TABLE foo baz RENAME TO bar", nil, true},
+		{"With error / two identifiers for new table name", "ALTER TABLE foo RENAME TO bar baz", nil, true},
 	}
 
 	for _, test := range tests {

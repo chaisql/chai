@@ -97,13 +97,8 @@ type NamedExpr struct {
 	ExprName string
 }
 
-// Name returns ExprName.
-func (e *NamedExpr) Name() string {
-	return e.ExprName
-}
-
 func (e *NamedExpr) String() string {
-	return e.Expr.String()
+	return e.ExprName
 }
 
 // A Function is an expression whose evaluation calls a function previously defined.
@@ -261,7 +256,7 @@ func Clone(e Expr) Expr {
 			CastAs: e.CastAs,
 		}
 	case LiteralValue,
-		Column,
+		*Column,
 		NamedParam,
 		PositionalParam,
 		NextValueFor,

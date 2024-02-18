@@ -6,6 +6,21 @@ import (
 	"time"
 )
 
+type Value interface {
+	Comparable
+
+	Type() Type
+	V() any
+	IsZero() (bool, error)
+	String() string
+	MarshalJSON() ([]byte, error)
+	MarshalText() ([]byte, error)
+	TypeDef() TypeDefinition
+	Encode(dst []byte) ([]byte, error)
+	EncodeAsKey(dst []byte) ([]byte, error)
+	CastAs(t Type) (Value, error)
+}
+
 func AsBool(v Value) bool {
 	return v.V().(bool)
 }
@@ -88,4 +103,44 @@ func IsTruthy(v Value) (bool, error) {
 
 	b, err := v.IsZero()
 	return !b, err
+}
+
+// ValueScanner implements the sql.Scanner interface for Value.
+// The src value will be of one of the following types:
+//
+//	int32
+//	int64
+//	float64
+//	bool
+//	[]byte
+//	string
+//	time.Time
+//	nil - for NULL values
+type ValueScanner struct {
+	V Value
+}
+
+func (v *ValueScanner) Scan(src any) error {
+	switch t := src.(type) {
+	case int32:
+		v.V = NewIntegerValue(t)
+	case int64:
+		v.V = NewBigintValue(t)
+	case float64:
+		v.V = NewDoubleValue(t)
+	case bool:
+		v.V = NewBooleanValue(t)
+	case []byte:
+		v.V = NewBlobValue(t)
+	case string:
+		v.V = NewTextValue(t)
+	case time.Time:
+		v.V = NewTimestampValue(t)
+	case nil:
+		v.V = NewNullValue()
+	default:
+		return fmt.Errorf("unexpected type: %T", src)
+	}
+
+	return nil
 }

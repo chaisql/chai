@@ -378,30 +378,6 @@ func (p *Parser) parseIdentList() ([]string, error) {
 	}
 }
 
-// parseParam parses a positional or named param.
-func (p *Parser) parseParam() (expr.Expr, error) {
-	tok, _, lit := p.ScanIgnoreWhitespace()
-	switch tok {
-	case scanner.NAMEDPARAM:
-		if len(lit) == 1 {
-			return nil, errors.WithStack(&ParseError{Message: "missing param name"})
-		}
-		if p.orderedParams > 0 {
-			return nil, errors.WithStack(&ParseError{Message: "cannot mix positional arguments with named arguments"})
-		}
-		p.namedParams++
-		return expr.NamedParam(lit[1:]), nil
-	case scanner.POSITIONALPARAM:
-		if p.namedParams > 0 {
-			return nil, errors.WithStack(&ParseError{Message: "cannot mix positional arguments with named arguments"})
-		}
-		p.orderedParams++
-		return expr.PositionalParam(p.orderedParams), nil
-	default:
-		return nil, nil
-	}
-}
-
 func (p *Parser) parseType() (types.Type, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
@@ -448,14 +424,14 @@ func (p *Parser) parseType() (types.Type, error) {
 }
 
 // parsePath parses a path to a specific value.
-func (p *Parser) parseColumn() (expr.Column, error) {
+func (p *Parser) parseColumn() (*expr.Column, error) {
 	// parse first mandatory ident
 	col, err := p.parseIdent()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return expr.Column(col), nil
+	return &expr.Column{Name: col}, nil
 }
 
 func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprList, error) {

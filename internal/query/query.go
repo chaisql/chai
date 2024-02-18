@@ -50,11 +50,6 @@ func (q *Query) Prepare(context *Context) error {
 			}
 		}
 
-		p, ok := stmt.(statement.Preparer)
-		if !ok {
-			return nil
-		}
-
 		if tx == nil {
 			tx = context.GetTx()
 			if tx == nil {
@@ -68,11 +63,23 @@ func (q *Query) Prepare(context *Context) error {
 			}
 		}
 
-		stmt, err := p.Prepare(&statement.Context{
+		sctx := &statement.Context{
 			DB:   context.DB,
 			Conn: context.Conn,
 			Tx:   tx,
-		})
+		}
+
+		err = stmt.Bind(sctx)
+		if err != nil {
+			return err
+		}
+
+		p, ok := stmt.(statement.Preparer)
+		if !ok {
+			return nil
+		}
+
+		stmt, err := p.Prepare(sctx)
 		if err != nil {
 			return err
 		}

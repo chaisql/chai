@@ -11,6 +11,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*InsertStmt)(nil)
+
 // InsertStmt holds INSERT configuration.
 type InsertStmt struct {
 	basePreparedStatement
@@ -32,6 +34,33 @@ func NewInsertStatement() *InsertStmt {
 	}
 
 	return &p
+}
+
+func (stmt *InsertStmt) Bind(ctx *Context) error {
+	for i := range stmt.Values {
+		err := BindExpr(ctx, stmt.TableName, stmt.Values[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	if stmt.SelectStmt != nil {
+		if s, ok := stmt.SelectStmt.(Statement); ok {
+			err := s.Bind(ctx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for i := range stmt.Returning {
+		err := BindExpr(ctx, stmt.TableName, stmt.Returning[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {

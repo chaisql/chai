@@ -8,6 +8,8 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*PreparedStreamStmt)(nil)
+
 // StreamStmt is a StreamStmt using a Stream.
 type StreamStmt struct {
 	Stream   *stream.Stream
@@ -26,6 +28,10 @@ func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
 type PreparedStreamStmt struct {
 	Stream   *stream.Stream
 	ReadOnly bool
+}
+
+func (s *PreparedStreamStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of

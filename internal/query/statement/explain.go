@@ -9,11 +9,21 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = &ExplainStmt{}
+
 // ExplainStmt is a Statement that
 // displays information about how a statement
 // is going to be executed, without executing it.
 type ExplainStmt struct {
 	Statement Preparer
+}
+
+func (stmt *ExplainStmt) Bind(ctx *Context) error {
+	if s, ok := stmt.Statement.(Statement); ok {
+		return s.Bind(ctx)
+	}
+
+	return nil
 }
 
 // Run analyses the inner statement and displays its execution plan.

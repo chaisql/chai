@@ -637,8 +637,8 @@ func (p *Parser) parseCheckConstraint() (expr.Expr, []string, error) {
 	// extract all the paths from the expression
 	expr.Walk(e, func(e expr.Expr) bool {
 		switch t := e.(type) {
-		case expr.Column:
-			scol := string(t)
+		case *expr.Column:
+			scol := t.Name
 			// ensure that the path is not already in the list
 			found := false
 			for _, c := range columns {

@@ -7,17 +7,17 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-func (p *Parser) parseOrderBy() (expr.Column, scanner.Token, error) {
+func (p *Parser) parseOrderBy() (*expr.Column, scanner.Token, error) {
 	// parse ORDER token
 	ok, err := p.parseOptional(scanner.ORDER, scanner.BY)
 	if err != nil || !ok {
-		return "", 0, err
+		return nil, 0, err
 	}
 
 	// parse col
 	col, err := p.parseColumn()
 	if err != nil {
-		return "", 0, err
+		return nil, 0, err
 	}
 
 	// parse optional ASC or DESC

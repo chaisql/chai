@@ -62,7 +62,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
-		{"Values / Returning", "INSERT INTO test (a, b) VALUES ('c', 'd') RETURNING *, a, b as B, c",
+		{"Values / Returning", "INSERT INTO test (a, b) VALUES ('c', 'd') RETURNING *, a, b as B",
 			stream.New(rows.Emit(
 				[]string{"a", "b"},
 				expr.Row{
@@ -75,7 +75,7 @@ func TestParserInsert(t *testing.T) {
 			)).
 				Pipe(table.Validate("test")).
 				Pipe(table.Insert("test")).
-				Pipe(rows.Project(expr.Wildcard{}, testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b", "B"), testutil.ParseNamedExpr(t, "c"))),
+				Pipe(rows.Project(expr.Wildcard{}, testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b", "B"))),
 			false},
 		{"Values / With fields / Wrong values", "INSERT INTO test (a, b) VALUES {a: 1}, ('e', 'f')",
 			nil, true},
@@ -155,9 +155,9 @@ func TestParserInsert(t *testing.T) {
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
-		{"Select / Without fields / With projection", "INSERT INTO test SELECT a, b FROM foo",
+		{"Select / Without fields / With projection", "INSERT INTO test SELECT c, d FROM foo",
 			stream.New(table.Scan("foo")).
-				Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
+				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(table.Validate("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
@@ -170,9 +170,9 @@ func TestParserInsert(t *testing.T) {
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
-		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT a, b FROM foo",
+		{"Select / With fields / With projection", "INSERT INTO test (a, b) SELECT c, d FROM foo",
 			stream.New(table.Scan("foo")).
-				Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b"))).
+				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
 				Pipe(table.Insert("test")).
