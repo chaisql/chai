@@ -279,11 +279,9 @@ func (rs *Rows) iterate(ctx context.Context) {
 	if errors.Is(err, errStop) || err == nil {
 		return
 	}
-	if err != nil {
-		rs.c <- Row{
-			err: err,
-		}
-		return
+
+	rs.c <- Row{
+		err: err,
 	}
 }
 

@@ -36,7 +36,7 @@ func (t *Table) Insert(r row.Row) (*tree.Key, Row, error) {
 		return nil, nil, errors.New("cannot write to read-only table")
 	}
 
-	key, isRowid, err := t.generateKey(t.Info, r)
+	key, isRowid, err := t.generateKey(r)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -167,11 +167,39 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, 
 		Row:       &e,
 	}
 
-	return t.Tree.IterateOnRange(r, reverse, func(k *tree.Key, enc []byte) error {
+	it, err := t.Tree.Iterator(r)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	if reverse {
+		it.Last()
+	} else {
+		it.First()
+	}
+
+	for it.Valid() {
+		k := it.Key()
+		enc, err := it.Value()
+		if err != nil {
+			return err
+		}
+
 		row.key = k
 		e.encoded = enc
-		return fn(k, &row)
-	})
+		if err := fn(k, &row); err != nil {
+			return err
+		}
+
+		if reverse {
+			it.Prev()
+		} else {
+			it.Next()
+		}
+	}
+
+	return it.Error()
 }
 
 // GetRow returns one row by key.
@@ -198,7 +226,7 @@ func (t *Table) GetRow(key *tree.Key) (Row, error) {
 // if there are no primary key in the table, a default
 // key is generated, called the rowid.
 // It returns a boolean indicating whether the key is a rowid or not.
-func (t *Table) generateKey(info *TableInfo, r row.Row) (*tree.Key, bool, error) {
+func (t *Table) generateKey(r row.Row) (*tree.Key, bool, error) {
 	if pk := t.Info.PrimaryKey; pk != nil {
 		vs := make([]types.Value, 0, len(pk.Columns))
 		for _, c := range pk.Columns {

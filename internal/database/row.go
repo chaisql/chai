@@ -7,7 +7,7 @@ import (
 )
 
 type Row interface {
-	// Iterate goes through all the fields of the row and calls the given function
+	// Iterate goes through all the columns of the row and calls the given function
 	// by passing the column name
 	Iterate(fn func(column string, value types.Value) error) error
 

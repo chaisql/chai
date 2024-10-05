@@ -79,20 +79,24 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 	var found bool
 	var dKey *tree.Key
 
-	err := idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k *tree.Key, _ []byte) error {
-		values, err := k.Decode()
+	it, err := idx.Tree.Iterator(&tree.Range{Min: seek, Max: seek})
+	if err != nil {
+		return false, nil, err
+	}
+	defer it.Close()
+
+	for it.First(); it.Valid(); it.Next() {
+		k, err := it.Key().Decode()
 		if err != nil {
-			return err
+			return false, nil, err
 		}
 
-		dKey = tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
+		dKey = tree.NewEncodedKey(types.AsByteSlice(k[len(k)-1]))
 		found = true
-		return errStop
-	})
-	if err == errStop {
-		err = nil
+		break
 	}
-	return found, dKey, err
+
+	return found, dKey, it.Error()
 }
 
 // Delete all the references to the key from the index.
@@ -132,11 +136,20 @@ func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tre
 }
 
 func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey *tree.Key, key *tree.Key) error) error {
-	return idx.Tree.IterateOnRange(rng, reverse, idx.iterator(fn))
-}
+	it, err := idx.Tree.Iterator(rng)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
 
-func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(k *tree.Key, d []byte) error {
-	return func(k *tree.Key, _ []byte) error {
+	if !reverse {
+		it.First()
+	} else {
+		it.Last()
+	}
+
+	for it.Valid() {
+		k := it.Key()
 		// we don't care about the value, we just want to extract the key
 		// which is the last element of the encoded array
 		values, err := k.Decode()
@@ -146,8 +159,19 @@ func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(
 
 		pk := tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
 
-		return fn(k, pk)
+		err = fn(k, pk)
+		if err != nil {
+			return err
+		}
+
+		if !reverse {
+			it.Next()
+		} else {
+			it.Prev()
+		}
 	}
+
+	return it.Error()
 }
 
 // Truncate deletes all the index data.

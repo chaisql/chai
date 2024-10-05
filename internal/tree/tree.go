@@ -76,11 +76,15 @@ func NewTransient(session engine.Session, ns Namespace, order SortOrder) (*Tree,
 	}
 
 	// ensure the namespace is not in use
-	err := t.IterateOnRange(nil, false, func(k *Key, b []byte) error {
-		return errors.Errorf("namespace %d is already in use", ns)
-	})
+	it, err := t.Iterator(nil)
 	if err != nil {
 		return nil, nil, err
+	}
+	defer it.Close()
+
+	it.First()
+	if it.Valid() {
+		return nil, nil, errors.Errorf("namespace %d is already in use", ns)
 	}
 
 	return &t, t.Truncate, nil
@@ -163,8 +167,19 @@ func (t *Tree) Truncate() error {
 	return t.Session.DeleteRange(encoding.EncodeInt(nil, int64(t.Namespace)), encoding.EncodeInt(nil, int64(t.Namespace)+1))
 }
 
-// IterateOnRange iterates on all keys that are in the given range.
-func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) error) error {
+type Iterator struct {
+	engine.Iterator
+	k Key
+}
+
+func (it *Iterator) Key() *Key {
+	it.k.Encoded = it.Iterator.Key()
+	it.k.values = nil
+
+	return &it.k
+}
+
+func (t *Tree) Iterator(rng *Range) (*Iterator, error) {
 	var start, end []byte
 	var err error
 
@@ -186,7 +201,7 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 		start, end, err = t.buildExclusiveBoundaries(min, max, desc)
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	opts := engine.IterOptions{
@@ -195,42 +210,12 @@ func (t *Tree) IterateOnRange(rng *Range, reverse bool, fn func(*Key, []byte) er
 	}
 	it, err := t.Session.Iterator(&opts)
 	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	if !reverse {
-		it.First()
-	} else {
-		it.Last()
+		return nil, err
 	}
 
-	var k Key
-	for it.Valid() {
-		k.Encoded = it.Key()
-		k.values = nil
-
-		v, err := it.Value()
-		if err != nil {
-			return err
-		}
-		if len(v) == 0 || v[0] == 0 {
-			v = nil
-		}
-
-		err = fn(&k, v)
-		if err != nil {
-			return err
-		}
-
-		if !reverse {
-			it.Next()
-		} else {
-			it.Prev()
-		}
-	}
-
-	return it.Error()
+	return &Iterator{
+		Iterator: it,
+	}, nil
 }
 
 func (t *Tree) isDescRange(rng *Range) bool {
@@ -248,7 +233,7 @@ func (t *Tree) buildInclusiveBoundaries(min, max *Key, desc bool) (start []byte,
 	if min == nil {
 		start, err = t.buildMinKeyForType(max, desc)
 	} else {
-		start, err = t.buildStartKeyInclusive(min, desc)
+		start, err = t.buildStartKeyInclusive(min)
 	}
 	if err != nil {
 		return
@@ -256,7 +241,7 @@ func (t *Tree) buildInclusiveBoundaries(min, max *Key, desc bool) (start []byte,
 	if max == nil {
 		end, err = t.buildMaxKeyForType(min, desc)
 	} else {
-		end, err = t.buildEndKeyInclusive(max, desc)
+		end, err = t.buildEndKeyInclusive(max)
 	}
 	return
 }
@@ -265,7 +250,7 @@ func (t *Tree) buildExclusiveBoundaries(min, max *Key, desc bool) (start []byte,
 	if min == nil {
 		start, err = t.buildMinKeyForType(max, desc)
 	} else {
-		start, err = t.buildStartKeyExclusive(min, desc)
+		start, err = t.buildStartKeyExclusive(min)
 	}
 	if err != nil {
 		return
@@ -273,7 +258,7 @@ func (t *Tree) buildExclusiveBoundaries(min, max *Key, desc bool) (start []byte,
 	if max == nil {
 		end, err = t.buildMaxKeyForType(min, desc)
 	} else {
-		end, err = t.buildEndKeyExclusive(max, desc)
+		end, err = t.buildEndKeyExclusive(max)
 	}
 	return
 }
@@ -343,11 +328,11 @@ func (t *Tree) buildLastKey() []byte {
 	return append(buf, 0xFF)
 }
 
-func (t *Tree) buildStartKeyInclusive(key *Key, desc bool) ([]byte, error) {
+func (t *Tree) buildStartKeyInclusive(key *Key) ([]byte, error) {
 	return key.Encode(t.Namespace, t.Order)
 }
 
-func (t *Tree) buildStartKeyExclusive(key *Key, desc bool) ([]byte, error) {
+func (t *Tree) buildStartKeyExclusive(key *Key) ([]byte, error) {
 	b, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
@@ -356,7 +341,7 @@ func (t *Tree) buildStartKeyExclusive(key *Key, desc bool) ([]byte, error) {
 	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildEndKeyInclusive(key *Key, desc bool) ([]byte, error) {
+func (t *Tree) buildEndKeyInclusive(key *Key) ([]byte, error) {
 	b, err := key.Encode(t.Namespace, t.Order)
 	if err != nil {
 		return nil, err
@@ -365,7 +350,7 @@ func (t *Tree) buildEndKeyInclusive(key *Key, desc bool) ([]byte, error) {
 	return append(b, 0xFF), nil
 }
 
-func (t *Tree) buildEndKeyExclusive(key *Key, desc bool) ([]byte, error) {
+func (t *Tree) buildEndKeyExclusive(key *Key) ([]byte, error) {
 	return key.Encode(t.Namespace, t.Order)
 }
 

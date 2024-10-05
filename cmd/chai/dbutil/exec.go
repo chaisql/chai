@@ -43,10 +43,8 @@ func ExecSQL(ctx context.Context, db *chai.DB, r io.Reader, w io.Writer) error {
 		}
 
 		err = res.Iterate(func(r database.Row) error {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
+			if err := ctx.Err(); err != nil {
+				return err
 			}
 
 			return enc.Encode(r)

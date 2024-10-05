@@ -43,7 +43,7 @@ func (it *UnionOperator) Columns(env *environment.Environment) ([]string, error)
 }
 
 // Iterate iterates over all the streams and returns their union.
-func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
+func (op *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
 	var temp *tree.Tree
 	var cleanup func() error
 
@@ -60,7 +60,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	// to deduplicate them
 	var buf []byte
 
-	for _, s := range it.Streams {
+	for _, s := range op.Streams {
 		err := s.Iterate(in, func(out *environment.Environment) error {
 			buf = buf[:0]
 
@@ -123,8 +123,21 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	newEnv.SetOuter(in)
 
 	var basicRow database.BasicRow
+
 	// iterate over the temporary index
-	return temp.IterateOnRange(nil, false, func(key *tree.Key, value []byte) error {
+	it, err := temp.Iterator(nil)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.First(); it.Valid(); it.Next() {
+		key := it.Key()
+		value, err := it.Value()
+		if err != nil {
+			return err
+		}
+
 		kv, err := key.Decode()
 		if err != nil {
 			return err
@@ -144,8 +157,13 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 		basicRow.ResetWith(tableName, pk, obj)
 
 		newEnv.SetRow(&basicRow)
-		return fn(&newEnv)
-	})
+		err = fn(&newEnv)
+		if err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
 }
 
 func (it *UnionOperator) String() string {
