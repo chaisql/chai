@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,11 +70,14 @@ func TestReIndex(t *testing.T) {
 				}
 
 				i := 0
-				err = idx.Tree.IterateOnRange(nil, false, func(*tree.Key, []byte) error {
-					i++
-					return nil
-				})
+				it, err := idx.Tree.Iterator(nil)
 				require.NoError(t, err)
+				defer it.Close()
+
+				for it.First(); it.Valid(); it.Next() {
+					i++
+				}
+				require.NoError(t, it.Error())
 				if shouldBeIndexed {
 					require.Equal(t, 2, i)
 				} else {

@@ -113,7 +113,26 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 	var br database.BasicRow
-	return tr.IterateOnRange(nil, op.Desc, func(k *tree.Key, data []byte) error {
+
+	it, err := tr.Iterator(nil)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	if op.Desc {
+		it.Last()
+	} else {
+		it.First()
+	}
+
+	for it.Valid() {
+		k := it.Key()
+		data, err := it.Value()
+		if err != nil {
+			return err
+		}
+
 		kv, err := k.Decode()
 		if err != nil {
 			return err
@@ -137,8 +156,19 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 
 		newEnv.SetRow(&br)
 
-		return fn(&newEnv)
-	})
+		err = fn(&newEnv)
+		if err != nil {
+			return err
+		}
+
+		if op.Desc {
+			it.Prev()
+		} else {
+			it.Next()
+		}
+	}
+
+	return it.Error()
 }
 
 func (op *TempTreeSortOperator) String() string {

@@ -106,10 +106,14 @@ func TestTreeTruncate(t *testing.T) {
 		err = tr.Truncate()
 		require.NoError(t, err)
 
-		err = tr.IterateOnRange(nil, false, func(k *tree.Key, b []byte) error {
-			return fmt.Errorf("expected no keys")
-		})
+		it, err := tr.Iterator(nil)
 		require.NoError(t, err)
+		defer it.Close()
+
+		it.First()
+		if it.Valid() {
+			t.Errorf("expected no keys")
+		}
 	})
 }
 
@@ -321,11 +325,28 @@ func TestTreeIterateOnRange(t *testing.T) {
 
 				var results []string
 
-				err := tt.IterateOnRange(&rng, reversed, func(k *tree.Key, _ []byte) error {
-					results = append(results, k.String())
-					return nil
-				})
+				it, err := tt.Iterator(&rng)
 				require.NoError(t, err)
+				defer it.Close()
+
+				if reversed {
+					it.Last()
+				} else {
+					it.First()
+				}
+
+				for it.Valid() {
+					k := it.Key()
+					results = append(results, k.String())
+
+					if reversed {
+						it.Prev()
+					} else {
+						it.Next()
+					}
+				}
+
+				require.NoError(t, it.Error())
 
 				var want []string
 				if !reversed {

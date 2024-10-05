@@ -166,7 +166,6 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan queryTask) e
 				continue
 			}
 
-			// if showtime is true, ensure it's a query, and it was executed.
 			if displayTime {
 				fmt.Fprintf(input.w, "Time: %s\n", time.Since(start))
 			}
