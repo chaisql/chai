@@ -72,11 +72,7 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	newEnv.SetRow(&ptr)
 
 	if len(it.Ranges) == 0 {
-		return index.IterateOnRange(nil, it.Reverse, func(key *tree.Key) error {
-			ptr.ResetWith(table, key)
-
-			return fn(&newEnv)
-		})
+		return it.iterateOverRange(table, index, info, nil, &newEnv, &ptr, fn)
 	}
 
 	ranges, err := it.Ranges.Eval(in)
@@ -85,25 +81,62 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	}
 
 	for _, rng := range ranges {
-		r, err := rng.ToTreeRange(&table.Info.ColumnConstraints, info.Columns)
-		if err != nil {
-			return err
-		}
-
-		err = index.IterateOnRange(r, it.Reverse, func(key *tree.Key) error {
-			ptr.ResetWith(table, key)
-
-			return fn(&newEnv)
-		})
-		if errors.Is(err, stream.ErrStreamClosed) {
-			err = nil
-		}
+		err = it.iterateOverRange(table, index, info, rng, &newEnv, &ptr, fn)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (op *ScanOperator) iterateOverRange(table *database.Table, index *database.Index, info *database.IndexInfo, rng *database.Range, to *environment.Environment, ptr *database.LazyRow, fn func(out *environment.Environment) error) error {
+	var r *tree.Range
+	var err error
+
+	if rng != nil {
+		r, err = rng.ToTreeRange(&table.Info.ColumnConstraints, info.Columns)
+		if err != nil {
+			return err
+		}
+	}
+
+	it, err := index.Iterator(r)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	if !op.Reverse {
+		it.First()
+	} else {
+		it.Last()
+	}
+
+	for it.Valid() {
+		key, err := it.Value()
+		if err != nil {
+			return err
+		}
+
+		ptr.ResetWith(table, key)
+
+		err = fn(to)
+		if errors.Is(err, stream.ErrStreamClosed) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if !op.Reverse {
+			it.Next()
+		} else {
+			it.Prev()
+		}
+	}
+
+	return it.Error()
 }
 
 func (it *ScanOperator) Columns(env *environment.Environment) ([]string, error) {

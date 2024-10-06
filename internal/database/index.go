@@ -85,7 +85,9 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 	}
 	defer it.Close()
 
-	for it.First(); it.Valid(); it.Next() {
+	it.First()
+
+	if it.Valid() {
 		k, err := it.Key().Decode()
 		if err != nil {
 			return false, nil, err
@@ -93,10 +95,18 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 
 		dKey = tree.NewEncodedKey(types.AsByteSlice(k[len(k)-1]))
 		found = true
-		break
 	}
 
 	return found, dKey, it.Error()
+}
+
+func (idx *Index) Iterator(rng *tree.Range) (*IndexIterator, error) {
+	it, err := idx.Tree.Iterator(rng)
+	if err != nil {
+		return nil, err
+	}
+
+	return &IndexIterator{it}, nil
 }
 
 // Delete all the references to the key from the index.
@@ -107,71 +117,28 @@ func (idx *Index) Delete(vs []types.Value, key []byte) error {
 		Max: vk,
 	}
 
-	err := idx.iterateOnRange(&rng, false, func(itmKey *tree.Key, pk *tree.Key) error {
-		if bytes.Equal(pk.Encoded, key) {
-			err := idx.Tree.Delete(itmKey)
-			if err == nil {
-				err = errStop
-			}
-
-			return err
-		}
-
-		return nil
-	})
-	if errors.Is(err, errStop) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	return errors.WithStack(engine.ErrKeyNotFound)
-}
-
-func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {
-	return idx.iterateOnRange(rng, reverse, func(itmKey, key *tree.Key) error {
-		return fn(key)
-	})
-}
-
-func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey *tree.Key, key *tree.Key) error) error {
-	it, err := idx.Tree.Iterator(rng)
+	it, err := idx.Iterator(&rng)
 	if err != nil {
 		return err
 	}
 	defer it.Close()
 
-	if !reverse {
-		it.First()
-	} else {
-		it.Last()
-	}
-
-	for it.Valid() {
-		k := it.Key()
-		// we don't care about the value, we just want to extract the key
-		// which is the last element of the encoded array
-		values, err := k.Decode()
+	for it.First(); it.Valid(); it.Next() {
+		pk, err := it.Value()
 		if err != nil {
 			return err
 		}
 
-		pk := tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
-
-		err = fn(k, pk)
-		if err != nil {
-			return err
-		}
-
-		if !reverse {
-			it.Next()
-		} else {
-			it.Prev()
+		if bytes.Equal(pk.Encoded, key) {
+			return idx.Tree.Delete(it.Key())
 		}
 	}
 
-	return it.Error()
+	if err := it.Error(); err != nil {
+		return err
+	}
+
+	return errors.WithStack(engine.ErrKeyNotFound)
 }
 
 // Truncate deletes all the index data.

@@ -141,7 +141,7 @@ func (t *Table) Put(key *tree.Key, r row.Row) (Row, error) {
 	}, err
 }
 
-func (t *Table) Iterator(rng *Range) (*Iterator, error) {
+func (t *Table) Iterator(rng *Range) (*TableIterator, error) {
 	var columns []string
 
 	pk := t.Info.PrimaryKey
