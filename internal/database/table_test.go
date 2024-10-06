@@ -318,11 +318,12 @@ func TestTableTruncate(t *testing.T) {
 		err = tb.Truncate()
 		require.NoError(t, err)
 
-		err = tb.IterateOnRange(nil, false, func(key *tree.Key, _ database.Row) error {
-			return errors.New("should not iterate")
-		})
-
+		it, err := tb.Iterator(nil)
 		require.NoError(t, err)
+		defer it.Close()
+
+		it.First()
+		require.False(t, it.Valid())
 	})
 }
 
@@ -372,9 +373,17 @@ func BenchmarkTableScan(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = tb.IterateOnRange(nil, false, func(*tree.Key, database.Row) error {
-					return nil
-				})
+				it, err := tb.Iterator(nil)
+				require.NoError(b, err)
+
+				for it.First(); it.Valid(); it.Next() {
+				}
+
+				it.Close()
+
+				// _ = tb.IterateOnRange(nil, false, func(*tree.Key, database.Row) error {
+				// 	return nil
+				// })
 			}
 			b.StopTimer()
 		})

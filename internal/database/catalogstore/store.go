@@ -81,36 +81,52 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (tables []database.TableInfo, indexes []database.IndexInfo, sequences []database.SequenceInfo, err error) {
 	tb := s.Table(tx)
 
-	err = tb.IterateOnRange(nil, false, func(key *tree.Key, r database.Row) error {
+	it, err := tb.Iterator(nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer it.Close()
+
+	// iterate over all the rows in the catalog store
+	// and load the tables and indexes
+	for it.First(); it.Valid(); it.Next() {
+		r, err := it.Value()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
 		tp, err := r.Get("type")
 		if err != nil {
-			return err
+			return nil, nil, nil, err
 		}
 
 		switch types.AsString(tp) {
 		case database.RelationTableType:
 			ti, err := tableInfoFromRow(r)
 			if err != nil {
-				return errors.Wrap(err, "failed to decode table info")
+				return nil, nil, nil, errors.Wrap(err, "failed to decode table info")
 			}
 			tables = append(tables, *ti)
 		case database.RelationIndexType:
 			i, err := indexInfoFromRow(r)
 			if err != nil {
-				return errors.Wrap(err, "failed to decode index info")
+				return nil, nil, nil, errors.Wrap(err, "failed to decode index info")
 			}
 
 			indexes = append(indexes, *i)
 		case database.RelationSequenceType:
 			i, err := sequenceInfoFromRow(r)
 			if err != nil {
-				return errors.Wrap(err, "failed to decode sequence info")
+				return nil, nil, nil, errors.Wrap(err, "failed to decode sequence info")
 			}
 			sequences = append(sequences, *i)
 		}
+	}
 
-		return nil
-	})
+	if err := it.Error(); err != nil {
+		return nil, nil, nil, err
+	}
+
 	return
 }
 

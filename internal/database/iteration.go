@@ -74,3 +74,33 @@ func (r *Range) IsEqual(other *Range) bool {
 
 	return true
 }
+
+type Iterator struct {
+	*tree.Iterator
+	e   EncodedRow
+	row BasicRow
+}
+
+func newIterator(ti *tree.Iterator, tableName string, columnConstraints *ColumnConstraints) *Iterator {
+	it := Iterator{
+		Iterator: ti,
+	}
+
+	it.e.columnConstraints = columnConstraints
+	it.row.tableName = tableName
+	it.row.Row = &it.e
+
+	return &it
+}
+
+func (it *Iterator) Value() (Row, error) {
+	var err error
+
+	it.row.key = it.Iterator.Key()
+	it.e.encoded, err = it.Iterator.Value()
+	if err != nil {
+		return nil, err
+	}
+
+	return &it.row, nil
+}
