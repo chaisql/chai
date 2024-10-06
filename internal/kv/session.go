@@ -14,6 +14,30 @@ func (i *iterator) Value() ([]byte, error) {
 	return i.Iterator.ValueAndErr()
 }
 
+func (i *iterator) Start(reverse bool) bool {
+	if !reverse {
+		return i.Iterator.First()
+	}
+
+	return i.Iterator.Last()
+}
+
+func (i *iterator) End(reverse bool) bool {
+	if !reverse {
+		return i.Iterator.Last()
+	}
+
+	return i.Iterator.First()
+}
+
+func (i *iterator) Move(reverse bool) bool {
+	if !reverse {
+		return i.Iterator.Next()
+	}
+
+	return i.Iterator.Prev()
+}
+
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func get(r pebble.Reader, k []byte) ([]byte, error) {
 	value, closer, err := r.Get(k)
