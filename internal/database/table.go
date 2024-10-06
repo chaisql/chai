@@ -141,7 +141,7 @@ func (t *Table) Put(key *tree.Key, r row.Row) (Row, error) {
 	}, err
 }
 
-func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, r Row) error) error {
+func (t *Table) Iterator(rng *Range) (*Iterator, error) {
 	var columns []string
 
 	pk := t.Info.PrimaryKey
@@ -155,51 +155,16 @@ func (t *Table) IterateOnRange(rng *Range, reverse bool, fn func(key *tree.Key, 
 	if rng != nil {
 		r, err = rng.ToTreeRange(&t.Info.ColumnConstraints, columns)
 		if err != nil {
-			return err
+			return nil, err
 		}
-	}
-
-	e := EncodedRow{
-		columnConstraints: &t.Info.ColumnConstraints,
-	}
-	row := BasicRow{
-		tableName: t.Info.TableName,
-		Row:       &e,
 	}
 
 	it, err := t.Tree.Iterator(r)
 	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	if reverse {
-		it.Last()
-	} else {
-		it.First()
+		return nil, err
 	}
 
-	for it.Valid() {
-		k := it.Key()
-		enc, err := it.Value()
-		if err != nil {
-			return err
-		}
-
-		row.key = k
-		e.encoded = enc
-		if err := fn(k, &row); err != nil {
-			return err
-		}
-
-		if reverse {
-			it.Prev()
-		} else {
-			it.Next()
-		}
-	}
-
-	return it.Error()
+	return newIterator(it, t.Info.TableName, &t.Info.ColumnConstraints), nil
 }
 
 // GetRow returns one row by key.

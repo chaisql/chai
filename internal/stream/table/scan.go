@@ -7,7 +7,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/errors"
 )
 
@@ -45,14 +44,14 @@ func (op *ScanOperator) Clone() stream.Operator {
 
 // Iterate over the objects of the table. Each object is stored in the environment
 // that is passed to the fn function, using SetCurrentValue.
-func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (op *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	table := it.Table
+	table := op.Table
 	var err error
 	if table == nil {
-		table, err = in.GetTx().Catalog.GetTable(in.GetTx(), it.TableName)
+		table, err = in.GetTx().Catalog.GetTable(in.GetTx(), op.TableName)
 		if err != nil {
 			return err
 		}
@@ -60,30 +59,60 @@ func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 
 	var ranges []*database.Range
 
-	if it.Ranges == nil {
+	if op.Ranges == nil {
 		ranges = []*database.Range{nil}
 	} else {
-		ranges, err = it.Ranges.Eval(in)
+		ranges, err = op.Ranges.Eval(in)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, rng := range ranges {
-		err = table.IterateOnRange(rng, it.Reverse, func(key *tree.Key, r database.Row) error {
-			newEnv.SetRow(r)
-
-			return fn(&newEnv)
-		})
-		if errors.Is(err, stream.ErrStreamClosed) {
-			err = nil
-		}
+		err = op.iterateOverRange(table, rng, &newEnv, fn)
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (op *ScanOperator) iterateOverRange(table *database.Table, rng *database.Range, to *environment.Environment, fn func(out *environment.Environment) error) error {
+	it, err := table.Iterator(rng)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	if !op.Reverse {
+		it.First()
+	} else {
+		it.Last()
+	}
+
+	for it.Valid() {
+		row, err := it.Value()
+		if err != nil {
+			return err
+		}
+		to.SetRow(row)
+		err = fn(to)
+		if errors.Is(err, stream.ErrStreamClosed) {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if !op.Reverse {
+			it.Next()
+		} else {
+			it.Prev()
+		}
+	}
+
+	return it.Error()
 }
 
 func (it *ScanOperator) Columns(env *environment.Environment) ([]string, error) {
