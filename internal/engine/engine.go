@@ -43,10 +43,13 @@ type Session interface {
 type Iterator interface {
 	Close() error
 	First() bool
+	Start(reverse bool) bool
 	Last() bool
+	End(reverse bool) bool
 	Valid() bool
 	Next() bool
 	Prev() bool
+	Move(reverse bool) bool
 	Error() error
 	Key() []byte
 	Value() ([]byte, error)

@@ -120,13 +120,7 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 	}
 	defer it.Close()
 
-	if op.Desc {
-		it.Last()
-	} else {
-		it.First()
-	}
-
-	for it.Valid() {
+	for it.Start(op.Desc); it.Valid(); it.Move(op.Desc) {
 		k := it.Key()
 		data, err := it.Value()
 		if err != nil {
@@ -159,12 +153,6 @@ func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out
 		err = fn(&newEnv)
 		if err != nil {
 			return err
-		}
-
-		if op.Desc {
-			it.Prev()
-		} else {
-			it.Next()
 		}
 	}
 

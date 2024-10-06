@@ -107,13 +107,7 @@ func (op *ScanOperator) iterateOverRange(table *database.Table, index *database.
 	}
 	defer it.Close()
 
-	if !op.Reverse {
-		it.First()
-	} else {
-		it.Last()
-	}
-
-	for it.Valid() {
+	for it.Start(op.Reverse); it.Valid(); it.Move(op.Reverse) {
 		key, err := it.Value()
 		if err != nil {
 			return err
@@ -127,12 +121,6 @@ func (op *ScanOperator) iterateOverRange(table *database.Table, index *database.
 		}
 		if err != nil {
 			return err
-		}
-
-		if !op.Reverse {
-			it.Next()
-		} else {
-			it.Prev()
 		}
 	}
 
