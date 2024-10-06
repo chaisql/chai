@@ -59,7 +59,7 @@ func (op *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 
 	var ranges []*database.Range
 
-	if op.Ranges == nil {
+	if len(op.Ranges) == 0 {
 		ranges = []*database.Range{nil}
 	} else {
 		ranges, err = op.Ranges.Eval(in)

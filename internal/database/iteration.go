@@ -75,14 +75,14 @@ func (r *Range) IsEqual(other *Range) bool {
 	return true
 }
 
-type Iterator struct {
+type TableIterator struct {
 	*tree.Iterator
 	e   EncodedRow
 	row BasicRow
 }
 
-func newIterator(ti *tree.Iterator, tableName string, columnConstraints *ColumnConstraints) *Iterator {
-	it := Iterator{
+func newIterator(ti *tree.Iterator, tableName string, columnConstraints *ColumnConstraints) *TableIterator {
+	it := TableIterator{
 		Iterator: ti,
 	}
 
@@ -93,7 +93,7 @@ func newIterator(ti *tree.Iterator, tableName string, columnConstraints *ColumnC
 	return &it
 }
 
-func (it *Iterator) Value() (Row, error) {
+func (it *TableIterator) Value() (Row, error) {
 	var err error
 
 	it.row.key = it.Iterator.Key()
@@ -103,4 +103,20 @@ func (it *Iterator) Value() (Row, error) {
 	}
 
 	return &it.row, nil
+}
+
+type IndexIterator struct {
+	*tree.Iterator
+}
+
+func (it *IndexIterator) Value() (*tree.Key, error) {
+	k := it.Iterator.Key()
+	// we don't care about the value, we just want to extract the key
+	// which is the last element of the encoded array
+	values, err := k.Decode()
+	if err != nil {
+		return nil, err
+	}
+
+	return tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1])), nil
 }

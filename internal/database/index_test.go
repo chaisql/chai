@@ -9,7 +9,6 @@ import (
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -88,19 +87,26 @@ func TestIndexDelete(t *testing.T) {
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
-		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, pivot...)}, false, func(key *tree.Key) error {
+		it, err := idx.Iterator(&tree.Range{Min: testutil.NewKey(t, pivot...)})
+		require.NoError(t, err)
+		defer it.Close()
+
+		for it.First(); it.Valid(); it.Next() {
+			k, err := it.Value()
+			require.NoError(t, err)
+
 			if i == 0 {
-				require.Equal(t, "other-key", string(key.Encoded))
+				require.Equal(t, "other-key", string(k.Encoded))
 			} else if i == 1 {
-				require.Equal(t, "yet-another-key", string(key.Encoded))
+				require.Equal(t, "yet-another-key", string(k.Encoded))
 			} else {
-				return errors.New("should not reach this point")
+				t.Fatalf("should not reach this point")
 			}
 
 			i++
-			return nil
-		})
-		require.NoError(t, err)
+		}
+
+		require.NoError(t, it.Error())
 		require.Equal(t, 2, i)
 	})
 
@@ -115,19 +121,26 @@ func TestIndexDelete(t *testing.T) {
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
-		err := idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(t, pivot...)}, false, func(key *tree.Key) error {
+		it, err := idx.Iterator(&tree.Range{Min: testutil.NewKey(t, pivot...)})
+		require.NoError(t, err)
+		defer it.Close()
+
+		for it.First(); it.Valid(); it.Next() {
+			k, err := it.Value()
+			require.NoError(t, err)
+
 			if i == 0 {
-				require.Equal(t, "other-key", string(key.Encoded))
+				require.Equal(t, "other-key", string(k.Encoded))
 			} else if i == 1 {
-				require.Equal(t, "yet-another-key", string(key.Encoded))
+				require.Equal(t, "yet-another-key", string(k.Encoded))
 			} else {
-				return errors.New("should not reach this point")
+				t.Fatal("should not reach this point")
 			}
 
 			i++
-			return nil
-		})
-		require.NoError(t, err)
+		}
+
+		require.NoError(t, it.Error())
 		require.Equal(t, 2, i)
 	})
 
@@ -187,9 +200,12 @@ func BenchmarkIndexIteration(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""))}, false, func(_ *tree.Key) error {
-					return nil
-				})
+				it, _ := idx.Iterator(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""))})
+
+				for it.First(); it.Valid(); it.Next() {
+				}
+
+				it.Close()
 			}
 			b.StopTimer()
 		})
@@ -229,9 +245,12 @@ func BenchmarkCompositeIndexIteration(b *testing.B) {
 
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = idx.IterateOnRange(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""), types.NewTextValue(""))}, false, func(_ *tree.Key) error {
-					return nil
-				})
+				it, _ := idx.Iterator(&tree.Range{Min: testutil.NewKey(b, types.NewTextValue(""))})
+
+				for it.First(); it.Valid(); it.Next() {
+				}
+
+				it.Close()
 			}
 			b.StopTimer()
 		})
