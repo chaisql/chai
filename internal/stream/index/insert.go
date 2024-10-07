@@ -3,10 +3,11 @@ package index
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 )
 
 // InsertOperator reads the input stream and indexes each row.
@@ -29,53 +30,87 @@ func (op *InsertOperator) Clone() stream.Operator {
 	}
 }
 
-func (op *InsertOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
 	idx, err := tx.Catalog.GetIndex(tx, op.indexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	info, err := tx.Catalog.GetIndexInfo(op.indexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	tinfo, err := tx.Catalog.GetTableInfo(info.Owner.TableName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		r, ok := out.GetDatabaseRow()
-		if !ok {
-			return errors.New("missing row")
-		}
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-		vs := make([]types.Value, 0, len(info.Columns))
-		for _, column := range info.Columns {
-			v, err := r.Get(column)
-			if err != nil {
-				v = types.NewNullValue()
-			}
-			vs = append(vs, v)
-		}
-
-		encKey, err := tinfo.EncodeKey(r.Key())
-		if err != nil {
-			return err
-		}
-
-		err = idx.Set(vs, encKey)
-		if err != nil {
-			return fmt.Errorf("error while inserting index value: %w", err)
-		}
-
-		return fn(out)
-	})
+	return &InsertIterator{
+		Iterator: prev,
+		index:    idx,
+		tinfo:    tinfo,
+		info:     info,
+	}, nil
 }
 
 func (op *InsertOperator) String() string {
 	return fmt.Sprintf("index.Insert(%q)", op.indexName)
+}
+
+type InsertIterator struct {
+	stream.Iterator
+
+	tinfo *database.TableInfo
+	info  *database.IndexInfo
+	index *database.Index
+	err   error
+}
+
+func (it *InsertIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	var r row.Row
+	r, it.err = it.Iterator.Row()
+	if it.err != nil {
+		return false
+	}
+
+	vs := make([]types.Value, 0, len(it.info.Columns))
+	for _, column := range it.info.Columns {
+		v, err := r.Get(column)
+		if err != nil {
+			v = types.NewNullValue()
+		}
+		vs = append(vs, v)
+	}
+
+	k, err := it.Iterator.Key()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	encKey, err := it.tinfo.EncodeKey(k)
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	err = it.index.Set(vs, encKey)
+	if err != nil {
+		it.err = fmt.Errorf("error while inserting index value: %w", err)
+		return false
+	}
+
+	return true
 }

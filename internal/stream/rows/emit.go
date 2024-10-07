@@ -5,7 +5,10 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/tree"
+	"github.com/cockroachdb/errors"
 )
 
 type EmitOperator struct {
@@ -65,4 +68,44 @@ func (op *EmitOperator) String() string {
 	sb.WriteByte(')')
 
 	return sb.String()
+}
+
+type EmitIterator struct {
+	rows   []expr.Row
+	err    error
+	cursor int
+}
+
+func (it *EmitIterator) Next() bool {
+	it.cursor++
+
+	return it.cursor < len(it.rows)
+}
+
+func (it *EmitIterator) Close() error {
+	return nil
+}
+
+func (it *EmitIterator) Valid() bool {
+	return it.cursor < len(it.rows)
+}
+
+func (it *EmitIterator) Error() error {
+	return it.err
+}
+
+func (it *EmitIterator) Key() (*tree.Key, error) {
+	return nil, errors.New("row has no primary key")
+}
+
+func (it *EmitIterator) Row() (row.Row, error) {
+	return
+}
+
+func (it *EmitIterator) TableName() (string, error) {
+	return
+}
+
+func (it *EmitIterator) Env() *environment.Environment {
+	return
 }

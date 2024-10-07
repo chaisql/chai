@@ -2,6 +2,8 @@ package stream
 
 import (
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/errors"
 )
 
@@ -19,7 +21,8 @@ var ErrInvalidResult = errors.New("expression must evaluate to an object")
 // Stream operators can be reused, and thus, any state or side effect should be kept within the Op closure
 // unless the nature of the operator prevents that.
 type Operator interface {
-	Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error
+	// Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error
+	Iterator(in *environment.Environment) (Iterator, error)
 	SetPrev(prev Operator)
 	SetNext(next Operator)
 	GetNext() Operator
@@ -72,4 +75,15 @@ func (op *BaseOperator) Columns(env *environment.Environment) ([]string, error) 
 	}
 
 	return op.Prev.Columns(env)
+}
+
+type Iterator interface {
+	Close() error
+	Valid() bool
+	Next() bool
+	Error() error
+	Key() (*tree.Key, error)
+	Row() (row.Row, error)
+	TableName() (string, error)
+	Env() *environment.Environment
 }

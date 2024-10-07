@@ -6,7 +6,9 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
+	"github.com/chaisql/chai/internal/tree"
 	"github.com/cockroachdb/errors"
 )
 
@@ -40,6 +42,133 @@ func (op *ScanOperator) Clone() stream.Operator {
 		Reverse:      op.Reverse,
 		Table:        op.Table,
 	}
+}
+
+func (op *ScanOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	table := op.Table
+	var err error
+	if table == nil {
+		table, err = in.GetTx().Catalog.GetTable(in.GetTx(), op.TableName)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var ranges []*database.Range
+
+	if len(op.Ranges) == 0 {
+		ranges = []*database.Range{nil}
+	} else {
+		ranges, err = op.Ranges.Eval(in)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &Iterator{
+		table:   table,
+		ranges:  ranges,
+		reverse: op.Reverse,
+	}, nil
+}
+
+type Iterator struct {
+	env     *environment.Environment
+	table   *database.Table
+	ranges  []*database.Range
+	reverse bool
+
+	cursor int
+	it     *database.TableIterator
+	err    error
+}
+
+func (it *Iterator) Close() error {
+	if it.it != nil {
+		return it.it.Close()
+	}
+
+	return nil
+}
+
+func (it *Iterator) Valid() bool {
+	if it.cursor == 0 {
+		return true
+	}
+
+	return it.it != nil && it.it.Valid()
+}
+
+func (it *Iterator) Next() bool {
+	if it.err != nil {
+		return false
+	}
+
+	if it.it == nil {
+		it.it, it.err = it.table.Iterator(it.ranges[0])
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	if it.it.Valid() {
+		it.it.Move(it.reverse)
+		return it.it.Valid()
+	}
+
+	it.it.Close()
+	it.it = nil
+
+	it.cursor++
+
+	if it.cursor < len(it.ranges) {
+		it.it, it.err = it.table.Iterator(it.ranges[it.cursor])
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	return false
+}
+
+func (it *Iterator) Error() error {
+	return it.err
+}
+
+func (it *Iterator) Key() (*tree.Key, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.it == nil {
+		return nil, nil
+	}
+
+	return it.it.Key(), nil
+}
+
+func (it *Iterator) Row() (row.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.it == nil {
+		return nil, nil
+	}
+
+	return it.it.Value()
+}
+
+func (it *Iterator) TableName() (string, error) {
+	return it.table.Info.TableName, nil
+}
+
+func (it *Iterator) Env() *environment.Environment {
+	return it.env
 }
 
 // Iterate over the objects of the table. Each object is stored in the environment

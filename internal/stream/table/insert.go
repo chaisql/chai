@@ -5,8 +5,9 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
+	"github.com/chaisql/chai/internal/tree"
 )
 
 // A InsertOperator inserts incoming rows to the table.
@@ -28,37 +29,73 @@ func (op *InsertOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *InsertOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
+func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), op.Name)
+	if err != nil {
+		return nil, err
+	}
 
-	var table *database.Table
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		newEnv.SetOuter(out)
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-		r, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		var err error
-		if table == nil {
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, r, err = table.Insert(r)
-		if err != nil {
-			return err
-		}
-
-		newEnv.SetRow(r)
-
-		return f(&newEnv)
-	})
+	return &InsertIterator{
+		Iterator: prev,
+		table:    table,
+	}, nil
 }
 
 func (op *InsertOperator) String() string {
 	return fmt.Sprintf("table.Insert(%q)", op.Name)
+}
+
+type InsertIterator struct {
+	stream.Iterator
+
+	table *database.Table
+	err   error
+	k     *tree.Key
+	r     row.Row
+}
+
+func (it *InsertIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	var r row.Row
+	r, it.err = it.Iterator.Row()
+	if it.err != nil {
+		return false
+	}
+
+	k, err := it.Iterator.Key()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	it.k, it.r, it.err = it.table.Insert(r)
+	if it.err != nil {
+		return false
+	}
+
+	return true
+}
+
+func (it *InsertIterator) Key() (*tree.Key, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	return it.k, nil
+}
+
+func (it *InsertIterator) Row() (row.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	return it.r, nil
 }
