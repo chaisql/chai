@@ -154,6 +154,7 @@ func ExprRunner(t *testing.T, testfile string) {
 	if err != nil {
 		t.Errorf("Failed to open test data, got %v (%s)", err, testfile)
 	}
+	defer f.Close()
 
 	ts, err := genexprtests.Parse(f)
 	require.NoError(t, err)
