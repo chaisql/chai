@@ -57,24 +57,31 @@ func main() {
         CREATE TABLE user (
             id              INT         PRIMARY KEY,
             name            TEXT        NOT NULL UNIQUE,
-            created_at      TIMESTAMP   NOT NULL
+            age             INT         NOT NULL,
+            created_at      TIMESTAMP
         )
     `)
 
-    err = db.Exec(`INSERT INTO user (id, name, age) VALUES ($1, $2, $3)`, 20, "foo", 40)
+    err = db.Exec(`INSERT INTO user (id, name, age) VALUES (1, "Jo Bloggs", 33)`)
 
-    rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= $1", 18)
+    rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= 18")
     defer rows.Close()
 
     err = rows.Iterate(func(r *chai.Row) error {
         // scan each column
-        var id, name, age
+        var id, age int
+        var name string
         err = r.Scan(&id, &name, &age)
         // or into a struct
+        type User struct {
+            ID   int
+            Name string
+            Age  int
+        }
         var u User
         err = r.StructScan(&u)
         // or even a map
-        var m map[string]any
+        m := make(map[string]any)
         err = r.MapScan(&m)
         return nil
     })
