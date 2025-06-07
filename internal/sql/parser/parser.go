@@ -31,12 +31,14 @@ func ParseQuery(s string) (query.Query, error) {
 }
 
 // ParseExpr parses an expression.
+// Test helper.
 func ParseExpr(s string) (expr.Expr, error) {
 	e, err := NewParser(strings.NewReader(s)).ParseExpr()
 	return e, err
 }
 
 // MustParseExpr calls ParseExpr and panics if it returns an error.
+// Test helper.
 func MustParseExpr(s string) expr.Expr {
 	e, err := ParseExpr(s)
 	if err != nil {
