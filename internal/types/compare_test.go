@@ -9,7 +9,7 @@ import (
 	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/golang-module/carbon/v2"
+	"github.com/dromara/carbon/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,8 +71,10 @@ func jsonToObject(t testing.TB, x string) types.Value {
 	return types.NewObjectValue(&fb)
 }
 
-var now = time.Now().Format(time.RFC3339Nano)
-var nowPlusOne = time.Now().Add(time.Second).Format(time.RFC3339Nano)
+var (
+	now        = time.Now().Format(time.RFC3339Nano)
+	nowPlusOne = time.Now().Add(time.Second).Format(time.RFC3339Nano)
+)
 
 func TestCompare(t *testing.T) {
 	tests := []struct {
@@ -302,14 +304,14 @@ func TestCompareValues(t *testing.T) {
 		ok   bool
 	}{
 		// timestamp with text
-		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), text("2021-01-01 10:05:59.123456"), true},
-		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), text("2021-01-01T12:05:59.123456+02:00"), true},
+		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").StdTime()), text("2021-01-01 10:05:59.123456"), true},
+		{"=", ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").StdTime()), text("2021-01-01T12:05:59.123456+02:00"), true},
 
 		// text with timestamp
-		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), true},
-		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").ToStdTime()), true},
-		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").ToStdTime()), true},
-		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").ToStdTime()), true},
+		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").StdTime()), true},
+		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01 10:05:59.123456", "UTC").StdTime()), true},
+		{"=", text("2021-01-01T12:05:59.123456+02:00"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").StdTime()), true},
+		{"=", text("2021-01-01 10:05:59.123456"), ts(carbon.Parse("2021-01-01T12:05:59.123456+02:00", "UTC").StdTime()), true},
 	}
 
 	for _, test := range tests {
