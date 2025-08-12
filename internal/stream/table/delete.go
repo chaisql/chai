@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/cockroachdb/errors"
 )
@@ -28,32 +29,54 @@ func (op *DeleteOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var table *database.Table
+func (op *DeleteOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if table == nil {
-			var err error
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		r, ok := out.GetDatabaseRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		err := table.Delete(r.Key())
-		if err != nil {
-			return err
-		}
-
-		return f(out)
-	})
+	return &DeleteIterator{
+		Iterator: prev,
+		name:     op.Name,
+		in:       in,
+	}, nil
 }
 
 func (op *DeleteOperator) String() string {
 	return fmt.Sprintf("table.Delete('%s')", op.Name)
+}
+
+type DeleteIterator struct {
+	stream.Iterator
+
+	name  string
+	table *database.Table
+	in    *environment.Environment
+}
+
+func (it *DeleteIterator) Row() (row.Row, error) {
+	if it.table == nil {
+		var err error
+		it.table, err = it.in.GetTx().Catalog.GetTable(it.in.GetTx(), it.name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	dr, ok := it.Iterator.Env().GetDatabaseRow()
+	if !ok {
+		return nil, errors.New("missing row")
+	}
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		return nil, err
+	}
+
+	err = it.table.Delete(dr.Key())
+	if err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }

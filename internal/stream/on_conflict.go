@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/cockroachdb/errors"
 )
 
@@ -28,32 +29,16 @@ func (it *OnConflictOperator) Clone() Operator {
 	}
 }
 
-func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
+func (op *OnConflictOperator) Iterator(in *environment.Environment) (Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		err := fn(out)
-		if err != nil {
-			if cerr, ok := err.(*database.ConstraintViolationError); ok {
-				if op.OnConflict == nil {
-					return nil
-				}
-
-				newEnv.SetOuter(out)
-				r, ok := out.GetDatabaseRow()
-				if !ok {
-					return errors.New("missing row")
-				}
-
-				var br database.BasicRow
-				br.ResetWith(r.TableName(), cerr.Key, r)
-				newEnv.SetRow(&br)
-
-				err = op.OnConflict.Iterate(&newEnv, func(out *environment.Environment) error { return nil })
-			}
-		}
-		return err
-	})
+	return &OnConflictIterator{
+		Iterator:   prev,
+		OnConflict: op.OnConflict,
+	}, nil
 }
 
 func (op *OnConflictOperator) String() string {
@@ -62,4 +47,44 @@ func (op *OnConflictOperator) String() string {
 	}
 
 	return fmt.Sprintf("stream.OnConflict(%s)", op.OnConflict)
+}
+
+type OnConflictIterator struct {
+	Iterator
+
+	OnConflict *Stream
+}
+
+func (it *OnConflictIterator) Row() (row.Row, error) {
+	r, err := it.Iterator.Row()
+	if err == nil {
+		return r, nil
+	}
+
+	cerr, ok := err.(*database.ConstraintViolationError)
+	if !ok {
+		return nil, err
+	}
+
+	if it.OnConflict == nil {
+		return nil, nil
+	}
+
+	dr, ok := it.Iterator.Env().GetDatabaseRow()
+	if !ok {
+		return nil, errors.New("missing row")
+	}
+
+	var newEnv environment.Environment
+	newEnv.SetOuter(it.Iterator.Env())
+
+	var br database.BasicRow
+	br.ResetWith(dr.TableName(), cerr.Key, r)
+
+	newIt, err := it.OnConflict.Op.Iterator(&newEnv)
+	if err != nil {
+		return nil, err
+	}
+
+	return newIt.Row()
 }

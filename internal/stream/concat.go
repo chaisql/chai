@@ -4,6 +4,8 @@ import (
 	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
+	"github.com/chaisql/chai/internal/tree"
 )
 
 // A ConcatOperator concatenates two streams.
@@ -37,14 +39,11 @@ func (it *ConcatOperator) Columns(env *environment.Environment) ([]string, error
 	return it.Streams[0].Columns(env)
 }
 
-func (it *ConcatOperator) Iterate(in *environment.Environment, fn func(*environment.Environment) error) error {
-	for _, s := range it.Streams {
-		if err := s.Iterate(in, fn); err != nil {
-			return err
-		}
-	}
-
-	return nil
+func (it *ConcatOperator) Iterator(in *environment.Environment) (Iterator, error) {
+	return &ConcatIterator{
+		streams: it.Streams,
+		env:     in,
+	}, nil
 }
 
 func (it *ConcatOperator) String() string {
@@ -60,4 +59,75 @@ func (it *ConcatOperator) String() string {
 	s.WriteRune(')')
 
 	return s.String()
+}
+
+type ConcatIterator struct {
+	streams []*Stream
+	index   int
+	env     *environment.Environment
+	current Iterator
+	err     error
+}
+
+func (it *ConcatIterator) Close() error {
+	if it.current != nil {
+		return it.current.Close()
+	}
+	return nil
+}
+
+func (it *ConcatIterator) Next() bool {
+	if it.current == nil {
+		it.current, it.err = it.streams[it.index].Op.Iterator(it.env)
+		if it.err != nil {
+			return false
+		}
+	}
+
+	for !it.current.Next() {
+		it.err = it.current.Close()
+
+		it.index++
+		if it.index >= len(it.streams) {
+			return false
+		}
+		it.current, it.err = it.streams[it.index].Op.Iterator(it.env)
+		if it.err != nil {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (it *ConcatIterator) Error() error {
+	return it.err
+}
+
+func (it *ConcatIterator) Key() (*tree.Key, error) {
+	if it.current == nil {
+		return nil, nil
+	}
+
+	return it.current.Key()
+}
+
+func (it *ConcatIterator) Row() (row.Row, error) {
+	if it.current == nil {
+		return nil, nil
+	}
+
+	return it.current.Row()
+}
+
+func (it *ConcatIterator) TableName() (string, error) {
+	if it.current == nil {
+		return "", nil
+	}
+
+	return it.current.TableName()
+}
+
+func (it *ConcatIterator) Env() *environment.Environment {
+	return it.env
 }

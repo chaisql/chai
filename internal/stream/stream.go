@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/cockroachdb/errors"
 )
 
@@ -34,12 +35,12 @@ func (s *Stream) Columns(env *environment.Environment) ([]string, error) {
 	return s.Op.Columns(env)
 }
 
-func (s *Stream) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (s *Stream) Iterator(in *environment.Environment) (Iterator, error) {
 	if s.Op == nil {
-		return nil
+		return nil, nil
 	}
 
-	return s.Op.Iterate(in, fn)
+	return s.Op.Iterator(in)
 }
 
 func (s *Stream) Remove(op Operator) {
@@ -158,12 +159,18 @@ func (it *DiscardOperator) Clone() Operator {
 }
 
 // Iterate iterates over all the streams and returns their union.
-func (op *DiscardOperator) Iterate(in *environment.Environment, _ func(out *environment.Environment) error) (err error) {
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		return nil
-	})
+func (op *DiscardOperator) Iterator(in *environment.Environment) (Iterator, error) {
+	return &DiscardIterator{}, nil
 }
 
 func (it *DiscardOperator) String() string {
 	return "discard()"
+}
+
+type DiscardIterator struct {
+	Iterator
+}
+
+func (it *DiscardIterator) Row() (row.Row, error) {
+	return nil, nil
 }

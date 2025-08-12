@@ -7,7 +7,6 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 )
 
 // A TakeOperator closes the stream after a certain number of values.
@@ -29,33 +28,48 @@ func (op *TakeOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+func (op *TakeOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	v, err := op.E.Eval(in)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !v.Type().IsNumber() {
-		return fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
+		return nil, fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 	}
 
 	v, err = v.CastAs(types.TypeBigint)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	n := types.AsInt64(v)
-	var count int64
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if count < n {
-			count++
-			return f(out)
-		}
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-		return errors.WithStack(stream.ErrStreamClosed)
-	})
+	return &TakeIterator{
+		Iterator: prev,
+		n:        types.AsInt64(v),
+	}, nil
 }
 
 func (op *TakeOperator) String() string {
 	return fmt.Sprintf("rows.Take(%s)", op.E)
+}
+
+type TakeIterator struct {
+	stream.Iterator
+
+	count int64
+	n     int64
+}
+
+func (it *TakeIterator) Next() bool {
+	if it.count < it.n {
+		it.count++
+		return it.Iterator.Next()
+	}
+
+	return false
 }

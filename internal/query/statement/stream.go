@@ -71,16 +71,26 @@ func (s *StreamStmtIterator) Iterate(fn func(r database.Row) error) error {
 	env.Tx = s.Context.Tx
 	env.SetParams(s.Context.Params)
 
-	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {
+	it, err := s.Stream.Iterator(&env)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+		r, err := it.Row()
+		if err != nil {
+			return err
+		}
 		// if there is no row in this specific environment,
 		// the last operator is not outputting anything
 		// worth returning to the user.
-		if env.Row == nil {
+		if r == nil {
 			return nil
 		}
 
-		return fn(env.Row.(database.Row))
-	})
+		return fn(r.(database.Row))
+	}
 	if errors.Is(err, stream.ErrStreamClosed) {
 		err = nil
 	}

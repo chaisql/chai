@@ -3,7 +3,6 @@ package path
 import (
 	"fmt"
 
-	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -36,48 +35,58 @@ func (op *SetOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *SetOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var cb row.ColumnBuffer
-	var br database.BasicRow
-	var newEnv environment.Environment
+func (op *SetOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		v, err := op.Expr.Eval(out)
-		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
-			return err
-		}
-
-		r, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		cb.Reset()
-		err = cb.Copy(r)
-		if err != nil {
-			return err
-		}
-
-		err = cb.Set(op.Column, v)
-		if errors.Is(err, types.ErrColumnNotFound) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-
-		newEnv.SetOuter(out)
-		if dr, ok := r.(database.Row); ok {
-			br.ResetWith(dr.TableName(), dr.Key(), &cb)
-			newEnv.SetRow(&br)
-		} else {
-			newEnv.SetRow(&cb)
-		}
-
-		return f(&newEnv)
-	})
+	return &SetIterator{
+		Iterator: prev,
+		column:   op.Column,
+		expr:     op.Expr,
+		env:      in,
+	}, nil
 }
 
 func (op *SetOperator) String() string {
 	return fmt.Sprintf("paths.Set(%s, %s)", op.Column, op.Expr)
+}
+
+type SetIterator struct {
+	stream.Iterator
+
+	column string
+	expr   expr.Expr
+	env    *environment.Environment
+	buf    row.ColumnBuffer
+}
+
+func (it *SetIterator) Row() (row.Row, error) {
+	r, err := it.Iterator.Row()
+	if err != nil {
+		return nil, err
+	}
+
+	var newEnv environment.Environment
+	newEnv.SetOuter(it.env)
+	newEnv.SetRow(r)
+
+	v, err := it.expr.Eval(&newEnv)
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
+		return nil, err
+	}
+
+	it.buf.Reset()
+	err = it.buf.Copy(r)
+	if err != nil {
+		return nil, err
+	}
+
+	err = it.buf.Set(it.column, v)
+	if err != nil {
+		return nil, err
+	}
+
+	return &it.buf, nil
 }

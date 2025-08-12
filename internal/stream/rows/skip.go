@@ -27,33 +27,52 @@ func (op *SkipOperator) Clone() stream.Operator {
 	}
 }
 
-// Iterate implements the Operator interface.
-func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+func (op *SkipOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	v, err := op.E.Eval(in)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !v.Type().IsNumber() {
-		return fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
+		return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 	}
 
 	v, err = v.CastAs(types.TypeBigint)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	n := types.AsInt64(v)
-	var skipped int64
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if skipped < n {
-			skipped++
-			return nil
+	return &SkipIterator{
+		Iterator: prev,
+		n:        types.AsInt64(v),
+	}, nil
+}
+
+type SkipIterator struct {
+	stream.Iterator
+
+	skipped int64
+	n       int64
+}
+
+func (it *SkipIterator) Next() bool {
+	if it.skipped < it.n {
+		for it.Iterator.Next() {
+			if it.skipped < it.n {
+				it.skipped++
+				continue
+			}
+
+			return true
 		}
+	}
 
-		return f(out)
-	})
+	return it.Iterator.Next()
 }
 
 func (op *SkipOperator) String() string {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/cockroachdb/errors"
 )
@@ -29,59 +30,73 @@ func (op *ValidateOperator) Clone() stream.Operator {
 	}
 }
 
-func (op *ValidateOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (op *ValidateOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
 	info, err := tx.Catalog.GetTableInfo(op.tableName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if info.ReadOnly {
-		return errors.New("cannot write to read-only table")
+		return nil, errors.New("cannot write to read-only table")
 	}
 
-	var buf []byte
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	var newEnv environment.Environment
-
-	var br database.BasicRow
-	var eo database.EncodedRow
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		buf = buf[:0]
-		newEnv.SetOuter(out)
-
-		row, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		// generate default values, validate and encode row
-		buf, err = info.EncodeRow(tx, buf, row)
-		if err != nil {
-			return err
-		}
-
-		// use the encoded row as the new row
-		eo.ResetWith(&info.ColumnConstraints, buf)
-
-		if dRow, ok := row.(database.Row); ok {
-			br.ResetWith(op.tableName, dRow.Key(), &eo)
-			newEnv.SetRow(&br)
-		} else {
-			br.ResetWith(op.tableName, nil, &eo)
-			newEnv.SetRow(&br)
-		}
-
-		// validate CHECK constraints if any
-		err := info.TableConstraints.ValidateRow(tx, newEnv.Row)
-		if err != nil {
-			return err
-		}
-
-		return fn(&newEnv)
-	})
+	return &ValidateIterator{
+		Iterator:  prev,
+		tableName: op.tableName,
+		tx:        tx,
+		info:      info,
+	}, nil
 }
 
 func (op *ValidateOperator) String() string {
 	return fmt.Sprintf("table.Validate(%q)", op.tableName)
+}
+
+type ValidateIterator struct {
+	stream.Iterator
+
+	tableName string
+	tx        *database.Transaction
+	info      *database.TableInfo
+	buf       []byte
+	br        database.BasicRow
+	eo        database.EncodedRow
+}
+
+func (it *ValidateIterator) Row() (row.Row, error) {
+	it.buf = it.buf[:0]
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		return nil, err
+	}
+
+	// generate default values, validate and encode row
+	it.buf, err = it.info.EncodeRow(it.tx, it.buf, r)
+	if err != nil {
+		return nil, err
+	}
+
+	// use the encoded row as the new row
+	it.eo.ResetWith(&it.info.ColumnConstraints, it.buf)
+
+	if dRow, ok := r.(database.Row); ok {
+		it.br.ResetWith(it.tableName, dRow.Key(), &it.eo)
+	} else {
+		it.br.ResetWith(it.tableName, nil, &it.eo)
+	}
+
+	// validate CHECK constraints if any
+	err = it.info.TableConstraints.ValidateRow(it.tx, &it.br)
+	if err != nil {
+		return nil, err
+	}
+
+	return &it.br, nil
 }

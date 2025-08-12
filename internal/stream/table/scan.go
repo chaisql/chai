@@ -6,8 +6,9 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
+	"github.com/chaisql/chai/internal/tree"
 )
 
 // A ScanOperator iterates over the objects of a table.
@@ -42,18 +43,13 @@ func (op *ScanOperator) Clone() stream.Operator {
 	}
 }
 
-// Iterate over the objects of the table. Each object is stored in the environment
-// that is passed to the fn function, using SetCurrentValue.
-func (op *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-
+func (op *ScanOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	table := op.Table
 	var err error
 	if table == nil {
 		table, err = in.GetTx().Catalog.GetTable(in.GetTx(), op.TableName)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -64,43 +60,114 @@ func (op *ScanOperator) Iterate(in *environment.Environment, fn func(out *enviro
 	} else {
 		ranges, err = op.Ranges.Eval(in)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	for _, rng := range ranges {
-		err = op.iterateOverRange(table, rng, &newEnv, fn)
-		if err != nil {
-			return err
-		}
+	return &ScanIterator{
+		table:   table,
+		ranges:  ranges,
+		reverse: op.Reverse,
+	}, nil
+}
+
+type ScanIterator struct {
+	env     *environment.Environment
+	table   *database.Table
+	ranges  []*database.Range
+	reverse bool
+
+	cursor int
+	it     *database.TableIterator
+	err    error
+}
+
+func (it *ScanIterator) Close() error {
+	if it.it != nil {
+		return it.it.Close()
 	}
 
 	return nil
 }
 
-func (op *ScanOperator) iterateOverRange(table *database.Table, rng *database.Range, to *environment.Environment, fn func(out *environment.Environment) error) error {
-	it, err := table.Iterator(rng)
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.Start(op.Reverse); it.Valid(); it.Move(op.Reverse) {
-		row, err := it.Value()
-		if err != nil {
-			return err
-		}
-		to.SetRow(row)
-		err = fn(to)
-		if errors.Is(err, stream.ErrStreamClosed) {
-			break
-		}
-		if err != nil {
-			return err
-		}
+func (it *ScanIterator) Valid() bool {
+	if it.cursor == 0 {
+		return true
 	}
 
-	return it.Error()
+	return it.it != nil && it.it.Valid()
+}
+
+func (it *ScanIterator) Next() bool {
+	if it.err != nil {
+		return false
+	}
+
+	if it.it == nil {
+		it.it, it.err = it.table.Iterator(it.ranges[0])
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	if it.it.Valid() {
+		it.it.Move(it.reverse)
+		return it.it.Valid()
+	}
+
+	it.it.Close()
+	it.it = nil
+
+	it.cursor++
+
+	if it.cursor < len(it.ranges) {
+		it.it, it.err = it.table.Iterator(it.ranges[it.cursor])
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	return false
+}
+
+func (it *ScanIterator) Error() error {
+	return it.err
+}
+
+func (it *ScanIterator) Key() (*tree.Key, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.it == nil {
+		return nil, nil
+	}
+
+	return it.it.Key(), nil
+}
+
+func (it *ScanIterator) Row() (row.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.it == nil {
+		return nil, nil
+	}
+
+	return it.it.Value()
+}
+
+func (it *ScanIterator) TableName() (string, error) {
+	return it.table.Info.TableName, nil
+}
+
+func (it *ScanIterator) Env() *environment.Environment {
+	return it.env
 }
 
 func (it *ScanOperator) Columns(env *environment.Environment) ([]string, error) {
