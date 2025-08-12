@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 	"github.com/chaisql/chai/internal/kv"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewPebbleCommand returns a cli.Command for "chai pebble".
@@ -27,18 +29,18 @@ func NewPebbleCommand() *cli.Command {
 		},
 	}
 
-	cmd.Action = func(c *cli.Context) error {
-		path := c.String("path")
+	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
+		path := cmd.String("path")
 
-		db, err := dbutil.OpenDB(c.Context, path)
+		db, err := dbutil.OpenDB(ctx, path)
 		if err != nil {
 			return err
 		}
 		defer db.Close()
 
 		ng := db.DB.Engine.(*kv.PebbleEngine)
-		return dbutil.DumpPebble(c.Context, ng.DB(), dbutil.DumpPebbleOptions{
-			KeysOnly: c.Bool("keys-only"),
+		return dbutil.DumpPebble(ctx, ng.DB(), dbutil.DumpPebbleOptions{
+			KeysOnly: cmd.Bool("keys-only"),
 		})
 	}
 

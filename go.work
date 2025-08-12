@@ -1,4 +1,4 @@
-go 1.23.0
+go 1.25.0
 
 use (
 	.
@@ -6,4 +6,4 @@ use (
 	./sqltests
 )
 
-replace github.com/chaisql/chai v0.16.0 => ./
+replace github.com/chaisql/chai v0.17.0 => ./

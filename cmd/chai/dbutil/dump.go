@@ -1,12 +1,12 @@
 package dbutil
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/chaisql/chai"
-	"go.uber.org/multierr"
 )
 
 // Dump takes a database and dumps its content as SQL queries in the given writer.
@@ -42,7 +42,7 @@ func Dump(db *chai.DB, w io.Writer, tables ...string) error {
 	})
 	if err != nil {
 		_, er := fmt.Fprintln(w, "ROLLBACK;")
-		return multierr.Append(err, er)
+		return errors.Join(err, er)
 	}
 
 	_, err = fmt.Fprintln(w, "COMMIT;")

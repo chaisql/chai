@@ -6,7 +6,7 @@ import (
 	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/pkg/atomic"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
 type snapshot struct {

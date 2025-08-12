@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
 type RollbackSegment struct {
@@ -29,9 +29,9 @@ func NewRollbackSegment(db *pebble.DB, namespace int64) *RollbackSegment {
 }
 
 func (s *RollbackSegment) Apply(b *pebble.Batch) error {
-	r, n := pebble.ReadBatch(b.Repr())
+	r := b.Reader()
 
-	for i := uint32(0); i < n; i++ {
+	for {
 		s.buf = s.buf[:len(s.nsStart)]
 
 		kind, key, _, ok, err := r.Next()

@@ -1,12 +1,13 @@
 package commands
 
 import (
+	"context"
 	"io"
 	"os"
 
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 	"github.com/cockroachdb/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewDumpCommand returns a cli.Command for "chai dump".
@@ -44,15 +45,15 @@ $ chai dump -f dump.sql my.db`,
 		},
 	}
 
-	cmd.Action = func(c *cli.Context) error {
-		tables := c.StringSlice("table")
-		f := c.String("file")
-		dbPath := c.Args().First()
+	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
+		tables := cmd.StringSlice("table")
+		f := cmd.String("file")
+		dbPath := cmd.Args().First()
 		if dbPath == "" {
 			return errors.New(cmd.UsageText)
 		}
 
-		db, err := dbutil.OpenDB(c.Context, dbPath)
+		db, err := dbutil.OpenDB(ctx, dbPath)
 		if err != nil {
 			return err
 		}

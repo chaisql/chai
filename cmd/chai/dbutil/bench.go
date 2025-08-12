@@ -62,7 +62,7 @@ func Bench(db *chai.DB, query string, opt BenchOptions) error {
 		if err != nil {
 			return err
 		}
-		e = func(q string, args ...interface{}) error {
+		e = func(q string, args ...any) error {
 			return stmt.Exec()
 		}
 	}

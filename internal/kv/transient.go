@@ -3,7 +3,7 @@ package kv
 import (
 	"github.com/chaisql/chai/internal/engine"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
 var _ engine.Session = (*TransientSession)(nil)

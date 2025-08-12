@@ -15,7 +15,6 @@ import (
 	"github.com/agnivade/levenshtein"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cockroachdb/errors"
-	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/chaisql/chai"
@@ -81,7 +80,7 @@ func Run(ctx context.Context, opts *Options) error {
 	defer func() {
 		closeErr := sh.db.Close()
 		if closeErr != nil {
-			err = multierr.Append(err, closeErr)
+			err = errors.Join(err, closeErr)
 		}
 	}()
 
@@ -99,7 +98,7 @@ func Run(ctx context.Context, opts *Options) error {
 	defer func() {
 		dumpErr := sh.dumpHistory()
 		if dumpErr != nil {
-			err = multierr.Append(err, dumpErr)
+			err = errors.Join(err, dumpErr)
 		}
 	}()
 
@@ -309,7 +308,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 	switch cmd[0] {
 	case ".timer":
 		if len(cmd) != 2 || (cmd[1] != "on" && cmd[1] != "off") {
-			return fmt.Errorf(getUsage(".timer"))
+			return errors.New(getUsage(".timer"))
 		}
 
 		sh.displayTime = cmd[1] == "on"
@@ -318,13 +317,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 		return runHelpCmd(out)
 	case ".tables":
 		if len(cmd) > 1 {
-			return fmt.Errorf(getUsage(".tables"))
+			return errors.New(getUsage(".tables"))
 		}
 
 		return runTablesCmd(sh.db, out)
 	case ".indexes":
 		if len(cmd) > 2 {
-			return fmt.Errorf(getUsage(".indexes"))
+			return errors.New(getUsage(".indexes"))
 		}
 
 		var tableName string
@@ -344,13 +343,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 		return dbutil.DumpSchema(sh.db, out, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
-			return fmt.Errorf(getUsage(".import"))
+			return errors.New(getUsage(".import"))
 		}
 
 		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
 	case ".restore":
 		if len(cmd) != 2 {
-			return fmt.Errorf(getUsage(".restore"))
+			return errors.New(getUsage(".restore"))
 		}
 		return dbutil.Restore(ctx, sh.db, cmd[1], "./")
 	default:

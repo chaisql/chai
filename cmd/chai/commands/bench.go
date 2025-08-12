@@ -1,10 +1,11 @@
 package commands
 
 import (
+	"context"
 	"errors"
 
 	"github.com/chaisql/chai/cmd/chai/dbutil"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewBenchCommand returns a cli.Command for "chai bench".
@@ -82,27 +83,27 @@ in the same transaction, use -t`,
 		},
 	}
 
-	cmd.Action = func(c *cli.Context) error {
-		query := c.Args().First()
+	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
+		query := cmd.Args().First()
 		if query == "" {
 			return errors.New(cmd.UsageText)
 		}
 
-		path := c.String("path")
+		path := cmd.String("path")
 
-		db, err := dbutil.OpenDB(c.Context, path)
+		db, err := dbutil.OpenDB(ctx, path)
 		if err != nil {
 			return err
 		}
 		defer db.Close()
 
 		return dbutil.Bench(db, query, dbutil.BenchOptions{
-			Init:       c.String("init"),
-			N:          c.Int("number"),
-			SampleSize: c.Int("sample"),
-			SameTx:     c.Bool("tx"),
-			Prepare:    c.Bool("prepare"),
-			CSV:        c.Bool("csv"),
+			Init:       cmd.String("init"),
+			N:          cmd.Int("number"),
+			SampleSize: cmd.Int("sample"),
+			SameTx:     cmd.Bool("tx"),
+			Prepare:    cmd.Bool("prepare"),
+			CSV:        cmd.Bool("csv"),
 		})
 	}
 

@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"context"
+
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 	"github.com/cockroachdb/errors"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewRestoreCommand returns a cli.Command for "chai restore".
@@ -16,12 +18,12 @@ func NewRestoreCommand() (cmd *cli.Command) {
 
 	$ chai restore dump.sql mydb`,
 		Flags: []cli.Flag{},
-		Action: func(c *cli.Context) error {
-			args := c.Args()
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			args := cmd.Args()
 			if args.Len() != 2 {
 				return errors.New(cmd.UsageText)
 			}
-			return dbutil.Restore(c.Context, nil, args.First(), args.Get(args.Len()-1))
+			return dbutil.Restore(ctx, nil, args.First(), args.Get(args.Len()-1))
 		},
 	}
 }

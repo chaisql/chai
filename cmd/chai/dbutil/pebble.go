@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
 type DumpPebbleOptions struct {
