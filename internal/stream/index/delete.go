@@ -22,6 +22,13 @@ func Delete(indexName string) *DeleteOperator {
 	}
 }
 
+func (op *DeleteOperator) Clone() stream.Operator {
+	return &DeleteOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		indexName:    op.indexName,
+	}
+}
+
 func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	tx := in.GetTx()
 
@@ -41,7 +48,7 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *envi
 	}
 
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		row, ok := out.GetRow()
+		row, ok := out.GetDatabaseRow()
 		if !ok {
 			return errors.New("missing row")
 		}
@@ -51,9 +58,9 @@ func (op *DeleteOperator) Iterate(in *environment.Environment, fn func(out *envi
 			return err
 		}
 
-		vs := make([]types.Value, 0, len(info.Paths))
-		for _, path := range info.Paths {
-			v, err := path.GetValueFromObject(old.Object())
+		vs := make([]types.Value, 0, len(info.Columns))
+		for _, column := range info.Columns {
+			v, err := old.Get(column)
 			if err != nil {
 				v = types.NewNullValue()
 			}

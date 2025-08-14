@@ -37,6 +37,13 @@ func (op *FilterOperator) Iterate(in *environment.Environment, f func(out *envir
 	})
 }
 
+func (op *FilterOperator) Clone() stream.Operator {
+	return &FilterOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Expr:         expr.Clone(op.Expr),
+	}
+}
+
 func (op *FilterOperator) String() string {
 	return fmt.Sprintf("rows.Filter(%s)", op.Expr)
 }

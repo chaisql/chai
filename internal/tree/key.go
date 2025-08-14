@@ -1,8 +1,9 @@
 package tree
 
 import (
+	"strings"
+
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -38,7 +39,7 @@ func (k *Key) Encode(ns Namespace, order SortOrder) ([]byte, error) {
 
 	for i, v := range k.values {
 		// extract the sort order
-		buf, err = encoding.EncodeValue(buf, v, order.IsDesc(i))
+		buf, err = types.EncodeValueAsKey(buf, v, order.IsDesc(i))
 		if err != nil {
 			return nil, err
 		}
@@ -65,7 +66,7 @@ func (key *Key) Decode() ([]types.Value, error) {
 	b = b[n:]
 
 	for {
-		v, n := encoding.DecodeValue(b, false /* intAsDouble */)
+		v, n := types.DecodeValue(b)
 		b = b[n:]
 
 		values = append(values, v)
@@ -83,5 +84,14 @@ func (k *Key) String() string {
 	}
 	values, _ := k.Decode()
 
-	return types.NewArrayValue(object.NewValueBuffer(values...)).String()
+	var sb strings.Builder
+	sb.WriteString("(")
+	for i, v := range values {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		sb.WriteString(v.String())
+	}
+	sb.WriteString(")")
+	return sb.String()
 }

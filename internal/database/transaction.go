@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/cockroachdb/errors"
 )
 
@@ -13,14 +13,15 @@ import (
 // Transaction is either read-only or read/write. Read-only can be used to read tables
 // and read/write can be used to read, create, delete and modify tables.
 type Transaction struct {
-	db *Database
+	db   *Database
+	conn *Connection
 
 	// Timestamp at which the transaction was created.
 	// The timestamp must use the local timezone.
 	TxStart time.Time
 
-	Session   kv.Session
-	Store     *kv.Store
+	Session   engine.Session
+	Engine    engine.Engine
 	ID        uint64
 	Writable  bool
 	WriteTxMu *sync.Mutex
@@ -33,6 +34,10 @@ type Transaction struct {
 	catalogWriter *CatalogWriter
 }
 
+func (tx *Transaction) Connection() *Connection {
+	return tx.conn
+}
+
 // Rollback the transaction. Can be used safely after commit.
 func (tx *Transaction) Rollback() error {
 	err := tx.Session.Close()
@@ -41,7 +46,7 @@ func (tx *Transaction) Rollback() error {
 	}
 
 	if tx.Writable {
-		err = tx.Store.Rollback()
+		err = tx.Engine.Rollback()
 		if err != nil {
 			return err
 		}

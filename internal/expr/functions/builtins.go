@@ -2,10 +2,10 @@ package functions
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -16,13 +16,6 @@ var builtinFunctions = Definitions{
 		arity: 1,
 		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
 			return &TypeOf{Expr: args[0]}, nil
-		},
-	},
-	"pk": &definition{
-		name:  "pk",
-		arity: 0,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &PK{}, nil
 		},
 	},
 	"count": &definition{
@@ -82,33 +75,62 @@ var builtinFunctions = Definitions{
 		},
 	},
 
-	// strings alias
-	"lower": stringsFunctions["lower"],
-	"upper": stringsFunctions["upper"],
-	"trim":  stringsFunctions["trim"],
-	"ltrim": stringsFunctions["ltrim"],
-	"rtrim": stringsFunctions["rtrim"],
+	"lower": &definition{
+		name:  "lower",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Lower{Expr: args[0]}, nil
+		},
+	},
+	"upper": &definition{
+		name:  "upper",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Upper{Expr: args[0]}, nil
+		},
+	},
+	"trim": &definition{
+		name:  "trim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
+		},
+	},
+	"ltrim": &definition{
+		name:  "ltrim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
+		},
+	},
+	"rtrim": &definition{
+		name:  "rtrim",
+		arity: variadicArity,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
+		},
+	},
 
-	// math alias
-	"floor":  mathFunctions["floor"],
-	"abs":    mathFunctions["abs"],
-	"acos":   mathFunctions["acos"],
-	"acosh":  mathFunctions["acosh"],
-	"asin":   mathFunctions["asin"],
-	"asinh":  mathFunctions["asinh"],
-	"atan":   mathFunctions["atan"],
-	"atan2":  mathFunctions["atan2"],
-	"random": mathFunctions["random"],
-	"sqrt":   mathFunctions["sqrt"],
-}
-
-// BuiltinDefinitions returns a map of builtin functions.
-func BuiltinDefinitions() Definitions {
-	return builtinFunctions
+	"floor":  floor,
+	"abs":    abs,
+	"acos":   acos,
+	"acosh":  acosh,
+	"asin":   asin,
+	"asinh":  asinh,
+	"atan":   atan,
+	"atan2":  atan2,
+	"random": random,
+	"sqrt":   sqrt,
 }
 
 type TypeOf struct {
 	Expr expr.Expr
+}
+
+func (t *TypeOf) Clone() expr.Expr {
+	return &TypeOf{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 func (t *TypeOf) Eval(env *environment.Environment) (types.Value, error) {
@@ -141,66 +163,6 @@ func (t *TypeOf) String() string {
 	return fmt.Sprintf("typeof(%v)", t.Expr)
 }
 
-// PK represents the pk() function.
-// It returns the primary key of the current object.
-type PK struct{}
-
-// Eval returns the primary key of the current object.
-func (k *PK) Eval(env *environment.Environment) (types.Value, error) {
-	row, ok := env.GetRow()
-	if !ok {
-		return expr.NullLiteral, nil
-	}
-
-	key := row.Key()
-	if key == nil {
-		return expr.NullLiteral, nil
-	}
-
-	vs, err := key.Decode()
-	if err != nil {
-		return expr.NullLiteral, err
-	}
-
-	info, err := env.GetTx().Catalog.GetTableInfo(row.TableName())
-	if err != nil {
-		return nil, err
-	}
-
-	pk := info.PrimaryKey
-	if pk != nil {
-		for i, tp := range pk.Types {
-			if !tp.IsAny() {
-				vs[i], err = object.CastAs(vs[i], tp)
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
-	}
-
-	vb := object.NewValueBuffer()
-
-	for _, v := range vs {
-		vb.Append(v)
-	}
-
-	return types.NewArrayValue(vb), nil
-}
-
-func (*PK) Params() []expr.Expr { return nil }
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (k *PK) IsEqual(other expr.Expr) bool {
-	_, ok := other.(*PK)
-	return ok
-}
-
-func (k *PK) String() string {
-	return "pk()"
-}
-
 var _ expr.AggregatorBuilder = (*Count)(nil)
 
 // Count is the COUNT aggregator function. It counts the number of objects
@@ -216,6 +178,14 @@ func NewCount(e expr.Expr) *Count {
 	return &Count{
 		Expr:     e,
 		wildcard: wc,
+	}
+}
+
+func (t *Count) Clone() expr.Expr {
+	return &Count{
+		Expr:     expr.Clone(t.Expr),
+		wildcard: t.wildcard,
+		Count:    t.Count,
 	}
 }
 
@@ -270,10 +240,10 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	v, err := c.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
-	if v.Type() != types.NullValue {
+	if v.Type() != types.TypeNull {
 		c.Count++
 	}
 
@@ -282,7 +252,7 @@ func (c *CountAggregator) Aggregate(env *environment.Environment) error {
 
 // Eval returns the result of the aggregation as an integer.
 func (c *CountAggregator) Eval(_ *environment.Environment) (types.Value, error) {
-	return types.NewIntegerValue(c.Count), nil
+	return types.NewBigintValue(c.Count), nil
 }
 
 func (c *CountAggregator) String() string {
@@ -292,6 +262,12 @@ func (c *CountAggregator) String() string {
 // Min is the MIN aggregator function.
 type Min struct {
 	Expr expr.Expr
+}
+
+func (t *Min) Clone() expr.Expr {
+	return &Min{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 // Eval extracts the min value from the given object and returns it.
@@ -344,18 +320,18 @@ type MinAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		return nil
 	}
 
-	// clone the value to avoid it being reused during next aggregation
-	v, err = object.CloneValue(v)
-	if err != nil {
-		return err
-	}
+	// // clone the value to avoid it being reused during next aggregation
+	// v, err = row.CloneValue(v)
+	// if err != nil {
+	// 	return err
+	// }
 
 	if m.Min == nil {
 		m.Min = v
@@ -363,7 +339,7 @@ func (m *MinAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	if m.Min.Type() == v.Type() || m.Min.Type().IsNumber() && v.Type().IsNumber() {
-		ok, err := types.IsGreaterThan(m.Min, v)
+		ok, err := m.Min.GT(v)
 		if err != nil {
 			return err
 		}
@@ -396,6 +372,12 @@ func (m *MinAggregator) String() string {
 // Max is the MAX aggregator function.
 type Max struct {
 	Expr expr.Expr
+}
+
+func (t *Max) Clone() expr.Expr {
+	return &Max{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 // Eval extracts the max value from the given object and returns it.
@@ -448,17 +430,11 @@ type MaxAggregator struct {
 // then if the type is equal their value is compared. Numbers are considered of the same type.
 func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	v, err := m.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
-	if v.Type() == types.NullValue {
+	if v.Type() == types.TypeNull {
 		return nil
-	}
-
-	// clone the value to avoid it being reused during next aggregation
-	v, err = object.CloneValue(v)
-	if err != nil {
-		return err
 	}
 
 	if m.Max == nil {
@@ -467,7 +443,7 @@ func (m *MaxAggregator) Aggregate(env *environment.Environment) error {
 	}
 
 	if m.Max.Type() == v.Type() || m.Max.Type().IsNumber() && v.Type().IsNumber() {
-		ok, err := types.IsLesserThan(m.Max, v)
+		ok, err := m.Max.LT(v)
 		if err != nil {
 			return err
 		}
@@ -501,6 +477,12 @@ func (m *MaxAggregator) String() string {
 // Sum is the SUM aggregator function.
 type Sum struct {
 	Expr expr.Expr
+}
+
+func (t *Sum) Clone() expr.Expr {
+	return &Sum{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 // Eval extracts the sum value from the given object and returns it.
@@ -555,30 +537,31 @@ type SumAggregator struct {
 // If any of the value is a double, the returned result will be a double.
 func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
-	if v.Type() != types.IntegerValue && v.Type() != types.DoubleValue {
+	if !v.Type().IsNumber() {
 		return nil
 	}
 
 	if s.SumF != nil {
-		if v.Type() == types.IntegerValue {
-			*s.SumF += float64(types.As[int64](v))
-		} else {
-			*s.SumF += float64(types.As[float64](v))
+		switch v.Type() {
+		case types.TypeInteger, types.TypeBigint:
+			*s.SumF += float64(types.AsInt64(v))
+		default:
+			*s.SumF += float64(types.AsFloat64(v))
 		}
 
 		return nil
 	}
 
-	if v.Type() == types.DoubleValue {
+	if v.Type() == types.TypeDouble {
 		var sumF float64
 		if s.SumI != nil {
 			sumF = float64(*s.SumI)
 		}
 		s.SumF = &sumF
-		*s.SumF += float64(types.As[float64](v))
+		*s.SumF += float64(types.AsFloat64(v))
 
 		return nil
 	}
@@ -588,7 +571,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		s.SumI = &sumI
 	}
 
-	*s.SumI += types.As[int64](v)
+	*s.SumI += types.AsInt64(v)
 	return nil
 }
 
@@ -598,7 +581,7 @@ func (s *SumAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 		return types.NewDoubleValue(*s.SumF), nil
 	}
 	if s.SumI != nil {
-		return types.NewIntegerValue(*s.SumI), nil
+		return types.NewBigintValue(*s.SumI), nil
 	}
 
 	return types.NewNullValue(), nil
@@ -611,6 +594,12 @@ func (s *SumAggregator) String() string {
 // Avg is the AVG aggregator function.
 type Avg struct {
 	Expr expr.Expr
+}
+
+func (t *Avg) Clone() expr.Expr {
+	return &Avg{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 // Eval extracts the average value from the given object and returns it.
@@ -663,15 +652,15 @@ type AvgAggregator struct {
 // Aggregate stores the average value of all non-NULL numeric values in the group.
 func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	v, err := s.Fn.Expr.Eval(env)
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return err
 	}
 
 	switch v.Type() {
-	case types.IntegerValue:
-		s.Avg += float64(types.As[int64](v))
-	case types.DoubleValue:
-		s.Avg += types.As[float64](v)
+	case types.TypeInteger, types.TypeBigint:
+		s.Avg += float64(types.AsInt64(v))
+	case types.TypeDouble:
+		s.Avg += types.AsFloat64(v)
 	default:
 		return nil
 	}
@@ -694,10 +683,16 @@ func (s *AvgAggregator) String() string {
 }
 
 // Len represents the len() function.
-// It returns the length of string, array or object.
+// It returns the length of string, array or row.
 // For other types len() returns NULL.
 type Len struct {
 	Expr expr.Expr
+}
+
+func (t *Len) Clone() expr.Expr {
+	return &Len{
+		Expr: expr.Clone(t.Expr),
+	}
 }
 
 // Eval extracts the average value from the given object and returns it.
@@ -708,25 +703,13 @@ func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	}
 	var length int
 	switch val.Type() {
-	case types.TextValue:
-		length = len(types.As[string](val))
-	case types.ArrayValue:
-		arrayLen, err := object.ArrayLength(types.As[types.Array](val))
-		if err != nil {
-			return nil, err
-		}
-		length = arrayLen
-	case types.ObjectValue:
-		docLen, err := object.Length(types.As[types.Object](val))
-		if err != nil {
-			return nil, err
-		}
-		length = docLen
+	case types.TypeText:
+		length = len(types.AsString(val))
 	default:
 		return types.NewNullValue(), nil
 	}
 
-	return types.NewIntegerValue(int64(length)), nil
+	return types.NewBigintValue(int64(length)), nil
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -755,13 +738,23 @@ type Coalesce struct {
 	Exprs []expr.Expr
 }
 
+func (c *Coalesce) Clone() expr.Expr {
+	var clone Coalesce
+	clone.Exprs = make([]expr.Expr, 0, len(c.Exprs))
+	for _, e := range c.Exprs {
+		clone.Exprs = append(clone.Exprs, expr.Clone(e))
+	}
+
+	return &clone
+}
+
 func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
 	for _, exp := range c.Exprs {
 		v, err := exp.Eval(e)
 		if err != nil {
 			return nil, err
 		}
-		if v.Type() != types.NullValue {
+		if v.Type() != types.TypeNull {
 			return v, nil
 		}
 	}
@@ -777,6 +770,10 @@ func (c *Coalesce) Params() []expr.Expr {
 }
 
 type Now struct{}
+
+func (n *Now) Clone() expr.Expr {
+	return &Now{}
+}
 
 func (n *Now) Eval(env *environment.Environment) (types.Value, error) {
 	tx := env.GetTx()

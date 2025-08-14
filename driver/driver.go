@@ -5,13 +5,12 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"io"
-	"runtime"
 	"sync"
 	"time"
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -39,13 +38,10 @@ func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
 		return nil, err
 	}
 
-	c := &connector{
+	return &connector{
 		db:     db,
 		driver: d,
-	}
-	runtime.SetFinalizer(c, (*connector).Close)
-
-	return c, nil
+	}, nil
 }
 
 var (
@@ -54,15 +50,21 @@ var (
 )
 
 type connector struct {
-	driver driver.Driver
-
-	db *chai.DB
-
+	driver    driver.Driver
+	db        *chai.DB
 	closeOnce sync.Once
 }
 
 func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
-	return &conn{db: c.db}, nil
+	cc, err := c.db.Connect()
+	if err != nil {
+		return nil, err
+	}
+
+	return &conn{
+		db:   c.db,
+		conn: cc,
+	}, nil
 }
 
 func (c *connector) Driver() driver.Driver {
@@ -80,8 +82,8 @@ func (c *connector) Close() error {
 // conn represents a connection to the Chai database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db *chai.DB
-	tx *chai.Tx
+	db   *chai.DB
+	conn *chai.Connection
 }
 
 // Prepare returns a prepared statement, bound to this connection.
@@ -91,14 +93,7 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	var s *chai.Statement
-	var err error
-
-	if c.tx != nil {
-		s, err = c.tx.Prepare(q)
-	} else {
-		s, err = c.db.Prepare(q)
-	}
+	s, err := c.conn.Prepare(q)
 	if err != nil {
 		return nil, err
 	}
@@ -110,16 +105,21 @@ func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 
 // Close closes any ongoing transaction.
 func (c *conn) Close() error {
-	if c.tx != nil {
-		return c.tx.Rollback()
-	}
-
-	return nil
+	return c.conn.Close()
 }
 
 // Begin starts and returns a new transaction.
 func (c *conn) Begin() (driver.Tx, error) {
 	return c.BeginTx(context.Background(), driver.TxOptions{})
+}
+
+func (c *conn) ResetSession(ctx context.Context) error {
+	err := c.conn.Conn.Reset()
+	if err != nil {
+		return driver.ErrBadConn
+	}
+
+	return nil
 }
 
 // BeginTx starts and returns a new transaction.
@@ -130,26 +130,9 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 		return nil, errors.New("isolation levels are not supported")
 	}
 
-	db := c.db.WithContext(ctx)
-
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
-	var err error
-	c.tx, err = db.Begin(!opts.ReadOnly)
-
-	return c, err
-}
-
-func (c *conn) Commit() error {
-	err := c.tx.Commit()
-	c.tx = nil
-	return err
-}
-
-func (c *conn) Rollback() error {
-	err := c.tx.Rollback()
-	c.tx = nil
-	return err
+	return c.conn.Begin(!opts.ReadOnly)
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not
@@ -167,28 +150,6 @@ func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
-// CheckNamedValue has the same behaviour as driver.DefaultParameterConverter, except that
-// it allows types.Object to be passed as parameters.
-// It implements the driver.NamedValueChecker interface.
-func (s stmt) CheckNamedValue(nv *driver.NamedValue) error {
-	if _, ok := nv.Value.(types.Object); ok {
-		return nil
-	}
-
-	if _, ok := nv.Value.(object.Scanner); ok {
-		return nil
-	}
-
-	var err error
-	val, err := driver.DefaultParameterConverter.ConvertValue(nv.Value)
-	if err == nil {
-		nv.Value = val
-		return nil
-	}
-
-	return nil
-}
-
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
 func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
@@ -198,18 +159,18 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	return result{}, s.stmt.Exec(driverNamedValueToParams(args)...)
+	return execResult{}, s.stmt.Exec(namedValueToParams(args)...)
 }
 
-type result struct{}
+type execResult struct{}
 
 // LastInsertId is not supported and returns an error.
-func (r result) LastInsertId() (int64, error) {
+func (r execResult) LastInsertId() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
 // RowsAffected is not supported and returns an error.
-func (r result) RowsAffected() (int64, error) {
+func (r execResult) RowsAffected() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
@@ -226,17 +187,15 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	res, err := s.stmt.Query(driverNamedValueToParams(args)...)
+	res, err := s.stmt.Query(namedValueToParams(args)...)
 	if err != nil {
 		return nil, err
 	}
 
-	rs := newRecordStream(res)
-	rs.columns = res.Columns()
-	return rs, nil
+	return newRows(res)
 }
 
-func driverNamedValueToParams(args []driver.NamedValue) []any {
+func namedValueToParams(args []driver.NamedValue) []any {
 	params := make([]any, len(args))
 	for i, arg := range args {
 		var p environment.Param
@@ -255,35 +214,42 @@ func (s stmt) Close() error {
 
 var errStop = errors.New("stop")
 
-type recordStream struct {
+type Rows struct {
 	res      *chai.Result
 	cancelFn func()
-	c        chan row
+	c        chan Row
 	wg       sync.WaitGroup
 	columns  []string
 }
 
-type row struct {
+type Row struct {
 	r   *chai.Row
 	err error
 }
 
-func newRecordStream(res *chai.Result) *recordStream {
+func newRows(res *chai.Result) (*Rows, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	ds := recordStream{
+	rs := Rows{
 		res:      res,
 		cancelFn: cancel,
-		c:        make(chan row),
+		c:        make(chan Row),
 	}
-	ds.wg.Add(1)
+	rs.wg.Add(1)
 
-	go ds.iterate(ctx)
+	cols, err := rs.res.Columns()
+	if err != nil {
+		return nil, err
+	}
 
-	return &ds
+	rs.columns = cols
+
+	go rs.iterate(ctx)
+
+	return &rs, nil
 }
 
-func (rs *recordStream) iterate(ctx context.Context) {
+func (rs *Rows) iterate(ctx context.Context) {
 	defer rs.wg.Done()
 	defer close(rs.c)
 
@@ -297,7 +263,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return errStop
-		case rs.c <- row{
+		case rs.c <- Row{
 			r: r,
 		}:
 
@@ -314,7 +280,7 @@ func (rs *recordStream) iterate(ctx context.Context) {
 		return
 	}
 	if err != nil {
-		rs.c <- row{
+		rs.c <- Row{
 			err: err,
 		}
 		return
@@ -322,127 +288,99 @@ func (rs *recordStream) iterate(ctx context.Context) {
 }
 
 // Columns returns the fields selected by the SELECT statement.
-func (rs *recordStream) Columns() []string {
-	return rs.res.Columns()
+func (rs *Rows) Columns() []string {
+	return rs.columns
 }
 
 // Close closes the rows iterator.
-func (rs *recordStream) Close() error {
+func (rs *Rows) Close() error {
 	rs.cancelFn()
 	rs.wg.Wait()
 	return rs.res.Close()
 }
 
-func (rs *recordStream) Next(dest []driver.Value) error {
-	rs.c <- row{}
+func (rs *Rows) Next(dest []driver.Value) error {
+	rs.c <- Row{}
 
-	row, ok := <-rs.c
+	r, ok := <-rs.c
 	if !ok {
 		return io.EOF
 	}
 
-	if row.err != nil {
-		return row.err
+	if r.err != nil {
+		return r.err
 	}
 
-	for i := range rs.columns {
-		if rs.columns[i] == "*" {
-			dest[i] = row.r
+	var i int
+	err := r.r.Row.Iterate(func(column string, v types.Value) error {
+		var err error
 
-			continue
-		}
-
-		tp, err := row.r.GetColumnType(rs.columns[i])
-		if err != nil {
-			return err
-		}
-		switch tp {
-		case types.BooleanValue.String():
+		switch v.Type() {
+		case types.TypeNull:
+			dest[i] = nil
+		case types.TypeBoolean:
 			var b bool
-			err = row.r.ScanColumn(rs.columns[i], &b)
+			err = row.ScanValue(v, &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
-		case types.IntegerValue.String():
-			var ii int64
-			err = row.r.ScanColumn(rs.columns[i], &ii)
+		case types.TypeInteger:
+			var ii int32
+			err = row.ScanValue(v, &ii)
 			if err != nil {
 				return err
 			}
 			dest[i] = ii
-		case types.DoubleValue.String():
+		case types.TypeBigint:
+			var bi int64
+			err = row.ScanValue(v, &bi)
+			if err != nil {
+				return err
+			}
+			dest[i] = bi
+		case types.TypeDouble:
 			var d float64
-			err = row.r.ScanColumn(rs.columns[i], &d)
+			err = row.ScanValue(v, &d)
 			if err != nil {
 				return err
 			}
 			dest[i] = d
-		case types.TimestampValue.String():
+		case types.TypeTimestamp:
 			var t time.Time
-			err = row.r.ScanColumn(rs.columns[i], &t)
+			err = row.ScanValue(v, &t)
 			if err != nil {
 				return err
 			}
 			dest[i] = t
-		case types.TextValue.String():
+		case types.TypeText:
 			var s string
-			err = row.r.ScanColumn(rs.columns[i], &s)
+			err = row.ScanValue(v, &s)
 			if err != nil {
 				return err
 			}
 			dest[i] = s
-		case types.BlobValue.String():
+		case types.TypeBlob:
 			var b []byte
-			err = row.r.ScanColumn(rs.columns[i], &b)
+			err = row.ScanValue(v, &b)
 			if err != nil {
 				return err
 			}
 			dest[i] = b
-		case types.ArrayValue.String():
-			var a []any
-			err = row.r.ScanColumn(rs.columns[i], &a)
-			if err != nil {
-				return err
-			}
-			dest[i] = a
-		case types.ObjectValue.String():
-			m := make(map[string]any)
-			err = row.r.ScanColumn(rs.columns[i], &m)
-			if err != nil {
-				return err
-			}
-			dest[i] = m
 		default:
-			err = row.r.ScanColumn(rs.columns[i], dest[i])
+			err = row.ScanValue(v, dest[i])
 			if err != nil {
 				return err
 			}
 		}
-	}
 
-	return nil
-}
+		i++
 
-type valueScanner struct {
-	dest any
-}
-
-func (v valueScanner) Scan(src any) error {
-	if r, ok := src.(*chai.Row); ok {
-		return r.StructScan(v.dest)
-	}
-
-	vv, err := object.NewValue(src)
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	return object.ScanValue(vv, v.dest)
-}
-
-// Scanner turns a variable into a sql.Scanner.
-// x must be a pointer to a valid variable.
-func Scanner(x any) sql.Scanner {
-	return valueScanner{x}
+	return nil
 }

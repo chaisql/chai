@@ -7,7 +7,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// parseSelectStatement parses a select string and returns a Statement AST object.
+// parseSelectStatement parses a select string and returns a Statement AST row.
 // This function assumes the SELECT token has already been consumed.
 func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
 	stmt := statement.NewSelectStatement()
@@ -76,7 +76,7 @@ func (p *Parser) parseSelectCore() (*statement.SelectCoreStmt, error) {
 	var err error
 
 	// Parse "SELECT".
-	if err := p.parseTokens(scanner.SELECT); err != nil {
+	if err := p.ParseTokens(scanner.SELECT); err != nil {
 		return nil, err
 	}
 

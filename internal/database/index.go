@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -31,7 +31,7 @@ type Index struct {
 func NewIndex(tr *tree.Tree, opts IndexInfo) *Index {
 	return &Index{
 		Tree:  tr,
-		Arity: len(opts.Paths),
+		Arity: len(opts.Columns),
 	}
 }
 
@@ -85,7 +85,7 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 			return err
 		}
 
-		dKey = tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
+		dKey = tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
 		found = true
 		return errStop
 	})
@@ -122,7 +122,7 @@ func (idx *Index) Delete(vs []types.Value, key []byte) error {
 		return err
 	}
 
-	return errors.WithStack(kv.ErrKeyNotFound)
+	return errors.WithStack(engine.ErrKeyNotFound)
 }
 
 func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {
@@ -144,7 +144,7 @@ func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(
 			return err
 		}
 
-		pk := tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
+		pk := tree.NewEncodedKey(types.AsByteSlice(values[len(values)-1]))
 
 		return fn(k, pk)
 	}

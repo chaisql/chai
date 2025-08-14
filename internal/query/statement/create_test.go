@@ -3,26 +3,9 @@ package statement_test
 import (
 	"testing"
 
-	"github.com/chaisql/chai/internal/object"
-	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
+	"github.com/stretchr/testify/require"
 )
-
-func ParseObjectPath(t testing.TB, str string) object.Path {
-	vp, err := parser.ParsePath(str)
-	assert.NoError(t, err)
-	return vp
-}
-
-func ParseObjectPaths(t testing.TB, str ...string) []object.Path {
-	var paths []object.Path
-	for _, s := range str {
-		paths = append(paths, ParseObjectPath(t, s))
-	}
-
-	return paths
-}
 
 func TestCreateIndex(t *testing.T) {
 	tests := []struct {
@@ -31,8 +14,8 @@ func TestCreateIndex(t *testing.T) {
 		fails bool
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar)", false},
-		{"Duplicate", "CREATE INDEX idx ON test (foo.bar);CREATE INDEX idx ON test (foo.bar)", true},
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", false},
+		{"Duplicate", "CREATE INDEX idx ON test (foo);CREATE INDEX idx ON test (foo)", true},
 		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", false},
 		{"No name", "CREATE UNIQUE INDEX ON test (foo)", false},
 		{"No name if not exists", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo)", true},
@@ -46,14 +29,14 @@ func TestCreateIndex(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test(foo (bar TEXT), baz any, baf any)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(foo TEXT, baz INT, baf BOOL)")
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }
@@ -134,10 +117,10 @@ func TestCreateSequence(t *testing.T) {
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

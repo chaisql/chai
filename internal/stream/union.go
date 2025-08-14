@@ -5,9 +5,8 @@ import (
 	"strings"
 
 	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 )
@@ -23,6 +22,26 @@ func Union(s ...*Stream) *UnionOperator {
 	return &UnionOperator{Streams: s}
 }
 
+func (it *UnionOperator) Clone() Operator {
+	streams := make([]*Stream, len(it.Streams))
+	for i, s := range it.Streams {
+		streams[i] = s.Clone()
+	}
+
+	return &UnionOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+		Streams:      streams,
+	}
+}
+
+func (it *UnionOperator) Columns(env *environment.Environment) ([]string, error) {
+	if len(it.Streams) == 0 {
+		return nil, nil
+	}
+
+	return it.Streams[0].Columns(env)
+}
+
 // Iterate iterates over all the streams and returns their union.
 func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
 	var temp *tree.Tree
@@ -31,7 +50,7 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	defer func() {
 		if cleanup != nil {
 			e := cleanup()
-			if err != nil {
+			if err == nil {
 				err = e
 			}
 		}
@@ -39,15 +58,13 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 
 	// iterate over all the streams and insert each key in the temporary table
 	// to deduplicate them
-	fb := object.NewFieldBuffer()
 	var buf []byte
 
 	for _, s := range it.Streams {
 		err := s.Iterate(in, func(out *environment.Environment) error {
-			fb.Reset()
 			buf = buf[:0]
 
-			row, ok := out.GetRow()
+			r, ok := out.GetRow()
 			if !ok {
 				return errors.New("missing row")
 			}
@@ -56,31 +73,34 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 				// create a temporary tree
 				db := in.GetDB()
 				tns := in.GetTx().Catalog.GetFreeTransientNamespace()
-				temp, cleanup, err = tree.NewTransient(db.Store.NewTransientSession(), tns, 0)
+				temp, cleanup, err = tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
 				if err != nil {
 					return err
 				}
 			}
 
-			key := tree.NewKey(types.NewObjectValue(row.Object()))
+			var tableName string
+			var encKey []byte
 
-			if row.Key() != nil {
+			if dr, ok := r.(database.Row); ok {
 				// encode the row key and table name as the value
-				info, err := in.GetTx().Catalog.GetTableInfo(row.TableName())
-				if err != nil {
-					return err
-				}
-				encKey, err := info.EncodeKey(row.Key())
+				tableName = dr.TableName()
+
+				info, err := in.GetTx().Catalog.GetTableInfo(tableName)
 				if err != nil {
 					return err
 				}
 
-				fb.Add("key", types.NewBlobValue(encKey))
-				fb.Add("table", types.NewTextValue(row.TableName()))
-				buf, err = encoding.EncodeObject(buf, fb)
+				encKey, err = info.EncodeKey(dr.Key())
 				if err != nil {
 					return err
 				}
+			}
+
+			key := tree.NewKey(row.Flatten(r)...)
+			buf, err = types.EncodeValuesAsKey(buf, types.NewBlobValue(encKey), types.NewTextValue(tableName))
+			if err != nil {
+				return err
 			}
 
 			err = temp.Put(key, buf)
@@ -102,11 +122,9 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 	var newEnv environment.Environment
 	newEnv.SetOuter(in)
 
-	var vb object.ValueBuffer
 	var basicRow database.BasicRow
 	// iterate over the temporary index
 	return temp.IterateOnRange(nil, false, func(key *tree.Key, value []byte) error {
-		vb.Reset()
 		kv, err := key.Decode()
 		if err != nil {
 			return err
@@ -115,20 +133,12 @@ func (it *UnionOperator) Iterate(in *environment.Environment, fn func(out *envir
 		var tableName string
 		var pk *tree.Key
 
-		obj := types.As[types.Object](kv[0])
+		obj := row.Unflatten(kv)
 
 		if len(value) > 1 {
-			ser := encoding.DecodeObject(value, false)
-			pkf, err := ser.GetByField("key")
-			if err != nil {
-				return err
-			}
-			pk = tree.NewEncodedKey(types.As[[]byte](pkf))
-			tf, err := ser.GetByField("table")
-			if err != nil {
-				return err
-			}
-			tableName = types.As[string](tf)
+			ser := types.DecodeValues(value)
+			pk = tree.NewEncodedKey(types.AsByteSlice(ser[0]))
+			tableName = types.AsString(ser[1])
 		}
 
 		basicRow.ResetWith(tableName, pk, obj)

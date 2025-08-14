@@ -6,7 +6,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/database/catalogstore"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -15,7 +14,7 @@ import (
 
 func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog, name string) (*int64, error) {
 	tb, err := catalog.GetTable(tx, database.SequenceTableName)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	k := tree.NewKey(types.NewTextValue(name))
 	d, err := tb.GetRow(k)
@@ -24,13 +23,13 @@ func getLease(t testing.TB, tx *database.Transaction, catalog *database.Catalog,
 	}
 
 	v, err := d.Get("seq")
-	if errors.Is(err, types.ErrFieldNotFound) {
+	if errors.Is(err, types.ErrColumnNotFound) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	lease := types.As[int64](v)
+	lease := types.AsInt64(v)
 	return &lease, nil
 }
 
@@ -159,11 +158,11 @@ func TestSequence(t *testing.T) {
 			db := testutil.NewTestDB(t)
 
 			tx, err := db.Begin(true)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer tx.Rollback()
 
 			err = tx.CatalogWriter().CreateSequence(tx, &test.info)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			seq := database.Sequence{
 				Info: &test.info,
@@ -171,9 +170,9 @@ func TestSequence(t *testing.T) {
 			seq.CurrentValue = test.currentValue
 			gotV, gotErr := seq.Next(tx)
 			if !test.expErr {
-				assert.NoError(t, gotErr)
+				require.NoError(t, gotErr)
 			} else {
-				assert.Error(t, gotErr)
+				require.Error(t, gotErr)
 			}
 			require.Equal(t, test.expV, gotV)
 		})
@@ -183,11 +182,11 @@ func TestSequence(t *testing.T) {
 		t.Helper()
 
 		v, err := seq.Next(tx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(wantV), v)
 
 		got, err := getLease(t, tx, catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, wantLease, *got)
 	}
 
@@ -195,7 +194,7 @@ func TestSequence(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
@@ -205,10 +204,10 @@ func TestSequence(t *testing.T) {
 			Start: 1,
 			Cache: 1,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		seq, err := tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// each call must increase the lease by 1 and store it in the table
 		next(seq, tx, tx.Catalog, 1, 1)
@@ -220,11 +219,11 @@ func TestSequence(t *testing.T) {
 		cached := seq.Cached
 
 		_, err = seq.Next(tx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		require.Equal(t, int64(5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
 		got, err := getLease(t, tx, tx.Catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(5), *got)
 	})
 
@@ -232,7 +231,7 @@ func TestSequence(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
@@ -242,10 +241,10 @@ func TestSequence(t *testing.T) {
 			Start: 1,
 			Cache: 2,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		seq, err := tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// first call to next must increase the lease to 2 and store it in the table
 		next(seq, tx, tx.Catalog, 1, 2)
@@ -266,11 +265,11 @@ func TestSequence(t *testing.T) {
 		cached := seq.Cached
 
 		_, err = seq.Next(tx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		require.Equal(t, int64(9), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
 		got, err := getLease(t, tx, tx.Catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(9), *got)
 	})
 
@@ -278,7 +277,7 @@ func TestSequence(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
@@ -288,10 +287,10 @@ func TestSequence(t *testing.T) {
 			Start: 5,
 			Cache: 2,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		seq, err := tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// first call to next must decrease the lease to 3 and store it in the table
 		next(seq, tx, tx.Catalog, 5, 4)
@@ -313,11 +312,11 @@ func TestSequence(t *testing.T) {
 		cached := seq.Cached
 
 		_, err = seq.Next(tx)
-		assert.Error(t, err)
+		require.Error(t, err)
 		require.Equal(t, int64(-5), *seq.CurrentValue)
 		require.Equal(t, cached, seq.Cached)
 		got, err := getLease(t, tx, tx.Catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(-5), *got)
 	})
 
@@ -325,7 +324,7 @@ func TestSequence(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
 			Name:        "a",
@@ -334,28 +333,28 @@ func TestSequence(t *testing.T) {
 			Start: 5,
 			Cache: 2,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = tx.Commit()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// open a read-only tx
 		tx, err = db.Begin(false)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		seq, err := tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		_, err = seq.Next(tx)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("release", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
 		tx, err := db.Begin(true)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer tx.Rollback()
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
@@ -365,30 +364,30 @@ func TestSequence(t *testing.T) {
 			Start: 3,
 			Cache: 5,
 		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		seq, err := tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		next(seq, tx, tx.Catalog, 3, 7)
 		next(seq, tx, tx.Catalog, 4, 7)
 
 		got, err := getLease(t, tx, tx.Catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(7), *got)
 
 		err = seq.Release(tx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		tx.Catalog = database.NewCatalog()
 		err = catalogstore.LoadCatalog(tx)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		seq, err = tx.Catalog.GetSequence("a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		got, err = getLease(t, tx, tx.Catalog, "a")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, int64(4), *got)
 
 		next(seq, tx, tx.Catalog, 5, 9)

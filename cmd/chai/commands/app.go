@@ -19,7 +19,6 @@ func NewApp() *cli.App {
 	app.EnableBashCompletion = true
 
 	app.Commands = []*cli.Command{
-		NewInsertCommand(),
 		NewVersionCommand(),
 		NewDumpCommand(),
 		NewRestoreCommand(),

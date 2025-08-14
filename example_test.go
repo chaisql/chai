@@ -7,13 +7,9 @@ import (
 )
 
 type User struct {
-	ID      int64
-	Name    string
-	Age     uint32
-	Address struct {
-		City    string
-		ZipCode string
-	}
+	ID   int64
+	Name string
+	Age  uint32
 }
 
 func Example() {
@@ -24,8 +20,8 @@ func Example() {
 	}
 	defer db.Close()
 
-	// Create a table. Chai tables are schemaless by default, you don't need to specify a schema.
-	err = db.Exec("CREATE TABLE user (name text, ...)")
+	// Create a table.
+	err = db.Exec("CREATE TABLE user (id int, name text, age int)")
 	if err != nil {
 		panic(err)
 	}
@@ -42,20 +38,14 @@ func Example() {
 		panic(err)
 	}
 
-	// Insert some data using object notation
-	err = db.Exec(`INSERT INTO user VALUES {id: 12, "name": "bar", age: ?, address: {city: "Lyon", zipcode: "69001"}}`, 16)
+	conn, err := db.Connect()
 	if err != nil {
 		panic(err)
 	}
+	defer conn.Close()
 
-	// Structs can be used to describe a object
-	err = db.Exec("INSERT INTO user VALUES ?, ?", &User{ID: 1, Name: "baz", Age: 100}, &User{ID: 2, Name: "bat"})
-	if err != nil {
-		panic(err)
-	}
-
-	// Query some objects
-	stream, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
+	// Query some rows
+	stream, err := conn.Query("SELECT * FROM user WHERE id > ?", 1)
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +69,5 @@ func Example() {
 	}
 
 	// Output:
-	// {10 foo 15 { }}
-	// {12 bar 16 {Lyon 69001}}
-	// {2 bat 0 { }}
+	// {10 foo 15}
 }

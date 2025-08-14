@@ -119,8 +119,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	g.Go(func() error {
 		ui := newTUI(&sh, promptExecCh)
-
-		p := tea.NewProgram(ui)
+		p := tea.NewProgram(ui, tea.WithFPS(120))
 		_, err = p.Run()
 		if err == nil {
 			return errExitCommand
@@ -349,11 +348,6 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 		}
 
 		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
-	case ".doc":
-		if len(cmd) != 2 {
-			return fmt.Errorf(getUsage(".doc"))
-		}
-		return runDocCmd(cmd[1], out)
 	case ".restore":
 		if len(cmd) != 2 {
 			return fmt.Errorf(getUsage(".restore"))

@@ -6,13 +6,13 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// parseUpdateStatement parses a update string and returns a Statement AST object.
+// parseUpdateStatement parses a update string and returns a Statement AST row.
 func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
 	stmt := statement.NewUpdateStatement()
 	var err error
 
 	// Parse "UPDATE".
-	if err := p.parseTokens(scanner.UPDATE); err != nil {
+	if err := p.ParseTokens(scanner.UPDATE); err != nil {
 		return nil, err
 	}
 
@@ -24,15 +24,13 @@ func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
 		return nil, pErr
 	}
 
-	// Parse clause: SET or UNSET.
+	// Parse clause: SET.
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
 	case scanner.SET:
 		stmt.SetPairs, err = p.parseSetClause()
-	case scanner.UNSET:
-		stmt.UnsetFields, err = p.parseUnsetClause()
 	default:
-		err = newParseError(scanner.Tokstr(tok, lit), []string{"SET", "UNSET"}, pos)
+		err = newParseError(scanner.Tokstr(tok, lit), []string{"SET"}, pos)
 	}
 	if err != nil {
 		return nil, err
@@ -62,8 +60,8 @@ func (p *Parser) parseSetClause() ([]statement.UpdateSetPair, error) {
 			}
 		}
 
-		// Scan the identifier for the path name.
-		path, err := p.parsePath()
+		// Scan the identifier for the col name.
+		col, err := p.parseColumn()
 		if err != nil {
 			pErr := errors.Unwrap(err).(*ParseError)
 			pErr.Expected = []string{"path"}
@@ -71,7 +69,7 @@ func (p *Parser) parseSetClause() ([]statement.UpdateSetPair, error) {
 		}
 
 		// Scan the eq sign
-		if err := p.parseTokens(scanner.EQ); err != nil {
+		if err := p.ParseTokens(scanner.EQ); err != nil {
 			return nil, err
 		}
 
@@ -80,36 +78,10 @@ func (p *Parser) parseSetClause() ([]statement.UpdateSetPair, error) {
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, statement.UpdateSetPair{Path: path, E: expr})
+		pairs = append(pairs, statement.UpdateSetPair{Column: col, E: expr})
 
 		firstPair = false
 	}
 
 	return pairs, nil
-}
-
-func (p *Parser) parseUnsetClause() ([]string, error) {
-	var fields []string
-
-	firstField := true
-	for {
-		if !firstField {
-			// Scan for a comma.
-			tok, _, _ := p.ScanIgnoreWhitespace()
-			if tok != scanner.COMMA {
-				p.Unscan()
-				break
-			}
-		}
-
-		// Scan the identifier for the path to unset.
-		lit, err := p.parseIdent()
-		if err != nil {
-			return nil, err
-		}
-		fields = append(fields, lit)
-
-		firstField = false
-	}
-	return fields, nil
 }

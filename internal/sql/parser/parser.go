@@ -6,8 +6,6 @@ import (
 	"strings"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/expr/functions"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/scanner"
@@ -20,31 +18,16 @@ type Parser struct {
 	s             *scanner.Scanner
 	orderedParams int
 	namedParams   int
-	packagesTable functions.Packages
 }
 
 // NewParser returns a new instance of Parser.
 func NewParser(r io.Reader) *Parser {
-	return NewParserWithOptions(r, nil)
-}
-
-// NewParserWithOptions returns a new instance of Parser using given Options.
-func NewParserWithOptions(r io.Reader, opts *Options) *Parser {
-	if opts == nil {
-		opts = defaultOptions()
-	}
-
-	return &Parser{s: scanner.NewScanner(r), packagesTable: opts.Packages}
+	return &Parser{s: scanner.NewScanner(r)}
 }
 
 // ParseQuery parses a query string and returns its AST representation.
 func ParseQuery(s string) (query.Query, error) {
 	return NewParser(strings.NewReader(s)).ParseQuery()
-}
-
-// ParsePath parses a path to a value in an object.
-func ParsePath(s string) (object.Path, error) {
-	return NewParser(strings.NewReader(s)).parsePath()
 }
 
 // ParseExpr parses an expression.
@@ -177,24 +160,24 @@ func (p *Parser) parseCondition() (expr.Expr, error) {
 	return expr, nil
 }
 
-// parsePathList parses a list of paths in the form: (path, path, ...), if exists
-func (p *Parser) parsePathList() ([]object.Path, tree.SortOrder, error) {
+// parseColumnList parses a list of columns in the form: (path, path, ...), if exists
+func (p *Parser) parseColumnList() ([]string, tree.SortOrder, error) {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
 		return nil, 0, err
 	}
 
-	var paths []object.Path
+	var columns []string
 	var err error
-	var path object.Path
+	var col string
 	var order tree.SortOrder
 
-	// Parse first (required) path.
-	if path, err = p.parsePath(); err != nil {
+	// Parse first (required) column.
+	if col, err = p.parseIdent(); err != nil {
 		return nil, 0, err
 	}
 
-	paths = append(paths, path)
+	columns = append(columns, col)
 
 	// Parse optional ASC/DESC token.
 	ok, err := p.parseOptional(scanner.DESC)
@@ -211,7 +194,7 @@ func (p *Parser) parsePathList() ([]object.Path, tree.SortOrder, error) {
 		}
 	}
 
-	// Parse remaining (optional) paths.
+	// Parse remaining (optional) columns.
 	i := 0
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
@@ -219,12 +202,12 @@ func (p *Parser) parsePathList() ([]object.Path, tree.SortOrder, error) {
 			break
 		}
 
-		vp, err := p.parsePath()
+		c, err := p.parseIdent()
 		if err != nil {
 			return nil, 0, err
 		}
 
-		paths = append(paths, vp)
+		columns = append(columns, c)
 
 		i++
 
@@ -245,11 +228,11 @@ func (p *Parser) parsePathList() ([]object.Path, tree.SortOrder, error) {
 	}
 
 	// Parse required ) token.
-	if err := p.parseTokens(scanner.RPAREN); err != nil {
+	if err := p.ParseTokens(scanner.RPAREN); err != nil {
 		return nil, 0, err
 	}
 
-	return paths, order, nil
+	return columns, order, nil
 }
 
 // Scan returns the next token from the underlying scanner.
@@ -271,9 +254,9 @@ func (p *Parser) Unscan() {
 	p.s.Unscan()
 }
 
-// parseTokens parses all the given tokens one after the other.
+// ParseTokens parses all the given tokens one after the other.
 // It returns an error if one of the token is missing.
-func (p *Parser) parseTokens(tokens ...scanner.Token) error {
+func (p *Parser) ParseTokens(tokens ...scanner.Token) error {
 	for _, t := range tokens {
 		if tok, pos, lit := p.ScanIgnoreWhitespace(); tok != t {
 			return newParseError(scanner.Tokstr(tok, lit), []string{t.String()}, pos)
@@ -297,7 +280,7 @@ func (p *Parser) parseOptional(tokens ...scanner.Token) (bool, error) {
 		return true, nil
 	}
 
-	err := p.parseTokens(tokens[1:]...)
+	err := p.ParseTokens(tokens[1:]...)
 	return err == nil, err
 }
 

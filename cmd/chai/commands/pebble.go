@@ -2,6 +2,7 @@ package commands
 
 import (
 	"github.com/chaisql/chai/cmd/chai/dbutil"
+	"github.com/chaisql/chai/internal/kv"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,7 +36,8 @@ func NewPebbleCommand() *cli.Command {
 		}
 		defer db.Close()
 
-		return dbutil.DumpPebble(c.Context, db.DB.Store.DB(), dbutil.DumpPebbleOptions{
+		ng := db.DB.Engine.(*kv.PebbleEngine)
+		return dbutil.DumpPebble(c.Context, ng.DB(), dbutil.DumpPebbleOptions{
 			KeysOnly: c.Bool("keys-only"),
 		})
 	}

@@ -7,15 +7,14 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func getValue(t *testing.T, st kv.Session, key []byte) []byte {
+func getValue(t *testing.T, st engine.Session, key []byte) []byte {
 	v, err := st.Get([]byte(key))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return v
 }
 
@@ -38,13 +37,13 @@ func TestReadOnly(t *testing.T) {
 				var err error
 				test.fn(&err)
 
-				assert.Error(t, err)
+				require.Error(t, err)
 			})
 		}
 	})
 }
 
-func kvBuilder(t testing.TB) kv.Session {
+func kvBuilder(t testing.TB) engine.Session {
 	ng := testutil.NewEngine(t)
 	s := ng.NewBatchSession()
 
@@ -67,7 +66,7 @@ func TestBatchCommit(t *testing.T) {
 			k++
 			key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), j)
 			err := batch.Put(key, encoding.EncodeInt(nil, k))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -107,7 +106,7 @@ func TestRollback(t *testing.T) {
 			k++
 			key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), j)
 			err := s.Put(key, encoding.EncodeInt(nil, k))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		}
 	}
 
@@ -121,7 +120,7 @@ func TestRollback(t *testing.T) {
 	for i := int64(9); i >= 0; i-- {
 		key := encoding.EncodeInt(encoding.EncodeInt(nil, 10), i)
 		_, err = snapshot.Get(key)
-		require.ErrorIs(t, err, kv.ErrKeyNotFound)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 	}
 }
 
@@ -132,7 +131,7 @@ func TestStorePut(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(key, []byte("FOO"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		v := getValue(t, st, key)
 		require.Equal(t, []byte("FOO"), v)
@@ -142,10 +141,10 @@ func TestStorePut(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(key, []byte("FOO"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = st.Put(key, []byte("BAR"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		v := getValue(t, st, key)
 		require.Equal(t, []byte("BAR"), v)
@@ -155,20 +154,20 @@ func TestStorePut(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(nil, []byte("FOO"))
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		err = st.Put([]byte(""), []byte("BAR"))
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("Should fail when value is nil or empty", func(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(key, nil)
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		err = st.Put(key, []byte(""))
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
@@ -181,7 +180,7 @@ func TestStoreGet(t *testing.T) {
 		st := kvBuilder(t)
 
 		r, err := st.Get(foo)
-		assert.ErrorIs(t, err, kv.ErrKeyNotFound)
+		require.ErrorIs(t, err, engine.ErrKeyNotFound)
 		require.Nil(t, r)
 	})
 
@@ -189,9 +188,9 @@ func TestStoreGet(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(foo, []byte("FOO"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = st.Put(bar, []byte("BAR"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		v := getValue(t, st, foo)
 		require.Equal(t, []byte("FOO"), v)
@@ -210,20 +209,20 @@ func TestStoreDelete(t *testing.T) {
 		st := kvBuilder(t)
 
 		err := st.Put(foo, []byte("FOO"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = st.Put(bar, []byte("BAR"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		v := getValue(t, st, foo)
 		require.Equal(t, []byte("FOO"), v)
 
 		// delete the key
 		err = st.Delete(bar)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// try again, should fail
 		ok, err := st.Exists(bar)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.False(t, ok)
 
 		// make sure it didn't also delete the other one
@@ -232,7 +231,7 @@ func TestStoreDelete(t *testing.T) {
 
 		// the deleted key must not appear on iteration
 		it, err := st.Iterator(nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer it.Close()
 		for it.First(); it.Valid(); it.Next() {
 			if bytes.Equal(it.Key(), bar) {
@@ -248,34 +247,38 @@ func TestQueries(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
 
 		r, err := db.QueryRow(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT COUNT(*) FROM test;
 		`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var count int
 		err = r.Scan(&count)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 4, count)
 
 		t.Run("ORDER BY", func(t *testing.T) {
-			st, err := db.Query("SELECT * FROM test ORDER BY a DESC")
-			assert.NoError(t, err)
+			st, err := conn.Query("SELECT * FROM test ORDER BY a DESC")
+			require.NoError(t, err)
 			defer st.Close()
 
 			var i int
 			err = st.Iterate(func(r *chai.Row) error {
 				var a int
 				err := r.Scan(&a)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.Equal(t, 4-i, a)
 				i++
 				return nil
 			})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	})
 
@@ -283,32 +286,36 @@ func TestQueries(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = db.Exec(`
-			CREATE TABLE test;
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		st, err := db.Query(`
-				CREATE TABLE test;
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		st, err := conn.Query(`
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
 			`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer st.Close()
 		var buf bytes.Buffer
 		err = st.MarshalJSONTo(&buf)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
 	})
 
@@ -316,28 +323,35 @@ func TestQueries(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		err = db.Exec("CREATE TABLE test")
-		assert.NoError(t, err)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
 
-		err = db.Update(func(tx *chai.Tx) error {
-			for i := 1; i < 200; i++ {
-				err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
-				assert.NoError(t, err)
-			}
-			return nil
-		})
-		assert.NoError(t, err)
+		err = conn.Exec("CREATE TABLE test(a INT)")
+		require.NoError(t, err)
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		for i := 1; i < 200; i++ {
+			err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
+			require.NoError(t, err)
+		}
+
+		err = tx.Commit()
+		require.NoError(t, err)
 
 		r, err := db.QueryRow(`
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var count int
 		err = r.Scan(&count)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, 2, count)
 	})
 }
@@ -348,85 +362,113 @@ func TestQueriesSameTransaction(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			r, err := tx.QueryRow(`
-				CREATE TABLE test;
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		r, err := tx.QueryRow(`
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`)
-			assert.NoError(t, err)
-			var count int
-			err = r.Scan(&count)
-			assert.NoError(t, err)
-			require.Equal(t, 4, count)
-			return nil
-		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		var count int
+		err = r.Scan(&count)
+		require.NoError(t, err)
+		require.Equal(t, 4, count)
+
+		err = tx.Commit()
+		require.NoError(t, err)
 	})
 
 	t.Run("INSERT", func(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			err = tx.Exec(`
-			CREATE TABLE test;
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		err = tx.Exec(`
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
-			assert.NoError(t, err)
-			return nil
-		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
+		err = tx.Commit()
+		require.NoError(t, err)
 	})
 
 	t.Run("UPDATE", func(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			st, err := tx.Query(`
-				CREATE TABLE test;
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		st, err := tx.Query(`
+				CREATE TABLE test(a INT);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				UPDATE test SET a = 5;
 				SELECT * FROM test;
 			`)
-			assert.NoError(t, err)
-			defer st.Close()
-			var buf bytes.Buffer
-			err = st.MarshalJSONTo(&buf)
-			assert.NoError(t, err)
-			require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
-			return nil
-		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		defer st.Close()
+		var buf bytes.Buffer
+		err = st.MarshalJSONTo(&buf)
+		require.NoError(t, err)
+		require.JSONEq(t, `[{"a": 5},{"a": 5},{"a": 5},{"a": 5}]`, buf.String())
+
+		err = tx.Commit()
+		require.NoError(t, err)
 	})
 
 	t.Run("DELETE", func(t *testing.T) {
 		dir := t.TempDir()
 
 		db, err := chai.Open(filepath.Join(dir, "pebble"))
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
-		err = db.Update(func(tx *chai.Tx) error {
-			r, err := tx.QueryRow(`
-			CREATE TABLE test;
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.Begin(true)
+		require.NoError(t, err)
+		defer tx.Rollback()
+
+		r, err := tx.QueryRow(`
+			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;
 		`)
-			assert.NoError(t, err)
-			var count int
-			err = r.Scan(&count)
-			assert.NoError(t, err)
-			require.Equal(t, 2, count)
-			return nil
-		})
-		assert.NoError(t, err)
+		require.NoError(t, err)
+		var count int
+		err = r.Scan(&count)
+		require.NoError(t, err)
+		require.Equal(t, 2, count)
+
+		err = tx.Commit()
+		require.NoError(t, err)
 	})
 }

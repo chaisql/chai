@@ -7,7 +7,6 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,11 +18,9 @@ func TestInsertStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"pk()":[1],"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
+		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
 		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []interface{}{'e'}},
-		{"Objects / Named Params", "INSERT INTO test VALUES {a: $a, b: 2.3, c: $c}", false, `[{"pk()":[1],"a":1,"b":2.3,"c":true}]`, []interface{}{sql.Named("c", true), sql.Named("a", 1)}},
-		{"Objects / List ", "INSERT INTO test VALUES {a: [1, 2, 3]}", false, `[{"pk()":[1],"a":[1,2,3]}]`, nil},
 		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 
@@ -31,34 +28,38 @@ func TestInsertStmt(t *testing.T) {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
 				db, err := chai.Open(":memory:")
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				defer db.Close()
 
-				err = db.Exec("CREATE TABLE test(a any, b any, c any)")
-				assert.NoError(t, err)
+				conn, err := db.Connect()
+				require.NoError(t, err)
+				defer conn.Close()
+
+				err = conn.Exec("CREATE TABLE test(a TEXT, b TEXT, c TEXT)")
+				require.NoError(t, err)
 				if withIndexes {
-					err = db.Exec(`
+					err = conn.Exec(`
 						CREATE INDEX idx_a ON test (a);
 						CREATE INDEX idx_b ON test (b);
 						CREATE INDEX idx_c ON test (c);
 					`)
-					assert.NoError(t, err)
+					require.NoError(t, err)
 				}
 
-				err = db.Exec(test.query, test.params...)
+				err = conn.Exec(test.query, test.params...)
 				if test.fails {
-					assert.Error(t, err)
+					require.Error(t, err)
 					return
 				}
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				st, err := db.Query("SELECT pk(), * FROM test")
-				assert.NoError(t, err)
+				st, err := conn.Query("SELECT * FROM test")
+				require.NoError(t, err)
 				defer st.Close()
 
 				var buf bytes.Buffer
 				err = st.MarshalJSONTo(&buf)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				require.JSONEq(t, test.expected, buf.String())
 			}
 		}
@@ -67,74 +68,58 @@ func TestInsertStmt(t *testing.T) {
 		t.Run("With Index/"+test.name, testFn(true))
 	}
 
-	t.Run("with struct param", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
-		defer db.Close()
-
-		err = db.Exec("CREATE TABLE test")
-		assert.NoError(t, err)
-
-		type foo struct {
-			A string
-			B string `chai:"b-b"`
-		}
-
-		err = db.Exec("INSERT INTO test VALUES ?", &foo{A: "a", B: "b"})
-		assert.NoError(t, err)
-		res, err := db.Query("SELECT * FROM test")
-		defer res.Close()
-
-		assert.NoError(t, err)
-		buf, err := res.MarshalJSON()
-		assert.NoError(t, err)
-		require.JSONEq(t, `[{"a": "a", "b-b": "b"}]`, string(buf))
-	})
-
 	t.Run("with RETURNING", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE test`)
-		assert.NoError(t, err)
+		err = db.Exec(`CREATE TABLE test(a INT)`)
+		require.NoError(t, err)
 
-		d, err := db.QueryRow(`insert into test (a) VALUES (1) RETURNING *, pk(), a AS A`)
-		assert.NoError(t, err)
-		testutil.RequireJSONEq(t, d, `{"a": 1, "pk()": [1], "A": 1}`)
+		d, err := db.QueryRow(`insert into test (a) VALUES (1) RETURNING *, a AS A`)
+		require.NoError(t, err)
+		testutil.RequireJSONEq(t, d, `{"a": 1,  "A": 1}`)
 	})
 
 	t.Run("ensure rollback", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE TABLE test(a int unique)`)
-		assert.NoError(t, err)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
 
-		err = db.Exec(`insert into test (a) VALUES (1), (1)`)
-		assert.Error(t, err)
+		err = conn.Exec(`CREATE TABLE test(a int unique)`)
+		require.NoError(t, err)
 
-		res, err := db.Query("SELECT * FROM test")
-		assert.NoError(t, err)
+		err = conn.Exec(`insert into test (a) VALUES (1), (1)`)
+		require.Error(t, err)
+
+		res, err := conn.Query("SELECT * FROM test")
+		require.NoError(t, err)
 		defer res.Close()
 
-		testutil.RequireStreamEq(t, ``, res, false)
+		testutil.RequireStreamEq(t, ``, res)
 	})
 
 	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
-		assert.NoError(t, err)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
 
-		err = db.Exec(`insert into test (a) VALUES (1), (2), (3)`)
-		assert.NoError(t, err)
+		err = conn.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
+		require.NoError(t, err)
 
-		res, err := db.Query("SELECT * FROM test")
-		assert.NoError(t, err)
+		err = conn.Exec(`insert into test (a) VALUES (1), (2), (3)`)
+		require.NoError(t, err)
+
+		res, err := conn.Query("SELECT * FROM test")
+		require.NoError(t, err)
 		defer res.Close()
 
 		var b bytes.Buffer
@@ -159,43 +144,47 @@ func TestInsertSelect(t *testing.T) {
 		params   []interface{}
 	}{
 		{"Same table", `INSERT INTO foo SELECT * FROM foo`, true, ``, nil},
-		{"No fields / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"pk()":[1], "a":1, "b":10}]`, nil},
-		{"No fields / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"pk()":[1], "a":1}]`, nil},
-		{"With fields / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, false, `[{"pk()":[1], "a":1, "b":10}]`, nil},
-		{"With fields / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"pk()":[1], "c":1, "d":10}]`, nil},
-		{"Too many fields / No Projection", `INSERT INTO foo (c) SELECT * FROM bar`, true, ``, nil},
-		{"Too many fields / Projection", `INSERT INTO foo (c, d) SELECT a, b, c FROM bar`, true, ``, nil},
-		{"Too few fields / No Projection", `INSERT INTO foo (c, d, e) SELECT * FROM bar`, true, ``, nil},
-		{"Too few fields / Projection", `INSERT INTO foo (c, d) SELECT a FROM bar`, true, ``, nil},
+		{"No columns / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"a":1, "b":10, "c":null, "d":null, "e":null}]`, nil},
+		{"No columns / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"a":1, "b":null, "c":null, "d":null, "e":null}]`, nil},
+		{"With columns / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, true, ``, nil},
+		{"With columns / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"a":null, "b":null, "c":1, "d":10, "e":null}]`, nil},
+		{"Too many columns / No Projection", `INSERT INTO foo (c) SELECT * FROM bar`, true, ``, nil},
+		{"Too many columns / Projection", `INSERT INTO foo (c, d) SELECT a, b, c FROM bar`, true, ``, nil},
+		{"Too few columns / No Projection", `INSERT INTO foo (c, d, e) SELECT * FROM bar`, true, ``, nil},
+		{"Too few columns / Projection", `INSERT INTO foo (c, d) SELECT a FROM bar`, true, ``, nil},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			defer db.Close()
 
-			err = db.Exec(`
-				CREATE TABLE foo;
-				CREATE TABLE bar;
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+
+			err = conn.Exec(`
+				CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
+				CREATE TABLE bar(a INT, b INT, c INT, d INT, e INT);
 				INSERT INTO bar (a, b) VALUES (1, 10)
 			`)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			err = db.Exec(test.query, test.params...)
+			err = conn.Exec(test.query, test.params...)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
-			st, err := db.Query("SELECT pk(), * FROM foo")
-			assert.NoError(t, err)
+			st, err := conn.Query("SELECT * FROM foo")
+			require.NoError(t, err)
 			defer st.Close()
 
 			var buf bytes.Buffer
 			err = st.MarshalJSONTo(&buf)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.JSONEq(t, test.expected, buf.String())
 		})
 	}

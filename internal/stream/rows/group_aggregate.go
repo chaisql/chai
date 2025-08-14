@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
+	"github.com/cockroachdb/errors"
 )
 
 type GroupAggregateOperator struct {
@@ -18,9 +20,21 @@ type GroupAggregateOperator struct {
 }
 
 // GroupAggregate consumes the incoming stream and outputs one value per group.
-// It assumes the stream is sorted by groupBy.
+// It assumes the stream is sorted by the groupBy expression.
 func GroupAggregate(groupBy expr.Expr, builders ...expr.AggregatorBuilder) *GroupAggregateOperator {
 	return &GroupAggregateOperator{E: groupBy, Builders: builders}
+}
+
+func (op *GroupAggregateOperator) Clone() stream.Operator {
+	builders := make([]expr.AggregatorBuilder, len(op.Builders))
+	for i, b := range op.Builders {
+		builders[i] = expr.Clone(b).(expr.AggregatorBuilder)
+	}
+	return &GroupAggregateOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Builders:     builders,
+		E:            expr.Clone(op.E),
+	}
 }
 
 func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
@@ -42,13 +56,17 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		}
 
 		group, err := op.E.Eval(out)
+		if errors.Is(err, types.ErrColumnNotFound) {
+			group = types.NewNullValue()
+			err = nil
+		}
 		if err != nil {
 			return err
 		}
 
 		// handle the first object of the stream
 		if lastGroup == nil {
-			lastGroup, err = object.CloneValue(group)
+			lastGroup = group
 			if err != nil {
 				return err
 			}
@@ -56,7 +74,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return ga.Aggregate(out)
 		}
 
-		ok, err := types.IsEqual(lastGroup, group)
+		ok, err := lastGroup.EQ(group)
 		if err != nil {
 			return err
 		}
@@ -74,10 +92,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 			return err
 		}
 
-		lastGroup, err = object.CloneValue(group)
-		if err != nil {
-			return err
-		}
+		lastGroup = group
 
 		ga = newGroupAggregator(lastGroup, groupExpr, op.Builders)
 		return ga.Aggregate(out)
@@ -86,7 +101,7 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		return err
 	}
 
-	// if s is empty, we create a default group so that aggregators will
+	// if ga is empty, we create a default group so that aggregators will
 	// return their default initial value.
 	// Ex: For `SELECT COUNT(*) FROM foo`, if `foo` is empty
 	// we want the following result:
@@ -100,6 +115,19 @@ func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(ou
 		return err
 	}
 	return f(e)
+}
+
+func (op *GroupAggregateOperator) Columns(env *environment.Environment) ([]string, error) {
+	columns := make([]string, 0, len(op.Builders)+1)
+	if op.E != nil {
+		columns = append(columns, op.E.String())
+	}
+
+	for _, agg := range op.Builders {
+		columns = append(columns, agg.String())
+	}
+
+	return columns, nil
 }
 
 func (op *GroupAggregateOperator) String() string {
@@ -155,11 +183,11 @@ func (g *groupAggregator) Aggregate(env *environment.Environment) error {
 }
 
 func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Environment, error) {
-	fb := object.NewFieldBuffer()
+	cb := row.NewColumnBuffer()
 
 	// add the current group to the object
 	if g.groupExpr != "" {
-		fb.Add(g.groupExpr, g.group)
+		cb.Add(g.groupExpr, g.group)
 	}
 
 	for _, agg := range g.aggregators {
@@ -167,12 +195,14 @@ func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Envi
 		if err != nil {
 			return nil, err
 		}
-		fb.Add(agg.String(), v)
+		cb.Add(agg.String(), v)
 	}
 
 	var newEnv environment.Environment
+	var br database.BasicRow
+	br.ResetWith("", nil, cb)
 	newEnv.SetOuter(env)
-	newEnv.SetRowFromObject(fb)
+	newEnv.SetRow(&br)
 
 	return &newEnv, nil
 }

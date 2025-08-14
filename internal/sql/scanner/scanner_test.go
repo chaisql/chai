@@ -26,7 +26,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "\n\r", tok: WS, lit: "\n\n"},
 		{s: " \n\t \r\n\t", tok: WS, lit: " \n\t \n\t"},
 		{s: " foo", tok: WS, lit: " "},
-		{s: "...", tok: ELLIPSIS, lit: "..."},
 
 		// Numeric operators
 		{s: `+`, tok: ADD},
@@ -177,7 +176,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `TRANSACTION`, tok: TRANSACTION},
 		{s: `UPDATE`, tok: UPDATE},
 		{s: `UNION`, tok: UNION},
-		{s: `UNSET`, tok: UNSET},
 		{s: `VALUE`, tok: VALUE},
 		{s: `VALUES`, tok: VALUES},
 		{s: `WITH`, tok: WITH},
@@ -186,7 +184,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: `seLECT`, tok: SELECT}, // case insensitive
 
 		// types
-		{s: "ANY", tok: TYPEANY},
 		{s: "BYTES", tok: TYPEBYTES},
 		{s: "BOOL", tok: TYPEBOOL},
 		{s: "BOOLEAN", tok: TYPEBOOLEAN},
@@ -194,7 +191,6 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "INTEGER", tok: TYPEINTEGER},
 		{s: "TEXT", tok: TYPETEXT},
 		{s: "TIMESTAMP", tok: TYPETIMESTAMP},
-		{s: "OBJECT", tok: TYPEOBJECT},
 	}
 
 	for i, tt := range tests {

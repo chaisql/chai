@@ -26,6 +26,14 @@ func (s *Stream) Pipe(op Operator) *Stream {
 	return s
 }
 
+func (s *Stream) Columns(env *environment.Environment) ([]string, error) {
+	if s.Op == nil {
+		return nil, nil
+	}
+
+	return s.Op.Columns(env)
+}
+
 func (s *Stream) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	if s.Op == nil {
 		return nil
@@ -82,6 +90,25 @@ func (s *Stream) String() string {
 	return sb.String()
 }
 
+func (s *Stream) Clone() *Stream {
+	if s == nil {
+		return nil
+	}
+
+	if s.Op == nil {
+		return New(nil)
+	}
+
+	op := s.First()
+	var ops []Operator
+	for op != nil {
+		ops = append(ops, op.Clone())
+		op = op.GetNext()
+	}
+
+	return New(Pipe(ops...))
+}
+
 func InsertBefore(op, newOp Operator) Operator {
 	if op != nil {
 		prev := op.GetPrev()
@@ -118,10 +145,16 @@ type DiscardOperator struct {
 	BaseOperator
 }
 
-// Discard is an operator that doesn't produce any object.
+// Discard is an operator that doesn't produce any row.
 // It iterates over the previous operator and discards all the objects.
 func Discard() *DiscardOperator {
 	return &DiscardOperator{}
+}
+
+func (it *DiscardOperator) Clone() Operator {
+	return &DiscardOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+	}
 }
 
 // Iterate iterates over all the streams and returns their union.

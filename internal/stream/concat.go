@@ -17,6 +17,26 @@ func Concat(s ...*Stream) *ConcatOperator {
 	return &ConcatOperator{Streams: s}
 }
 
+func (it *ConcatOperator) Clone() Operator {
+	streams := make([]*Stream, len(it.Streams))
+	for i, s := range it.Streams {
+		streams[i] = s.Clone()
+	}
+
+	return &ConcatOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+		Streams:      streams,
+	}
+}
+
+func (it *ConcatOperator) Columns(env *environment.Environment) ([]string, error) {
+	if len(it.Streams) == 0 {
+		return nil, nil
+	}
+
+	return it.Streams[0].Columns(env)
+}
+
 func (it *ConcatOperator) Iterate(in *environment.Environment, fn func(*environment.Environment) error) error {
 	for _, s := range it.Streams {
 		if err := s.Iterate(in, fn); err != nil {

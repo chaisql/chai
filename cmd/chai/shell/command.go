@@ -13,9 +13,8 @@ import (
 
 	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
-	"github.com/chaisql/chai/cmd/chai/doc"
 	errs "github.com/chaisql/chai/internal/errors"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 )
 
 type command struct {
@@ -59,12 +58,6 @@ var commands = []command{
 		Options:     "[table_name]",
 		DisplayName: ".dump",
 		Description: "Dump database content or table content as SQL statements.",
-	},
-	{
-		Name:        ".doc",
-		Options:     "[function_name]",
-		DisplayName: ".doc",
-		Description: "Display inline documentation for a function",
 	},
 	{
 		Name:        ".save",
@@ -120,19 +113,15 @@ func runHelpCmd(out io.Writer) error {
 	return nil
 }
 
-// runDocCommand prints the docstring for a given function
-func runDocCmd(expr string, out io.Writer) error {
-	doc, err := doc.DocString(expr)
+// runTablesCmd displays all tables.
+func runTablesCmd(db *chai.DB, w io.Writer) error {
+	conn, err := db.Connect()
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "%s\n", doc)
-	return nil
-}
+	defer conn.Close()
 
-// runTablesCmd displays all tables.
-func runTablesCmd(db *chai.DB, w io.Writer) error {
-	res, err := db.Query("SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
+	res, err := conn.Query("SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
 	if err != nil {
 		return err
 	}
@@ -212,7 +201,13 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	}
 	defer f.Close()
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	tx, err := conn.Begin(true)
 	if err != nil {
 		return err
 	}
@@ -233,9 +228,9 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	baseQ := fmt.Sprintf("INSERT INTO %s VALUES ", table)
 
 	buf := make([][]string, csvBatchSize)
-	fbs := make([]*object.FieldBuffer, csvBatchSize)
+	fbs := make([]*row.ColumnBuffer, csvBatchSize)
 	for i := range fbs {
-		fbs[i] = object.NewFieldBuffer()
+		fbs[i] = row.NewColumnBuffer()
 	}
 	args := make([]any, csvBatchSize)
 	for i := range args {

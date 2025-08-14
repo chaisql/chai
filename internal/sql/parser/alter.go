@@ -7,53 +7,53 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ statement.AlterTableRenameStmt, err error) {
+func (p *Parser) parseAlterTableRenameStatement(tableName string) (_ *statement.AlterTableRenameStmt, err error) {
 	var stmt statement.AlterTableRenameStmt
 	stmt.TableName = tableName
 
 	// Parse "TO".
-	if err := p.parseTokens(scanner.TO); err != nil {
-		return stmt, err
+	if err := p.ParseTokens(scanner.TO); err != nil {
+		return nil, err
 	}
 
 	// Parse new table name.
 	stmt.NewTableName, err = p.parseIdent()
 	if err != nil {
-		return stmt, err
-	}
-
-	return stmt, nil
-}
-
-func (p *Parser) parseAlterTableAddFieldStatement(tableName string) (*statement.AlterTableAddColumnStmt, error) {
-	var stmt statement.AlterTableAddColumnStmt
-	stmt.TableName = tableName
-
-	// Parse "FIELD".
-	if err := p.parseTokens(scanner.COLUMN); err != nil {
 		return nil, err
-	}
-
-	// Parse new field definition.
-	var err error
-	stmt.FieldConstraint, stmt.TableConstraints, err = p.parseFieldDefinition(nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if stmt.FieldConstraint.IsEmpty() {
-		return nil, &ParseError{Message: "cannot add a field with no constraint"}
 	}
 
 	return &stmt, nil
 }
 
-// parseAlterStatement parses a Alter query string and returns a Statement AST object.
+func (p *Parser) parseAlterTableAddColumnStatement(tableName string) (*statement.AlterTableAddColumnStmt, error) {
+	var stmt statement.AlterTableAddColumnStmt
+	stmt.TableName = tableName
+
+	// Parse "COLUMN".
+	if err := p.ParseTokens(scanner.COLUMN); err != nil {
+		return nil, err
+	}
+
+	// Parse new column definition.
+	var err error
+	stmt.ColumnConstraint, stmt.TableConstraints, err = p.parseColumnDefinition()
+	if err != nil {
+		return nil, err
+	}
+
+	if stmt.ColumnConstraint.IsEmpty() {
+		return nil, &ParseError{Message: "cannot add a column with no constraint"}
+	}
+
+	return &stmt, nil
+}
+
+// parseAlterStatement parses a Alter query string and returns a Statement AST row.
 func (p *Parser) parseAlterStatement() (statement.Statement, error) {
 	var err error
 
 	// Parse "TABLE".
-	if err := p.parseTokens(scanner.ALTER, scanner.TABLE); err != nil {
+	if err := p.ParseTokens(scanner.ALTER, scanner.TABLE); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +70,7 @@ func (p *Parser) parseAlterStatement() (statement.Statement, error) {
 	case scanner.RENAME:
 		return p.parseAlterTableRenameStatement(tableName)
 	case scanner.ADD_KEYWORD:
-		return p.parseAlterTableAddFieldStatement(tableName)
+		return p.parseAlterTableAddColumnStatement(tableName)
 	}
 
 	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"ADD", "RENAME"}, pos)

@@ -36,9 +36,5 @@ cmd/chai/chai
 # gopls log
 gopls.log
 
-# go.work
-go.work
-go.work.sum
-
 # Local experiments
 lab/

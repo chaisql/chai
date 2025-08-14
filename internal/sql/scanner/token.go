@@ -29,7 +29,6 @@ const (
 	NULL            // NULL
 	REGEX           // Regular expressions
 	BADREGEX        // `.*
-	ELLIPSIS        // ...
 	literalEnd
 
 	operatorBeg
@@ -140,7 +139,6 @@ const (
 	TRANSACTION
 	UNION
 	UNIQUE
-	UNSET
 	UPDATE
 	VALUE
 	VALUES
@@ -149,8 +147,6 @@ const (
 	WRITE
 
 	// Types
-	TYPEANY
-	TYPEARRAY
 	TYPEBIGINT
 	TYPEBLOB
 	TYPEBOOL
@@ -163,7 +159,6 @@ const (
 	TYPEINT8
 	TYPEINTEGER
 	TYPEMEDIUMINT
-	TYPEOBJECT
 	TYPEREAL
 	TYPESMALLINT
 	TYPETEXT
@@ -289,7 +284,6 @@ var tokens = [...]string{
 	TRANSACTION: "TRANSACTION",
 	UNION:       "UNION",
 	UNIQUE:      "UNIQUE",
-	UNSET:       "UNSET",
 	UPDATE:      "UPDATE",
 	VALUE:       "VALUE",
 	VALUES:      "VALUES",
@@ -297,8 +291,6 @@ var tokens = [...]string{
 	WHERE:       "WHERE",
 	WRITE:       "WRITE",
 
-	TYPEANY:       "ANY",
-	TYPEARRAY:     "ARRAY",
 	TYPEBIGINT:    "BIGINT",
 	TYPEBLOB:      "BLOB",
 	TYPEBOOL:      "BOOL",
@@ -311,7 +303,6 @@ var tokens = [...]string{
 	TYPEINT8:      "INT8",
 	TYPEINTEGER:   "INTEGER",
 	TYPEMEDIUMINT: "MEDIUMINT",
-	TYPEOBJECT:    "OBJECT",
 	TYPEREAL:      "REAL",
 	TYPESMALLINT:  "SMALLINT",
 	TYPETEXT:      "TEXT",

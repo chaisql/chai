@@ -15,13 +15,13 @@ func TestConcatExpr(t *testing.T) {
 	}{
 		{"'a' || 'b'", types.NewTextValue("ab"), false},
 		{"'a' || NULL", nullLiteral, false},
-		{"'a' || notFound", nullLiteral, false},
+		{"'a' || notFound", nullLiteral, true},
 		{"'a' || 1", nullLiteral, false},
 	}
 
 	for _, test := range tests {
 		t.Run(test.expr, func(t *testing.T) {
-			testutil.TestExpr(t, test.expr, envWithDoc, test.res, test.fails)
+			testutil.TestExpr(t, test.expr, envWithRow, test.res, test.fails)
 		})
 	}
 }

@@ -25,6 +25,8 @@ type Operator interface {
 	GetNext() Operator
 	GetPrev() Operator
 	String() string
+	Clone() Operator
+	Columns(env *environment.Environment) ([]string, error)
 }
 
 // An OperatorFunc is the function that will receive each value of the stream.
@@ -58,4 +60,16 @@ func (op *BaseOperator) GetPrev() Operator {
 
 func (op *BaseOperator) GetNext() Operator {
 	return op.Next
+}
+
+func (op BaseOperator) Clone() BaseOperator {
+	return op
+}
+
+func (op *BaseOperator) Columns(env *environment.Environment) ([]string, error) {
+	if op.Prev == nil {
+		return nil, nil
+	}
+
+	return op.Prev.Columns(env)
 }

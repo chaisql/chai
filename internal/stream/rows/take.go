@@ -5,7 +5,6 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -22,6 +21,13 @@ func Take(e expr.Expr) *TakeOperator {
 	return &TakeOperator{E: e}
 }
 
+func (op *TakeOperator) Clone() stream.Operator {
+	return &TakeOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		E:            expr.Clone(op.E),
+	}
+}
+
 // Iterate implements the Operator interface.
 func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
 	v, err := op.E.Eval(in)
@@ -33,12 +39,12 @@ func (op *TakeOperator) Iterate(in *environment.Environment, f func(out *environ
 		return fmt.Errorf("limit expression must evaluate to a number, got %q", v.Type())
 	}
 
-	v, err = object.CastAsInteger(v)
+	v, err = v.CastAs(types.TypeBigint)
 	if err != nil {
 		return err
 	}
 
-	n := types.As[int64](v)
+	n := types.AsInt64(v)
 	var count int64
 	return op.Prev.Iterate(in, func(out *environment.Environment) error {
 		if count < n {

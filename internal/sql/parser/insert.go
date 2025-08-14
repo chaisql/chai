@@ -10,13 +10,13 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-// parseInsertStatement parses an insert string and returns a Statement AST object.
+// parseInsertStatement parses an insert string and returns a Statement AST row.
 func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 	stmt := statement.NewInsertStatement()
 	var err error
 
 	// Parse "INSERT INTO".
-	if err := p.parseTokens(scanner.INSERT, scanner.INTO); err != nil {
+	if err := p.ParseTokens(scanner.INSERT, scanner.INTO); err != nil {
 		return nil, err
 	}
 
@@ -29,7 +29,7 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 	}
 
 	// Parse path list: (a, b, c)
-	stmt.Fields, err = p.parseFieldList()
+	stmt.Columns, err = p.parseSimpleColumnList()
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 	switch tok {
 	case scanner.VALUES:
 		// Parse VALUES (v1, v2, v3)
-		stmt.Values, err = p.parseValues(stmt.Fields)
+		stmt.Values, err = p.parseValues(stmt.Columns)
 		if err != nil {
 			return nil, err
 		}
@@ -67,9 +67,9 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 	return stmt, nil
 }
 
-// parseFieldList parses a list of fields in the form: (path, path, ...), if exists.
+// parseColumnList parses a list of columns in the form: (column, column, ...), if exists.
 // If the list is empty, it returns an error.
-func (p *Parser) parseFieldList() ([]string, error) {
+func (p *Parser) parseSimpleColumnList() ([]string, error) {
 	// Parse ( token.
 	if ok, err := p.parseOptional(scanner.LPAREN); !ok || err != nil {
 		p.Unscan()
@@ -77,141 +77,61 @@ func (p *Parser) parseFieldList() ([]string, error) {
 	}
 
 	// Parse path list.
-	var fields []string
+	var columns []string
 	var err error
-	if fields, err = p.parseIdentList(); err != nil {
+	if columns, err = p.parseIdentList(); err != nil {
 		return nil, err
 	}
 
 	// Parse required ) token.
-	if err := p.parseTokens(scanner.RPAREN); err != nil {
+	if err := p.ParseTokens(scanner.RPAREN); err != nil {
 		return nil, err
 	}
 
-	return fields, nil
+	return columns, nil
 }
 
 // parseValues parses the "VALUES" clause of the query, if it exists.
 func (p *Parser) parseValues(fields []string) ([]expr.Expr, error) {
-	if len(fields) > 0 {
-		return p.parseObjectsWithFields(fields)
-	}
+	var rows []expr.Expr
 
-	tok, pos, lit := p.ScanIgnoreWhitespace()
-	p.Unscan()
-	switch tok {
-	case scanner.LPAREN:
-		return p.parseObjectsWithFields(fields)
-	case scanner.LBRACKET, scanner.NAMEDPARAM, scanner.POSITIONALPARAM:
-		return p.parseLiteralDocOrParamList()
-	}
-
-	return nil, newParseError(scanner.Tokstr(tok, lit), []string{"(", "[", "?", "$"}, pos)
-}
-
-// parseExprListValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseObjectsWithFields(fields []string) ([]expr.Expr, error) {
-	var docs []expr.Expr
-
-	// Parse first (required) value list.
-	doc, err := p.parseExprListWithFields(fields)
+	// Parse first (required) row.
+	r, err := p.parseRowExprList(fields)
 	if err != nil {
 		return nil, err
 	}
 
-	docs = append(docs, doc)
+	rows = append(rows, r)
 
-	// Parse remaining (optional) values.
+	// Parse remaining (optional) rows.
 	for {
 		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
 			p.Unscan()
 			break
 		}
 
-		doc, err := p.parseExprListWithFields(fields)
+		doc, err := p.parseRowExprList(fields)
 		if err != nil {
 			return nil, err
 		}
 
-		docs = append(docs, doc)
+		rows = append(rows, doc)
 	}
 
-	return docs, nil
+	return rows, nil
 }
 
-func (p *Parser) parseExprListWithFields(fields []string) (*expr.KVPairs, error) {
+func (p *Parser) parseRowExprList(fields []string) (expr.LiteralExprList, error) {
 	list, err := p.parseExprList(scanner.LPAREN, scanner.RPAREN)
 	if err != nil {
 		return nil, err
 	}
 
-	var pairs expr.KVPairs
-	pairs.Pairs = make([]expr.KVPair, len(list))
-
-	if len(fields) > 0 {
-		if len(fields) != len(list) {
-			return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
-		}
-
-		for i := range list {
-			pairs.Pairs[i].K = fields[i]
-			pairs.Pairs[i].V = list[i]
-		}
-	} else {
-		for i := range list {
-			pairs.Pairs[i].V = list[i]
-		}
+	if len(fields) > 0 && len(fields) != len(list) {
+		return nil, fmt.Errorf("%d values for %d fields", len(list), len(fields))
 	}
 
-	return &pairs, nil
-}
-
-// parseExprListValues parses the "VALUES" clause of the query, if it exists.
-func (p *Parser) parseLiteralDocOrParamList() ([]expr.Expr, error) {
-	var docs []expr.Expr
-
-	// Parse first (required) value list.
-	doc, err := p.parseParamOrObject()
-	if err != nil {
-		return nil, err
-	}
-
-	docs = append(docs, doc)
-
-	// Parse remaining (optional) values.
-	for {
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
-
-		doc, err := p.parseParamOrObject()
-		if err != nil {
-			return nil, err
-		}
-
-		docs = append(docs, doc)
-	}
-
-	return docs, nil
-}
-
-// parseParamOrObject parses either a parameter or an object.
-func (p *Parser) parseParamOrObject() (expr.Expr, error) {
-	// Parse a param first
-	prm, err := p.parseParam()
-	if err != nil {
-		return nil, err
-	}
-	if prm != nil {
-		return prm, nil
-	}
-
-	// If not a param, start over
-	p.Unscan()
-
-	// Expect an object
-	return p.ParseObject()
+	return list, nil
 }
 
 func (p *Parser) parseOnConflictClause() (database.OnConflictAction, error) {

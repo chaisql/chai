@@ -9,52 +9,16 @@ import (
 	"github.com/chaisql/chai/internal/types"
 )
 
-var stringsFunctions = Definitions{
-	"lower": &definition{
-		name:  "lower",
-		arity: 1,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Lower{Expr: args[0]}, nil
-		},
-	},
-	"upper": &definition{
-		name:  "upper",
-		arity: 1,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Upper{Expr: args[0]}, nil
-		},
-	},
-	"trim": &definition{
-		name:  "trim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.Trim, Name: "TRIM"}, nil
-		},
-	},
-	"ltrim": &definition{
-		name:  "ltrim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.TrimLeft, Name: "LTRIM"}, nil
-		},
-	},
-	"rtrim": &definition{
-		name:  "rtrim",
-		arity: variadicArity,
-		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
-			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
-		},
-	},
-}
-
-func StringsDefinitions() Definitions {
-	return stringsFunctions
-}
-
 // Lower is the LOWER function
 // It returns the lower-case version of a string
 type Lower struct {
 	Expr expr.Expr
+}
+
+func (s *Lower) Clone() expr.Expr {
+	return &Lower{
+		Expr: expr.Clone(s.Expr),
+	}
 }
 
 func (s *Lower) Eval(env *environment.Environment) (types.Value, error) {
@@ -63,11 +27,11 @@ func (s *Lower) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if val.Type() != types.TextValue {
+	if val.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
-	lowerCaseString := strings.ToLower(types.As[string](val))
+	lowerCaseString := strings.ToLower(types.AsString(val))
 
 	return types.NewTextValue(lowerCaseString), nil
 }
@@ -97,17 +61,23 @@ type Upper struct {
 	Expr expr.Expr
 }
 
+func (s *Upper) Clone() expr.Expr {
+	return &Upper{
+		Expr: expr.Clone(s.Expr),
+	}
+}
+
 func (s *Upper) Eval(env *environment.Environment) (types.Value, error) {
 	val, err := s.Expr.Eval(env)
 	if err != nil {
 		return nil, err
 	}
 
-	if val.Type() != types.TextValue {
+	if val.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
-	upperCaseString := strings.ToUpper(types.As[string](val))
+	upperCaseString := strings.ToUpper(types.AsString(val))
 
 	return types.NewTextValue(upperCaseString), nil
 }
@@ -143,6 +113,18 @@ type Trim struct {
 
 type TrimFunc func(string, string) string
 
+func (s *Trim) Clone() expr.Expr {
+	exprs := make([]expr.Expr, len(s.Expr))
+	for i := range s.Expr {
+		exprs[i] = expr.Clone(s.Expr[i])
+	}
+	return &Trim{
+		Expr:     exprs,
+		TrimFunc: s.TrimFunc,
+		Name:     s.Name,
+	}
+}
+
 func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 	if len(s.Expr) > 2 {
 		return nil, fmt.Errorf("misuse of string function %v()", s.Name)
@@ -153,7 +135,7 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 		return nil, err
 	}
 
-	if input.Type() != types.TextValue {
+	if input.Type() != types.TypeText {
 		return types.NewNullValue(), nil
 	}
 
@@ -164,13 +146,13 @@ func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 		if err != nil {
 			return nil, err
 		}
-		if remove.Type() != types.TextValue {
+		if remove.Type() != types.TypeText {
 			return types.NewNullValue(), nil
 		}
-		cutset = types.As[string](remove)
+		cutset = types.AsString(remove)
 	}
 
-	trimmed := s.TrimFunc(types.As[string](input), cutset)
+	trimmed := s.TrimFunc(types.AsString(input), cutset)
 
 	return types.NewTextValue(trimmed), nil
 }

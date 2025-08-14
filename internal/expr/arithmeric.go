@@ -17,25 +17,54 @@ type arithmeticOperator struct {
 	*simpleOperator
 }
 
+func (op *arithmeticOperator) Clone() Expr {
+	return &arithmeticOperator{
+		simpleOperator: op.simpleOperator.Clone(),
+	}
+}
+
 func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
+	return op.simpleOperator.eval(env, func(va, vb types.Value) (types.Value, error) {
+		a, ok := va.(types.Numeric)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		b, ok := vb.(types.Numeric)
+		if !ok {
+			return NullLiteral, nil
+		}
+
 		switch op.simpleOperator.Tok {
 		case scanner.ADD:
-			return types.Add(a, b)
+			return a.Add(b)
 		case scanner.SUB:
-			return types.Sub(a, b)
+			return a.Sub(b)
 		case scanner.MUL:
-			return types.Mul(a, b)
+			return a.Mul(b)
 		case scanner.DIV:
-			return types.Div(a, b)
+			return a.Div(b)
 		case scanner.MOD:
-			return types.Mod(a, b)
+			return a.Mod(b)
+		}
+
+		ia, ok := a.(types.Integral)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		_, ok = b.(types.Integral)
+		if !ok {
+			return NullLiteral, nil
+		}
+
+		switch op.simpleOperator.Tok {
 		case scanner.BITWISEAND:
-			return types.BitwiseAnd(a, b)
+			return ia.BitwiseAnd(b)
 		case scanner.BITWISEOR:
-			return types.BitwiseOr(a, b)
+			return ia.BitwiseOr(b)
 		case scanner.BITWISEXOR:
-			return types.BitwiseXor(a, b)
+			return ia.BitwiseXor(b)
 		}
 
 		panic("unknown arithmetic token")

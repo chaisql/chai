@@ -7,6 +7,10 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*DropTableStmt)(nil)
+var _ Statement = (*DropIndexStmt)(nil)
+var _ Statement = (*DropSequenceStmt)(nil)
+
 // DropTableStmt is a DSL that allows creating a DROP TABLE query.
 type DropTableStmt struct {
 	TableName string
@@ -14,13 +18,17 @@ type DropTableStmt struct {
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt DropTableStmt) IsReadOnly() bool {
+func (stmt *DropTableStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *DropTableStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the DropTable statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropTableStmt) Run(ctx *Context) (Result, error) {
+func (stmt *DropTableStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -59,13 +67,17 @@ type DropIndexStmt struct {
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt DropIndexStmt) IsReadOnly() bool {
+func (stmt *DropIndexStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *DropIndexStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the DropIndex statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropIndexStmt) Run(ctx *Context) (Result, error) {
+func (stmt *DropIndexStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.IndexName == "" {
@@ -87,13 +99,17 @@ type DropSequenceStmt struct {
 }
 
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt DropSequenceStmt) IsReadOnly() bool {
+func (stmt *DropSequenceStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *DropSequenceStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the DropSequence statement in the given transaction.
 // It implements the Statement interface.
-func (stmt DropSequenceStmt) Run(ctx *Context) (Result, error) {
+func (stmt *DropSequenceStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.SequenceName == "" {

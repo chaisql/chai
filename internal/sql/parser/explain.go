@@ -5,11 +5,11 @@ import (
 	"github.com/chaisql/chai/internal/sql/scanner"
 )
 
-// parseExplainStatement parses any statement and returns an ExplainStmt object.
+// parseExplainStatement parses any statement and returns an ExplainStmt row.
 // This function assumes the EXPLAIN token has already been consumed.
 func (p *Parser) parseExplainStatement() (statement.Statement, error) {
 	// Parse "EXPLAIN".
-	if err := p.parseTokens(scanner.EXPLAIN); err != nil {
+	if err := p.ParseTokens(scanner.EXPLAIN); err != nil {
 		return nil, err
 	}
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -37,6 +36,14 @@ func (op *simpleOperator) SetRightHandExpr(b Expr) {
 
 func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
+}
+
+func (op *simpleOperator) Clone() *simpleOperator {
+	return &simpleOperator{
+		a:   Clone(op.a),
+		b:   Clone(op.b),
+		Tok: op.Tok,
+	}
 }
 
 func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b types.Value) (types.Value, error)) (types.Value, error) {
@@ -103,38 +110,38 @@ func Concat(a, b Expr) Expr {
 
 func (op *ConcatOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() != types.TextValue || b.Type() != types.TextValue {
+		if a.Type() != types.TypeText || b.Type() != types.TypeText {
 			return NullLiteral, nil
 		}
 
-		return types.NewTextValue(types.As[string](a) + types.As[string](b)), nil
+		return types.NewTextValue(types.AsString(a) + types.AsString(b)), nil
 	})
 }
 
 // Cast represents the CAST expression.
 type Cast struct {
 	Expr   Expr
-	CastAs types.ValueType
+	CastAs types.Type
 }
 
-// Eval returns the primary key of the current object.
-func (c Cast) Eval(env *environment.Environment) (types.Value, error) {
+// Eval returns the primary key of the current row.
+func (c *Cast) Eval(env *environment.Environment) (types.Value, error) {
 	v, err := c.Expr.Eval(env)
 	if err != nil {
 		return v, err
 	}
 
-	return object.CastAs(v, c.CastAs)
+	return v.CastAs(c.CastAs)
 }
 
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
-func (c Cast) IsEqual(other Expr) bool {
+func (c *Cast) IsEqual(other Expr) bool {
 	if other == nil {
 		return false
 	}
 
-	o, ok := other.(Cast)
+	o, ok := other.(*Cast)
 	if !ok {
 		return false
 	}
@@ -150,8 +157,8 @@ func (c Cast) IsEqual(other Expr) bool {
 	return o.Expr != nil
 }
 
-func (c Cast) Params() []Expr { return []Expr{c.Expr} }
+func (c *Cast) Params() []Expr { return []Expr{c.Expr} }
 
-func (c Cast) String() string {
+func (c *Cast) String() string {
 	return fmt.Sprintf("CAST(%v AS %v)", c.Expr, c.CastAs)
 }

@@ -11,13 +11,15 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*InsertStmt)(nil)
+
 // InsertStmt holds INSERT configuration.
 type InsertStmt struct {
 	basePreparedStatement
 
 	TableName  string
 	Values     []expr.Expr
-	Fields     []string
+	Columns    []string
 	SelectStmt Preparer
 	Returning  []expr.Expr
 	OnConflict database.OnConflictAction
@@ -34,44 +36,94 @@ func NewInsertStatement() *InsertStmt {
 	return &p
 }
 
+func (stmt *InsertStmt) Bind(ctx *Context) error {
+	for i := range stmt.Values {
+		err := BindExpr(ctx, stmt.TableName, stmt.Values[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	if stmt.SelectStmt != nil {
+		if s, ok := stmt.SelectStmt.(Statement); ok {
+			err := s.Bind(ctx)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	for i := range stmt.Returning {
+		err := BindExpr(ctx, stmt.TableName, stmt.Returning[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	var s *stream.Stream
 
+	var columns []string
 	if stmt.Values != nil {
 		ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
 		if err != nil {
 			return nil, err
 		}
 
-		// if no fields have been specified, we need to inject the fields from the defined table info
-		if len(stmt.Fields) == 0 {
+		var rowList []expr.Row
+		// if no columns have been specified, we need to inject the columns from the defined table info
+		if len(stmt.Columns) == 0 {
+
+			rowList = make([]expr.Row, 0, len(stmt.Values))
 			for i := range stmt.Values {
-				kvs, ok := stmt.Values[i].(*expr.KVPairs)
+				var r expr.Row
+				var ok bool
+
+				r.Exprs, ok = stmt.Values[i].(expr.LiteralExprList)
 				if !ok {
 					continue
 				}
 
-				for i := range kvs.Pairs {
-					if kvs.Pairs[i].K == "" {
-						if i >= len(ti.FieldConstraints.Ordered) {
-							return nil, errors.Errorf("too many values for %s", stmt.TableName)
-						}
-
-						kvs.Pairs[i].K = ti.FieldConstraints.Ordered[i].Field
-					}
+				for i := range r.Exprs {
+					r.Columns = append(r.Columns, ti.ColumnConstraints.Ordered[i].Column)
 				}
+
+				columns = r.Columns
+
+				rowList = append(rowList, r)
 			}
 		} else {
-			if !ti.FieldConstraints.AllowExtraFields {
-				for i := range stmt.Fields {
-					_, ok := ti.FieldConstraints.ByField[stmt.Fields[i]]
-					if !ok {
-						return nil, errors.Errorf("table has no field %s", stmt.Fields[i])
-					}
+			columns = stmt.Columns
+
+			rowList = make([]expr.Row, 0, len(stmt.Values))
+			for i := range stmt.Columns {
+				_, ok := ti.ColumnConstraints.ByColumn[stmt.Columns[i]]
+				if !ok {
+					return nil, errors.Errorf("table has no column %s", stmt.Columns[i])
 				}
 			}
+
+			for i := range stmt.Values {
+				var r expr.Row
+				var ok bool
+
+				r.Exprs, ok = stmt.Values[i].(expr.LiteralExprList)
+				if !ok {
+					continue
+				}
+
+				r.Columns = stmt.Columns
+				if len(stmt.Columns) != len(r.Exprs) {
+					return nil, errors.Errorf("expected %d columns, got %d", len(stmt.Columns), len(stmt.Values))
+				}
+				rowList = append(rowList, r)
+			}
 		}
-		s = stream.New(rows.Emit(stmt.Values...))
+
+		s = stream.New(rows.Emit(columns, rowList...))
 	} else {
 		selectStream, err := stmt.SelectStmt.Prepare(c)
 		if err != nil {
@@ -86,8 +138,8 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 			return nil, errors.New("cannot read and write to the same table")
 		}
 
-		if len(stmt.Fields) > 0 {
-			s = s.Pipe(path.PathsRename(stmt.Fields...))
+		if len(stmt.Columns) > 0 {
+			s = s.Pipe(path.PathsRename(stmt.Columns...))
 		}
 	}
 

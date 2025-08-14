@@ -22,18 +22,28 @@ func Like(a, b Expr) Expr {
 	return &LikeOperator{&simpleOperator{a, b, scanner.LIKE}}
 }
 
+func (op *LikeOperator) Clone() Expr {
+	return &LikeOperator{
+		simpleOperator: op.simpleOperator.Clone(),
+	}
+}
+
 func (op *LikeOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() != types.TextValue || b.Type() != types.TextValue {
+		if a.Type() != types.TypeText || b.Type() != types.TypeText {
 			return NullLiteral, nil
 		}
 
-		if like(types.As[string](b), types.As[string](a)) {
+		if like(types.AsString(b), types.AsString(a)) {
 			return TrueLiteral, nil
 		}
 
 		return FalseLiteral, nil
 	})
+}
+
+func (op *LikeOperator) String() string {
+	return fmt.Sprintf("%v LIKE %v", op.a, op.b)
 }
 
 type NotLikeOperator struct {
@@ -43,6 +53,12 @@ type NotLikeOperator struct {
 // NotLike creates an expression that evaluates to the result of a NOT LIKE b.
 func NotLike(a, b Expr) Expr {
 	return &NotLikeOperator{&LikeOperator{&simpleOperator{a, b, scanner.NLIKE}}}
+}
+
+func (op *NotLikeOperator) Clone() Expr {
+	return &NotLikeOperator{
+		LikeOperator: op.LikeOperator.Clone().(*LikeOperator),
+	}
 }
 
 func (op *NotLikeOperator) Eval(env *environment.Environment) (types.Value, error) {

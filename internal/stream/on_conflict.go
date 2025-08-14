@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
+	"github.com/cockroachdb/errors"
 )
 
 // OnConflictOperator handles any conflicts that occur during the iteration.
@@ -20,6 +21,13 @@ func OnConflict(onConflict *Stream) *OnConflictOperator {
 	}
 }
 
+func (it *OnConflictOperator) Clone() Operator {
+	return &OnConflictOperator{
+		BaseOperator: it.BaseOperator.Clone(),
+		OnConflict:   it.OnConflict.Clone(),
+	}
+}
+
 func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
 	var newEnv environment.Environment
 
@@ -32,13 +40,13 @@ func (op *OnConflictOperator) Iterate(in *environment.Environment, fn func(out *
 				}
 
 				newEnv.SetOuter(out)
-				r, ok := out.GetRow()
+				r, ok := out.GetDatabaseRow()
 				if !ok {
-					return fmt.Errorf("missing row")
+					return errors.New("missing row")
 				}
 
 				var br database.BasicRow
-				br.ResetWith(r.TableName(), cerr.Key, r.Object())
+				br.ResetWith(r.TableName(), cerr.Key, r)
 				newEnv.SetRow(&br)
 
 				err = op.OnConflict.Iterate(&newEnv, func(out *environment.Environment) error { return nil })

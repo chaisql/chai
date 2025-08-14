@@ -12,7 +12,7 @@ import (
 // A ScalarDefinition is the definition type for functions which operates on scalar values in contrast to other SQL functions
 // such as the SUM aggregator which operates on expressions instead.
 //
-// This difference allows to simply define them with a CallFn function that takes multiple object.Value and
+// This difference allows to simply define them with a CallFn function that takes multiple row.Value and
 // return another types.Value, rather than having to manually evaluate expressions (see Definition).
 type ScalarDefinition struct {
 	name   string
@@ -49,11 +49,6 @@ func (fd *ScalarDefinition) Function(args ...expr.Expr) (expr.Function, error) {
 	}, nil
 }
 
-// Arity returns the arity of the defined function.
-func (fd *ScalarDefinition) Arity() int {
-	return fd.arity
-}
-
 // A ScalarFunction is a function which operates on scalar values in contrast to other SQL functions
 // such as the SUM aggregator wich operates on expressions instead.
 type ScalarFunction struct {
@@ -61,7 +56,19 @@ type ScalarFunction struct {
 	params []expr.Expr
 }
 
-// Eval returns a object.Value based on the given environment and the underlying function
+func (sf *ScalarFunction) Clone() expr.Expr {
+	exprs := make([]expr.Expr, 0, len(sf.params))
+	for _, e := range sf.params {
+		exprs = append(exprs, expr.Clone(e))
+	}
+
+	return &ScalarFunction{
+		def:    sf.def,
+		params: exprs,
+	}
+}
+
+// Eval returns a row.Value based on the given environment and the underlying function
 // definition.
 func (sf *ScalarFunction) Eval(env *environment.Environment) (types.Value, error) {
 	args, err := sf.evalParams(env)

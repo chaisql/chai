@@ -8,8 +8,8 @@ import (
 )
 
 var (
-	TrueLiteral  = types.NewBoolValue(true)
-	FalseLiteral = types.NewBoolValue(false)
+	TrueLiteral  = types.NewBooleanValue(true)
+	FalseLiteral = types.NewBooleanValue(false)
 	NullLiteral  = types.NewNullValue()
 )
 
@@ -97,13 +97,8 @@ type NamedExpr struct {
 	ExprName string
 }
 
-// Name returns ExprName.
-func (e *NamedExpr) Name() string {
-	return e.ExprName
-}
-
 func (e *NamedExpr) String() string {
-	return e.Expr.String()
+	return e.ExprName
 }
 
 // A Function is an expression whose evaluation calls a function previously defined.
@@ -112,6 +107,7 @@ type Function interface {
 
 	// Params returns the list of parameters this function has received.
 	Params() []Expr
+	Clone() Expr
 }
 
 // An Aggregator is an expression that aggregates objects into one result.
@@ -152,18 +148,6 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 				return false
 			}
 		}
-	case LiteralExprList:
-		for _, e := range t {
-			if !Walk(e, fn) {
-				return false
-			}
-		}
-	case *KVPairs:
-		for _, e := range t.Pairs {
-			if !Walk(e.V, fn) {
-				return false
-			}
-		}
 	}
 
 	return true
@@ -191,7 +175,7 @@ func (n NextValueFor) Eval(env *environment.Environment) (types.Value, error) {
 		return NullLiteral, err
 	}
 
-	return types.NewIntegerValue(i), nil
+	return types.NewBigintValue(i), nil
 }
 
 // IsEqual compares this expression with the other expression and returns
@@ -211,4 +195,78 @@ func (n NextValueFor) IsEqual(other Expr) bool {
 
 func (n NextValueFor) String() string {
 	return fmt.Sprintf("NEXT VALUE FOR %s", n.SeqName)
+}
+
+// // Type returns the expected type of the expression without evaluating it.
+// // Query parameters are not allowed and will return an error.
+// func Type(e Expr, info *database.TableInfo) (types.Type, error) {
+// 	switch e := e.(type) {
+// 	case Column:
+// 		cc := info.GetColumnConstraint(string(e))
+// 		if cc == nil {
+// 			return types.TypeNull, fmt.Errorf("column %q does not exist", e)
+// 		}
+// 		return cc.Type, nil
+// 	case *NamedExpr:
+// 		return Type(e.Expr, info)
+// 	case Operator:
+// 		l, err := Type(e.LeftHand(), info)
+// 		if err != nil {
+// 			return 0, err
+// 		}
+// 		r, err := Type(e.RightHand(), info)
+// 		if err != nil {
+// 			return 0, err
+// 		}
+
+// 		// when types are different, determine if they are compatible
+// 		// depending on the operator
+// 		if l != r {
+// 			if IsArithmeticOperator(e) {
+
+// 			} else if IsComparisonOperator(e) && l.IsComparableWith(r) {
+// 				return types.TypeBoolean, nil
+// 			} else {
+// 				return 0, fmt.Errorf("mismatched types: %v and %v", l, r)
+// 			}
+// 		}
+// 	}
+
+// 	return types.TypeNull, fmt.Errorf("unexpected expression type: %T", e)
+// }
+
+func Clone(e Expr) Expr {
+	if e == nil {
+		return nil
+	}
+
+	switch e := e.(type) {
+	case cloner:
+		return e.Clone()
+	case Parentheses:
+		return Parentheses{E: Clone(e.E)}
+	case *NamedExpr:
+		return &NamedExpr{
+			Expr:     Clone(e.Expr),
+			ExprName: e.ExprName,
+		}
+	case *Cast:
+		return &Cast{
+			Expr:   Clone(e.Expr),
+			CastAs: e.CastAs,
+		}
+	case LiteralValue,
+		*Column,
+		NamedParam,
+		PositionalParam,
+		NextValueFor,
+		Wildcard:
+		return e
+	}
+
+	panic(fmt.Sprintf("clone: unexpected expression type: %T", e))
+}
+
+type cloner interface {
+	Clone() Expr
 }

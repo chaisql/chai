@@ -62,13 +62,13 @@ func loadSequences(tx *database.Transaction, info []database.SequenceInfo) ([]da
 		}
 
 		v, err := r.Get("seq")
-		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 			return nil, err
 		}
 
 		var currentValue *int64
-		if err == nil && v.Type() != types.NullValue {
-			v := types.As[int64](v)
+		if err == nil && v.Type() != types.TypeNull {
+			v := types.AsInt64(v)
 			currentValue = &v
 		}
 
@@ -87,7 +87,7 @@ func loadCatalogStore(tx *database.Transaction, s *database.CatalogStore) (table
 			return err
 		}
 
-		switch types.As[string](tp) {
+		switch types.AsString(tp) {
 		case database.RelationTableType:
 			ti, err := tableInfoFromRow(r)
 			if err != nil {
@@ -120,7 +120,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +131,7 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	storeNamespace := types.As[int64](v)
+	storeNamespace := types.AsInt64(v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
@@ -139,11 +139,11 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 	ti.StoreNamespace = tree.Namespace(storeNamespace)
 
 	v, err = r.Get("rowid_sequence_name")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
-		ti.RowidSequenceName = types.As[string](v)
+	if err == nil && v.Type() != types.TypeNull {
+		ti.RowidSequenceName = types.AsString(v)
 	}
 
 	ti.BuildPrimaryKey()
@@ -157,7 +157,7 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, err
 	}
@@ -169,22 +169,18 @@ func indexInfoFromRow(r database.Row) (*database.IndexInfo, error) {
 		return nil, err
 	}
 
-	storeNamespace := types.As[int64](v)
+	storeNamespace := types.AsInt64(v)
 	if storeNamespace <= 0 {
 		return nil, errors.Errorf("invalid store namespace: %v", storeNamespace)
 	}
 
 	i.StoreNamespace = tree.Namespace(storeNamespace)
 
-	v, err = r.Get("owner")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	owner, err := ownerFromRow(r)
+	if err != nil {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromObject(types.As[types.Object](v))
-		if err != nil {
-			return nil, err
-		}
+	if owner != nil {
 		i.Owner = *owner
 	}
 
@@ -197,55 +193,44 @@ func sequenceInfoFromRow(r database.Row) (*database.SequenceInfo, error) {
 		return nil, errors.Wrap(err, "failed to get sql field")
 	}
 
-	stmt, err := parser.NewParser(strings.NewReader(types.As[string](s))).ParseStatement()
+	stmt, err := parser.NewParser(strings.NewReader(types.AsString(s))).ParseStatement()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse sql")
 	}
 
 	i := stmt.(*statement.CreateSequenceStmt).Info
 
-	v, err := r.Get("owner")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
-		return nil, errors.Wrap(err, "failed to get owner field")
+	owner, err := ownerFromRow(r)
+	if err != nil {
+		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
-		owner, err := ownerFromObject(types.As[types.Object](v))
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to get owner")
-		}
+	if owner != nil {
 		i.Owner = *owner
 	}
 
 	return &i, nil
 }
 
-func ownerFromObject(o types.Object) (*database.Owner, error) {
+func ownerFromRow(r database.Row) (*database.Owner, error) {
 	var owner database.Owner
 
-	v, err := o.GetByField("table_name")
-	if err != nil {
+	v, err := r.Get("owner_table_name")
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}
+	if err != nil || v.Type() == types.TypeNull {
+		return nil, nil
+	}
 
-	owner.TableName = types.As[string](v)
+	owner.TableName = types.AsString(v)
 
-	v, err = o.GetByField("paths")
-	if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+	v, err = r.Get("owner_table_columns")
+	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}
-	if err == nil && v.Type() != types.NullValue {
-		err = types.As[types.Array](v).Iterate(func(i int, value types.Value) error {
-			pp, err := parser.ParsePath(types.As[string](value))
-			if err != nil {
-				return err
-			}
-
-			owner.Paths = append(owner.Paths, pp)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
+	if err == nil && v.Type() != types.TypeNull {
+		cols := types.AsString(v)
+		owner.Columns = strings.Split(cols, ",")
 	}
 
 	return &owner, nil
