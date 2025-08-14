@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	epoch   = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC).UnixMicro()
+	epoch   = carbon.EpochValue().TimestampMicro()
 	maxTime = math.MaxInt64 - epoch
 	minTime = math.MinInt64 + epoch
 )
@@ -439,11 +439,10 @@ func ParseTimestamp(s string) (time.Time, error) {
 		return time.Time{}, errors.New("invalid timestamp")
 	}
 
-	ts := c.StdTime()
-	m := ts.UnixMicro()
-	if m > maxTime || m < minTime {
+	ts := c.TimestampMicro()
+	if ts > maxTime || ts < minTime {
 		return time.Time{}, errors.New("timestamp out of range")
 	}
 
-	return ts, nil
+	return c.StdTime(), nil
 }
