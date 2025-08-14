@@ -12,7 +12,7 @@ import (
 
 	"github.com/chaisql/chai/internal/stringutil"
 	"github.com/cockroachdb/errors"
-	"github.com/golang-module/carbon/v2"
+	"github.com/dromara/carbon/v2"
 )
 
 var (
@@ -439,7 +439,7 @@ func ParseTimestamp(s string) (time.Time, error) {
 		return time.Time{}, errors.New("invalid timestamp")
 	}
 
-	ts := c.ToStdTime()
+	ts := c.StdTime()
 	m := ts.UnixMicro()
 	if m > maxTime || m < minTime {
 		return time.Time{}, errors.New("timestamp out of range")

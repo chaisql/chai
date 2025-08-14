@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/cockroachdb/errors v1.11.1
 	github.com/cockroachdb/pebble v1.0.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.10.0
 	github.com/urfave/cli/v2 v2.25.7
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sync v0.5.0
@@ -28,9 +28,9 @@ require (
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dromara/carbon/v2 v2.6.11 // indirect
 	github.com/getsentry/sentry-go v0.25.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-module/carbon/v2 v2.2.14 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
