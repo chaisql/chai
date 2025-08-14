@@ -1,6 +1,6 @@
 module github.com/chaisql/chai
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/buger/jsonparser v1.1.1
