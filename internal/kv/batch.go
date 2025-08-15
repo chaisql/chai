@@ -223,9 +223,9 @@ func (s *BatchSession) Iterator(opts *IterOptions) (Iterator, error) {
 		}
 	}
 
-	it := s.DB.NewIter(popts)
+	it, err := s.DB.NewIter(popts)
 
 	return &iterator{
 		Iterator: it,
-	}, nil
+	}, err
 }
