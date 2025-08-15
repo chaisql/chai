@@ -9,12 +9,14 @@ import (
 )
 
 func DumpPebble(t testing.TB, pdb *pebble.DB) {
-	it := pdb.NewIter(nil)
+	t.Helper()
+	it, err := pdb.NewIter(nil)
+	require.NoError(t, err)
 
 	for it.First(); it.Valid(); it.Next() {
 		fmt.Printf("%v: %v\n", it.Key(), it.Value())
 	}
 
-	err := it.Close()
+	err = it.Close()
 	require.NoError(t, err)
 }

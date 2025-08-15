@@ -105,9 +105,9 @@ func (s *SnapshotSession) Iterator(opts *IterOptions) (Iterator, error) {
 		}
 	}
 
-	it := s.Snapshot.snapshot.NewIter(popts)
+	it, err := s.Snapshot.snapshot.NewIter(popts)
 
 	return &iterator{
 		Iterator: it,
-	}, nil
+	}, err
 }

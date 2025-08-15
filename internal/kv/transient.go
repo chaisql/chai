@@ -124,13 +124,14 @@ func (s *TransientSession) Iterator(opts *IterOptions) (Iterator, error) {
 	}
 
 	var it *pebble.Iterator
+	var err error
 	if s.batch == nil {
-		it = s.db.NewIter(popts)
+		it, err = s.db.NewIter(popts)
 	} else {
-		it = s.batch.NewIter(popts)
+		it, err = s.batch.NewIter(popts)
 	}
 
 	return &iterator{
 		Iterator: it,
-	}, nil
+	}, err
 }

@@ -2,6 +2,7 @@ package kv
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"github.com/chaisql/chai/internal/encoding"
@@ -34,7 +35,10 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 	for i := uint32(0); i < n; i++ {
 		s.buf = s.buf[:len(s.nsStart)]
 
-		kind, key, _, ok := r.Next()
+		kind, key, _, ok, err := r.Next()
+		if err != nil {
+			return err
+		}
 		if !ok {
 			break
 		}
@@ -46,13 +50,12 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 
 		var v []byte
 		var closer io.Closer
-		var err error
 
 		switch kind {
 		case pebble.InternalKeyKindDelete, pebble.InternalKeyKindSet:
 			v, closer, err = s.db.Get(key)
 			if err != nil {
-				if err != pebble.ErrNotFound {
+				if !errors.Is(err, pebble.ErrNotFound) {
 					return err
 				}
 			}
@@ -94,11 +97,16 @@ func (s *RollbackSegment) Rollback() error {
 
 	// read the rollback segment and rollback the changes
 	b := s.db.NewBatch()
-	it := s.db.NewIter(&pebble.IterOptions{
+	it, err := s.db.NewIter(&pebble.IterOptions{
 		LowerBound: s.nsStart,
 		UpperBound: s.nsEnd,
 	})
-	defer it.Close()
+	if err != nil {
+		return err
+	}
+	defer func(it *pebble.Iterator) {
+		_ = it.Close()
+	}(it)
 
 	for it.First(); it.Valid(); it.Next() {
 		k := it.Key()
@@ -109,9 +117,8 @@ func (s *RollbackSegment) Rollback() error {
 
 		// get the key
 		uk, _ := encoding.DecodeBlob(k)
-		v := it.Value()
+		v, err := it.ValueAndErr()
 
-		var err error
 		if bytes.Equal(v, tombStone) {
 			err = b.Delete(uk, nil)
 		} else {
@@ -122,7 +129,7 @@ func (s *RollbackSegment) Rollback() error {
 		}
 	}
 
-	err := b.DeleteRange(s.nsStart, s.nsEnd, nil)
+	err = b.DeleteRange(s.nsStart, s.nsEnd, nil)
 	if err != nil {
 		return err
 	}
