@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	_ "github.com/chaisql/chai"
@@ -196,4 +197,85 @@ func TestIterateDeepCopy(t *testing.T) {
 	require.Equal(t, len(items), 2)
 	require.Equal(t, &item{A: 2, B: "sample text 2"}, items[0])
 	require.Equal(t, &item{A: 1, B: "sample text 1"}, items[1])
+}
+
+func TestWWConcurrency(t *testing.T) {
+	db, err := sql.Open("chai", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`
+	CREATE TABLE foo (
+		a integer primary key,
+		b text not null
+	);`)
+	require.NoError(t, err)
+
+	iterations := 100
+	concurrency := 8
+
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for i := range concurrency {
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES (?, ?)`, id*1000+j, fmt.Sprintf("sample text %d", j))
+				require.NoError(t, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func TestRWConcurrency(t *testing.T) {
+	db, err := sql.Open("chai", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`
+	CREATE TABLE foo (
+		a integer primary key,
+		b text not null
+	);
+
+	-- insert sample data
+	INSERT INTO foo(a, b) VALUES (1000000, 'sample text 1000000');
+	`)
+	require.NoError(t, err)
+
+	readers := 8
+	writers := 4
+	iterations := 100
+
+	var wg sync.WaitGroup
+	wg.Add(readers + writers)
+
+	for range readers {
+		go func() {
+			defer wg.Done()
+			for range iterations {
+				var a int
+				var b string
+				err := db.QueryRow(`SELECT * FROM foo WHERE a = 1000000`).Scan(&a, &b)
+				require.NoError(t, err)
+				require.Equal(t, 1000000, a)
+				require.Equal(t, "sample text 1000000", b)
+			}
+		}()
+	}
+
+	for i := range writers {
+		go func(id int) {
+			defer wg.Done()
+			for j := range iterations {
+				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES (?, ?)`, id*1000+j, fmt.Sprintf("sample text %d", j))
+				require.NoError(t, err)
+			}
+		}(i)
+	}
+
+	wg.Wait()
 }

@@ -201,9 +201,6 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 		return nil, errors.New("database is closed")
 	}
 
-	db.txmu.RLock()
-	defer db.txmu.RUnlock()
-
 	if opts == nil {
 		opts = new(TxOptions)
 	}
@@ -211,6 +208,9 @@ func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
 	if !opts.ReadOnly {
 		db.writetxmu.Lock()
 	}
+
+	db.txmu.RLock()
+	defer db.txmu.RUnlock()
 
 	return db.beginTxUnlocked(opts)
 }
