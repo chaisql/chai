@@ -115,7 +115,8 @@ func TestTableGetRow(t *testing.T) {
 		// create two rows
 		row1 := newRow()
 		row2 := newRow()
-		row2.Set("a", types.NewTextValue("c"))
+		err := row2.Set("a", types.NewTextValue("c"))
+		require.NoError(t, err)
 
 		key, _, err := tb.Insert(row1)
 		require.NoError(t, err)

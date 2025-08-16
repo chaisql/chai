@@ -112,7 +112,10 @@ func (r *Row) Eval(env *environment.Environment) (row.Row, error) {
 			return nil, err
 		}
 
-		cb.Set(r.Columns[i], v)
+		err = cb.Set(r.Columns[i], v)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &cb, nil

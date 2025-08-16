@@ -83,7 +83,7 @@ func (p *Parser) parseConstraints(stmt *statement.CreateTableStmt) error {
 	for {
 		// check if it is a table constraint,
 		// as it's easier to determine
-		tc, err := p.parseTableConstraint(stmt)
+		tc, err := p.parseTableConstraint()
 		if err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ LOOP:
 	return &cc, tcs, nil
 }
 
-func (p *Parser) parseTableConstraint(stmt *statement.CreateTableStmt) (*database.TableConstraint, error) {
+func (p *Parser) parseTableConstraint() (*database.TableConstraint, error) {
 	var err error
 
 	var tc database.TableConstraint

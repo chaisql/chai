@@ -17,23 +17,23 @@ func TestExecSQL(t *testing.T) {
 
 	var got bytes.Buffer
 	err = ExecSQL(t.Context(), db, strings.NewReader(`
-		CREATE TABLE test(a INT, b INT);
+		CREATE TABLE test(a INT, b TEXT);
 		CREATE INDEX idx_a ON test (a);
-		INSERT INTO test (a, b) VALUES (1, 2), (2, 2), (3, 2);
+		INSERT INTO test (a, b) VALUES (1, 'a'), (2, 'b'), (3, 'c');
 		SELECT * FROM test;
 	`), &got)
 	require.NoError(t, err)
 
-	require.Equal(t, "[\n  1,\n  2\n]\n[\n  2,\n  2\n]\n[\n  3,\n  2\n]\n", got.String())
+	require.Equal(t, "a|b\n1|\"a\"\n2|\"b\"\n3|\"c\"\n", got.String())
 
 	var res struct {
 		A int
-		B int
+		B string
 	}
 
 	// Ensure that the data is present.
 	err = db.QueryRow("SELECT * FROM test").Scan(&res.A, &res.B)
 	require.NoError(t, err)
 	require.Equal(t, 1, res.A)
-	require.Equal(t, 2, res.B)
+	require.Equal(t, "a", res.B)
 }

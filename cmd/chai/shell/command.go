@@ -193,7 +193,7 @@ func runSaveCmd(ctx context.Context, db *sql.DB, dbPath string) error {
 
 const csvBatchSize = 1000
 
-func runImportCmd(ctx context.Context, db *sql.DB, fileType, path, table string) error {
+func runImportCmd(ctx context.Context, db *sql.DB, fileType, path, table string) (err error) {
 	if strings.ToLower(fileType) != "csv" {
 		return errors.New("TYPE should be csv")
 	}

@@ -1,4 +1,4 @@
-package chai
+package driver_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/chaisql/chai"
 	"github.com/stretchr/testify/require"
 )
 

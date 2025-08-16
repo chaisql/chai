@@ -1,57 +1,99 @@
 package dbutil
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
-	"errors"
 	"io"
+	"strings"
 
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/driver"
 	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // ExecSQL reads SQL queries from reader and executes them until the reader is exhausted.
 // If the query has results, they will be outputted to w.
 func ExecSQL(ctx context.Context, db *sql.DB, r io.Reader, w io.Writer) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	return parser.NewParser(r).ParseRaw(func(q string) error {
-		rows, err := conn.QueryContext(ctx, q)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil
-			}
-			return err
-		}
-		defer rows.Close()
+	var buf bytes.Buffer
 
-		for rows.Next() {
-			cols, err := rows.Columns()
+	return conn.Raw(func(driverConn any) error {
+		conn := driverConn.(*driver.Conn)
+
+		var stmtWithOutputCount int
+		return parser.NewParser(r).Parse(func(s statement.Statement) error {
+			qq := query.New(s)
+			qctx := query.Context{
+				Ctx:  ctx,
+				DB:   conn.DB(),
+				Conn: conn.Conn(),
+			}
+			err := qq.Prepare(&qctx)
 			if err != nil {
 				return err
 			}
-			values := make([]any, len(cols))
-			valuesPtr := make([]any, len(cols))
-			for i := range values {
-				valuesPtr[i] = &values[i]
-			}
-			if err := rows.Scan(valuesPtr...); err != nil {
-				return err
-			}
-			err = enc.Encode(valuesPtr)
+
+			res, err := qq.Run(&qctx)
 			if err != nil {
 				return err
 			}
-		}
+			defer res.Close()
 
-		return rows.Err()
+			cols, err := res.Columns()
+			if err != nil {
+				return err
+			}
+
+			var headerPrinted bool
+
+			return res.Iterate(func(r database.Row) error {
+				buf.Reset()
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+
+				if !headerPrinted {
+					if stmtWithOutputCount > 0 {
+						buf.WriteString("\n")
+					}
+					stmtWithOutputCount++
+
+					buf.WriteString(strings.Join(cols, "|"))
+					buf.WriteString("\n")
+					headerPrinted = true
+				}
+
+				var i int
+				err = r.Iterate(func(column string, value types.Value) error {
+					if i > 0 {
+						buf.WriteString("|")
+					}
+					if value == nil {
+						buf.WriteString("NULL")
+					} else {
+						buf.WriteString(value.String())
+					}
+					i++
+					return nil
+				})
+				if err != nil {
+					return err
+				}
+
+				buf.WriteString("\n")
+
+				_, err = w.Write(buf.Bytes())
+				return err
+			})
+		})
 	})
 }

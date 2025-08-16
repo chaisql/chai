@@ -159,3 +159,14 @@ EXPLAIN INSERT INTO test (a) VALUES (1);
 /* result:
 {plan: "rows.Emit((1)) | table.Validate(\"test\") | table.GenerateKey(\"test\") | table.Insert(\"test\") | discard()"}
 */
+
+-- test: with columns
+CREATE TABLE test(a int, b text);
+INSERT INTO test(a, b) VALUES (1, 'a');
+SELECT * FROM test;
+/* result:
+{
+  a: 1,
+  b: "a"
+}
+*/

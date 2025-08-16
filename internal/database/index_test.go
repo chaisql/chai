@@ -95,11 +95,12 @@ func TestIndexDelete(t *testing.T) {
 			k, err := it.Value()
 			require.NoError(t, err)
 
-			if i == 0 {
+			switch i {
+			case 0:
 				require.Equal(t, "other-key", string(k.Encoded))
-			} else if i == 1 {
+			case 1:
 				require.Equal(t, "yet-another-key", string(k.Encoded))
-			} else {
+			default:
 				t.Fatalf("should not reach this point")
 			}
 
@@ -129,11 +130,12 @@ func TestIndexDelete(t *testing.T) {
 			k, err := it.Value()
 			require.NoError(t, err)
 
-			if i == 0 {
+			switch i {
+			case 0:
 				require.Equal(t, "other-key", string(k.Encoded))
-			} else if i == 1 {
+			case 1:
 				require.Equal(t, "yet-another-key", string(k.Encoded))
-			} else {
+			default:
 				t.Fatal("should not reach this point")
 			}
 

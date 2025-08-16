@@ -1,8 +1,7 @@
-package chai
+package driver
 
 import (
 	"context"
-	"database/sql"
 	"database/sql/driver"
 	"io"
 	"sync"
@@ -17,24 +16,20 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func init() {
-	sql.Register("chai", sqlDriver{})
-}
-
 var (
-	_ driver.Driver        = (*sqlDriver)(nil)
-	_ driver.DriverContext = (*sqlDriver)(nil)
+	_ driver.Driver        = (*Driver)(nil)
+	_ driver.DriverContext = (*Driver)(nil)
 )
 
-// sqlDriver is a driver.Driver that can open a new connection to a Chai database.
+// Driver is a driver.Driver that can open a new connection to a Chai database.
 // It is the driver used to register Chai against the database/sql package.
-type sqlDriver struct{}
+type Driver struct{}
 
-func (d sqlDriver) Open(name string) (driver.Conn, error) {
+func (d Driver) Open(name string) (driver.Conn, error) {
 	return nil, errors.New("requires go1.10 or greater")
 }
 
-func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
+func (d Driver) OpenConnector(name string) (driver.Connector, error) {
 	db, err := database.Open(name, &database.Options{
 		CatalogLoader: catalogstore.LoadCatalog,
 	})
@@ -42,40 +37,40 @@ func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
 		return nil, err
 	}
 
-	return &connector{
+	return &Connector{
 		db:     db,
 		driver: d,
 	}, nil
 }
 
 var (
-	_ driver.Connector = (*connector)(nil)
-	_ io.Closer        = (*connector)(nil)
+	_ driver.Connector = (*Connector)(nil)
+	_ io.Closer        = (*Connector)(nil)
 )
 
-type connector struct {
+type Connector struct {
 	driver    driver.Driver
 	db        *database.Database
 	closeOnce sync.Once
 }
 
-func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
+func (c *Connector) Connect(ctx context.Context) (driver.Conn, error) {
 	cc, err := c.db.Connect()
 	if err != nil {
 		return nil, err
 	}
 
-	return &conn{
+	return &Conn{
 		db:   c.db,
 		conn: cc,
 	}, nil
 }
 
-func (c *connector) Driver() driver.Driver {
+func (c *Connector) Driver() driver.Driver {
 	return c.driver
 }
 
-func (c *connector) Close() error {
+func (c *Connector) Close() error {
 	var err error
 	c.closeOnce.Do(func() {
 		err = c.db.Close()
@@ -83,20 +78,28 @@ func (c *connector) Close() error {
 	return err
 }
 
-// conn represents a connection to the Chai database.
+// Conn represents a connection to the Chai database.
 // It implements the database/sql/driver.Conn interface.
-type conn struct {
+type Conn struct {
 	db   *database.Database
 	conn *database.Connection
 }
 
+func (c *Conn) DB() *database.Database {
+	return c.db
+}
+
+func (c *Conn) Conn() *database.Connection {
+	return c.conn
+}
+
 // Prepare returns a prepared statement, bound to this connection.
-func (c *conn) Prepare(q string) (driver.Stmt, error) {
+func (c *Conn) Prepare(q string) (driver.Stmt, error) {
 	return c.PrepareContext(context.Background(), q)
 }
 
 // PrepareContext returns a prepared statement, bound to this connection.
-func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
+func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
 	pq, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
@@ -111,23 +114,23 @@ func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 		return nil, err
 	}
 
-	return stmt{
+	return Stmt{
 		pq:   pq,
 		conn: c,
 	}, nil
 }
 
 // Close closes any ongoing transaction.
-func (c *conn) Close() error {
+func (c *Conn) Close() error {
 	return c.conn.Close()
 }
 
 // Begin starts and returns a new transaction.
-func (c *conn) Begin() (driver.Tx, error) {
+func (c *Conn) Begin() (driver.Tx, error) {
 	return c.BeginTx(context.Background(), driver.TxOptions{})
 }
 
-func (c *conn) ResetSession(ctx context.Context) error {
+func (c *Conn) ResetSession(ctx context.Context) error {
 	err := c.conn.Reset()
 	if err != nil {
 		return driver.ErrBadConn
@@ -139,7 +142,7 @@ func (c *conn) ResetSession(ctx context.Context) error {
 // BeginTx starts and returns a new transaction.
 // It uses the ReadOnly option to determine whether to start a read-only or read/write transaction.
 // If the Isolation option is non zero, an error is returned.
-func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
+func (c *Conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	if opts.Isolation != 0 {
 		return nil, errors.New("isolation levels are not supported")
 	}
@@ -158,23 +161,23 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
-type stmt struct {
+type Stmt struct {
 	pq   query.Query
-	conn *conn
+	conn *Conn
 }
 
 // NumInput returns the number of placeholder parameters.
-func (s stmt) NumInput() int { return -1 }
+func (s Stmt) NumInput() int { return -1 }
 
 // Exec executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
-func (s stmt) Exec(args []driver.Value) (driver.Result, error) {
+func (s Stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
-func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+func (s Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -185,7 +188,7 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 		Ctx:    ctx,
 		DB:     s.conn.db,
 		Conn:   s.conn.conn,
-		Params: namedValueToParams(args),
+		Params: NamedValueToParams(args),
 	})
 	if err != nil {
 		return nil, err
@@ -197,28 +200,28 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 		}
 	}()
 
-	return execResult{}, res.Skip()
+	return ExecResult{}, res.Skip()
 }
 
-type execResult struct{}
+type ExecResult struct{}
 
 // LastInsertId is not supported and returns an error.
-func (r execResult) LastInsertId() (int64, error) {
+func (r ExecResult) LastInsertId() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
 // RowsAffected is not supported and returns an error.
-func (r execResult) RowsAffected() (int64, error) {
+func (r ExecResult) RowsAffected() (int64, error) {
 	return 0, errors.New("not supported")
 }
 
-func (s stmt) Query(args []driver.Value) (driver.Rows, error) {
+func (s Stmt) Query(args []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("not implemented")
 }
 
 // QueryContext executes a query that may return rows, such as a
 // SELECT.
-func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+func (s Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -229,17 +232,17 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 		Ctx:    ctx,
 		DB:     s.conn.db,
 		Conn:   s.conn.conn,
-		Params: namedValueToParams(args),
+		Params: NamedValueToParams(args),
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return newRows(res)
+	return NewRows(res)
 }
 
 // Close does nothing.
-func (s stmt) Close() error {
+func (s Stmt) Close() error {
 	return nil
 }
 
@@ -249,7 +252,7 @@ type Rows struct {
 	columns []string
 }
 
-func newRows(res *statement.Result) (*Rows, error) {
+func NewRows(res *statement.Result) (*Rows, error) {
 	columns, err := res.Columns()
 	if err != nil {
 		return nil, err
@@ -327,7 +330,7 @@ func (rs *Rows) Next(dest []driver.Value) error {
 	})
 }
 
-func namedValueToParams(args []driver.NamedValue) []environment.Param {
+func NamedValueToParams(args []driver.NamedValue) []environment.Param {
 	params := make([]environment.Param, len(args))
 	for i, arg := range args {
 		var p environment.Param

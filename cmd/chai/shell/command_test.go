@@ -148,9 +148,11 @@ func BenchmarkImportCSV(b *testing.B) {
 
 	var buf bytes.Buffer
 	w := csv.NewWriter(&buf)
-	w.Write([]string{"a", "b", "c"})
+	err = w.Write([]string{"a", "b", "c"})
+	require.NoError(b, err)
 	for i := 0; i < 10000; i++ {
-		w.Write([]string{"1", "2", "3"})
+		err = w.Write([]string{"1", "2", "3"})
+		require.NoError(b, err)
 	}
 	w.Flush()
 

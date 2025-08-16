@@ -323,7 +323,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 		}
 
 		// if we have both a filter and a TempSort node, we can merge them
-		if filter != nil && sorter != nil {
+		if sorter != nil {
 			filter.orderBy = sorter
 			sorter = nil
 		}

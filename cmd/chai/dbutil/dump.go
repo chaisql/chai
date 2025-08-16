@@ -11,7 +11,7 @@ import (
 
 // Dump takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
-func Dump(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) error {
+func Dump(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) (err error) {
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
@@ -64,6 +64,10 @@ func dumpTable(ctx context.Context, tx *sql.Tx, w io.Writer, query, tableName st
 	defer rows.Close()
 
 	for rows.Next() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		cols, err := rows.Columns()
 		if err != nil {
 			return err
@@ -105,7 +109,7 @@ func dumpTable(ctx context.Context, tx *sql.Tx, w io.Writer, query, tableName st
 
 // DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
 // If tables are provided, only selected tables will be outputted.
-func DumpSchema(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) error {
+func DumpSchema(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) (err error) {
 	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err

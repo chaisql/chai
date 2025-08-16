@@ -7,7 +7,6 @@ import (
 
 	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/row"
-	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -151,13 +150,4 @@ func TestEncodeDecodeBooleans(t *testing.T) {
 func TestEncodeDecodeNull(t *testing.T) {
 	got := encoding.EncodeNull(nil)
 	require.Equal(t, []byte{0x02}, got)
-}
-
-func mustNewKey(t testing.TB, namespace tree.Namespace, order tree.SortOrder, values ...types.Value) []byte {
-	k := tree.NewKey(values...)
-
-	b, err := k.Encode(namespace, order)
-	require.NoError(t, err)
-
-	return b
 }

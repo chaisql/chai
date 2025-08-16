@@ -1,6 +1,7 @@
 # ChaiSQL
 
-ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of use for developers.
+ChaiSQL is a modern, embedded SQL database with a PostgreSQL-compatible API, written in pure Go.
+It’s designed for developers who want the power of SQL with the simplicity of an embedded database.
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
@@ -8,134 +9,119 @@ ChaiSQL is a modern embedded SQL database, focusing on flexibility and ease of u
 
 ## Key Features
 
-- **PostgreSQL API**: ChaiSQL SQL API is compatible with PostgreSQL
-- **Optimized for Go**: Native Go implementation with no CGO dependency.
-- **Storage flexibility**: Store data on-disk or in-memory.
-- **Solid foundations**: ChaiSQL is backed by [Pebble](https://github.com/cockroachdb/pebble) for native Go toolchains, and [RocksDB](https://rocksdb.org/) for non-Go or CGO builds (coming soon).
+- **PostgreSQL API Compatibility** – Run familiar SQL queries with minimal changes.
+- **Pure Go Implementation** – No CGO or external dependencies.
+- **Flexible Storage** – Choose between on-disk or in-memory modes.
+- **Backed by [Pebble](https://github.com/cockroachdb/pebble)** – Rock-solid storage engine from CockroachDB.
 
 ## Roadmap
 
-ChaiSQL is work in progress and is not ready yet for production.
+ChaiSQL is still in active development and not production-ready. Planned features:
 
-Here is a high level list of features that we want to implement in the near future, in no particular order:
-
-- [ ] Stable storage format (90% completed)
-- [ ] Implement most of the SQL-92 standard (detailed roadmap coming soon)
-- [ ] Provide clients for other languages (JS/TS, Python, etc) and add support for RocksDB as the backend
-- [ ] Compatibility with PostgreSQL drivers and ORMs
+- [ ] Stable storage format – finalize and stabilize (90% complete)
+- [ ] SQL-92 coverage – implement core + advanced features (detailed roadmap soon)
+- [ ] Language clients – official drivers for JS/TS, Python, etc.
+- [ ] Backend flexibility – RocksDB support alongside Pebble
+- [ ] ORM & driver compatibility – seamless use with PostgreSQL ecosystem
 
 ## Installation
 
-Install the ChaiSQL database
+Install the ChaiSQL driver and CLI:
 
 ```bash
-go install github.com/chaisql/chai
+go install github.com/chaisql/chai@latest
+go install github.com/chaisql/chai/cmd/chai@latest
 ```
 
 ## Quickstart
+
+Here’s a simple Go example that creates a table, inserts rows, and queries them:
 
 ```go
 package main
 
 import (
-    "context"
+    "database/sql"
     "fmt"
     "log"
 
-    "github.com/chaisql/chai"
+    _ "github.com/chaisql/chai"
 )
 
 func main() {
-    // Create a database instance, here we'll store everything on-disk
-    db, err := chai.Open("mydb")
+    // Open an on-disk database called "mydb"
+    db, err := sql.Open("chai", "mydb")
     if err != nil {
         log.Fatal(err)
     }
     defer db.Close()
 
-    err = db.Exec(`
-        CREATE TABLE user (
-            id              INT         PRIMARY KEY,
-            name            TEXT        NOT NULL UNIQUE,
-            age             INT         NOT NULL,
-            created_at      TIMESTAMP
-        )
+    // Create schema
+    _, err = db.Exec(`
+        CREATE TABLE users (
+            id          SERIAL PRIMARY KEY,
+            name        TEXT NOT NULL UNIQUE,
+            email       TEXT NOT NULL,
+            age         INT  NOT NULL,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     `)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    err = db.Exec(`INSERT INTO user (id, name, age) VALUES (1, "Jo Bloggs", 33)`)
+    // Insert some data
+    _, err = db.Exec(`
+        INSERT INTO users (name, email, age)
+        VALUES
+            ('Alice', 'alice@example.com', 30),
+            ('Bob',   'bob@example.com',   25),
+            ('Carol', 'carol@example.com', 40);
+    `)
+    if err != nil {
+        log.Fatal(err)
+    }
 
-    rows, err := db.Query("SELECT id, name, age, address FROM user WHERE age >= 18")
+    // Query active adults
+    rows, err := db.Query(`
+        SELECT id, name, email, age
+        FROM users
+        WHERE age >= 18
+        ORDER BY age DESC
+    `)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer rows.Close()
 
-    err = rows.Iterate(func(r *chai.Row) error {
-        // scan each column
+    for rows.Next() {
         var id, age int
-        var name string
-        err = r.Scan(&id, &name, &age)
-        // or into a struct
-        type User struct {
-            ID   int
-            Name string
-            Age  int
+        var name, email string
+        if err := rows.Scan(&id, &name, &email, &age); err != nil {
+            log.Fatal(err)
         }
-        var u User
-        err = r.StructScan(&u)
-        // or even a map
-        m := make(map[string]any)
-        err = r.MapScan(&m)
-        return nil
-    })
+        fmt.Printf("User %d: %s (%s), %d years old\n", id, name, email, age)
+    }
 }
 ```
 
-Checkout the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage example](#usage) in the README to get started quickly.
+### In-memory Database
 
-### In-memory database
-
-For in-memory operations, simply use `:memory:`:
+For ephemeral databases, just use `:memory:`:
 
 ```go
 db, err := sql.Open("chai", ":memory:")
 ```
 
-### Using database/sql
+## Chai shell
 
-```go
-// import chai as a blank import
-import _ "github.com/chaisql/chai"
-
-// Create a sql/database DB instance
-db, err := sql.Open("chai", "mydb")
-if err != nil {
-    log.Fatal(err)
-}
-defer db.Close()
-
-// Then use db as usual
-res, err := db.ExecContext(...)
-res, err := db.Query(...)
-res, err := db.QueryRow(...)
-
-// use the driver.Scanner to scan into a struct
-var u User
-err = res.Scan(driver.Scanner(&u))
-```
-
-## chai shell
-
-The chai command line provides an SQL shell for database management:
+The chai command-line tool provides an interactive SQL shell:
 
 ```bash
-go install github.com/chaisql/chai/cmd/chai@latest
-```
-
-Usage example:
-
-```bash
-# For in-memory database:
+# In-memory database:
 chai
 
-# For disk-based database:
+# Disk-based database:
 chai dirName
 ```
 
@@ -152,3 +138,17 @@ A big thanks to our [contributors](https://github.com/chaisql/chai/graphs/contri
 Made with [contrib.rocks](https://contrib.rocks).
 
 For any questions or discussions, open an [issue](https://github.com/chaisql/chai/issues/new).
+
+## ❓ FAQ
+
+### Why not just use SQLite?
+
+SQLite is fantastic, but it has its own SQL dialect. ChaiSQL is designed for PostgreSQL compatibility, so it feels familiar if you already use Postgres.
+
+### Is it production-ready?
+
+Not yet. We’re actively building out SQL support and stability.
+
+### Can I use existing Postgres tools?
+
+Yes, ChaiSQL aims to be compatible with PostgreSQL drivers and ORMs.
