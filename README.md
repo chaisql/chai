@@ -1,28 +1,40 @@
 # ChaiSQL
 
-ChaiSQL is a modern, embedded SQL database with a PostgreSQL-compatible API, written in pure Go.
-It’s designed for developers who want the power of SQL with the simplicity of an embedded database.
+ChaiSQL is a modern embedded SQL database, written in pure Go, with a PostgreSQL-inspired API.
+It’s designed for developers who want the familiarity of Postgres with the simplicity of an embedded database.
 
 [![Build Status](https://github.com/chaisql/chai/actions/workflows/go.yml/badge.svg)](https://github.com/chaisql/chai/actions/workflows/go.yml)
 [![go.dev reference](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white&style=flat-square)](https://pkg.go.dev/github.com/chaisql/chai)
 ![Status](https://img.shields.io/badge/Project%20Stage-Development-yellow)
 
-## Key Features
+## ✨ Highlights
 
-- **PostgreSQL API Compatibility** – Run familiar SQL queries with minimal changes.
-- **Pure Go Implementation** – No CGO or external dependencies.
-- **Flexible Storage** – Choose between on-disk or in-memory modes.
-- **Backed by [Pebble](https://github.com/cockroachdb/pebble)** – Rock-solid storage engine from CockroachDB.
+- **Postgres-like SQL** – the syntax you already know, embedded in your Go app.
+- **Pure Go** – no CGO or external dependencies.
+- **Flexible Storage** – keep data on disk or run fully in-memory.
+- **Built on Pebble** – powered by [CockroachDB’s Pebble engine](https://github.com/cockroachdb/pebble).
 
-## Roadmap
+## 🔎 Current Capabilities
 
-ChaiSQL is still in active development and not production-ready. Planned features:
+ChaiSQL already supports a useful core of SQL features, including:
 
-- [ ] Stable storage format – finalize and stabilize (90% complete)
-- [ ] SQL-92 coverage – implement core + advanced features (detailed roadmap soon)
-- [ ] Language clients – official drivers for JS/TS, Python, etc.
-- [ ] Backend flexibility – RocksDB support alongside Pebble
-- [ ] ORM & driver compatibility – seamless use with PostgreSQL ecosystem
+- Creating and dropping tables & indexes (with composite indexes)
+- Inserting, updating, deleting rows
+- Basic SELECT queries with filtering, ordering, grouping
+- DISTINCT, UNION / UNION ALL
+
+👉 Joins and many advanced features are not implemented yet.
+The goal is steady growth toward broader PostgreSQL compatibility, but today ChaiSQL is best suited for _simpler schemas and embedded use cases_.
+
+## 🗺 Roadmap
+
+ChaiSQL is still in active development and not production-ready. Planned milestones include:
+
+- [ ] Finalize stable on-disk storage format (90% complete)
+- [ ] Broader SQL-92 coverage
+- [ ] Drivers for other languages (JS/TS, Python, …)
+- [ ] RocksDB backend support
+- [ ] Compatibility with PostgreSQL drivers/ORMs
 
 ## Installation
 
@@ -151,4 +163,4 @@ Not yet. We’re actively building out SQL support and stability.
 
 ### Can I use existing Postgres tools?
 
-Yes, ChaiSQL aims to be compatible with PostgreSQL drivers and ORMs.
+Not yet. ChaiSQL is PostgreSQL-API _inspired_, but it does not speak the Postgres wire protocol and is not compatible with psql, pg_dump, or drivers that expect a Postgres server.
