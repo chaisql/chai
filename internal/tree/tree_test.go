@@ -27,9 +27,7 @@ var key2 = func() *tree.Key {
 	)
 }()
 
-var doc = row.NewFromMap(map[string]bool{
-	"a": true,
-})
+var doc = row.NewColumnBuffer().Add("a", types.NewBooleanValue(true))
 
 func TestTreeGet(t *testing.T) {
 	tests := []struct {

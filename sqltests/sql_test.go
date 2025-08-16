@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	_ "github.com/chaisql/chai/driver"
+	_ "github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/testutil"

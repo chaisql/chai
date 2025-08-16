@@ -91,13 +91,13 @@ in the same transaction, use -t`,
 
 		path := cmd.String("path")
 
-		db, err := dbutil.OpenDB(ctx, path)
+		db, err := dbutil.OpenDB(path)
 		if err != nil {
 			return err
 		}
 		defer db.Close()
 
-		return dbutil.Bench(db, query, dbutil.BenchOptions{
+		return dbutil.Bench(ctx, db, query, dbutil.BenchOptions{
 			Init:       cmd.String("init"),
 			N:          cmd.Int("number"),
 			SampleSize: cmd.Int("sample"),

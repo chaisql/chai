@@ -3,6 +3,7 @@ package shell
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -11,9 +12,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 
-	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
-	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/row"
 )
 
@@ -114,32 +113,22 @@ func runHelpCmd(out io.Writer) error {
 }
 
 // runTablesCmd displays all tables.
-func runTablesCmd(db *chai.DB, w io.Writer) error {
-	conn, err := db.Connect()
+func runTablesCmd(ctx context.Context, db *sql.DB, w io.Writer) error {
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	res, err := conn.Query("SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
+	rows, err := conn.QueryContext(ctx, "SELECT name FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'")
 	if err != nil {
 		return err
 	}
-	defer res.Close()
+	defer rows.Close()
 
-	it, err := res.Iterator()
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.Next() {
+	for rows.Next() {
 		var tableName string
-		r, err := it.Row()
-		if err != nil {
-			return err
-		}
-		err = r.Scan(&tableName)
+		err = rows.Scan(&tableName)
 		if err != nil {
 			return err
 		}
@@ -149,24 +138,24 @@ func runTablesCmd(db *chai.DB, w io.Writer) error {
 		}
 	}
 
-	return it.Error()
+	return rows.Err()
 }
 
 // runIndexesCmd displays a list of indexes. If table is non-empty, it only
 // displays that table's indexes. If not, it displays all indexes.
-func runIndexesCmd(db *chai.DB, tableName string, w io.Writer) error {
+func runIndexesCmd(ctx context.Context, db *sql.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
-		_, err := db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName)
+		err := db.QueryRowContext(ctx, "SELECT 1 FROM __chai_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName).Scan(new(int))
 		if err != nil {
-			if errs.IsNotFoundError(err) {
+			if sql.ErrNoRows == err {
 				return errors.Wrapf(err, "table %s does not exist", tableName)
 			}
 			return err
 		}
 	}
 
-	indexes, err := dbutil.ListIndexes(db, tableName)
+	indexes, err := dbutil.ListIndexes(ctx, db, tableName)
 	if err != nil {
 		return err
 	}
@@ -183,28 +172,28 @@ func runIndexesCmd(db *chai.DB, tableName string, w io.Writer) error {
 
 // runSaveCommand saves the currently opened database at the given path.
 // If a path already exists, existing values in the target database will be overwritten.
-func runSaveCmd(ctx context.Context, db *chai.DB, dbPath string) error {
+func runSaveCmd(ctx context.Context, db *sql.DB, dbPath string) error {
 	// Open the new database
-	otherDB, err := dbutil.OpenDB(ctx, dbPath)
+	otherDB, err := dbutil.OpenDB(dbPath)
 	if err != nil {
 		return err
 	}
-	otherDB = otherDB.WithContext(ctx)
 	defer otherDB.Close()
 
 	var dbDump bytes.Buffer
 
-	err = dbutil.Dump(db, &dbDump)
+	err = dbutil.Dump(ctx, db, &dbDump)
 	if err != nil {
 		return err
 	}
 
-	return otherDB.Exec(dbDump.String())
+	_, err = otherDB.Exec(dbDump.String())
+	return err
 }
 
 const csvBatchSize = 1000
 
-func runImportCmd(db *chai.DB, fileType, path, table string) error {
+func runImportCmd(ctx context.Context, db *sql.DB, fileType, path, table string) error {
 	if strings.ToLower(fileType) != "csv" {
 		return errors.New("TYPE should be csv")
 	}
@@ -215,13 +204,13 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 	}
 	defer f.Close()
 
-	conn, err := db.Connect()
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin(true)
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -229,12 +218,12 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 
 	r := csv.NewReader(f)
 
-	err = tx.Exec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s", table))
+	headers, err := r.Read()
 	if err != nil {
 		return err
 	}
 
-	headers, err := r.Read()
+	_, err = tx.ExecContext(ctx, fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s)", table, strings.Join(headers, " TEXT, ")))
 	if err != nil {
 		return err
 	}
@@ -253,7 +242,7 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 
 	var sb strings.Builder
 	var stop bool
-	var stmt *chai.Statement
+	var stmt *sql.Stmt
 
 	for !stop {
 		sb.Reset()
@@ -288,7 +277,7 @@ func runImportCmd(db *chai.DB, fileType, path, table string) error {
 			}
 		}
 
-		err = stmt.Exec(args[:n]...)
+		_, err = stmt.Exec(args[:n]...)
 		if err != nil {
 			return err
 		}

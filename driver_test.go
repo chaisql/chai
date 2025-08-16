@@ -1,4 +1,4 @@
-package driver
+package chai
 
 import (
 	"context"

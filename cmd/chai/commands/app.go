@@ -29,7 +29,7 @@ func NewApp() *cli.Command {
 		dbpath := cmd.Args().First()
 
 		if dbutil.CanReadFromStandardInput() {
-			db, err := dbutil.OpenDB(ctx, dbpath)
+			db, err := dbutil.OpenDB(dbpath)
 			if err != nil {
 				return err
 			}

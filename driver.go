@@ -1,4 +1,4 @@
-package driver
+package chai
 
 import (
 	"context"
@@ -6,11 +6,13 @@ import (
 	"database/sql/driver"
 	"io"
 	"sync"
-	"time"
 
-	"github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/row"
+	"github.com/chaisql/chai/internal/query"
+	"github.com/chaisql/chai/internal/query/statement"
+	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -33,7 +35,9 @@ func (d sqlDriver) Open(name string) (driver.Conn, error) {
 }
 
 func (d sqlDriver) OpenConnector(name string) (driver.Connector, error) {
-	db, err := chai.Open(name)
+	db, err := database.Open(name, &database.Options{
+		CatalogLoader: catalogstore.LoadCatalog,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +55,7 @@ var (
 
 type connector struct {
 	driver    driver.Driver
-	db        *chai.DB
+	db        *database.Database
 	closeOnce sync.Once
 }
 
@@ -82,8 +86,8 @@ func (c *connector) Close() error {
 // conn represents a connection to the Chai database.
 // It implements the database/sql/driver.Conn interface.
 type conn struct {
-	db   *chai.DB
-	conn *chai.Connection
+	db   *database.Database
+	conn *database.Connection
 }
 
 // Prepare returns a prepared statement, bound to this connection.
@@ -93,13 +97,23 @@ func (c *conn) Prepare(q string) (driver.Stmt, error) {
 
 // PrepareContext returns a prepared statement, bound to this connection.
 func (c *conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	s, err := c.conn.Prepare(q)
+	pq, err := parser.ParseQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	err = pq.Prepare(&query.Context{
+		Ctx:  ctx,
+		DB:   c.db,
+		Conn: c.conn,
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return stmt{
-		stmt: s,
+		pq:   pq,
+		conn: c,
 	}, nil
 }
 
@@ -114,7 +128,7 @@ func (c *conn) Begin() (driver.Tx, error) {
 }
 
 func (c *conn) ResetSession(ctx context.Context) error {
-	err := c.conn.Conn.Reset()
+	err := c.conn.Reset()
 	if err != nil {
 		return driver.ErrBadConn
 	}
@@ -132,13 +146,21 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 
 	// if the ReadOnly flag is explicitly specified, create a read-only transaction,
 	// otherwise create a read/write transaction.
-	return c.conn.Begin(!opts.ReadOnly)
+	tx, err := c.conn.BeginTx(&database.TxOptions{
+		ReadOnly: opts.ReadOnly,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
 }
 
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type stmt struct {
-	stmt *chai.Statement
+	pq   query.Query
+	conn *conn
 }
 
 // NumInput returns the number of placeholder parameters.
@@ -159,7 +181,23 @@ func (s stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver
 	default:
 	}
 
-	return execResult{}, s.stmt.Exec(namedValueToParams(args)...)
+	res, err := s.pq.Run(&query.Context{
+		Ctx:    ctx,
+		DB:     s.conn.db,
+		Conn:   s.conn.conn,
+		Params: namedValueToParams(args),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		er := res.Close()
+		if err == nil {
+			err = er
+		}
+	}()
+
+	return execResult{}, res.Skip()
 }
 
 type execResult struct{}
@@ -187,24 +225,17 @@ func (s stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (drive
 	default:
 	}
 
-	res, err := s.stmt.Query(namedValueToParams(args)...)
+	res, err := s.pq.Run(&query.Context{
+		Ctx:    ctx,
+		DB:     s.conn.db,
+		Conn:   s.conn.conn,
+		Params: namedValueToParams(args),
+	})
 	if err != nil {
 		return nil, err
 	}
 
 	return newRows(res)
-}
-
-func namedValueToParams(args []driver.NamedValue) []any {
-	params := make([]any, len(args))
-	for i, arg := range args {
-		var p environment.Param
-		p.Name = arg.Name
-		p.Value = arg.Value
-		params[i] = p
-	}
-
-	return params
 }
 
 // Close does nothing.
@@ -213,30 +244,27 @@ func (s stmt) Close() error {
 }
 
 type Rows struct {
-	res     *chai.Result
-	it      *chai.Iterator
+	res     *statement.Result
+	it      database.Iterator
 	columns []string
 }
 
-func newRows(res *chai.Result) (*Rows, error) {
+func newRows(res *statement.Result) (*Rows, error) {
+	columns, err := res.Columns()
+	if err != nil {
+		return nil, err
+	}
+
 	it, err := res.Iterator()
 	if err != nil {
 		return nil, err
 	}
 
-	rs := Rows{
-		res: res,
-		it:  it,
-	}
-
-	cols, err := res.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	rs.columns = cols
-
-	return &rs, nil
+	return &Rows{
+		res:     res,
+		it:      it,
+		columns: columns,
+	}, nil
 }
 
 // Columns returns the fields selected by the SELECT statement.
@@ -247,8 +275,10 @@ func (rs *Rows) Columns() []string {
 // Close closes the rows iterator.
 func (rs *Rows) Close() error {
 	var errs []error
-	if err := rs.it.Close(); err != nil {
-		errs = append(errs, err)
+	if rs.it != nil {
+		if err := rs.it.Close(); err != nil {
+			errs = append(errs, err)
+		}
 	}
 	if err := rs.res.Close(); err != nil {
 		errs = append(errs, err)
@@ -261,7 +291,7 @@ func (rs *Rows) Close() error {
 }
 
 func (rs *Rows) Next(dest []driver.Value) error {
-	if !rs.it.Next() {
+	if rs.it == nil || !rs.it.Next() {
 		return io.EOF
 	}
 
@@ -269,72 +299,42 @@ func (rs *Rows) Next(dest []driver.Value) error {
 	if err != nil {
 		return err
 	}
-
 	var i int
-	return r.Row.Iterate(func(column string, v types.Value) error {
-		var err error
-
+	return r.Iterate(func(column string, v types.Value) error {
 		switch v.Type() {
 		case types.TypeNull:
 			dest[i] = nil
 		case types.TypeBoolean:
-			var b bool
-			err = row.ScanValue(v, &b)
-			if err != nil {
-				return err
-			}
-			dest[i] = b
+			dest[i] = types.AsBool(v)
 		case types.TypeInteger:
-			var ii int32
-			err = row.ScanValue(v, &ii)
-			if err != nil {
-				return err
-			}
-			dest[i] = ii
+			dest[i] = types.AsInt32(v)
 		case types.TypeBigint:
-			var bi int64
-			err = row.ScanValue(v, &bi)
-			if err != nil {
-				return err
-			}
-			dest[i] = bi
+			dest[i] = types.AsInt64(v)
 		case types.TypeDouble:
-			var d float64
-			err = row.ScanValue(v, &d)
-			if err != nil {
-				return err
-			}
-			dest[i] = d
+			dest[i] = types.AsFloat64(v)
 		case types.TypeTimestamp:
-			var t time.Time
-			err = row.ScanValue(v, &t)
-			if err != nil {
-				return err
-			}
-			dest[i] = t
+			dest[i] = types.AsTime(v)
 		case types.TypeText:
-			var s string
-			err = row.ScanValue(v, &s)
-			if err != nil {
-				return err
-			}
-			dest[i] = s
+			dest[i] = types.AsString(v)
 		case types.TypeBlob:
-			var b []byte
-			err = row.ScanValue(v, &b)
-			if err != nil {
-				return err
-			}
-			dest[i] = b
+			dest[i] = types.AsByteSlice(v)
 		default:
-			err = row.ScanValue(v, dest[i])
-			if err != nil {
-				return err
-			}
+			panic("unsupported type: " + v.Type().String())
 		}
-
 		i++
 
 		return nil
 	})
+}
+
+func namedValueToParams(args []driver.NamedValue) []environment.Param {
+	params := make([]environment.Param, len(args))
+	for i, arg := range args {
+		var p environment.Param
+		p.Name = arg.Name
+		p.Value = arg.Value
+		params[i] = p
+	}
+
+	return params
 }

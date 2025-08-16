@@ -1,11 +1,11 @@
 package testutil
 
 import (
+	"database/sql"
 	"errors"
 	"strings"
 	"testing"
 
-	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -91,20 +91,20 @@ func ParseResultStream(stream string) *ResultStream {
 	return &ResultStream{p, env}
 }
 
-func RequireStreamEq(t *testing.T, raw string, res *chai.Result) {
+func RequireRowsEq(t *testing.T, raw string, rows *sql.Rows) {
 	t.Helper()
-	RequireStreamEqf(t, raw, res, "")
+	RequireRowsEqf(t, raw, rows, "")
 }
 
-func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, msg string, args ...any) {
+func RequireRowsEqf(t *testing.T, raw string, rows *sql.Rows, msg string, args ...any) {
 	errMsg := append([]any{msg}, args...)
 	t.Helper()
-	rows := ParseResultStream(raw)
+	stream := ParseResultStream(raw)
 
 	var want []row.Row
 
 	for {
-		v, err := rows.Next()
+		v, err := stream.Next()
 		if err != nil {
 			if perr, ok := err.(*parser.ParseError); ok {
 				if perr.Found == "EOF" {
@@ -123,15 +123,11 @@ func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, msg string, ar
 
 	var got []row.Row
 
-	err := res.Iterate(func(r *chai.Row) error {
-		var cb row.ColumnBuffer
-		err := r.StructScan(&cb)
-		require.NoError(t, err, errMsg...)
-
-		got = append(got, &cb)
-		return nil
-	})
-	require.NoError(t, err, errMsg...)
+	for rows.Next() {
+		cb := SQLRowToColumnBuffer(t, rows)
+		got = append(got, cb)
+	}
+	require.NoError(t, rows.Err(), errMsg...)
 
 	var expected strings.Builder
 	for i := range want {
@@ -161,24 +157,3 @@ func RequireStreamEqf(t *testing.T, raw string, res *chai.Result, msg string, ar
 		require.Equal(t, expected.String(), actual.String())
 	}
 }
-
-// rows, err := db.Query(test.Expr)
-// 										if err != nil {
-// 											return err
-// 										}
-// 										defer rows.Close()
-
-// 										cols, err := rows.Columns()
-// 										if err != nil {
-// 											return err
-// 										}
-
-// 										for rows.Next() {
-// 											var vals []interface{}
-// 											for range cols {
-// 												vals = append(vals, new(interface{}))
-// 											}
-// 											if err := rows.Scan(vals...); err != nil {
-// 												return err
-// 											}
-// 										}

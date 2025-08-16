@@ -1,7 +1,6 @@
 package rows_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/chaisql/chai/internal/database"
@@ -60,7 +59,7 @@ func TestProject(t *testing.T) {
 
 			err := stream.New(rows.Emit([]string{"a", "b"}, test.in)).
 				Pipe(rows.Project(test.exprs...)).Iterate(&inEnv, func(r database.Row) error {
-				tt, err := json.Marshal(r)
+				tt, err := row.MarshalJSON(r)
 				require.NoError(t, err)
 				require.JSONEq(t, test.out, string(tt))
 

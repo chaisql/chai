@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/chaisql/chai/cmd/chai/dbutil"
+	"github.com/chaisql/chai/internal/database"
+	"github.com/chaisql/chai/internal/database/catalogstore"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/urfave/cli/v3"
 )
@@ -32,13 +34,15 @@ func NewPebbleCommand() *cli.Command {
 	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 
-		db, err := dbutil.OpenDB(ctx, path)
+		db, err := database.Open(path, &database.Options{
+			CatalogLoader: catalogstore.LoadCatalog,
+		})
 		if err != nil {
 			return err
 		}
 		defer db.Close()
 
-		ng := db.DB.Engine.(*kv.PebbleEngine)
+		ng := db.Engine.(*kv.PebbleEngine)
 		return dbutil.DumpPebble(ctx, ng.DB(), dbutil.DumpPebbleOptions{
 			KeysOnly: cmd.Bool("keys-only"),
 		})

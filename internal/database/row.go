@@ -18,9 +18,6 @@ type Row interface {
 	// TableName returns the name of the table the row belongs to.
 	TableName() string
 
-	// MarshalJSON encodes the row as JSON.
-	MarshalJSON() ([]byte, error)
-
 	// Key returns the row key.
 	Key() *tree.Key
 }
@@ -63,18 +60,6 @@ func (r *LazyRow) Get(name string) (types.Value, error) {
 	}
 
 	return r.row.Get(name)
-}
-
-func (r *LazyRow) MarshalJSON() ([]byte, error) {
-	if r.row == nil {
-		var err error
-		r.row, err = r.table.GetRow(r.key)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return r.row.(interface{ MarshalJSON() ([]byte, error) }).MarshalJSON()
 }
 
 func (r *LazyRow) Key() *tree.Key {

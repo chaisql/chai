@@ -76,7 +76,6 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		var rowList []expr.Row
 		// if no columns have been specified, we need to inject the columns from the defined table info
 		if len(stmt.Columns) == 0 {
-
 			rowList = make([]expr.Row, 0, len(stmt.Values))
 			for i := range stmt.Values {
 				var r expr.Row

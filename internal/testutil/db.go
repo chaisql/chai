@@ -85,7 +85,8 @@ func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	require.NoError(t, err)
 
 	return db, tx, func() {
-		tx.Rollback()
+		err = tx.Rollback()
+		require.NoError(t, err)
 	}
 }
 

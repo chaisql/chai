@@ -20,7 +20,7 @@ func MarshalJSON(r Row) ([]byte, error) {
 	buf.WriteByte('{')
 
 	var notFirst bool
-	err := SortColumns(r).Iterate(func(c string, v types.Value) error {
+	err := r.Iterate(func(c string, v types.Value) error {
 		if notFirst {
 			buf.WriteString(", ")
 		}

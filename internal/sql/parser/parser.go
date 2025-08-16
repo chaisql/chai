@@ -98,6 +98,49 @@ func (p *Parser) Parse(fn func(statement.Statement) error) error {
 	}
 }
 
+// ParseQuery parses a Chai SQL string and returns a Query.
+func (p *Parser) ParseRaw(fn func(q string) error) error {
+	var sb strings.Builder
+
+	for {
+		err := p.skipMany(scanner.SEMICOLON)
+		if err != nil {
+			return err
+		}
+
+		end, err := p.parseOptional(scanner.EOF)
+		if err != nil {
+			return err
+		}
+		if end {
+			return nil
+		}
+
+		sb.Reset()
+
+	INNER:
+		for {
+			tok, _, lit := p.Scan()
+			switch tok {
+			case scanner.EOF:
+				return fn(sb.String())
+			case scanner.SEMICOLON:
+				err = fn(sb.String())
+				if err != nil {
+					return err
+				}
+				break INNER
+			default:
+				if lit == "" {
+					sb.WriteString(tok.String())
+				} else {
+					sb.WriteString(lit)
+				}
+			}
+		}
+	}
+}
+
 // ParseStatement parses a Chai SQL string and returns a statement.
 func (p *Parser) ParseStatement() (statement.Statement, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()

@@ -44,6 +44,20 @@ func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator
 	}, nil
 }
 
+func (op *InsertOperator) Columns(env *environment.Environment) ([]string, error) {
+	info, err := env.GetTx().Catalog.GetTableInfo(op.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	columns := make([]string, len(info.ColumnConstraints.Ordered))
+	for i := range info.ColumnConstraints.Ordered {
+		columns[i] = info.ColumnConstraints.Ordered[i].Column
+	}
+
+	return columns, nil
+}
+
 func (op *InsertOperator) String() string {
 	return fmt.Sprintf("table.Insert(%q)", op.Name)
 }

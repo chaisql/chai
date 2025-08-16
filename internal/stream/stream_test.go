@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -28,7 +27,7 @@ func TestStream(t *testing.T) {
 
 	var count int64
 	err := s.Iterate(new(environment.Environment), func(r database.Row) error {
-		tt, err := json.Marshal(r)
+		tt, err := row.MarshalJSON(r)
 		require.NoError(t, err)
 		require.JSONEq(t, fmt.Sprintf(`{"a + 1": %d}`, count+3), string(tt))
 		count++

@@ -1,10 +1,11 @@
 package testutil
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
+	"slices"
 	"testing"
 
 	"github.com/chaisql/chai/internal/environment"
@@ -12,7 +13,6 @@ import (
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,11 +36,12 @@ func MakeRowExpr(t testing.TB, s string) expr.Row {
 	r := MakeRow(t, s)
 	var er expr.Row
 
-	r.Iterate(func(column string, value types.Value) error {
+	err := r.Iterate(func(column string, value types.Value) error {
 		er.Columns = append(er.Columns, column)
 		er.Exprs = append(er.Exprs, expr.LiteralValue{Value: value})
 		return nil
 	})
+	require.NoError(t, err)
 
 	return er
 }
@@ -104,38 +105,114 @@ func Dump(t testing.TB, v any) {
 	require.NoError(t, err)
 }
 
-func RequireJSONEq(t testing.TB, o any, expected string) {
+func RequireJSONEq(t testing.TB, rows *sql.Rows, expected ...string) {
 	t.Helper()
 
-	data, err := json.Marshal(o)
+	defer rows.Close()
+
+	cols, err := rows.Columns()
 	require.NoError(t, err)
-	require.JSONEq(t, expected, string(data))
+
+	vals := make([]any, len(cols))
+	valPtrs := make([]any, len(cols))
+	for i := range cols {
+		valPtrs[i] = &vals[i]
+	}
+
+	i := 0
+	for rows.Next() {
+		require.Less(t, i, len(expected), "query returned too many rows")
+		err = rows.Scan(valPtrs...)
+		require.NoError(t, err)
+
+		m := make(map[string]any, len(cols))
+		for i := range cols {
+			m[cols[i]] = vals[i]
+		}
+
+		data, err := json.Marshal(m)
+		require.NoError(t, err)
+		require.JSONEq(t, expected[i], string(data))
+		i++
+	}
+
+	require.Equal(t, len(expected), i, "query returned too few rows")
+
+	require.NoError(t, rows.Err())
+}
+
+func RequireJSONArrayEq(t testing.TB, rows *sql.Rows, expected string) {
+	t.Helper()
+
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	require.NoError(t, err)
+
+	vals := make([]any, len(cols))
+	valPtrs := make([]any, len(cols))
+	for i := range cols {
+		valPtrs[i] = &vals[i]
+	}
+
+	var arr []row.ColumnBuffer
+	i := 0
+	for rows.Next() {
+		if i >= len(expected) {
+			t.Fatalf("unexpected row %d", i)
+		}
+		err = rows.Scan(valPtrs...)
+		require.NoError(t, err)
+
+		var cb row.ColumnBuffer
+		for i := range cols {
+			v, err := row.NewValue(vals[i])
+			require.NoError(t, err)
+			cb.Add(cols[i], v)
+		}
+
+		arr = append(arr, cb)
+		i++
+	}
+	require.NoError(t, rows.Err())
+
+	data, err := json.MarshalIndent(arr, "", "  ")
+	require.NoError(t, err)
+
+	formatted, err := json.MarshalIndent(json.RawMessage(expected), "", "  ")
+	require.NoError(t, err)
+
+	require.Equal(t, string(formatted), string(data))
 }
 
 func RequireRowEqual(t testing.TB, want, got row.Row) {
 	t.Helper()
 
-	tWant, err := json.MarshalIndent(want, "", "  ")
+	wantCols, err := row.Columns(want)
 	require.NoError(t, err)
-	tGot, err := json.MarshalIndent(got, "", "  ")
+	gotCols, err := row.Columns(got)
 	require.NoError(t, err)
 
-	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
-		require.Failf(t, "mismatched objects, (-want, +got)", "%s", diff)
+	slices.Sort(wantCols)
+	slices.Sort(gotCols)
+	require.Equal(t, wantCols, gotCols)
+
+	for _, c := range wantCols {
+		a, err := got.Get(c)
+		require.NoError(t, err)
+		b, err := want.Get(c)
+		require.NoError(t, err)
+
+		RequireValueEqual(t, a, b, "mismatched value for column %q", c)
 	}
 }
 
 func RequireValueEqual(t testing.TB, want, got types.Value, msg string, args ...any) {
 	t.Helper()
 
-	tWant, err := json.MarshalIndent(want, "", "  ")
+	ok, err := got.EQ(want)
 	require.NoError(t, err)
-	tGot, err := json.MarshalIndent(got, "", "  ")
-	require.NoError(t, err)
-
-	if diff := cmp.Diff(string(tWant), string(tGot), cmp.Comparer(strings.EqualFold)); diff != "" {
-		require.Failf(t, "mismatched values, (-want, +got)", "%s\n%s", diff, fmt.Sprintf(msg, args...))
-	}
+	require.True(t, ok, "%s; want: %s, got: %s", fmt.Sprintf(msg, args...), want, got)
 }
 
 func CloneRow(t testing.TB, r row.Row) *row.ColumnBuffer {
@@ -147,4 +224,30 @@ func CloneRow(t testing.TB, r row.Row) *row.ColumnBuffer {
 	require.NoError(t, err)
 
 	return &newFb
+}
+
+func SQLRowToColumnBuffer(t testing.TB, rows *sql.Rows) *row.ColumnBuffer {
+	t.Helper()
+
+	cols, err := rows.Columns()
+	require.NoError(t, err)
+
+	vals := make([]any, len(cols))
+	valPtrs := make([]any, len(cols))
+	for i := range cols {
+		valPtrs[i] = &vals[i]
+	}
+
+	err = rows.Scan(valPtrs...)
+	require.NoError(t, err)
+
+	var cb row.ColumnBuffer
+
+	for i, col := range cols {
+		v, err := row.NewValue(vals[i])
+		require.NoError(t, err)
+		cb.Add(col, v)
+	}
+
+	return &cb
 }

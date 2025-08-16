@@ -1,9 +1,10 @@
 package statement_test
 
 import (
+	"database/sql"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/cockroachdb/errors"
@@ -11,60 +12,52 @@ import (
 )
 
 func TestDropTable(t *testing.T) {
-	db, err := chai.Open(":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	conn, err := db.Connect()
-	require.NoError(t, err)
-	defer conn.Close()
-
-	err = conn.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
+	_, err = db.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
 	require.NoError(t, err)
 
-	err = conn.Exec("DROP TABLE test1")
+	_, err = db.Exec("DROP TABLE test1")
 	require.NoError(t, err)
 
-	err = conn.Exec("DROP TABLE IF EXISTS test1")
+	_, err = db.Exec("DROP TABLE IF EXISTS test1")
 	require.NoError(t, err)
 
 	// Dropping a table that doesn't exist without "IF EXISTS"
 	// should return an error.
-	err = conn.Exec("DROP TABLE test1")
+	_, err = db.Exec("DROP TABLE test1")
 	require.Error(t, err)
 
 	// Assert that no other table has been dropped.
-	res, err := conn.Query("SELECT name FROM __chai_catalog WHERE type = 'table'")
+	rows, err := db.Query("SELECT name FROM __chai_catalog WHERE type = 'table'")
 	require.NoError(t, err)
 	var tables []string
-	err = res.Iterate(func(r *chai.Row) error {
+	for rows.Next() {
 		var name string
-		err := r.ScanColumn("name", &name)
-		if err != nil {
-			return err
-		}
+		err := rows.Scan(&name)
+		require.NoError(t, err)
 		tables = append(tables, name)
-		return nil
-	})
-	require.NoError(t, err)
-	require.NoError(t, res.Close())
-
+	}
+	require.NoError(t, rows.Err())
+	require.NoError(t, rows.Close())
 	require.Equal(t, []string{"__chai_catalog", "__chai_sequence", "test2", "test3"}, tables)
 
 	// Assert the unique index test1_a_idx, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = conn.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_a_idx'")
+	err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_a_idx'").Scan(new(int))
 	require.Error(t, err)
 
 	// Assert the rowid sequence test1_seq, created upon the creation of the table,
 	// has been dropped as well.
-	_, err = conn.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_seq'")
+	err = db.QueryRow("SELECT 1 FROM __chai_catalog WHERE name = 'test1_seq'").Scan(new(int))
 	require.Error(t, err)
-	_, err = conn.QueryRow("SELECT 1 FROM __chai_sequence WHERE name = 'test1_seq'")
+	err = db.QueryRow("SELECT 1 FROM __chai_sequence WHERE name = 'test1_seq'").Scan(new(int))
 	require.Error(t, err)
 
 	// Dropping a read-only table should fail.
-	err = conn.Exec("DROP TABLE __chai_catalog")
+	_, err = db.Exec("DROP TABLE __chai_catalog")
 	require.Error(t, err)
 }
 

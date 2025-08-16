@@ -112,6 +112,20 @@ func (r *Result) Skip() (err error) {
 	return it.Error()
 }
 
+func (r *Result) Columns() ([]string, error) {
+	if r.Result == nil {
+		return nil, nil
+	}
+
+	stmt, ok := r.Result.(*StreamStmtResult)
+	if !ok || stmt.Stream.Op == nil {
+		return nil, nil
+	}
+
+	env := environment.New(stmt.Context.DB, stmt.Context.Tx, stmt.Context.Params, nil)
+	return stmt.Stream.Columns(env)
+}
+
 // Close the result stream.
 // After closing the result, Stream is not supposed to be used.
 // If the result stream was already closed, it returns an error.

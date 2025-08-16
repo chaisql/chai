@@ -51,12 +51,11 @@ func TestEncoding(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	r := row.NewFromMap(map[string]any{
-		"a": int64(1),
-		"b": "hello",
-		"c": float64(3.14),
-		"e": int64(100),
-	})
+	r := row.NewColumnBuffer().
+		Add("a", types.NewBigintValue(1)).
+		Add("b", types.NewTextValue("hello")).
+		Add("c", types.NewDoubleValue(float64(3.14))).
+		Add("e", types.NewDoubleValue(float64(100)))
 
 	var buf []byte
 	buf, err = ti.EncodeRow(nil, buf, r)
@@ -65,13 +64,12 @@ func TestEncoding(t *testing.T) {
 	er := database.NewEncodedRow(&ti.ColumnConstraints, buf)
 	require.NoError(t, err)
 
-	want := row.NewFromMap(map[string]any{
-		"a": int64(1),
-		"b": "hello",
-		"c": float64(3.14),
-		"d": float64(10),
-		"e": float64(100),
-	})
+	want := row.NewColumnBuffer().
+		Add("a", types.NewBigintValue(1)).
+		Add("b", types.NewTextValue("hello")).
+		Add("c", types.NewDoubleValue(float64(3.14))).
+		Add("d", types.NewDoubleValue(float64(10))).
+		Add("e", types.NewDoubleValue(float64(100)))
 
 	testutil.RequireRowEqual(t, want, er)
 }

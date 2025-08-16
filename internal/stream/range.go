@@ -92,7 +92,6 @@ func (r *Range) String() string {
 			sb.WriteString(", ")
 		}
 		sb.WriteString(`"exclusive": true`)
-		needsComa = true
 	}
 
 	sb.WriteByte('}')

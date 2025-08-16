@@ -1,16 +1,17 @@
 package database_test
 
 import (
+	"database/sql"
 	"testing"
 	"time"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
 	"github.com/stretchr/testify/require"
 )
 
 // See issue https://github.com/chaisql/chai/issues/298
 func TestConcurrentTransactionManagement(t *testing.T) {
-	db, err := chai.Open(":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, db.Close())
@@ -21,11 +22,7 @@ func TestConcurrentTransactionManagement(t *testing.T) {
 
 	go func() {
 		// 1. Start transaction T1.
-		conn, err := db.Connect()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		tx, err := conn.Begin(true)
+		tx, err := db.Begin()
 		require.NoError(t, err)
 
 		// Start transaction T2.
@@ -46,11 +43,7 @@ func TestConcurrentTransactionManagement(t *testing.T) {
 
 		// 2. Attempt to start transaction T2.
 		// Waits for T1 to finish.
-		conn, err := db.Connect()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		tx, err := conn.Begin(true)
+		tx, err := db.Begin()
 		require.NoError(t, err)
 		require.NoError(t, tx.Rollback())
 

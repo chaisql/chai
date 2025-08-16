@@ -3,6 +3,7 @@ package shell
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -17,7 +18,6 @@ import (
 	"github.com/cockroachdb/errors"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 )
 
@@ -34,7 +34,7 @@ var (
 
 // A Shell manages a command line shell program for manipulating a Chai database.
 type Shell struct {
-	db   *chai.DB
+	db   *sql.DB
 	opts *Options
 
 	displayTime bool
@@ -72,11 +72,11 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath)
+	db, err := dbutil.OpenDB(sh.opts.DBPath)
 	if err != nil {
 		return err
 	}
-	sh.db = db.WithContext(ctx)
+	sh.db = db
 	defer func() {
 		closeErr := sh.db.Close()
 		if closeErr != nil {
@@ -319,7 +319,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 			return errors.New(getUsage(".tables"))
 		}
 
-		return runTablesCmd(sh.db, out)
+		return runTablesCmd(ctx, sh.db, out)
 	case ".indexes":
 		if len(cmd) > 2 {
 			return errors.New(getUsage(".indexes"))
@@ -330,22 +330,22 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 			tableName = cmd[0]
 		}
 
-		return runIndexesCmd(sh.db, tableName, out)
+		return runIndexesCmd(ctx, sh.db, tableName, out)
 	case ".dump":
-		return dbutil.Dump(sh.db, out, cmd[1:]...)
+		return dbutil.Dump(ctx, sh.db, out, cmd[1:]...)
 	case ".save":
 		if len(cmd) != 2 {
 			return fmt.Errorf("cannot save without output path")
 		}
 		return runSaveCmd(ctx, sh.db, cmd[1])
 	case ".schema":
-		return dbutil.DumpSchema(sh.db, out, cmd[1:]...)
+		return dbutil.DumpSchema(ctx, sh.db, out, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
 			return errors.New(getUsage(".import"))
 		}
 
-		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
+		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
 	case ".restore":
 		if len(cmd) != 2 {
 			return errors.New(getUsage(".restore"))

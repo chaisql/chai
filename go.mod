@@ -7,7 +7,6 @@ require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/cockroachdb/pebble/v2 v2.0.6
 	github.com/dromara/carbon/v2 v2.6.11
-	github.com/google/go-cmp v0.7.0
 	github.com/stretchr/testify v1.10.0
 )
 

@@ -1,13 +1,12 @@
 package statement_test
 
 import (
-	"bytes"
 	"database/sql"
-	"encoding/json"
 	"strconv"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +28,7 @@ func TestSelectStmt(t *testing.T) {
 		{"No table, column", "SELECT a", true, ``, nil},
 		{"No table, wildcard", "SELECT *", true, ``, nil},
 		{"No cond", "SELECT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, nil},
-		{"No cond Multiple wildcards", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null,"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100,"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200,"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, nil},
+		{"No cond Multiple wildcards", "SELECT *, *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null,"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null,"color":"red"},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100,"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100,"color":"blue"},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200,"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200,"color":null}]`, nil},
 		{"With columns", "SELECT color, shape FROM test", false, `[{"color":"red","shape":"square"},{"color":"blue","shape":null},{"color":null,"shape":null}]`, nil},
 		{"No cond, wildcard and other column", "SELECT *, color FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null,"color":"red"}, {"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100,"color":"blue"}, {"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200,"color":null}]`, nil},
 		{"With DISTINCT", "SELECT DISTINCT * FROM test", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, nil},
@@ -37,7 +36,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With expr columns", "SELECT color, color != 'red' AS notred FROM test", false, `[{"color":"red","notred":false},{"color":"blue","notred":true},{"color":null,"notred":null}]`, nil},
 		{"With eq op", "SELECT * FROM test WHERE size = 10", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With neq op", "SELECT * FROM test WHERE color != 'red'", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
-		{"With gt op", "SELECT * FROM test WHERE size > 10", false, `[]`, nil},
+		{"With gt op", "SELECT * FROM test WHERE size > 10", false, `null`, nil},
 		{"With gt bis", "SELECT * FROM test WHERE size > 9", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With lt op", "SELECT * FROM test WHERE size < 15", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With lte op", "SELECT * FROM test WHERE color <= 'salmon' ORDER BY k ASC", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
@@ -73,7 +72,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With order by and where", "SELECT * FROM test WHERE color != 'blue' ORDER BY color DESC LIMIT 1", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null}]`, nil},
 		{"With limit", "SELECT * FROM test WHERE size = 10 LIMIT 1", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null}]`, nil},
 		{"With offset", "SELECT * FROM test WHERE size = 10 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
-		{"With limit then offset", "SELECT * FROM test WHERE size = 10 LIMIT 1 OFFSET 1", false, `[{"k":2,"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
+		{"With limit then offset", "SELECT * FROM test WHERE size = 10 LIMIT 1 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With offset then limit", "SELECT * FROM test WHERE size = 10 OFFSET 1 LIMIT 1", true, "", nil},
 		{"With positional params", "SELECT * FROM test WHERE color = ? OR height = ?", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, []interface{}{"red", 100}},
 		{"With named params", "SELECT * FROM test WHERE color = $a OR height = $d", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, []interface{}{sql.Named("a", "red"), sql.Named("d", 100)}},
@@ -102,15 +101,11 @@ func TestSelectStmt(t *testing.T) {
 	for _, test := range tests {
 		testFn := func(withIndexes bool) func(t *testing.T) {
 			return func(t *testing.T) {
-				db, err := chai.Open(":memory:")
+				db, err := sql.Open("chai", ":memory:")
 				require.NoError(t, err)
 				defer db.Close()
 
-				conn, err := db.Connect()
-				require.NoError(t, err)
-				defer conn.Close()
-
-				err = conn.Exec(`--sql
+				_, err = db.Exec(`--sql
 				CREATE TABLE test (
 					k INTEGER PRIMARY KEY,
 					color TEXT,
@@ -121,7 +116,7 @@ func TestSelectStmt(t *testing.T) {
 				)`)
 				require.NoError(t, err)
 				if withIndexes {
-					err = conn.Exec(`
+					_, err = db.Exec(`
 						CREATE INDEX idx_color ON test (color);
 						CREATE INDEX idx_size ON test (size);
 						CREATE INDEX idx_shape ON test (shape);
@@ -131,27 +126,21 @@ func TestSelectStmt(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				err = conn.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
+				_, err = db.Exec("INSERT INTO test (k, color, size, shape) VALUES (1, 'red', 10, 'square')")
 				require.NoError(t, err)
-				err = conn.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
+				_, err = db.Exec("INSERT INTO test (k, color, size, weight) VALUES (2, 'blue', 10, 100)")
 				require.NoError(t, err)
-				err = conn.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
+				_, err = db.Exec("INSERT INTO test (k, height, weight) VALUES (3, 100, 200)")
 				require.NoError(t, err)
 
-				st, err := conn.Query(test.query, test.params...)
-				defer st.Close()
-
+				rows, err := db.Query(test.query, test.params...)
 				if test.fails {
 					require.Error(t, err)
 					return
 				}
-
 				require.NoError(t, err)
 
-				var buf bytes.Buffer
-				err = st.MarshalJSONTo(&buf)
-				require.NoError(t, err)
-				require.JSONEq(t, test.expected, buf.String())
+				testutil.RequireJSONArrayEq(t, rows, test.expected)
 			}
 		}
 		t.Run("No Index/"+test.name, testFn(false))
@@ -159,97 +148,72 @@ func TestSelectStmt(t *testing.T) {
 	}
 
 	t.Run("with primary key only", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		conn, err := db.Connect()
+		_, err = db.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
 		require.NoError(t, err)
-		defer conn.Close()
-
-		err = conn.Exec("CREATE TABLE test (foo INTEGER PRIMARY KEY, bar TEXT)")
+		_, err = db.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
 		require.NoError(t, err)
-
-		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (1, 'a')`)
+		_, err = db.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
 		require.NoError(t, err)
-		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (2, 'b')`)
+		_, err = db.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
 		require.NoError(t, err)
-		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (3, 'c')`)
-		require.NoError(t, err)
-		err = conn.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
+		_, err = db.Exec(`INSERT INTO test (foo, bar) VALUES (4, 'd')`)
 		require.NoError(t, err)
 
-		st, err := conn.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
+		rows, err := db.Query("SELECT * FROM test WHERE foo < 400 AND foo >= 2")
 		require.NoError(t, err)
-		defer st.Close()
 
-		var buf bytes.Buffer
-		err = st.MarshalJSONTo(&buf)
-		require.NoError(t, err)
-		require.JSONEq(t, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`, buf.String())
+		testutil.RequireJSONArrayEq(t, rows, `[{"foo": 2, "bar": "b"},{"foo": 3, "bar": "c"},{"foo": 4, "bar": "d"}]`)
 	})
 
 	t.Run("table not found", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("SELECT * FROM foo")
+		_, err = db.Exec("SELECT * FROM foo")
 		require.Error(t, err)
 	})
 
 	t.Run("with order by and indexes", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		conn, err := db.Connect()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		err = conn.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
+		_, err = db.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
 		require.NoError(t, err)
 
-		err = conn.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
+		_, err = db.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
 		require.NoError(t, err)
 
-		st, err := conn.Query("SELECT * FROM test ORDER BY foo")
+		rows, err := db.Query("SELECT * FROM test ORDER BY foo")
 		require.NoError(t, err)
-		defer st.Close()
 
-		var buf bytes.Buffer
-		err = st.MarshalJSONTo(&buf)
-		require.NoError(t, err)
-		require.JSONEq(t, `[{"foo": 1},{"foo": 2}, {"foo": 3},{"foo": 4}]`, buf.String())
+		testutil.RequireJSONArrayEq(t, rows, `[{"foo": 1},{"foo": 2}, {"foo": 3},{"foo": 4}]`)
 	})
 
 	t.Run("empty table with aggregators", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		err = db.Exec("CREATE TABLE test(a INTEGER, b INTEGER, id INTEGER PRIMARY KEY);")
+		_, err = db.Exec("CREATE TABLE test(a INTEGER, b INTEGER, id INTEGER PRIMARY KEY);")
 		require.NoError(t, err)
 
-		d, err := db.QueryRow("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test")
+		var maxA, minB, count, sum sql.NullInt64
+		err = db.QueryRow("SELECT MAX(a), MIN(b), COUNT(*), SUM(id) FROM test").Scan(&maxA, &minB, &count, &sum)
 		require.NoError(t, err)
-
-		enc, err := json.Marshal(d)
-		require.NoError(t, err)
-
-		require.JSONEq(t, `{"MAX(a)": null, "MIN(b)": null, "COUNT(*)": 0, "SUM(id)": null}`, string(enc))
 	})
 
 	t.Run("using sequences in SELECT must open read-write transaction instead of read-only", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		conn, err := db.Connect()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		err = conn.Exec(`
+		_, err = db.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1);
 			CREATE SEQUENCE seq;
@@ -257,41 +221,31 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		// normal query
-		r, err := conn.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test")
-		require.NoError(t, err)
 		var a, seq int
-		err = r.Scan(&a, &seq)
+		err = db.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test").Scan(&a, &seq)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 1, seq)
 
 		// query with no table
-		r, err = conn.QueryRow("SELECT NEXT VALUE FOR seq")
-		require.NoError(t, err)
-		err = r.Scan(&seq)
+		err = db.QueryRow("SELECT NEXT VALUE FOR seq").Scan(&seq)
 		require.NoError(t, err)
 		require.Equal(t, 2, seq)
 	})
 
 	t.Run("LIMIT / OFFSET with params", func(t *testing.T) {
-		db, err := chai.Open(":memory:")
+		db, err := sql.Open("chai", ":memory:")
 		require.NoError(t, err)
 		defer db.Close()
 
-		conn, err := db.Connect()
-		require.NoError(t, err)
-		defer conn.Close()
-
-		err = conn.Exec(`
+		_, err = db.Exec(`
 			CREATE TABLE test(a INT);
 			INSERT INTO test (a) VALUES (1), (2), (3);
 		`)
 		require.NoError(t, err)
 
-		r, err := conn.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1)
-		require.NoError(t, err)
 		var a int
-		err = r.Scan(&a)
+		err = db.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1).Scan(&a)
 		require.NoError(t, err)
 		require.Equal(t, 2, a)
 	})
@@ -318,27 +272,23 @@ func TestDistinct(t *testing.T) {
 		notUnique := total / 10
 
 		t.Run(typ.name, func(t *testing.T) {
-			db, err := chai.Open(":memory:")
+			db, err := sql.Open("chai", ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			conn, err := db.Connect()
-			require.NoError(t, err)
-			defer conn.Close()
-
-			tx, err := conn.Begin(true)
+			tx, err := db.Begin()
 			require.NoError(t, err)
 			defer tx.Rollback()
 
-			err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", c TEXT, nullable " + typ.name + ");")
+			_, err = tx.Exec("CREATE TABLE test(a " + typ.name + " PRIMARY KEY, b " + typ.name + ", c TEXT, nullable " + typ.name + ");")
 			require.NoError(t, err)
 
-			err = tx.Exec("CREATE UNIQUE INDEX test_c_index ON test(c);")
+			_, err = tx.Exec("CREATE UNIQUE INDEX test_c_index ON test(c);")
 			require.NoError(t, err)
 
 			for i := 0; i < total; i++ {
 				unique, nonunique := typ.generateValue(i, notUnique)
-				err = tx.Exec(`INSERT INTO test VALUES (?, ?, ?, null)`, unique, nonunique, unique)
+				_, err = tx.Exec(`INSERT INTO test VALUES (?, ?, ?, null)`, unique, nonunique, unique)
 				require.NoError(t, err)
 			}
 			err = tx.Commit()
@@ -358,15 +308,15 @@ func TestDistinct(t *testing.T) {
 
 			for _, test := range tests {
 				t.Run(test.name, func(t *testing.T) {
-					q, err := conn.Query(test.query)
+					rows, err := db.Query(test.query)
 					require.NoError(t, err)
-					defer q.Close()
+					defer rows.Close()
 
 					var i int
-					err = q.Iterate(func(r *chai.Row) error {
+					for rows.Next() {
 						i++
-						return nil
-					})
+					}
+					err = rows.Err()
 					require.NoError(t, err)
 					require.Equal(t, test.expectedCount, i)
 				})

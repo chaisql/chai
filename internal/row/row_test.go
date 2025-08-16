@@ -1,6 +1,7 @@
 package row_test
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -11,18 +12,6 @@ import (
 )
 
 func TestNewValue(t *testing.T) {
-	type myBytes []byte
-	type myString string
-	type myUint uint
-	type myUint16 uint16
-	type myUint32 uint32
-	type myUint64 uint64
-	type myInt int
-	type myInt8 int8
-	type myInt16 int16
-	type myInt64 int64
-	type myFloat64 float64
-
 	now := time.Now()
 
 	tests := []struct {
@@ -32,30 +21,11 @@ func TestNewValue(t *testing.T) {
 		{"bytes", []byte("bar"), []byte("bar")},
 		{"string", "bar", "bar"},
 		{"bool", true, true},
-		{"uint", uint(10), int64(10)},
-		{"uint8", uint8(10), int64(10)},
-		{"uint16", uint16(10), int64(10)},
-		{"uint32", uint32(10), int64(10)},
 		{"uint64", uint64(10), int64(10)},
-		{"int", int(10), int64(10)},
-		{"int8", int8(10), int64(10)},
-		{"int16", int16(10), int64(10)},
-		{"int32", int32(10), int64(10)},
 		{"int64", int64(10), int64(10)},
 		{"float64", 10.1, float64(10.1)},
 		{"null", nil, nil},
 		{"time", now, now.UTC()},
-		{"bytes", myBytes("bar"), []byte("bar")},
-		{"string", myString("bar"), "bar"},
-		{"myUint", myUint(10), int64(10)},
-		{"myUint16", myUint16(500), int64(500)},
-		{"myUint32", myUint32(90000), int64(90000)},
-		{"myUint64", myUint64(100), int64(100)},
-		{"myInt", myInt(7), int64(7)},
-		{"myInt8", myInt8(3), int64(3)},
-		{"myInt16", myInt16(500), int64(500)},
-		{"myInt64", myInt64(10), int64(10)},
-		{"myFloat64", myFloat64(10.1), float64(10.1)},
 	}
 
 	for _, test := range tests {
@@ -67,57 +37,142 @@ func TestNewValue(t *testing.T) {
 	}
 }
 
-func TestNewFromMap(t *testing.T) {
-	m := map[string]interface{}{
-		"name":     "foo",
-		"age":      10,
-		"nilField": nil,
-	}
-
-	r := row.NewFromMap(m)
-
-	t.Run("Iterate", func(t *testing.T) {
-		counter := make(map[string]int)
-
-		err := r.Iterate(func(f string, v types.Value) error {
-			counter[f]++
-			switch f {
-			case "name":
-				require.Equal(t, m[f], types.AsString(v))
-			default:
-				require.EqualValues(t, m[f], v.V())
-			}
-			return nil
-		})
-		require.NoError(t, err)
-		require.Len(t, counter, 3)
-		require.Equal(t, counter["name"], 1)
-		require.Equal(t, counter["age"], 1)
-		require.Equal(t, counter["nilField"], 1)
-	})
-
-	t.Run("Get", func(t *testing.T) {
-		v, err := r.Get("name")
-		require.NoError(t, err)
-		require.Equal(t, types.NewTextValue("foo"), v)
-
-		v, err = r.Get("age")
-		require.NoError(t, err)
-		require.Equal(t, types.NewBigintValue(10), v)
-
-		v, err = r.Get("nilField")
-		require.NoError(t, err)
-		require.Equal(t, types.NewNullValue(), v)
-
-		_, err = r.Get("bar")
-		require.ErrorIs(t, err, types.ErrColumnNotFound)
-	})
-}
-
 func TestNewFromCSV(t *testing.T) {
 	headers := []string{"a", "b", "c"}
 	columns := []string{"A", "B", "C"}
 
-	d := row.NewFromCSV(headers, columns)
-	testutil.RequireJSONEq(t, d, `{"a": "A", "b": "B", "c": "C"}`)
+	r := row.NewFromCSV(headers, columns)
+	v, err := r.Get("a")
+	require.NoError(t, err)
+	require.Equal(t, "A", types.AsString(v))
+	v, err = r.Get("b")
+	require.NoError(t, err)
+	require.Equal(t, "B", types.AsString(v))
+	v, err = r.Get("c")
+	require.NoError(t, err)
+	require.Equal(t, "C", types.AsString(v))
+}
+
+var _ row.Row = new(row.ColumnBuffer)
+
+func TestColumnBuffer(t *testing.T) {
+	var buf row.ColumnBuffer
+	buf.Add("a", types.NewIntegerValue(10))
+	buf.Add("b", types.NewTextValue("hello"))
+
+	t.Run("Iterate", func(t *testing.T) {
+		var i int
+		err := buf.Iterate(func(f string, v types.Value) error {
+			switch i {
+			case 0:
+				require.Equal(t, "a", f)
+				require.Equal(t, types.NewIntegerValue(10), v)
+			case 1:
+				require.Equal(t, "b", f)
+				require.Equal(t, types.NewTextValue("hello"), v)
+			}
+			i++
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 2, i)
+	})
+
+	t.Run("Add", func(t *testing.T) {
+		var buf row.ColumnBuffer
+		buf.Add("a", types.NewIntegerValue(10))
+		buf.Add("b", types.NewTextValue("hello"))
+
+		c := types.NewBooleanValue(true)
+		buf.Add("c", c)
+		require.Equal(t, 3, buf.Len())
+	})
+
+	t.Run("Get", func(t *testing.T) {
+		v, err := buf.Get("a")
+		require.NoError(t, err)
+		require.Equal(t, types.NewIntegerValue(10), v)
+
+		v, err = buf.Get("not existing")
+		require.ErrorIs(t, err, types.ErrColumnNotFound)
+		require.Zero(t, v)
+	})
+
+	t.Run("Set", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			data   string
+			column string
+			value  types.Value
+			want   string
+			fails  bool
+		}{
+			// {"root", `{}`, `a`, types.NewIntegerValue(1), `{"a": 1}`, false},
+			{"add column", `{"a": 1}`, `c`, types.NewTextValue("foo"), `{"a": 1, "c": "foo"}`, false},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				var fb row.ColumnBuffer
+
+				r := testutil.MakeRow(t, tt.data)
+				err := fb.Copy(r)
+				require.NoError(t, err)
+				err = fb.Set(tt.column, tt.value)
+				if tt.fails {
+					require.Error(t, err)
+					return
+				}
+
+				require.NoError(t, err)
+				data, err := row.MarshalJSON(&fb)
+				require.NoError(t, err)
+				require.Equal(t, tt.want, string(data))
+			})
+		}
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		tests := []struct {
+			object   string
+			column   string
+			expected string
+			fails    bool
+		}{
+			{`{"a": 10, "b": "hello"}`, "a", `{"b": "hello"}`, false},
+			{`{"a": 10, "b": "hello"}`, "c", ``, true},
+		}
+
+		for _, test := range tests {
+			t.Run(test.object, func(t *testing.T) {
+				var buf row.ColumnBuffer
+				err := buf.Copy(testutil.MakeRow(t, test.object))
+				require.NoError(t, err)
+
+				err = buf.Delete(test.column)
+				if test.fails {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+					got, err := json.Marshal(&buf)
+					require.NoError(t, err)
+					require.JSONEq(t, test.expected, string(got))
+				}
+			})
+		}
+	})
+
+	t.Run("Replace", func(t *testing.T) {
+		var buf row.ColumnBuffer
+		buf.Add("a", types.NewIntegerValue(10))
+		buf.Add("b", types.NewTextValue("hello"))
+
+		err := buf.Replace("a", types.NewBooleanValue(true))
+		require.NoError(t, err)
+		v, err := buf.Get("a")
+		require.NoError(t, err)
+		require.Equal(t, types.NewBooleanValue(true), v)
+		err = buf.Replace("d", types.NewIntegerValue(11))
+		require.Error(t, err)
+	})
 }

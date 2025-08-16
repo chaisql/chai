@@ -60,7 +60,7 @@ type RenameIterator struct {
 
 	columnNames []string
 	buf         row.ColumnBuffer
-	dr          database.BasicRow
+	br          database.BasicRow
 }
 
 func (it *RenameIterator) Row() (database.Row, error) {
@@ -79,7 +79,7 @@ func (it *RenameIterator) Row() (database.Row, error) {
 
 	var i int
 	it.buf.Reset()
-	err = r.Iterate(func(field string, value types.Value) error {
+	err = r.Iterate(func(column string, value types.Value) error {
 		it.buf.Add(it.columnNames[i], value)
 		i++
 		return nil
@@ -88,6 +88,6 @@ func (it *RenameIterator) Row() (database.Row, error) {
 		return nil, err
 	}
 
-	it.dr.ResetWith(r.TableName(), r.Key(), &it.buf)
-	return &it.dr, nil
+	it.br.ResetWith(r.TableName(), r.Key(), &it.buf)
+	return &it.br, nil
 }

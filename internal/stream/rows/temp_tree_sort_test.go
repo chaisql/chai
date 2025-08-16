@@ -62,7 +62,7 @@ func TestTempTreeSort(t *testing.T) {
 			}
 
 			err := testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {
-				d, err := r.MarshalJSON()
+				d, err := row.MarshalJSON(r)
 				require.NoError(t, err)
 
 				t.Log(string(d))

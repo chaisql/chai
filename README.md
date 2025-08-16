@@ -95,14 +95,14 @@ Checkout the [Go doc](https://pkg.go.dev/github.com/chaisql/chai) and the [usage
 For in-memory operations, simply use `:memory:`:
 
 ```go
-db, err := chai.Open(":memory:")
+db, err := sql.Open("chai", ":memory:")
 ```
 
 ### Using database/sql
 
 ```go
 // import chai as a blank import
-import _ "github.com/chaisql/chai/driver"
+import _ "github.com/chaisql/chai"
 
 // Create a sql/database DB instance
 db, err := sql.Open("chai", "mydb")

@@ -53,7 +53,7 @@ $ chai dump -f dump.sql my.db`,
 			return errors.New(cmd.UsageText)
 		}
 
-		db, err := dbutil.OpenDB(ctx, dbPath)
+		db, err := dbutil.OpenDB(dbPath)
 		if err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ $ chai dump -f dump.sql my.db`,
 			w = file
 		}
 
-		return dbutil.Dump(db, w, tables...)
+		return dbutil.Dump(ctx, db, w, tables...)
 	}
 
 	return &cmd

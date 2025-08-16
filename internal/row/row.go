@@ -1,9 +1,6 @@
 package row
 
 import (
-	"fmt"
-	"math"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -21,9 +18,6 @@ type Row interface {
 	// Get returns the value of the given column.
 	// If the column does not exist, it returns ErrColumnNotFound.
 	Get(name string) (types.Value, error)
-
-	// MarshalJSON encodes the row as JSON.
-	MarshalJSON() ([]byte, error)
 }
 
 // Length returns the number of columns of a row.
@@ -40,210 +34,78 @@ func Length(r Row) (int, error) {
 	return len, err
 }
 
-func Columns(r Row) ([]string, error) {
-	var columns []string
-	err := r.Iterate(func(c string, _ types.Value) error {
-		columns = append(columns, c)
-		return nil
-	})
-	return columns, err
-}
-
-// NewFromMap creates an object from a map.
-// Due to the way maps are designed, iteration order is not guaranteed.
-func NewFromMap[T any](m map[string]T) Row {
-	return mapRow[T](m)
-}
-
-type mapRow[T any] map[string]T
-
-var _ Row = (*mapRow[any])(nil)
-
-func (m mapRow[T]) Iterate(fn func(column string, value types.Value) error) error {
-	for k, v := range m {
-		v, err := NewValue(v)
-		if err != nil {
-			return err
-		}
-
-		err = fn(k, v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m mapRow[T]) Get(column string) (types.Value, error) {
-	v, ok := m[column]
-	if !ok {
-		return nil, errors.Wrapf(types.ErrColumnNotFound, "%s not found", column)
-	}
-
-	return NewValue(v)
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (m mapRow[T]) MarshalJSON() ([]byte, error) {
-	return MarshalJSON(m)
-}
-
-type reflectMapObject reflect.Value
-
-var _ Row = (*reflectMapObject)(nil)
-
-func (m reflectMapObject) Iterate(fn func(column string, value types.Value) error) error {
-	M := reflect.Value(m)
-	it := M.MapRange()
-
-	for it.Next() {
-		v, err := NewValue(it.Value().Interface())
-		if err != nil {
-			return err
-		}
-
-		err = fn(it.Key().String(), v)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m reflectMapObject) Get(column string) (types.Value, error) {
-	M := reflect.Value(m)
-	v := M.MapIndex(reflect.ValueOf(column))
-	if v == (reflect.Value{}) {
-		return nil, errors.Wrapf(types.ErrColumnNotFound, "%s not found", column)
-	}
-	return NewValue(v.Interface())
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (m reflectMapObject) MarshalJSON() ([]byte, error) {
-	return MarshalJSON(m)
-}
-
-// NewFromStruct creates an object from a struct using reflection.
-func NewFromStruct(s any) (Row, error) {
-	ref := reflect.Indirect(reflect.ValueOf(s))
-
-	if !ref.IsValid() || ref.Kind() != reflect.Struct {
-		return nil, errors.New("expected struct or pointer to struct")
-	}
-
-	return newFromStruct(ref)
-}
-
-func newFromStruct(ref reflect.Value) (Row, error) {
-	var cb ColumnBuffer
-	l := ref.NumField()
-	tp := ref.Type()
-
-	for i := 0; i < l; i++ {
-		f := ref.Field(i)
-		if !f.IsValid() {
-			continue
-		}
-
-		if f.Kind() == reflect.Ptr {
-			if f.IsNil() {
-				continue
-			}
-
-			f = f.Elem()
-		}
-
-		sf := tp.Field(i)
-
-		isUnexported := sf.PkgPath != ""
-
-		if sf.Anonymous {
-			if isUnexported && f.Kind() != reflect.Struct {
-				continue
-			}
-			d, err := newFromStruct(f)
-			if err != nil {
-				return nil, err
-			}
-			err = d.Iterate(func(column string, value types.Value) error {
-				cb.Add(column, value)
-				return nil
-			})
-			if err != nil {
-				return nil, err
-			}
-			continue
-		} else if isUnexported {
-			continue
-		}
-
-		v, err := NewValue(f.Interface())
-		if err != nil {
-			return nil, err
-		}
-
-		column := strings.ToLower(sf.Name)
-		if gtag, ok := sf.Tag.Lookup("chai"); ok {
-			if gtag == "-" {
-				continue
-			}
-			column = gtag
-		}
-
-		cb.Add(column, v)
-	}
-
-	return &cb, nil
-}
-
 // NewValue creates a value whose type is infered from x.
 func NewValue(x any) (types.Value, error) {
-	// Attempt exact matches first:
-	switch v := x.(type) {
-	case time.Duration:
-		return types.NewBigintValue(v.Nanoseconds()), nil
-	case time.Time:
-		return types.NewTimestampValue(v), nil
-	case nil:
+	if x == nil {
 		return types.NewNullValue(), nil
 	}
-
-	// Compare by kind to detect type definitions over built-in types.
-	v := reflect.ValueOf(x)
-	switch v.Kind() {
-	case reflect.Ptr:
-		if v.IsNil() {
+	switch v := x.(type) {
+	case *int:
+		if v == nil {
 			return types.NewNullValue(), nil
 		}
-		return NewValue(reflect.Indirect(v).Interface())
-	case reflect.Bool:
-		return types.NewBooleanValue(v.Bool()), nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return types.NewBigintValue(v.Int()), nil
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x := v.Uint()
-		if x > math.MaxInt64 {
-			return nil, fmt.Errorf("cannot convert unsigned integer struct column to int64: %d out of range", x)
-		}
-		return types.NewBigintValue(int64(x)), nil
-	case reflect.Float32, reflect.Float64:
-		return types.NewDoubleValue(v.Float()), nil
-	case reflect.String:
-		return types.NewTextValue(v.String()), nil
-	case reflect.Slice:
-		if reflect.TypeOf(v.Interface()).Elem().Kind() == reflect.Uint8 {
-			return types.NewBlobValue(v.Bytes()), nil
-		}
-		return nil, errors.Errorf("unsupported slice type: %T", x)
-	case reflect.Interface:
-		if v.IsNil() {
+		return types.NewBigintValue(int64(*v)), nil
+	case int:
+		return types.NewBigintValue(int64(v)), nil
+	case *int32:
+		if v == nil {
 			return types.NewNullValue(), nil
 		}
-		return NewValue(v.Elem().Interface())
+		return types.NewBigintValue(int64(*v)), nil
+	case int32:
+		return types.NewBigintValue(int64(v)), nil
+	case *uint64:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewBigintValue(int64(*v)), nil
+	case uint64:
+		return types.NewBigintValue(int64(v)), nil
+	case *int64:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewBigintValue(*v), nil
+	case int64:
+		return types.NewBigintValue(v), nil
+	case *float64:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewDoubleValue(*v), nil
+	case float64:
+		return types.NewDoubleValue(v), nil
+	case *bool:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewBooleanValue(*v), nil
+	case bool:
+		return types.NewBooleanValue(v), nil
+	case *[]byte:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewBlobValue(*v), nil
+	case []byte:
+		return types.NewBlobValue(v), nil
+	case *string:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewTextValue(*v), nil
+	case string:
+		return types.NewTextValue(v), nil
+	case *time.Time:
+		if v == nil {
+			return types.NewNullValue(), nil
+		}
+		return types.NewTimestampValue(*v), nil
+	case time.Time:
+		return types.NewTimestampValue(v), nil
 	}
 
-	return nil, NewErrUnsupportedType(x, "")
+	return nil, errors.New("unsupported type")
 }
 
 // NewFromCSV takes a list of headers and columns and returns an row.
@@ -266,28 +128,6 @@ func NewColumnBuffer() *ColumnBuffer {
 	return new(ColumnBuffer)
 }
 
-// MarshalJSON implements the json.Marshaler interface.
-func (cb *ColumnBuffer) MarshalJSON() ([]byte, error) {
-	return MarshalJSON(cb)
-}
-
-func (cb *ColumnBuffer) UnmarshalJSON(data []byte) error {
-	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
-		v, err := parseJSONValue(dataType, value)
-		if err != nil {
-			return err
-		}
-
-		cb.Add(string(key), v)
-		return nil
-	})
-}
-
-func (cb *ColumnBuffer) String() string {
-	s, _ := cb.MarshalJSON()
-	return string(s)
-}
-
 type Column struct {
 	Name  string
 	Value types.Value
@@ -297,14 +137,6 @@ type Column struct {
 func (cb *ColumnBuffer) Add(column string, v types.Value) *ColumnBuffer {
 	cb.columns = append(cb.columns, Column{column, v})
 	return cb
-}
-
-// ScanRow copies all the columns of d to the buffer.
-func (cb *ColumnBuffer) ScanRow(r Row) error {
-	return r.Iterate(func(f string, v types.Value) error {
-		cb.Add(f, v)
-		return nil
-	})
 }
 
 // Get returns a value by column. Returns an error if the column doesn't exists.
@@ -378,20 +210,6 @@ func (cb *ColumnBuffer) Copy(r Row) error {
 	})
 }
 
-// Apply a function to all the values of the buffer.
-func (cb *ColumnBuffer) Apply(fn func(column string, v types.Value) (types.Value, error)) error {
-	var err error
-
-	for i, c := range cb.columns {
-		cb.columns[i].Value, err = fn(c.Name, c.Value)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // Len of the buffer.
 func (cb ColumnBuffer) Len() int {
 	return len(cb.columns)
@@ -412,8 +230,33 @@ func (cb *ColumnBuffer) ScanCSV(headers, columns []string) {
 	}
 }
 
+func (cb *ColumnBuffer) MarshalJSON() ([]byte, error) {
+	return MarshalJSON(cb)
+}
+
+func (cb *ColumnBuffer) UnmarshalJSON(data []byte) error {
+	return jsonparser.ObjectEach(data, func(key []byte, value []byte, dataType jsonparser.ValueType, offset int) error {
+		v, err := parseJSONValue(dataType, value)
+		if err != nil {
+			return err
+		}
+
+		cb.Add(string(key), v)
+		return nil
+	})
+}
+
 func SortColumns(r Row) Row {
 	return &sortedRow{r}
+}
+
+func Columns(r Row) ([]string, error) {
+	var cols []string
+	err := r.Iterate(func(column string, value types.Value) error {
+		cols = append(cols, column)
+		return nil
+	})
+	return cols, err
 }
 
 type sortedRow struct {

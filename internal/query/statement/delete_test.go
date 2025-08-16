@@ -1,10 +1,11 @@
 package statement_test
 
 import (
-	"bytes"
+	"database/sql"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
+	"github.com/chaisql/chai/internal/testutil"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +17,7 @@ func TestDeleteStmt(t *testing.T) {
 		expected string
 		params   []interface{}
 	}{
-		{"No cond", `DELETE FROM test`, false, "[]", nil},
+		{"No cond", `DELETE FROM test`, false, "null", nil},
 		{"With cond", "DELETE FROM test WHERE b = 'bar1'", false, `[{"id": 3}]`, nil},
 		{"With offset", "DELETE FROM test OFFSET 1", false, `[{"id":1}]`, nil},
 		{"With order by then offset", "DELETE FROM test ORDER BY n OFFSET 1", false, `[{"id": 3}]`, nil},
@@ -29,38 +30,30 @@ func TestDeleteStmt(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := chai.Open(":memory:")
+			db, err := sql.Open("chai", ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			conn, err := db.Connect()
+			_, err = db.Exec("CREATE TABLE test(id INT PRIMARY KEY, a TEXT, b TEXT, c TEXT, d TEXT, e TEXT, n INT)")
 			require.NoError(t, err)
-			defer conn.Close()
-
-			err = db.Exec("CREATE TABLE test(id INT PRIMARY KEY, a TEXT, b TEXT, c TEXT, d TEXT, e TEXT, n INT)")
+			_, err = db.Exec("INSERT INTO test (id, a, b, c, n) VALUES (1, 'foo1', 'bar1', 'baz1', 3)")
 			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (id, a, b, c, n) VALUES (1, 'foo1', 'bar1', 'baz1', 3)")
+			_, err = db.Exec("INSERT INTO test (id, a, b, n) VALUES (2, 'foo2', 'bar1', 2)")
 			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (id, a, b, n) VALUES (2, 'foo2', 'bar1', 2)")
-			require.NoError(t, err)
-			err = db.Exec("INSERT INTO test (id, d, b, e, n) VALUES (3, 'foo3', 'bar2', 'bar3', 1)")
+			_, err = db.Exec("INSERT INTO test (id, d, b, e, n) VALUES (3, 'foo3', 'bar2', 'bar3', 1)")
 			require.NoError(t, err)
 
-			err = conn.Exec(test.query, test.params...)
+			_, err = db.Exec(test.query, test.params...)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			st, err := conn.Query("SELECT id FROM test")
+			rows, err := db.Query("SELECT id FROM test")
 			require.NoError(t, err)
-			defer st.Close()
 
-			var buf bytes.Buffer
-			err = st.MarshalJSONTo(&buf)
-			require.NoError(t, err)
-			require.JSONEq(t, test.expected, buf.String())
+			testutil.RequireJSONArrayEq(t, rows, test.expected)
 		})
 	}
 }

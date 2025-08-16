@@ -20,7 +20,6 @@ func (t *TableInfo) EncodeRow(tx *Transaction, dst []byte, r row.Row) ([]byte, e
 func encodeRow(tx *Transaction, dst []byte, ccs *ColumnConstraints, r row.Row) ([]byte, error) {
 	// loop over all the defined column contraints in order.
 	for _, cc := range ccs.Ordered {
-
 		// get the column from the row
 		v, err := r.Get(cc.Column)
 		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
@@ -131,10 +130,6 @@ func (e *EncodedRow) Iterate(fn func(column string, value types.Value) error) er
 	}
 
 	return nil
-}
-
-func (e *EncodedRow) MarshalJSON() ([]byte, error) {
-	return row.MarshalJSON(e)
 }
 
 func RowIsEncoded(r row.Row, ccs *ColumnConstraints) (*EncodedRow, bool) {

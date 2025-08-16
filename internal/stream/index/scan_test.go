@@ -59,7 +59,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 	tests := []struct {
 		name                  string
 		indexOn               string
-		docsInTable, expected testutil.Rows
+		rowsInTable, expected testutil.Rows
 		ranges                stream.Ranges
 		reverse               bool
 		fails                 bool
@@ -412,10 +412,24 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a BIGINT, b BIGINT, c BIGINT);")
 
-			for _, r := range test.docsInTable {
+			for _, r := range test.rowsInTable {
 				var a, b, c *int64
-				err := row.Scan(r, &a, &b, &c)
-				require.NoError(t, err)
+
+				v, err := r.Get("a")
+				if err == nil && v.Type() != types.TypeNull {
+					x := types.AsInt64(v)
+					a = &x
+				}
+				v, err = r.Get("b")
+				if err == nil && v.Type() != types.TypeNull {
+					x := types.AsInt64(v)
+					b = &x
+				}
+				v, err = r.Get("c")
+				if err == nil && v.Type() != types.TypeNull {
+					x := types.AsInt64(v)
+					c = &x
+				}
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?, ?, ?)", environment.Param{Value: a}, environment.Param{Value: b}, environment.Param{Value: c})
 			}
 
@@ -439,7 +453,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 				got = append(got, &fb)
 				v, err := env.GetParamByName("foo")
 				require.NoError(t, err)
-				require.Equal(t, types.NewBigintValue(1), v)
+				require.Equal(t, types.BigintValue(1), v)
 				i++
 			}
 			if test.fails {

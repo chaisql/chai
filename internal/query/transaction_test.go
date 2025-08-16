@@ -1,9 +1,10 @@
 package query_test
 
 import (
+	"database/sql"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,17 +28,17 @@ func TestTransactionRun(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			db, err := chai.Open(":memory:")
+			db, err := sql.Open("chai", ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
-			conn, err := db.Connect()
+			conn, err := db.Conn(t.Context())
 			require.NoError(t, err)
 			defer conn.Close()
-			defer conn.Exec("ROLLBACK")
+			defer conn.ExecContext(t.Context(), "ROLLBACK")
 
 			for _, q := range test.queries {
-				err = conn.Exec(q)
+				_, err = conn.ExecContext(t.Context(), q)
 				if err != nil {
 					break
 				}

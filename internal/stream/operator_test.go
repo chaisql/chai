@@ -1,7 +1,6 @@
 package stream_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"testing"
@@ -244,9 +243,9 @@ func TestTableReplace(t *testing.T) {
 
 			var i int
 			err := s.Iterate(in, func(r database.Row) error {
-				got, err := json.Marshal(r)
+				got, err := row.MarshalJSON(r)
 				require.NoError(t, err)
-				want, err := json.Marshal(test.expected[i])
+				want, err := row.MarshalJSON(test.expected[i])
 				require.NoError(t, err)
 				require.JSONEq(t, string(want), string(got))
 				i++
@@ -264,7 +263,8 @@ func TestTableReplace(t *testing.T) {
 			var got []row.Row
 			err = res.Iterate(func(r database.Row) error {
 				var fb row.ColumnBuffer
-				fb.Copy(r)
+				err = fb.Copy(r)
+				require.NoError(t, err)
 				got = append(got, &fb)
 				return nil
 			})
@@ -325,7 +325,8 @@ func TestTableDelete(t *testing.T) {
 			var got []row.Row
 			err = res.Iterate(func(r database.Row) error {
 				var fb row.ColumnBuffer
-				fb.Copy(r)
+				err = fb.Copy(r)
+				require.NoError(t, err)
 				got = append(got, &fb)
 				return nil
 			})

@@ -1,11 +1,12 @@
 package database_test
 
 import (
+	"database/sql"
 	"fmt"
 	"math"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
 	"github.com/chaisql/chai/internal/database"
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/expr"
@@ -437,47 +438,27 @@ func TestTxDropIndex(t *testing.T) {
 }
 
 func TestReadOnlyTables(t *testing.T) {
-	db, err := chai.Open(":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	conn, err := db.Connect()
-	require.NoError(t, err)
-	defer conn.Close()
-
-	res, err := conn.Query(`
+	rows, err := db.Query(`
 		CREATE TABLE foo (a int, b double unique, c text);
 		CREATE INDEX idx_foo_a ON foo(a, c);
 		SELECT * FROM __chai_catalog
 	`)
 	require.NoError(t, err)
-	defer res.Close()
+	defer rows.Close()
 
-	var i int
-	err = res.Iterate(func(r *chai.Row) error {
-		switch i {
-		case 0:
-			testutil.RequireJSONEq(t, r, `{"name":"__chai_catalog", "namespace":1, "owner_table_name": null, "owner_table_columns": null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace BIGINT, sql TEXT, rowid_sequence_name TEXT, owner_table_name TEXT, owner_table_columns TEXT, CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`)
-		case 1:
-			testutil.RequireJSONEq(t, r, `{"name":"__chai_sequence", "namespace":2, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq BIGINT, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "type":"table"}`)
-		case 2:
-			testutil.RequireJSONEq(t, r, `{"name":"__chai_store_seq", "namespace":null, "owner_table_name": "__chai_catalog", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`)
-		case 3:
-			testutil.RequireJSONEq(t, r, `{"name":"foo", "namespace":10, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b DOUBLE, c TEXT, CONSTRAINT foo_b_unique UNIQUE (b))", "namespace":10, "type":"table"}`)
-		case 4:
-			testutil.RequireJSONEq(t, r, `{"name":"foo_b_idx", "namespace":11, "owner_table_name":"foo", "owner_table_columns": "b", "rowid_sequence_name": null, "sql":"CREATE UNIQUE INDEX foo_b_idx ON foo (b)", "type":"index"}`)
-		case 5:
-			testutil.RequireJSONEq(t, r, `{"name":"foo_seq", "namespace":null, "owner_table_name":"foo", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`)
-		case 6:
-			testutil.RequireJSONEq(t, r, `{"name":"idx_foo_a", "namespace":12, "owner_table_name":"foo", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE INDEX idx_foo_a ON foo (a, c)", "type":"index", "owner_table_name":"foo"}`)
-		default:
-			t.Fatalf("count should be 6, got %d", i)
-		}
-
-		i++
-		return nil
-	})
-	require.NoError(t, err)
+	testutil.RequireJSONEq(t, rows,
+		`{"name":"__chai_catalog", "namespace":1, "owner_table_name": null, "owner_table_columns": null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace BIGINT, sql TEXT, rowid_sequence_name TEXT, owner_table_name TEXT, owner_table_columns TEXT, CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__chai_sequence", "namespace":2, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq BIGINT, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "type":"table"}`,
+		`{"name":"__chai_store_seq", "namespace":null, "owner_table_name": "__chai_catalog", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10 CACHE 0", "type":"sequence"}`,
+		`{"name":"foo", "namespace":10, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name":"foo_seq", "sql":"CREATE TABLE foo (a INTEGER, b DOUBLE, c TEXT, CONSTRAINT foo_b_unique UNIQUE (b))", "namespace":10, "type":"table"}`,
+		`{"name":"foo_b_idx", "namespace":11, "owner_table_name":"foo", "owner_table_columns": "b", "rowid_sequence_name": null, "sql":"CREATE UNIQUE INDEX foo_b_idx ON foo (b)", "type":"index"}`,
+		`{"name":"foo_seq", "namespace":null, "owner_table_name":"foo", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE SEQUENCE foo_seq CACHE 64", "type":"sequence"}`,
+		`{"name":"idx_foo_a", "namespace":12, "owner_table_name":"foo", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE INDEX idx_foo_a ON foo (a, c)", "type":"index", "owner_table_name":"foo"}`,
+	)
 }
 
 func TestCatalogCreateSequence(t *testing.T) {
@@ -565,37 +546,29 @@ func TestCatalogCreateSequence(t *testing.T) {
 }
 
 func TestCatalogConcurrency(t *testing.T) {
-	db, err := chai.Open(":memory:")
+	db, err := sql.Open("chai", ":memory:")
 	require.NoError(t, err)
 	defer db.Close()
 
-	conn1, err := db.Connect()
-	require.NoError(t, err)
-	defer conn1.Close()
-
 	// create a table
-	err = conn1.Exec(`
+	_, err = db.Exec(`
 		CREATE TABLE test (a int);
 		CREATE INDEX idx_test_a ON test(a);
 	`)
 	require.NoError(t, err)
 
 	// start a transaction rt1
-	rt1, err := conn1.Begin(false)
+	rt1, err := db.BeginTx(t.Context(), &sql.TxOptions{ReadOnly: true})
 	require.NoError(t, err)
 	defer rt1.Rollback()
 
-	conn2, err := db.Connect()
-	require.NoError(t, err)
-	defer conn2.Close()
-
 	// start a transaction wt2
-	wt1, err := conn2.Begin(true)
+	wt1, err := db.Begin()
 	require.NoError(t, err)
 	defer wt1.Rollback()
 
 	// update the catalog in wt2
-	err = wt1.Exec(`
+	_, err = wt1.Exec(`
 		CREATE TABLE test2 (a int);
 		CREATE INDEX idx_test2_a ON test2(a);
 		ALTER TABLE test ADD COLUMN b int;
@@ -603,18 +576,14 @@ func TestCatalogConcurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	row, err := rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
-	require.NoError(t, err)
 	var i int
-	err = row.Scan(&i)
+	err = rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'").Scan(&i)
 	require.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
-	require.NoError(t, err)
 	var s string
-	err = row.Scan(&s)
+	err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'").Scan(&s)
 	require.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 
@@ -623,16 +592,12 @@ func TestCatalogConcurrency(t *testing.T) {
 	require.NoError(t, err)
 
 	// get the table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'")
-	require.NoError(t, err)
-	err = row.Scan(&i)
+	err = rt1.QueryRow("SELECT COUNT(*) FROM __chai_catalog WHERE name LIKE '%test2%'").Scan(&i)
 	require.NoError(t, err)
 	require.Equal(t, 0, i)
 
 	// get the modified table in rt1: should not see the changes made by wt2
-	row, err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'")
-	require.NoError(t, err)
-	err = row.Scan(&s)
+	err = rt1.QueryRow("SELECT sql FROM __chai_catalog WHERE name = 'test'").Scan(&s)
 	require.NoError(t, err)
 	require.Equal(t, "CREATE TABLE test (a INTEGER)", s)
 }

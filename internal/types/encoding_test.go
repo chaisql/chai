@@ -71,10 +71,9 @@ func TestOrdering(t *testing.T) {
 }
 
 func TestEncodeDecode(t *testing.T) {
-	userMapDoc := row.NewFromMap(map[string]any{
-		"age":  10,
-		"name": "john",
-	})
+	userMapDoc := row.NewColumnBuffer().
+		Add("age", types.NewIntegerValue(10)).
+		Add("name", types.NewTextValue("john"))
 
 	tests := []struct {
 		name     string
@@ -122,7 +121,7 @@ func TestEncodeDecode(t *testing.T) {
 			require.NoError(t, err)
 			r := row.Unflatten(types.DecodeValues(buf))
 
-			data, err := r.MarshalJSON()
+			data, err := row.MarshalJSON(r)
 			require.NoError(t, err)
 			require.JSONEq(t, test.expected, string(data))
 		})

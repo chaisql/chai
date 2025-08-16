@@ -2,10 +2,11 @@ package dbutil
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"testing"
 
-	"github.com/chaisql/chai"
+	_ "github.com/chaisql/chai"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestDump(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := chai.Open(":memory:")
+			db, err := sql.Open("chai", ":memory:")
 			require.NoError(t, err)
 			defer db.Close()
 
@@ -53,39 +54,39 @@ func TestDump(t *testing.T) {
 				}
 
 				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b INTEGER, c INTEGER);", table)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_a ON %s (a);`, table, table)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (b, c);`, table, table)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 1, 2, 3)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 2, 2, 2)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 3, 2, 1)
-				err = db.Exec(q)
+				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")
 			}
 			want.WriteString("COMMIT;\n")
 
 			var got bytes.Buffer
-			err = Dump(db, &got, tt.tables...)
+			err = Dump(t.Context(), db, &got, tt.tables...)
 			require.NoError(t, err)
 
 			require.Equal(t, want.String(), got.String())
