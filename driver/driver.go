@@ -212,77 +212,31 @@ func (s stmt) Close() error {
 	return nil
 }
 
-var errStop = errors.New("stop")
-
 type Rows struct {
-	res      *chai.Result
-	cancelFn func()
-	c        chan Row
-	wg       sync.WaitGroup
-	columns  []string
-}
-
-type Row struct {
-	r   *chai.Row
-	err error
+	res     *chai.Result
+	it      *chai.Iterator
+	columns []string
 }
 
 func newRows(res *chai.Result) (*Rows, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	it, err := res.Iterator()
+	if err != nil {
+		return nil, err
+	}
 
 	rs := Rows{
-		res:      res,
-		cancelFn: cancel,
-		c:        make(chan Row),
+		res: res,
+		it:  it,
 	}
-	rs.wg.Add(1)
 
-	cols, err := rs.res.Columns()
+	cols, err := res.Columns()
 	if err != nil {
 		return nil, err
 	}
 
 	rs.columns = cols
 
-	go rs.iterate(ctx)
-
 	return &rs, nil
-}
-
-func (rs *Rows) iterate(ctx context.Context) {
-	defer rs.wg.Done()
-	defer close(rs.c)
-
-	select {
-	case <-ctx.Done():
-		return
-	case <-rs.c:
-	}
-
-	err := rs.res.Iterate(func(r *chai.Row) error {
-		select {
-		case <-ctx.Done():
-			return errStop
-		case rs.c <- Row{
-			r: r,
-		}:
-
-			select {
-			case <-ctx.Done():
-				return errStop
-			case <-rs.c:
-				return nil
-			}
-		}
-	})
-
-	if errors.Is(err, errStop) || err == nil {
-		return
-	}
-
-	rs.c <- Row{
-		err: err,
-	}
 }
 
 // Columns returns the fields selected by the SELECT statement.
@@ -292,25 +246,32 @@ func (rs *Rows) Columns() []string {
 
 // Close closes the rows iterator.
 func (rs *Rows) Close() error {
-	rs.cancelFn()
-	rs.wg.Wait()
-	return rs.res.Close()
+	var errs []error
+	if err := rs.it.Close(); err != nil {
+		errs = append(errs, err)
+	}
+	if err := rs.res.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return nil
 }
 
 func (rs *Rows) Next(dest []driver.Value) error {
-	rs.c <- Row{}
-
-	r, ok := <-rs.c
-	if !ok {
+	if !rs.it.Next() {
 		return io.EOF
 	}
 
-	if r.err != nil {
-		return r.err
+	r, err := rs.it.Row()
+	if err != nil {
+		return err
 	}
 
 	var i int
-	err := r.r.Row.Iterate(func(column string, v types.Value) error {
+	return r.Row.Iterate(func(column string, v types.Value) error {
 		var err error
 
 		switch v.Type() {
@@ -376,9 +337,4 @@ func (rs *Rows) Next(dest []driver.Value) error {
 
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

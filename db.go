@@ -19,7 +19,6 @@ import (
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
@@ -362,9 +361,7 @@ func (s *Statement) Exec(args ...any) (err error) {
 		}
 	}()
 
-	return res.Iterate(func(*Row) error {
-		return nil
-	})
+	return res.result.Skip()
 }
 
 // Result of a query.
@@ -374,58 +371,81 @@ type Result struct {
 	conn   *Connection
 }
 
-func (r *Result) Iterate(fn func(r *Row) error) error {
-	var row Row
-	if r.ctx == nil {
-		return r.result.Iterate(func(dr database.Row) error {
-			row.Row = dr
-			return fn(&row)
-		})
-	}
-
-	return r.result.Iterate(func(dr database.Row) error {
-		if err := r.ctx.Err(); err != nil {
-			return err
-		}
-
-		row.Row = dr
-		return fn(&row)
-	})
-}
-
-func (r *Result) GetFirst() (*Row, error) {
-	var rr *Row
-	err := r.Iterate(func(row *Row) error {
-		rr = row.Clone()
-		return stream.ErrStreamClosed
-	})
+func (r *Result) Iterator() (*Iterator, error) {
+	it, err := r.result.Iterator()
 	if err != nil {
 		return nil, err
 	}
 
-	if rr == nil {
+	return &Iterator{
+		it:  it,
+		ctx: r.ctx,
+	}, nil
+}
+
+func (r *Result) Iterate(fn func(*Row) error) error {
+	it, err := r.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+		row, err := it.Row()
+		if err != nil {
+			return err
+		}
+
+		if err := fn(row); err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
+}
+
+func (r *Result) GetFirst() (*Row, error) {
+	it, err := r.Iterator()
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	if !it.Next() {
+		if it.Error() != nil {
+			return nil, it.Error()
+		}
+
 		return nil, errors.WithStack(errs.NewRowNotFoundError())
 	}
 
-	return rr, nil
+	if it.Error() != nil {
+		return nil, it.Error()
+	}
+
+	row, err := it.Row()
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.WithStack(errs.NewRowNotFoundError())
+	}
+
+	return row.Clone(), nil
 }
 
 func (r *Result) Columns() ([]string, error) {
-	if r.result.Iterator == nil {
+	if r.result.Result == nil {
 		return nil, nil
 	}
 
-	stmt, ok := r.result.Iterator.(*statement.StreamStmtIterator)
+	stmt, ok := r.result.Result.(*statement.StreamStmtResult)
 	if !ok || stmt.Stream.Op == nil {
 		return nil, nil
 	}
 
-	var env environment.Environment
-	env.DB = stmt.Context.DB
-	env.Tx = stmt.Context.Tx
-	env.SetParams(stmt.Context.Params)
-
-	return stmt.Stream.Columns(&env)
+	env := environment.New(stmt.Context.DB, stmt.Context.Tx, stmt.Context.Params, nil)
+	return stmt.Stream.Columns(env)
 }
 
 // Close the result stream.
@@ -434,9 +454,7 @@ func (r *Result) Close() (err error) {
 		return nil
 	}
 
-	err = r.result.Close()
-
-	return err
+	return r.result.Close()
 }
 
 func (r *Result) MarshalJSON() ([]byte, error) {
@@ -544,4 +562,45 @@ func (r *Row) MapScan(dest map[string]any) error {
 
 func (r *Row) MarshalJSON() ([]byte, error) {
 	return r.Row.MarshalJSON()
+}
+
+// Iterator iterates over database rows.
+type Iterator struct {
+	it  database.Iterator
+	ctx context.Context
+	err error
+	row Row
+}
+
+func (it *Iterator) Close() error {
+	return it.it.Close()
+}
+
+func (it *Iterator) Next() bool {
+	it.err = nil
+	if it.ctx != nil {
+		if err := it.ctx.Err(); err != nil {
+			it.err = err
+			return false
+		}
+	}
+
+	return it.it.Next()
+}
+
+func (it *Iterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.it.Error()
+}
+
+func (it *Iterator) Row() (*Row, error) {
+	r, err := it.it.Row()
+	if err != nil {
+		return nil, err
+	}
+	it.row.Row = r
+	return &it.row, nil
 }

@@ -33,15 +33,30 @@ func QueryTables(tx *chai.Tx, tables []string, fn func(name, query string) error
 	}
 	defer res.Close()
 
-	return res.Iterate(func(r *chai.Row) error {
-		// Get table name.
+	it, err := res.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
 		var name, query string
-		if err := r.Scan(&name, &query); err != nil {
+		r, err := it.Row()
+		if err != nil {
 			return err
 		}
 
-		return fn(name, query)
-	})
+		err = r.Scan(&name, &query)
+		if err != nil {
+			return err
+		}
+
+		if err := fn(name, query); err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
 }
 
 func ListIndexes(db *chai.DB, tableName string) ([]string, error) {
@@ -62,22 +77,32 @@ func ListIndexes(db *chai.DB, tableName string) ([]string, error) {
 	}
 	defer res.Close()
 
-	err = res.Iterate(func(r *chai.Row) error {
+	it, err := res.Iterator()
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	for it.Next() {
 		var query string
+		r, err := it.Row()
+		if err != nil {
+			return nil, err
+		}
+
 		err = r.Scan(&query)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		q, err := parser.ParseQuery(query)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
-		return nil
-	})
-	if err != nil {
+	}
+	if err := it.Error(); err != nil {
 		return nil, err
 	}
 

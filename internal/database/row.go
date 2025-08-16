@@ -89,8 +89,9 @@ var _ Row = (*BasicRow)(nil)
 
 type BasicRow struct {
 	row.Row
-	tableName string
-	key       *tree.Key
+	tableName   string
+	key         *tree.Key
+	originalRow Row
 }
 
 func NewBasicRow(r row.Row) *BasicRow {
@@ -105,6 +106,23 @@ func (r *BasicRow) ResetWith(tableName string, key *tree.Key, rr row.Row) {
 	r.Row = rr
 }
 
+func (r *BasicRow) SetOriginalRow(original Row) {
+	r.originalRow = original
+}
+
+func (r *BasicRow) OriginalRow() Row {
+	if r.originalRow != nil {
+		return r.originalRow
+	}
+
+	br, ok := r.Row.(*BasicRow)
+	if ok {
+		return br.OriginalRow()
+	}
+
+	return nil
+}
+
 func (r *BasicRow) Key() *tree.Key {
 	return r.key
 }
@@ -113,8 +131,21 @@ func (r *BasicRow) TableName() string {
 	return r.tableName
 }
 
-type RowIterator interface {
-	// Iterate goes through all the rows of the table and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(Row) error) error
+type Result interface {
+	// Iterator returns an iterator over the rows in the result.
+	Iterator() (Iterator, error)
+}
+
+type Iterator interface {
+	// Next moves the iterator to the next row.
+	Next() bool
+
+	// Row returns the current row.
+	Row() (Row, error)
+
+	// Close closes the iterator.
+	Close() error
+
+	// Error returns any error that occurred during iteration.
+	Error() error
 }

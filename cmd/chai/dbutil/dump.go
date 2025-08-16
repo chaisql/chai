@@ -64,7 +64,18 @@ func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
 	defer res.Close()
 
 	// Inserts statements.
-	return res.Iterate(func(r *chai.Row) error {
+	it, err := res.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+		r, err := it.Row()
+		if err != nil {
+			return err
+		}
+
 		cols, err := r.Columns()
 		if err != nil {
 			return err
@@ -95,9 +106,9 @@ func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
 		if _, err := fmt.Fprintf(w, "INSERT INTO %s VALUES (%s);\n", tableName, sb.String()); err != nil {
 			return err
 		}
+	}
 
-		return nil
-	})
+	return it.Error()
 }
 
 // DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
@@ -147,15 +158,28 @@ func dumpSchema(tx *chai.Tx, w io.Writer, query string, tableName string) error 
 	}
 	defer res.Close()
 
-	return res.Iterate(func(r *chai.Row) error {
+	it, err := res.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
 		var q string
+		r, err := it.Row()
+		if err != nil {
+			return err
+		}
 
 		err = r.Scan(&q)
 		if err != nil {
 			return err
 		}
 
-		_, err = fmt.Fprintf(w, "%s;\n", q)
-		return err
-	})
+		if _, err := fmt.Fprintf(w, "%s;\n", q); err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
 }

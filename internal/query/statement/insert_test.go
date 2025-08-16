@@ -103,6 +103,72 @@ func TestInsertStmt(t *testing.T) {
 		testutil.RequireStreamEq(t, ``, res)
 	})
 
+	t.Run("ON CONFLICT (PK)", func(t *testing.T) {
+		db, err := chai.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(a INT PRIMARY KEY, b INT)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a, b) VALUES (1, 1)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a, b) VALUES (1, 2) ON CONFLICT DO REPLACE`)
+		require.NoError(t, err)
+
+		r, err := db.QueryRow(`SELECT * FROM test`)
+		require.NoError(t, err)
+		testutil.RequireJSONEq(t, r, `{"a": 1, "b": 2}`)
+	})
+
+	t.Run("ON CONFLICT (UNIQUE)", func(t *testing.T) {
+		db, err := chai.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test(a INT UNIQUE, b INT)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a, b) VALUES (1, 1)`)
+		require.NoError(t, err)
+
+		err = db.Exec(`insert into test (a, b) VALUES (1, 2) ON CONFLICT DO REPLACE`)
+		require.NoError(t, err)
+
+		r, err := db.QueryRow(`SELECT * FROM test`)
+		require.NoError(t, err)
+		testutil.RequireJSONEq(t, r, `{"a": 1, "b": 2}`)
+	})
+
+	t.Run("SELECT", func(t *testing.T) {
+		db, err := chai.Open(":memory:")
+		require.NoError(t, err)
+		defer db.Close()
+
+		err = db.Exec(`CREATE TABLE test (a int primary key, b int);
+INSERT INTO test (a, b) VALUES (1, 10); UPDATE test SET a = 2, b = 20 WHERE a = 1;INSERT INTO test (a, b) VALUES (1, 10);`)
+		require.NoError(t, err)
+
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		res, err := conn.Query(`SELECT * FROM test;`)
+		require.NoError(t, err)
+
+		var b bytes.Buffer
+		err = res.MarshalJSONTo(&b)
+		require.NoError(t, err)
+
+		require.JSONEq(t, `
+		[
+		{"a": 1, "b": 10},
+		{"a": 2, "b": 20}
+		]
+		`, b.String())
+	})
+
 	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
 		db, err := chai.Open(":memory:")
 		require.NoError(t, err)
@@ -141,7 +207,7 @@ func TestInsertSelect(t *testing.T) {
 		query    string
 		fails    bool
 		expected string
-		params   []interface{}
+		params   []any
 	}{
 		{"Same table", `INSERT INTO foo SELECT * FROM foo`, true, ``, nil},
 		{"No columns / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"a":1, "b":10, "c":null, "d":null, "e":null}]`, nil},

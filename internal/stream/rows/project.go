@@ -10,7 +10,6 @@ import (
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 )
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
@@ -57,75 +56,6 @@ func (op *ProjectOperator) Columns(env *environment.Environment) ([]string, erro
 	return cols, nil
 }
 
-// Iterate implements the Operator interface.
-func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	cb := row.NewColumnBuffer()
-	var br database.BasicRow
-
-	var newEnv environment.Environment
-
-	if op.Prev == nil {
-		for _, e := range op.Exprs {
-			if _, ok := e.(expr.Wildcard); ok {
-				return errors.New("no table specified")
-			}
-
-			v, err := e.Eval(in)
-			if err != nil {
-				return err
-			}
-
-			cb.Add(e.String(), v)
-		}
-
-		br.ResetWith("", nil, cb)
-		newEnv.SetRow(&br)
-		newEnv.SetOuter(in)
-		return f(&newEnv)
-	}
-
-	return op.Prev.Iterate(in, func(env *environment.Environment) error {
-		cb.Reset()
-
-		for _, e := range op.Exprs {
-			if _, ok := e.(expr.Wildcard); ok {
-				r, ok := env.GetRow()
-				if !ok {
-					return errors.New("no table specified")
-				}
-
-				err := r.Iterate(func(field string, value types.Value) error {
-					cb.Add(field, value)
-					return nil
-				})
-				if err != nil {
-					return err
-				}
-
-				continue
-			}
-
-			v, err := e.Eval(env)
-			if err != nil {
-				return err
-			}
-
-			cb.Add(e.String(), v)
-		}
-
-		dr, ok := env.GetDatabaseRow()
-		if ok {
-			br.ResetWith(dr.TableName(), dr.Key(), cb)
-		} else {
-			br.ResetWith("", nil, cb)
-		}
-		newEnv.SetRow(&br)
-
-		newEnv.SetOuter(env)
-		return f(&newEnv)
-	})
-}
-
 func (op *ProjectOperator) String() string {
 	var b strings.Builder
 
@@ -138,4 +68,129 @@ func (op *ProjectOperator) String() string {
 	}
 	b.WriteString(")")
 	return b.String()
+}
+
+func (op *ProjectOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	if op.Prev == nil {
+		return &ExprIterator{
+			env:   in,
+			exprs: op.Exprs,
+		}, nil
+	}
+
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProjectIterator{
+		Iterator: prev,
+		env:      in,
+		exprs:    op.Exprs,
+	}, nil
+}
+
+type ExprIterator struct {
+	env   *environment.Environment
+	exprs []expr.Expr
+	row   *database.BasicRow
+	buf   *row.ColumnBuffer
+	err   error
+}
+
+func (it *ExprIterator) Next() bool {
+	it.err = nil
+
+	if it.row != nil {
+		return false
+	}
+
+	it.buf = row.NewColumnBuffer()
+
+	for _, e := range it.exprs {
+		v, err := e.Eval(it.env)
+		if err != nil {
+			it.err = err
+			return false
+		}
+
+		it.buf.Add(e.String(), v)
+	}
+	it.row = database.NewBasicRow(it.buf)
+
+	return true
+}
+
+func (it *ExprIterator) Close() error {
+	return nil
+}
+
+func (it *ExprIterator) Error() error {
+	return it.err
+}
+
+func (it *ExprIterator) Row() (database.Row, error) {
+	return it.row, nil
+}
+
+type ProjectIterator struct {
+	stream.Iterator
+
+	env   *environment.Environment
+	exprs []expr.Expr
+	row   database.BasicRow
+	buf   row.ColumnBuffer
+	err   error
+}
+
+func (it *ProjectIterator) Next() bool {
+	it.buf.Reset()
+
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	env := it.env.CloneWithRow(r)
+
+	for _, e := range it.exprs {
+		if _, ok := e.(expr.Wildcard); ok {
+			err = r.Iterate(func(field string, value types.Value) error {
+				it.buf.Add(field, value)
+				return nil
+			})
+			if err != nil {
+				it.err = err
+				return false
+			}
+
+			continue
+		}
+
+		v, err := e.Eval(env)
+		if err != nil {
+			it.err = err
+			return false
+		}
+
+		it.buf.Add(e.String(), v)
+	}
+
+	it.row.ResetWith(r.TableName(), it.row.Key(), &it.buf)
+	it.row.SetOriginalRow(r)
+
+	return true
+}
+
+func (it *ProjectIterator) Error() error {
+	return it.err
+}
+
+func (it *ProjectIterator) Row() (database.Row, error) {
+	return &it.row, nil
 }

@@ -185,7 +185,7 @@ func TestDriver(t *testing.T) {
 	t.Run("Transactions", func(t *testing.T) {
 		tx, err := db.Begin()
 		require.NoError(t, err)
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		rows, err := tx.Query("SELECT * FROM test")
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestDriver(t *testing.T) {
 	t.Run("Multiple queries in transaction", func(t *testing.T) {
 		tx, err := db.Begin()
 		require.NoError(t, err)
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		rows, err := tx.Query(`
 			SELECT * FROM test;;;
@@ -252,7 +252,7 @@ func TestDriver(t *testing.T) {
 	t.Run("Multiple queries in read only transaction", func(t *testing.T) {
 		tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
 		require.NoError(t, err)
-		defer tx.Rollback()
+		defer func() { _ = tx.Rollback() }()
 
 		_, err = tx.Query(`
 			SELECT * FROM test;;;
@@ -274,7 +274,7 @@ func TestDriverWithTimeValues(t *testing.T) {
 
 	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	var tt time.Time
 	err = tx.QueryRow(`SELECT a FROM test`).Scan(&tt)

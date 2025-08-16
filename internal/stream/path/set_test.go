@@ -3,6 +3,7 @@ package path_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -42,8 +43,7 @@ func TestSet(t *testing.T) {
 		t.Run(test.column, func(t *testing.T) {
 			s := stream.New(rows.Emit([]string{"a"}, test.in...)).Pipe(path.Set(test.column, test.e))
 			i := 0
-			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				r, _ := out.GetRow()
+			err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 				testutil.RequireRowEqual(t, test.out[i], r)
 				i++
 				return nil

@@ -36,7 +36,7 @@ func (t *Table) Insert(r row.Row) (*tree.Key, Row, error) {
 		return nil, nil, errors.New("cannot write to read-only table")
 	}
 
-	key, isRowid, err := t.generateKey(r)
+	key, isRowid, err := t.GenerateKey(r)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,7 +121,13 @@ func (t *Table) Replace(key *tree.Key, r row.Row) (Row, error) {
 	return t.Put(key, r)
 }
 
-// Put a row by key. If the key doesn't exist, it is created.
+// Exists checks if a row exists by key.
+func (t *Table) Exists(key *tree.Key) (bool, error) {
+	// make sure key exists
+	return t.Tree.Exists(key)
+}
+
+// Put a row by key
 func (t *Table) Put(key *tree.Key, r row.Row) (Row, error) {
 	if t.Info.ReadOnly {
 		return nil, errors.New("cannot write to read-only table")
@@ -134,11 +140,15 @@ func (t *Table) Put(key *tree.Key, r row.Row) (Row, error) {
 
 	// replace old row with new row
 	err = t.Tree.Put(key, enc)
+	if err != nil {
+		return nil, err
+	}
+
 	return &BasicRow{
 		tableName: t.Info.TableName,
 		Row:       r,
 		key:       key,
-	}, err
+	}, nil
 }
 
 func (t *Table) Iterator(rng *Range) (*TableIterator, error) {
@@ -184,14 +194,14 @@ func (t *Table) GetRow(key *tree.Key) (Row, error) {
 	}, nil
 }
 
-// generate a key for o based on the table configuration.
+// GenerateKey generates a key for o based on the table configuration.
 // if the table has a primary key, it extracts the field from
 // the object, converts it to the targeted type and returns
 // its encoded version.
 // if there are no primary key in the table, a default
 // key is generated, called the rowid.
 // It returns a boolean indicating whether the key is a rowid or not.
-func (t *Table) generateKey(r row.Row) (*tree.Key, bool, error) {
+func (t *Table) GenerateKey(r row.Row) (*tree.Key, bool, error) {
 	if pk := t.Info.PrimaryKey; pk != nil {
 		vs := make([]types.Value, 0, len(pk.Columns))
 		for _, c := range pk.Columns {

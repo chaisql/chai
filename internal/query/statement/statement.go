@@ -45,19 +45,71 @@ type Preparer interface {
 
 // Result of a query.
 type Result struct {
-	Iterator database.RowIterator
-	Tx       *database.Transaction
-	closed   bool
-	err      error
+	Result database.Result
+	Tx     *database.Transaction
+	closed bool
+	err    error
 }
 
-func (r *Result) Iterate(fn func(database.Row) error) error {
-	if r.Iterator == nil {
-		return nil
+func (r *Result) Iterator() (database.Iterator, error) {
+	if r.Result == nil {
+		return nil, nil
 	}
 
-	r.err = r.Iterator.Iterate(fn)
-	return r.err
+	return r.Result.Iterator()
+}
+
+func (r *Result) Iterate(fn func(r database.Row) error) (err error) {
+	if r.Result == nil {
+		return nil
+	}
+	defer func() {
+		if err != nil {
+			r.err = err
+		}
+	}()
+
+	it, err := r.Result.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+		rr, err := it.Row()
+		if err != nil {
+			return err
+		}
+		if err := fn(rr); err != nil {
+			return err
+		}
+	}
+	return it.Error()
+}
+
+// Skip iterates over the result and skips all rows.
+// It is useful when you need the query to be executed
+// but don't care about the results.
+func (r *Result) Skip() (err error) {
+	if r.Result == nil {
+		return nil
+	}
+	defer func() {
+		if err != nil {
+			r.err = err
+		}
+	}()
+
+	it, err := r.Result.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+	}
+
+	return it.Error()
 }
 
 // Close the result stream.

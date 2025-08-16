@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -58,9 +59,7 @@ func TestProject(t *testing.T) {
 			var inEnv environment.Environment
 
 			err := stream.New(rows.Emit([]string{"a", "b"}, test.in)).
-				Pipe(rows.Project(test.exprs...)).Iterate(&inEnv, func(out *environment.Environment) error {
-				r, ok := out.GetRow()
-				require.True(t, ok)
+				Pipe(rows.Project(test.exprs...)).Iterate(&inEnv, func(r database.Row) error {
 				tt, err := json.Marshal(r)
 				require.NoError(t, err)
 				require.JSONEq(t, test.out, string(tt))
@@ -92,13 +91,12 @@ func TestProject(t *testing.T) {
 	})
 
 	t.Run("No input", func(t *testing.T) {
-		rows.Project(parser.MustParseExpr("1 + 1")).Iterate(new(environment.Environment), func(out *environment.Environment) error {
-			r, ok := out.GetRow()
-			require.True(t, ok)
+		err := stream.New(rows.Project(parser.MustParseExpr("1 + 1"))).Iterate(new(environment.Environment), func(r database.Row) error {
 			enc, err := row.MarshalJSON(r)
 			require.NoError(t, err)
 			require.JSONEq(t, `{"1 + 1": 2}`, string(enc))
 			return nil
 		})
+		require.NoError(t, err)
 	})
 }

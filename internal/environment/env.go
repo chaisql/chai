@@ -14,78 +14,44 @@ type Param struct {
 	Name string
 
 	// Value is the parameter value.
-	Value interface{}
+	Value any
 }
 
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
-	Params []Param
-	Row    row.Row
-	DB     *database.Database
-	Tx     *database.Transaction
-
-	Outer *Environment
+	db     *database.Database
+	tx     *database.Transaction
+	params []Param
+	row    row.Row
 }
 
-func New(r database.Row, params ...Param) *Environment {
+func New(db *database.Database, tx *database.Transaction, params []Param, row row.Row) *Environment {
 	env := Environment{
-		Params: params,
-		Row:    r,
+		db:     db,
+		tx:     tx,
+		params: params,
+		row:    row,
 	}
 
 	return &env
 }
 
-func (e *Environment) GetOuter() *Environment {
-	return e.Outer
-}
-
-func (e *Environment) SetOuter(env *Environment) {
-	e.Outer = env
+func (e *Environment) CloneWithRow(r row.Row) *Environment {
+	return &Environment{
+		db:     e.db,
+		tx:     e.tx,
+		params: e.params,
+		row:    r,
+	}
 }
 
 func (e *Environment) GetRow() (row.Row, bool) {
-	if e.Row != nil {
-		return e.Row, true
-	}
-
-	if e.Outer != nil {
-		return e.Outer.GetRow()
-	}
-
-	return nil, false
-}
-
-func (e *Environment) GetDatabaseRow() (database.Row, bool) {
-	if e.Row != nil {
-		r, ok := e.Row.(database.Row)
-		return r, ok
-	}
-
-	if e.Outer != nil {
-		return e.Outer.GetDatabaseRow()
-	}
-
-	return nil, false
-}
-
-func (e *Environment) SetRow(r row.Row) {
-	e.Row = r
-}
-
-func (e *Environment) SetParams(params []Param) {
-	e.Params = params
+	return e.row, e.row != nil
 }
 
 func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
-	if len(e.Params) == 0 {
-		if e.Outer != nil {
-			return e.Outer.GetParamByName(name)
-		}
-	}
-
-	for _, nv := range e.Params {
+	for _, nv := range e.params {
 		if nv.Name == name {
 			return row.NewValue(nv.Value)
 		}
@@ -95,40 +61,18 @@ func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 }
 
 func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
-	if len(e.Params) == 0 {
-		if e.Outer != nil {
-			return e.Outer.GetParamByIndex(pos)
-		}
-	}
-
 	idx := int(pos - 1)
-	if idx >= len(e.Params) {
+	if idx >= len(e.params) {
 		return nil, fmt.Errorf("cannot find param number %d", pos)
 	}
 
-	return row.NewValue(e.Params[idx].Value)
+	return row.NewValue(e.params[idx].Value)
 }
 
 func (e *Environment) GetTx() *database.Transaction {
-	if e.Tx != nil {
-		return e.Tx
-	}
-
-	if outer := e.GetOuter(); outer != nil {
-		return outer.GetTx()
-	}
-
-	return nil
+	return e.tx
 }
 
 func (e *Environment) GetDB() *database.Database {
-	if e.DB != nil {
-		return e.DB
-	}
-
-	if outer := e.GetOuter(); outer != nil {
-		return outer.GetDB()
-	}
-
-	return nil
+	return e.db
 }

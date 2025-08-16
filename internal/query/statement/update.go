@@ -106,6 +106,8 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 
 	if pkModified {
 		s = s.Pipe(table.Delete(stmt.TableName))
+		// generate primary key
+		s = s.Pipe(table.GenerateKey(stmt.TableName))
 		s = s.Pipe(table.Insert(stmt.TableName))
 	} else {
 		s = s.Pipe(table.Replace(stmt.TableName))

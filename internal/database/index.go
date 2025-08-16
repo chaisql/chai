@@ -35,8 +35,6 @@ func NewIndex(tr *tree.Tree, opts IndexInfo) *Index {
 	}
 }
 
-var errStop = errors.New("stop")
-
 // Set associates values with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
 // but a key can be associated to only one value.

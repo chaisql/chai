@@ -35,6 +35,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -59,6 +60,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -74,6 +76,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(expr.Wildcard{}, testutil.ParseNamedExpr(t, "a"), testutil.ParseNamedExpr(t, "b", "B"))),
 			false},
@@ -93,7 +96,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(stream.OnConflict(nil)).
+				Pipe(table.GenerateKeyOnConflictDoNothing("test")).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(expr.Wildcard{})),
 			false},
@@ -108,7 +111,7 @@ func TestParserInsert(t *testing.T) {
 					},
 				},
 			)).Pipe(table.Validate("test")).
-				Pipe(stream.OnConflict(nil)).
+				Pipe(table.GenerateKeyOnConflictDoNothing("test")).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(expr.Wildcard{})),
 			false},
@@ -124,7 +127,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(stream.OnConflict(stream.New(table.Replace("test")))).
+				Pipe(table.GenerateKeyOnConflict("test", stream.New(table.Replace("test")))).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(expr.Wildcard{})),
 			false},
@@ -140,7 +143,7 @@ func TestParserInsert(t *testing.T) {
 				},
 			)).
 				Pipe(table.Validate("test")).
-				Pipe(stream.OnConflict(stream.New(table.Replace("test")))).
+				Pipe(table.GenerateKeyOnConflict("test", stream.New(table.Replace("test")))).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(expr.Wildcard{})),
 			false},
@@ -152,6 +155,7 @@ func TestParserInsert(t *testing.T) {
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Project(expr.Wildcard{})).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -159,6 +163,7 @@ func TestParserInsert(t *testing.T) {
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -167,6 +172,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(rows.Project(expr.Wildcard{})).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -175,6 +181,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -183,6 +190,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(stream.Discard()),
 			false},
@@ -191,6 +199,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
+				Pipe(table.GenerateKey("test")).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"))),
 			false},
@@ -199,7 +208,7 @@ func TestParserInsert(t *testing.T) {
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "c"), testutil.ParseNamedExpr(t, "d"))).
 				Pipe(path.PathsRename("a", "b")).
 				Pipe(table.Validate("test")).
-				Pipe(stream.OnConflict(nil)).
+				Pipe(table.GenerateKeyOnConflictDoNothing("test")).
 				Pipe(table.Insert("test")).
 				Pipe(rows.Project(testutil.ParseNamedExpr(t, "a"))),
 			false},

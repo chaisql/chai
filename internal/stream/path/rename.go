@@ -9,7 +9,6 @@ import (
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 )
 
 // An RenameOperator iterates over all columns of the incoming row in order and renames them.
@@ -36,57 +35,16 @@ func (op *RenameOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *RenameOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var cb row.ColumnBuffer
-	var newEnv environment.Environment
+func (op *RenameOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	var br database.BasicRow
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		cb.Reset()
-
-		r, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		var i int
-		err := r.Iterate(func(field string, value types.Value) error {
-			// if there are too many columns in the incoming row
-			if i >= len(op.ColumnNames) {
-				n, err := row.Length(r)
-				if err != nil {
-					return err
-				}
-				return fmt.Errorf("%d values for %d columns", n, len(op.ColumnNames))
-			}
-
-			cb.Add(op.ColumnNames[i], value)
-			i++
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		// if there are too few columns in the incoming row
-		if i < len(op.ColumnNames) {
-			n, err := row.Length(r)
-			if err != nil {
-				return err
-			}
-			return fmt.Errorf("%d values for %d columns", n, len(op.ColumnNames))
-		}
-
-		newEnv.SetOuter(out)
-		if dr, ok := r.(database.Row); ok {
-			br.ResetWith(dr.TableName(), dr.Key(), &cb)
-			newEnv.SetRow(&br)
-		} else {
-			newEnv.SetRow(&cb)
-		}
-
-		return f(&newEnv)
-	})
+	return &RenameIterator{
+		Iterator:    prev,
+		columnNames: op.ColumnNames,
+	}, nil
 }
 
 func (op *RenameOperator) Columns(env *environment.Environment) ([]string, error) {
@@ -95,4 +53,41 @@ func (op *RenameOperator) Columns(env *environment.Environment) ([]string, error
 
 func (op *RenameOperator) String() string {
 	return fmt.Sprintf("paths.Rename(%s)", strings.Join(op.ColumnNames, ", "))
+}
+
+type RenameIterator struct {
+	stream.Iterator
+
+	columnNames []string
+	buf         row.ColumnBuffer
+	dr          database.BasicRow
+}
+
+func (it *RenameIterator) Row() (database.Row, error) {
+	r, err := it.Iterator.Row()
+	if err != nil {
+		return nil, err
+	}
+
+	n, err := row.Length(r)
+	if err != nil {
+		return nil, err
+	}
+	if n != len(it.columnNames) {
+		return nil, fmt.Errorf("%d values for %d columns", n, len(it.columnNames))
+	}
+
+	var i int
+	it.buf.Reset()
+	err = r.Iterate(func(field string, value types.Value) error {
+		it.buf.Add(it.columnNames[i], value)
+		i++
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	it.dr.ResetWith(r.TableName(), r.Key(), &it.buf)
+	return &it.dr, nil
 }

@@ -282,7 +282,7 @@ func precalculateExpr(sctx *StreamContext, e expr.Expr) (expr.Expr, error) {
 			t[i] = newExpr
 		}
 	case expr.PositionalParam, expr.NamedParam:
-		v, err := t.Eval(&environment.Environment{Params: sctx.Params})
+		v, err := t.Eval(environment.New(nil, nil, sctx.Params, nil))
 		if err != nil {
 			return nil, err
 		}

@@ -5,7 +5,6 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
 )
 
 var _ Statement = (*PreparedStreamStmt)(nil)
@@ -43,7 +42,7 @@ func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
 	}
 
 	return Result{
-		Iterator: &StreamStmtIterator{
+		Result: &StreamStmtResult{
 			Stream:  st,
 			Context: ctx,
 		},
@@ -59,30 +58,14 @@ func (s *PreparedStreamStmt) String() string {
 	return s.Stream.String()
 }
 
-// StreamStmtIterator iterates over a stream.
-type StreamStmtIterator struct {
+// StreamStmtResult iterates over a stream.
+type StreamStmtResult struct {
 	Stream  *stream.Stream
 	Context *Context
 }
 
-func (s *StreamStmtIterator) Iterate(fn func(r database.Row) error) error {
-	var env environment.Environment
-	env.DB = s.Context.DB
-	env.Tx = s.Context.Tx
-	env.SetParams(s.Context.Params)
+func (s *StreamStmtResult) Iterator() (database.Iterator, error) {
+	env := environment.New(s.Context.DB, s.Context.Tx, s.Context.Params, nil)
 
-	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {
-		// if there is no row in this specific environment,
-		// the last operator is not outputting anything
-		// worth returning to the user.
-		if env.Row == nil {
-			return nil
-		}
-
-		return fn(env.Row.(database.Row))
-	})
-	if errors.Is(err, stream.ErrStreamClosed) {
-		err = nil
-	}
-	return err
+	return s.Stream.Iterator(env)
 }

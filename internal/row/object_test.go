@@ -464,7 +464,7 @@ func BenchmarkObjectIterate(b *testing.B) {
 
 	b.Run("Implementation", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			f.Iterate(func(string, types.Value) error {
+			_ = f.Iterate(func(string, types.Value) error {
 				return nil
 			})
 		}

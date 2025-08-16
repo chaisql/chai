@@ -420,19 +420,20 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			}
 
 			op := getOp(db, tx, "idx_test_a", test.indexOn, test.reverse, test.ranges...)
-			var env environment.Environment
-			env.Tx = tx
-			env.DB = db
-			env.Params = []environment.Param{{Name: "foo", Value: 1}}
+			env := environment.New(db, tx, []environment.Param{{Name: "foo", Value: 1}}, nil)
 
 			var i int
 			var got testutil.Rows
-			err := op.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
+			it, err := op.Iterator(env)
+			require.NoError(t, err)
+			defer it.Close()
+
+			for it.Next() {
+				r, err := it.Row()
+				require.NoError(t, err)
 				var fb row.ColumnBuffer
 
-				err := fb.Copy(r)
+				err = fb.Copy(r)
 				require.NoError(t, err)
 
 				got = append(got, &fb)
@@ -440,12 +441,11 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 				require.NoError(t, err)
 				require.Equal(t, types.NewBigintValue(1), v)
 				i++
-				return nil
-			})
+			}
 			if test.fails {
-				require.Error(t, err)
+				require.Error(t, it.Error())
 			} else {
-				require.NoError(t, err)
+				require.NoError(t, it.Error())
 				require.Equal(t, len(test.expected), i)
 				test.expected.RequireEqual(t, got)
 			}

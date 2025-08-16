@@ -1,15 +1,12 @@
 package testutil
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -82,21 +79,23 @@ func (r Rows) RequireEqualStream(t testing.TB, env *environment.Environment, st 
 
 	var i int
 
-	err := st.Iterate(env, func(env *environment.Environment) error {
-		rr, ok := env.GetRow()
-		require.True(t, ok)
+	it, err := st.Iterator(env)
+	require.NoError(t, err)
+	defer it.Close()
 
+	for it.Next() {
+		rr, err := it.Row()
+		require.NoError(t, err)
 		RequireRowEqual(t, r[i], rr)
 		i++
-		return nil
-	})
-	require.NoError(t, err)
+	}
+	require.NoError(t, it.Error())
 
 	require.Equal(t, len(r), i)
 }
 
 // Dump a json representation of v to os.Stdout.
-func Dump(t testing.TB, v interface{}) {
+func Dump(t testing.TB, v any) {
 	t.Helper()
 
 	enc := json.NewEncoder(os.Stdout)
@@ -111,36 +110,6 @@ func RequireJSONEq(t testing.TB, o any, expected string) {
 	data, err := json.Marshal(o)
 	require.NoError(t, err)
 	require.JSONEq(t, expected, string(data))
-}
-
-// IteratorToJSONArray encodes all the objects of an iterator to a JSON array.
-func IteratorToJSONArray(w io.Writer, s database.RowIterator) error {
-	buf := bufio.NewWriter(w)
-
-	buf.WriteByte('[')
-
-	first := true
-	err := s.Iterate(func(r database.Row) error {
-		if !first {
-			buf.WriteString(", ")
-		} else {
-			first = false
-		}
-
-		data, err := r.MarshalJSON()
-		if err != nil {
-			return err
-		}
-
-		_, err = buf.Write(data)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-
-	buf.WriteByte(']')
-	return buf.Flush()
 }
 
 func RequireRowEqual(t testing.TB, want, got row.Row) {

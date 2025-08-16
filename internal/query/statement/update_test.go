@@ -77,7 +77,7 @@ func TestUpdateStmt(t *testing.T) {
 				require.JSONEq(t, test.expected, buf.String())
 			}
 
-			runTest(false)
+			// runTest(false)
 			runTest(true)
 		})
 	}

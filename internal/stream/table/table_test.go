@@ -3,6 +3,7 @@ package table_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
@@ -144,15 +145,11 @@ func TestTableScan(t *testing.T) {
 
 			op := table.Scan("test", test.ranges...)
 			op.Reverse = test.reverse
-			var env environment.Environment
-			env.Tx = tx
-			env.Params = []environment.Param{{Name: "foo", Value: 1}}
+			env := environment.New(nil, tx, []environment.Param{{Name: "foo", Value: 1}}, nil)
 
 			var i int
 			var got testutil.Rows
-			err := op.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
+			err := stream.New(op).Iterate(env, func(r database.Row) error {
 				var fb row.ColumnBuffer
 
 				err := fb.Copy(r)

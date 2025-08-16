@@ -3,6 +3,7 @@ package path_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -44,8 +45,7 @@ func TestPathsRename(t *testing.T) {
 		s := stream.New(rows.Emit([]string{"a", "b"}, test.in...)).Pipe(path.PathsRename(test.fieldNames...))
 		t.Run(s.String(), func(t *testing.T) {
 			i := 0
-			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				r, _ := out.GetRow()
+			err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 				testutil.RequireRowEqual(t, test.out[i], r)
 				i++
 				return nil

@@ -61,7 +61,7 @@ func TestTempTreeSort(t *testing.T) {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: val})
 			}
 
-			testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {
+			err := testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {
 				d, err := r.MarshalJSON()
 				require.NoError(t, err)
 
@@ -69,9 +69,9 @@ func TestTempTreeSort(t *testing.T) {
 				return nil
 
 			})
-			var env environment.Environment
-			env.DB = db
-			env.Tx = tx
+			require.NoError(t, err)
+
+			env := environment.New(db, tx, nil, nil)
 
 			s := stream.New(table.Scan("test"))
 			if test.desc {
@@ -81,12 +81,12 @@ func TestTempTreeSort(t *testing.T) {
 			}
 
 			var got []row.Row
-			err := s.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
-
+			err = s.Iterate(env, func(r database.Row) error {
 				fb := row.NewColumnBuffer()
-				fb.Copy(r)
+				err = fb.Copy(r)
+				if err != nil {
+					return err
+				}
 				got = append(got, fb)
 				return nil
 			})

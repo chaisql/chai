@@ -3,6 +3,7 @@ package rows_test
 import (
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
@@ -78,9 +79,7 @@ func TestAggregate(t *testing.T) {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: val})
 			}
 
-			var env environment.Environment
-			env.DB = db
-			env.Tx = tx
+			env := environment.New(db, tx, nil, nil)
 
 			s := stream.New(table.Scan("test"))
 			if test.groupBy != nil {
@@ -90,11 +89,12 @@ func TestAggregate(t *testing.T) {
 			s = s.Pipe(rows.GroupAggregate(test.groupBy, test.builders...))
 
 			var got []row.Row
-			err := s.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
+			err := s.Iterate(env, func(r database.Row) error {
 				var fb row.ColumnBuffer
-				fb.Copy(r)
+				err := fb.Copy(r)
+				if err != nil {
+					return err
+				}
 				got = append(got, &fb)
 				return nil
 			})

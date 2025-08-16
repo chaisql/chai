@@ -451,7 +451,7 @@ func (s *sortedRow) Iterate(fn func(column string, value types.Value) error) err
 
 func Flatten(r Row) []types.Value {
 	var values []types.Value
-	r.Iterate(func(column string, v types.Value) error {
+	_ = r.Iterate(func(column string, v types.Value) error {
 		values = append(values, types.NewTextValue(column))
 		values = append(values, v)
 		return nil

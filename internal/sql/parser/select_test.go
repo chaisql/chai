@@ -43,6 +43,8 @@ func TestParserSelect(t *testing.T) {
 	}
 
 	parseNamedExpr := func(t *testing.T, s string, name ...string) *expr.NamedExpr {
+		t.Helper()
+
 		ne := expr.NamedExpr{
 			Expr:     parseExpr(s),
 			ExprName: s,

@@ -127,15 +127,29 @@ func runTablesCmd(db *chai.DB, w io.Writer) error {
 	}
 	defer res.Close()
 
-	return res.Iterate(func(r *chai.Row) error {
+	it, err := res.Iterator()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
 		var tableName string
+		r, err := it.Row()
+		if err != nil {
+			return err
+		}
 		err = r.Scan(&tableName)
 		if err != nil {
 			return err
 		}
 		_, err = fmt.Fprintln(w, tableName)
-		return err
-	})
+		if err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
 }
 
 // runIndexesCmd displays a list of indexes. If table is non-empty, it only

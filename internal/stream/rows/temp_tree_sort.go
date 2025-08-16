@@ -39,124 +39,18 @@ func (op *TempTreeSortOperator) Clone() stream.Operator {
 	}
 }
 
-func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	db := in.GetDB()
-
-	catalog := in.GetTx().Catalog
-	tns := catalog.GetFreeTransientNamespace()
-	tr, cleanup, err := tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
+func (op *TempTreeSortOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
 	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	var counter int64
-
-	var buf []byte
-	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
-		buf = buf[:0]
-
-		// evaluate the sort expression
-		v, err := op.Expr.Eval(out)
-		if err != nil {
-			if !errors.Is(err, types.ErrColumnNotFound) {
-				return err
-			}
-
-			v = nil
-		}
-
-		if v == nil {
-			// the expression might be pointing to the original row.
-			v, err = op.Expr.Eval(out.GetOuter())
-			if err != nil {
-				// the only valid error here is a missing column.
-				if !errors.Is(err, types.ErrColumnNotFound) {
-					return err
-				}
-			}
-		}
-
-		r, ok := out.GetDatabaseRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		buf, err = encodeTempRow(buf, r)
-		if err != nil {
-			return errors.Wrap(err, "failed to encode row")
-		}
-
-		var encKey []byte
-		key := r.Key()
-		if key != nil {
-			info, err := catalog.GetTableInfo(r.TableName())
-			if err != nil {
-				return err
-			}
-			encKey, err = info.EncodeKey(key)
-			if err != nil {
-				return err
-			}
-		}
-
-		tk := tree.NewKey(v, types.NewTextValue(r.TableName()), types.NewBlobValue(encKey), types.NewBigintValue(counter))
-
-		counter++
-
-		return tr.Put(tk, buf)
-	})
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-	var br database.BasicRow
-
-	it, err := tr.Iterator(nil)
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.Start(op.Desc); it.Valid(); it.Move(op.Desc) {
-		k := it.Key()
-		data, err := it.Value()
-		if err != nil {
-			return err
-		}
-
-		kv, err := k.Decode()
-		if err != nil {
-			return err
-		}
-
-		var tableName string
-		tf := kv[1]
-		if tf.Type() != types.TypeNull {
-			tableName = types.AsString(tf)
-		}
-
-		var key *tree.Key
-		kf := kv[2]
-		if kf.Type() != types.TypeNull {
-			key = tree.NewEncodedKey(types.AsByteSlice(kf))
-		}
-
-		r := decodeTempRow(data)
-
-		br.ResetWith(tableName, key, r)
-
-		newEnv.SetRow(&br)
-
-		err = fn(&newEnv)
-		if err != nil {
-			return err
-		}
-	}
-
-	return it.Error()
+	return &TempTreeSortIterator{
+		prev: prev,
+		expr: op.Expr,
+		desc: op.Desc,
+		env:  in,
+	}, nil
 }
 
 func (op *TempTreeSortOperator) String() string {
@@ -196,4 +90,174 @@ func decodeTempRow(b []byte) row.Row {
 	}
 
 	return cb
+}
+
+type TempTreeSortIterator struct {
+	prev    stream.Iterator
+	expr    expr.Expr
+	desc    bool
+	env     *environment.Environment
+	err     error
+	temp    *tree.Tree
+	tempIt  *tree.Iterator
+	cleanup func() error
+}
+
+func (it *TempTreeSortIterator) Close() error {
+	var errs []error
+	if it.tempIt != nil {
+		err := it.tempIt.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if it.cleanup != nil {
+		err := it.cleanup()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	err := it.prev.Close()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
+}
+
+func (it *TempTreeSortIterator) Next() bool {
+	it.err = nil
+
+	if it.tempIt != nil {
+		return it.tempIt.Move(it.desc)
+	}
+
+	// create a temporary tree
+	db := it.env.GetDB()
+	tns := it.env.GetTx().Catalog.GetFreeTransientNamespace()
+	it.temp, it.cleanup, it.err = tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
+	if it.err != nil {
+		return false
+	}
+
+	// iterate over the steam and add it to the temp tree
+	if err := it.iterateOnStream(); err != nil {
+		it.err = err
+		return false
+	}
+
+	it.tempIt, it.err = it.temp.Iterator(nil)
+	if it.err != nil {
+		return false
+	}
+
+	return it.tempIt.Start(it.desc)
+}
+
+func (it *TempTreeSortIterator) iterateOnStream() error {
+	var buf []byte
+	var counter int64
+
+	for it.prev.Next() {
+		buf = buf[:0]
+
+		r, err := it.prev.Row()
+		if err != nil {
+			return err
+		}
+
+		// evaluate the sort expression
+		v, err := it.expr.Eval(it.env.CloneWithRow(r))
+		if err != nil {
+			if !errors.Is(err, types.ErrColumnNotFound) {
+				return err
+			}
+
+			v = nil
+		}
+
+		if v == nil {
+			// the expression might be pointing to the original row.
+			dr, ok := r.(*database.BasicRow)
+			if ok {
+				v, err = it.expr.Eval(it.env.CloneWithRow(dr.OriginalRow()))
+				if err != nil {
+					return err
+				}
+			}
+			if !ok {
+				return types.ErrColumnNotFound
+			}
+		}
+
+		buf, err = encodeTempRow(buf, r)
+		if err != nil {
+			return errors.Wrap(err, "failed to encode row")
+		}
+
+		var encKey []byte
+		key := r.Key()
+		if key != nil {
+			info, err := it.env.GetTx().Catalog.GetTableInfo(r.TableName())
+			if err != nil {
+				return err
+			}
+			encKey, err = info.EncodeKey(key)
+			if err != nil {
+				return err
+			}
+		}
+
+		tk := tree.NewKey(v, types.NewTextValue(r.TableName()), types.NewBlobValue(encKey), types.NewBigintValue(counter))
+
+		counter++
+
+		err = it.temp.Put(tk, buf)
+		if err != nil {
+			return err
+		}
+	}
+	if err := it.prev.Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (it *TempTreeSortIterator) Error() error {
+	return it.err
+}
+
+func (it *TempTreeSortIterator) Row() (database.Row, error) {
+	kv, err := it.tempIt.Key().Decode()
+	if err != nil {
+		return nil, err
+	}
+
+	var tableName string
+	tf := kv[1]
+	if tf.Type() != types.TypeNull {
+		tableName = types.AsString(tf)
+	}
+
+	var key *tree.Key
+	kf := kv[2]
+	if kf.Type() != types.TypeNull {
+		key = tree.NewEncodedKey(types.AsByteSlice(kf))
+	}
+
+	data, err := it.tempIt.Value()
+	if err != nil {
+		return nil, err
+	}
+
+	r := decodeTempRow(data)
+
+	var basicRow database.BasicRow
+
+	basicRow.ResetWith(tableName, key, r)
+
+	return &basicRow, nil
 }

@@ -68,7 +68,7 @@ func MarshalTextIndent(r Row, prefix, indent string) ([]byte, error) {
 		buf.WriteString(ident)
 		buf.WriteString(": ")
 
-		return marshalText(&buf, value, prefix, indent, 1)
+		return marshalText(&buf, value)
 	})
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func MarshalTextIndent(r Row, prefix, indent string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func marshalText(dst *bytes.Buffer, v types.Value, prefix, indent string, depth int) error {
+func marshalText(dst *bytes.Buffer, v types.Value) error {
 	if v.V() == nil {
 		dst.WriteString("NULL")
 		return nil
@@ -122,7 +122,7 @@ func marshalText(dst *bytes.Buffer, v types.Value, prefix, indent string, depth 
 	case types.TypeBlob:
 		src := types.AsByteSlice(v)
 		dst.WriteString("\"\\x")
-		hex.NewEncoder(dst).Write(src)
+		_, _ = hex.NewEncoder(dst).Write(src)
 		dst.WriteByte('"')
 		return nil
 	default:

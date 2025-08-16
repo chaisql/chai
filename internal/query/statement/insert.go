@@ -146,15 +146,15 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	// validate object
 	s = s.Pipe(table.Validate(stmt.TableName))
 
-	if stmt.OnConflict != 0 {
-		switch stmt.OnConflict {
-		case database.OnConflictDoNothing:
-			s = s.Pipe(stream.OnConflict(nil))
-		case database.OnConflictDoReplace:
-			s = s.Pipe(stream.OnConflict(stream.New(table.Replace(stmt.TableName))))
-		default:
-			panic("unreachable")
-		}
+	// generate primary key
+	switch stmt.OnConflict {
+	case database.OnConflictDoNothing:
+		s = s.Pipe(table.GenerateKeyOnConflictDoNothing(stmt.TableName))
+	case database.OnConflictDoReplace:
+		// TODO: update index
+		s = s.Pipe(table.GenerateKeyOnConflict(stmt.TableName, stream.New(table.Replace(stmt.TableName))))
+	default:
+		s = s.Pipe(table.GenerateKey(stmt.TableName))
 	}
 
 	// check unique constraints
@@ -166,7 +166,15 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		}
 
 		if info.Unique {
-			s = s.Pipe(index.Validate(indexName))
+			// validate object
+			switch stmt.OnConflict {
+			case database.OnConflictDoNothing:
+				s = s.Pipe(index.ValidateOnConflictDoNothing(indexName))
+			case database.OnConflictDoReplace:
+				s = s.Pipe(index.ValidateOnConflict(indexName, stream.New(table.Replace(stmt.TableName))))
+			default:
+				s = s.Pipe(index.Validate(indexName))
+			}
 		}
 	}
 

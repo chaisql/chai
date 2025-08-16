@@ -142,7 +142,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		})
 		if err != nil {
 			if q.autoCommit {
-				q.tx.Rollback()
+				_ = q.tx.Rollback()
 			}
 
 			return nil, err
@@ -152,10 +152,10 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		// and the current statement is not read-only,
 		// iterate over the result.
 		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
-			err = res.Iterate(func(database.Row) error { return nil })
+			err = res.Skip()
 			if err != nil {
 				if q.autoCommit {
-					q.tx.Rollback()
+					_ = q.tx.Rollback()
 				}
 
 				return nil, err

@@ -157,5 +157,5 @@ INSERT INTO test VALUES (1);
 CREATE TABLE test (a int);
 EXPLAIN INSERT INTO test (a) VALUES (1);
 /* result:
-{plan: "rows.Emit((1)) | table.Validate(\"test\") | table.Insert(\"test\") | discard()"}
+{plan: "rows.Emit((1)) | table.Validate(\"test\") | table.GenerateKey(\"test\") | table.Insert(\"test\") | discard()"}
 */

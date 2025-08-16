@@ -10,9 +10,12 @@ import (
 	"github.com/chaisql/chai/internal/types"
 )
 
-var envWithRow = environment.New(func() database.Row {
-	return database.NewBasicRow(row.NewColumnBuffer().Add("a", types.NewIntegerValue(1)))
-}())
+var envWithRow = environment.New(
+	nil,
+	nil,
+	nil,
+	database.NewBasicRow(row.NewColumnBuffer().Add("a", types.NewIntegerValue(1))),
+)
 
 func TestComparisonExpr(t *testing.T) {
 	tests := []struct {

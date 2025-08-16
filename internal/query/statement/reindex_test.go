@@ -1,6 +1,7 @@
 package statement_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/chaisql/chai/internal/testutil"
@@ -61,13 +62,7 @@ func TestReIndex(t *testing.T) {
 				info, err := tx.Catalog.GetIndexInfo(idxName)
 				require.NoError(t, err)
 
-				shouldBeIndexed := false
-				for _, name := range test.expectReIndexed {
-					if name == info.IndexName {
-						shouldBeIndexed = true
-						break
-					}
-				}
+				shouldBeIndexed := slices.Contains(test.expectReIndexed, info.IndexName)
 
 				i := 0
 				it, err := idx.Tree.Iterator(nil)

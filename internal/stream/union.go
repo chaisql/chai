@@ -43,127 +43,11 @@ func (it *UnionOperator) Columns(env *environment.Environment) ([]string, error)
 }
 
 // Iterate iterates over all the streams and returns their union.
-func (op *UnionOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) (err error) {
-	var temp *tree.Tree
-	var cleanup func() error
-
-	defer func() {
-		if cleanup != nil {
-			e := cleanup()
-			if err == nil {
-				err = e
-			}
-		}
-	}()
-
-	// iterate over all the streams and insert each key in the temporary table
-	// to deduplicate them
-	var buf []byte
-
-	for _, s := range op.Streams {
-		err := s.Iterate(in, func(out *environment.Environment) error {
-			buf = buf[:0]
-
-			r, ok := out.GetRow()
-			if !ok {
-				return errors.New("missing row")
-			}
-
-			if temp == nil {
-				// create a temporary tree
-				db := in.GetDB()
-				tns := in.GetTx().Catalog.GetFreeTransientNamespace()
-				temp, cleanup, err = tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
-				if err != nil {
-					return err
-				}
-			}
-
-			var tableName string
-			var encKey []byte
-
-			if dr, ok := r.(database.Row); ok {
-				// encode the row key and table name as the value
-				tableName = dr.TableName()
-
-				info, err := in.GetTx().Catalog.GetTableInfo(tableName)
-				if err != nil {
-					return err
-				}
-
-				encKey, err = info.EncodeKey(dr.Key())
-				if err != nil {
-					return err
-				}
-			}
-
-			key := tree.NewKey(row.Flatten(r)...)
-			buf, err = types.EncodeValuesAsKey(buf, types.NewBlobValue(encKey), types.NewTextValue(tableName))
-			if err != nil {
-				return err
-			}
-
-			err = temp.Put(key, buf)
-			if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
-				return nil
-			}
-			return err
-		})
-		if err != nil {
-			return err
-		}
-	}
-
-	if temp == nil {
-		// the union is empty
-		return nil
-	}
-
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-
-	var basicRow database.BasicRow
-
-	// iterate over the temporary index
-	it, err := temp.Iterator(nil)
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.First(); it.Valid(); it.Next() {
-		key := it.Key()
-		value, err := it.Value()
-		if err != nil {
-			return err
-		}
-
-		kv, err := key.Decode()
-		if err != nil {
-			return err
-		}
-
-		var tableName string
-		var pk *tree.Key
-
-		obj := row.Unflatten(kv)
-
-		if len(value) > 1 {
-			ser := types.DecodeValues(value)
-			pk = tree.NewEncodedKey(types.AsByteSlice(ser[0]))
-			tableName = types.AsString(ser[1])
-		}
-
-		basicRow.ResetWith(tableName, pk, obj)
-
-		newEnv.SetRow(&basicRow)
-		err = fn(&newEnv)
-		if err != nil {
-			return err
-		}
-	}
-
-	return it.Error()
+func (op *UnionOperator) Iterator(in *environment.Environment) (Iterator, error) {
+	return &UnionIterator{
+		streams: op.Streams,
+		env:     in,
+	}, nil
 }
 
 func (it *UnionOperator) String() string {
@@ -179,4 +63,162 @@ func (it *UnionOperator) String() string {
 	s.WriteRune(')')
 
 	return s.String()
+}
+
+type UnionIterator struct {
+	streams []*Stream
+	err     error
+	env     *environment.Environment
+	temp    *tree.Tree
+	tempIt  *tree.Iterator
+	cleanup func() error
+}
+
+func (it *UnionIterator) Close() error {
+	var errs []error
+	if it.tempIt != nil {
+		err := it.tempIt.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if it.cleanup != nil {
+		err := it.cleanup()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
+}
+
+func (it *UnionIterator) Next() bool {
+	it.err = nil
+
+	if it.tempIt != nil {
+		return it.tempIt.Next()
+	}
+
+	// create a temporary tree
+	db := it.env.GetDB()
+	tns := it.env.GetTx().Catalog.GetFreeTransientNamespace()
+	it.temp, it.cleanup, it.err = tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
+	if it.err != nil {
+		return false
+	}
+
+	// iterate over all the steams and add them to the temp tree
+	for _, s := range it.streams {
+		if err := it.iterateOnStream(s); err != nil {
+			it.err = err
+			return false
+		}
+	}
+
+	it.tempIt, it.err = it.temp.Iterator(nil)
+	if it.err != nil {
+		return false
+	}
+
+	return it.tempIt.Start(false)
+}
+
+func (it *UnionIterator) iterateOnStream(s *Stream) error {
+	sit, err := s.Iterator(it.env)
+	if err != nil {
+		return err
+	}
+	defer sit.Close()
+
+	var buf []byte
+
+	for sit.Next() {
+		buf = buf[:0]
+		var tableName string
+		var encKey []byte
+
+		r, err := sit.Row()
+		if err != nil {
+			return err
+		}
+
+		if r.TableName() != "" {
+			// encode the row key and table name as the value
+			tableName = r.TableName()
+
+			info, err := it.env.GetTx().Catalog.GetTableInfo(tableName)
+			if err != nil {
+				return err
+			}
+
+			k := r.Key()
+			if k == nil {
+				if br, ok := r.(*database.BasicRow); ok {
+					k = br.OriginalRow().Key()
+				}
+
+				if k == nil {
+					return errors.New("missing row key")
+				}
+			}
+
+			encKey, err = info.EncodeKey(k)
+			if err != nil {
+				return err
+			}
+		}
+
+		key := tree.NewKey(row.Flatten(r)...)
+		buf, err = types.EncodeValuesAsKey(buf, types.NewBlobValue(encKey), types.NewTextValue(tableName))
+		if err != nil {
+			return err
+		}
+
+		err = it.temp.Put(key, buf)
+		if err == nil || errors.Is(err, database.ErrIndexDuplicateValue) {
+			continue
+		}
+		return err
+	}
+
+	if err := sit.Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (it *UnionIterator) Error() error {
+	return it.err
+}
+
+func (it *UnionIterator) Row() (database.Row, error) {
+	var basicRow database.BasicRow
+
+	key := it.tempIt.Key()
+	value, err := it.tempIt.Value()
+	if err != nil {
+		return nil, err
+	}
+
+	kv, err := key.Decode()
+	if err != nil {
+		return nil, err
+	}
+
+	var tableName string
+	var pk *tree.Key
+
+	obj := row.Unflatten(kv)
+
+	if len(value) > 1 {
+		ser := types.DecodeValues(value)
+		pk = tree.NewEncodedKey(types.AsByteSlice(ser[0]))
+		tableName = types.AsString(ser[1])
+	}
+
+	basicRow.ResetWith(tableName, pk, obj)
+
+	return &basicRow, nil
 }

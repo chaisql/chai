@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/row"
@@ -26,9 +27,7 @@ func TestStream(t *testing.T) {
 	s = s.Pipe(rows.Project(parser.MustParseExpr("a + 1")))
 
 	var count int64
-	err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
-		r, ok := env.GetRow()
-		require.True(t, ok)
+	err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 		tt, err := json.Marshal(r)
 		require.NoError(t, err)
 		require.JSONEq(t, fmt.Sprintf(`{"a + 1": %d}`, count+3), string(tt))
@@ -91,11 +90,9 @@ func TestUnion(t *testing.T) {
 			}
 
 			st := stream.New(stream.Union(streams...))
-			var env environment.Environment
-			env.Tx = tx
-			env.DB = db
+			env := environment.New(db, tx, nil, nil)
 
-			test.expected.RequireEqualStream(t, &env, st)
+			test.expected.RequireEqualStream(t, env, st)
 		})
 	}
 
@@ -116,13 +113,10 @@ func TestConcatOperator(t *testing.T) {
 
 	s1 := stream.New(rows.Emit([]string{"a"}, in1...))
 	s2 := stream.New(rows.Emit([]string{"a"}, in2...))
-	s := stream.Concat(s1, s2)
+	s := stream.New(stream.Concat(s1, s2))
 
 	var got []row.Row
-	s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
-		r, ok := env.GetRow()
-		require.True(t, ok)
-
+	err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 		var fb row.ColumnBuffer
 		err := fb.Copy(r)
 		if err != nil {
@@ -131,6 +125,7 @@ func TestConcatOperator(t *testing.T) {
 		got = append(got, &fb)
 		return nil
 	})
+	require.NoError(t, err)
 
 	want := append(in1, in2...)
 	for i, w := range want {

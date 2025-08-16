@@ -57,8 +57,7 @@ func TestFilter(t *testing.T) {
 		t.Run(test.e.String(), func(t *testing.T) {
 			s := stream.New(rows.Emit([]string{"a"}, test.in...)).Pipe(rows.Filter(test.e))
 			i := 0
-			err := s.Iterate(new(environment.Environment), func(out *environment.Environment) error {
-				r, _ := out.GetRow()
+			err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 				testutil.RequireRowEqual(t, test.out[i], r)
 				i++
 				return nil
@@ -101,7 +100,7 @@ func TestTake(t *testing.T) {
 			s = s.Pipe(rows.Take(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
-			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 				count++
 				return nil
 			})
@@ -146,7 +145,7 @@ func TestSkip(t *testing.T) {
 			s = s.Pipe(rows.Skip(parser.MustParseExpr(strconv.Itoa(test.n))))
 
 			var count int
-			err := s.Iterate(new(environment.Environment), func(env *environment.Environment) error {
+			err := s.Iterate(new(environment.Environment), func(r database.Row) error {
 				count++
 				return nil
 			})
@@ -188,16 +187,12 @@ func TestTableInsert(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
 
-			in := &environment.Environment{}
-			in.Tx = tx
+			in := environment.New(nil, tx, nil, nil)
 
 			s := stream.New(test.in).Pipe(table.Insert("test"))
 
 			var i int
-			err := s.Iterate(in, func(out *environment.Environment) error {
-				r, ok := out.GetRow()
-				require.True(t, ok)
-
+			err := s.Iterate(in, func(r database.Row) error {
 				testutil.RequireRowEqual(t, test.out[i], r)
 				i++
 				return nil
@@ -241,18 +236,14 @@ func TestTableReplace(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?, ?)", environment.Param{Value: test.a}, environment.Param{Value: test.b})
 
-			in := environment.Environment{}
-			in.Tx = tx
+			in := environment.New(nil, tx, nil, nil)
 
 			s := stream.New(table.Scan("test")).
 				Pipe(test.op).
 				Pipe(table.Replace("test"))
 
 			var i int
-			err := s.Iterate(&in, func(out *environment.Environment) error {
-				r, ok := out.GetRow()
-				require.True(t, ok)
-
+			err := s.Iterate(in, func(r database.Row) error {
 				got, err := json.Marshal(r)
 				require.NoError(t, err)
 				want, err := json.Marshal(test.expected[i])
@@ -315,12 +306,11 @@ func TestTableDelete(t *testing.T) {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: a})
 			}
 
-			var env environment.Environment
-			env.Tx = tx
+			env := environment.New(nil, tx, nil, nil)
 
 			s := stream.New(table.Scan("test")).Pipe(test.op).Pipe(table.Delete("test"))
 
-			err := s.Iterate(&env, func(out *environment.Environment) error {
+			err := s.Iterate(env, func(r database.Row) error {
 				return nil
 			})
 			if test.fails {

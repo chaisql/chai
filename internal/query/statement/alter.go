@@ -134,6 +134,9 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 		// validate the record against the new schema
 		s = s.Pipe(table.Validate(stmt.TableName))
 
+		// generate primary key
+		s = s.Pipe(table.GenerateKey(stmt.TableName))
+
 		// insert the record with the new primary key
 		s = s.Pipe(table.Insert(stmt.TableName))
 
@@ -174,7 +177,7 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 
 	// do NOT optimize the stream
 	return Result{
-		Iterator: &StreamStmtIterator{
+		Result: &StreamStmtResult{
 			Stream:  s,
 			Context: ctx,
 		},

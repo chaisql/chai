@@ -37,84 +37,24 @@ func (op *GroupAggregateOperator) Clone() stream.Operator {
 	}
 }
 
-func (op *GroupAggregateOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var lastGroup types.Value
-	var ga *groupAggregator
+func (op *GroupAggregateOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
 	var groupExpr string
 	if op.E != nil {
 		groupExpr = op.E.String()
 	}
 
-	err := op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if op.E == nil {
-			if ga == nil {
-				ga = newGroupAggregator(nil, groupExpr, op.Builders)
-			}
-
-			return ga.Aggregate(out)
-		}
-
-		group, err := op.E.Eval(out)
-		if errors.Is(err, types.ErrColumnNotFound) {
-			group = types.NewNullValue()
-			err = nil
-		}
-		if err != nil {
-			return err
-		}
-
-		// handle the first object of the stream
-		if lastGroup == nil {
-			lastGroup = group
-			if err != nil {
-				return err
-			}
-			ga = newGroupAggregator(lastGroup, groupExpr, op.Builders)
-			return ga.Aggregate(out)
-		}
-
-		ok, err := lastGroup.EQ(group)
-		if err != nil {
-			return err
-		}
-		if ok {
-			return ga.Aggregate(out)
-		}
-
-		// if the object is from a different group, we flush the previous group, emit it and start a new group
-		e, err := ga.Flush(out)
-		if err != nil {
-			return err
-		}
-		err = f(e)
-		if err != nil {
-			return err
-		}
-
-		lastGroup = group
-
-		ga = newGroupAggregator(lastGroup, groupExpr, op.Builders)
-		return ga.Aggregate(out)
-	})
-	if err != nil {
-		return err
-	}
-
-	// if ga is empty, we create a default group so that aggregators will
-	// return their default initial value.
-	// Ex: For `SELECT COUNT(*) FROM foo`, if `foo` is empty
-	// we want the following result:
-	// {"COUNT(*)": 0}
-	if ga == nil {
-		ga = newGroupAggregator(nil, "", op.Builders)
-	}
-
-	e, err := ga.Flush(in)
-	if err != nil {
-		return err
-	}
-	return f(e)
+	return &GroupAggregatorIterator{
+		prev:      prev,
+		builders:  op.Builders,
+		e:         op.E,
+		env:       in,
+		groupExpr: groupExpr,
+	}, nil
 }
 
 func (op *GroupAggregateOperator) Columns(env *environment.Environment) ([]string, error) {
@@ -182,7 +122,7 @@ func (g *groupAggregator) Aggregate(env *environment.Environment) error {
 	return nil
 }
 
-func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Environment, error) {
+func (g *groupAggregator) Flush(env *environment.Environment) (*database.BasicRow, error) {
 	cb := row.NewColumnBuffer()
 
 	// add the current group to the object
@@ -198,11 +138,141 @@ func (g *groupAggregator) Flush(env *environment.Environment) (*environment.Envi
 		cb.Add(agg.String(), v)
 	}
 
-	var newEnv environment.Environment
 	var br database.BasicRow
 	br.ResetWith("", nil, cb)
-	newEnv.SetOuter(env)
-	newEnv.SetRow(&br)
+	return &br, nil
+}
 
-	return &newEnv, nil
+type GroupAggregatorIterator struct {
+	prev stream.Iterator
+
+	builders []expr.AggregatorBuilder
+	e        expr.Expr
+	env      *environment.Environment
+
+	err       error
+	row       database.Row
+	lastGroup types.Value
+	ga        *groupAggregator
+	groupExpr string
+	done      bool
+}
+
+func (it *GroupAggregatorIterator) Close() error {
+	return it.prev.Close()
+}
+
+func (it *GroupAggregatorIterator) Next() bool {
+	it.err = nil
+
+	if it.done {
+		return false
+	}
+
+	hasMore, err := it.iterateOnPrev()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	if hasMore {
+		return true
+	}
+
+	it.done = true
+
+	// if ga is empty, we create a default group so that aggregators will
+	// return their default initial value.
+	// Ex: For `SELECT COUNT(*) FROM foo`, if `foo` is empty
+	// we want the following result:
+	// {"COUNT(*)": 0}
+	if it.ga == nil {
+		it.ga = newGroupAggregator(nil, "", it.builders)
+	}
+
+	it.row, it.err = it.ga.Flush(it.env)
+	return it.err == nil && it.row != nil
+}
+
+func (it *GroupAggregatorIterator) iterateOnPrev() (bool, error) {
+	for it.prev.Next() {
+		r, err := it.prev.Row()
+		if err != nil {
+			return false, err
+		}
+
+		env := it.env.CloneWithRow(r)
+
+		if it.e == nil {
+			if it.ga == nil {
+				it.ga = newGroupAggregator(nil, it.groupExpr, it.builders)
+			}
+
+			err = it.ga.Aggregate(env)
+			if err != nil {
+				return false, err
+			}
+
+			continue
+		}
+
+		group, err := it.e.Eval(env)
+		if errors.Is(err, types.ErrColumnNotFound) {
+			group = types.NewNullValue()
+			err = nil
+		}
+		if err != nil {
+			return false, err
+		}
+
+		// handle the first object of the stream
+		if it.lastGroup == nil {
+			it.lastGroup = group
+			it.ga = newGroupAggregator(it.lastGroup, it.groupExpr, it.builders)
+			err = it.ga.Aggregate(env)
+			if err != nil {
+				return false, err
+			}
+
+			continue
+		}
+
+		ok, err := it.lastGroup.EQ(group)
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			err = it.ga.Aggregate(env)
+			if err != nil {
+				return false, err
+			}
+
+			continue
+		}
+
+		// if the object is from a different group, we flush the previous group, emit it and start a new group
+		it.row, err = it.ga.Flush(env)
+		if err != nil {
+			return false, err
+		}
+		it.lastGroup = group
+
+		it.ga = newGroupAggregator(it.lastGroup, it.groupExpr, it.builders)
+		err = it.ga.Aggregate(env)
+		if err != nil {
+			return false, err
+		}
+
+		return true, err
+	}
+
+	return false, nil
+}
+
+func (it *GroupAggregatorIterator) Row() (database.Row, error) {
+	return it.row, it.err
+}
+
+func (it *GroupAggregatorIterator) Error() error {
+	return it.err
 }

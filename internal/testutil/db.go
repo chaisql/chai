@@ -96,9 +96,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	}
 	defer res.Close()
 
-	return res.Iterate(func(database.Row) error {
-		return nil
-	})
+	return res.Skip()
 }
 
 func Query(db *database.Database, tx *database.Transaction, q string, params ...environment.Param) (*statement.Result, error) {

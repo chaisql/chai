@@ -86,7 +86,7 @@ func (p *ResultStream) parseKV() (string, expr.Expr, error) {
 
 func ParseResultStream(stream string) *ResultStream {
 	p := parser.NewParser(strings.NewReader(stream))
-	env := environment.New(nil)
+	env := environment.New(nil, nil, nil, nil)
 
 	return &ResultStream{p, env}
 }

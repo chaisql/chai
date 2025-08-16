@@ -19,15 +19,13 @@ func Constraint(e Expr) *ConstraintExpr {
 }
 
 func (t *ConstraintExpr) Eval(tx *database.Transaction, r row.Row) (types.Value, error) {
-	var env environment.Environment
-	env.Tx = tx
-	env.SetRow(r)
+	env := environment.New(nil, tx, nil, r)
 
 	if t.Expr == nil {
 		return NullLiteral, errors.New("missing expression")
 	}
 
-	return t.Expr.Eval(&env)
+	return t.Expr.Eval(env)
 }
 
 func (t *ConstraintExpr) Validate(info *database.TableInfo) (err error) {

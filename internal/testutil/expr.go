@@ -162,8 +162,7 @@ func ExprRunner(t *testing.T, testfile string) {
 		TxStart: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
-	env := environment.New(nil)
-	env.Tx = &tx
+	env := environment.New(nil, &tx, nil, nil)
 
 	for _, test := range ts.Tests {
 		t.Run(test.Name, func(t *testing.T) {

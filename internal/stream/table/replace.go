@@ -6,7 +6,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
 )
 
 // A ReplaceOperator replaces objects in the table
@@ -28,38 +27,63 @@ func (op *ReplaceOperator) Clone() stream.Operator {
 }
 
 // Iterate implements the Operator interface.
-func (op *ReplaceOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var table *database.Table
-
-	it := func(out *environment.Environment) error {
-		r, ok := out.GetDatabaseRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		if table == nil {
-			var err error
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err := table.Replace(r.Key(), r)
-		if err != nil {
-			return err
-		}
-
-		return f(out)
+func (op *ReplaceOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
 	}
 
-	if op.Prev == nil {
-		return it(in)
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), op.Name)
+	if err != nil {
+		return nil, err
 	}
 
-	return op.Prev.Iterate(in, it)
+	return &ReplaceIterator{
+		Iterator: prev,
+		name:     op.Name,
+		table:    table,
+	}, nil
 }
 
 func (op *ReplaceOperator) String() string {
 	return fmt.Sprintf("table.Replace(%q)", op.Name)
+}
+
+type ReplaceIterator struct {
+	stream.Iterator
+
+	name  string
+	table *database.Table
+	row   database.Row
+	err   error
+}
+
+func (it *ReplaceIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	it.row, it.err = it.table.Replace(r.Key(), r)
+	return it.err == nil
+}
+
+func (it *ReplaceIterator) Row() (database.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+	return it.row, nil
+}
+
+func (it *ReplaceIterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.Iterator.Error()
 }

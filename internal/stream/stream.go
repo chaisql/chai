@@ -3,6 +3,7 @@ package stream
 import (
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/cockroachdb/errors"
 )
@@ -34,12 +35,36 @@ func (s *Stream) Columns(env *environment.Environment) ([]string, error) {
 	return s.Op.Columns(env)
 }
 
-func (s *Stream) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (s *Stream) Iterator(in *environment.Environment) (Iterator, error) {
+	if s.Op == nil {
+		return nil, nil
+	}
+
+	return s.Op.Iterator(in)
+}
+
+func (s *Stream) Iterate(in *environment.Environment, fn func(database.Row) error) error {
 	if s.Op == nil {
 		return nil
 	}
 
-	return s.Op.Iterate(in, fn)
+	it, err := s.Op.Iterator(in)
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for it.Next() {
+		row, err := it.Row()
+		if err != nil {
+			return err
+		}
+		if err := fn(row); err != nil {
+			return err
+		}
+	}
+
+	return it.Error()
 }
 
 func (s *Stream) Remove(op Operator) {
@@ -157,13 +182,29 @@ func (it *DiscardOperator) Clone() Operator {
 	}
 }
 
-// Iterate iterates over all the streams and returns their union.
-func (op *DiscardOperator) Iterate(in *environment.Environment, _ func(out *environment.Environment) error) (err error) {
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		return nil
-	})
+// Iterator returns an iterator which discards all rows.
+func (op *DiscardOperator) Iterator(in *environment.Environment) (Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DiscardIterator{
+		Iterator: prev,
+	}, nil
 }
 
 func (it *DiscardOperator) String() string {
 	return "discard()"
+}
+
+type DiscardIterator struct {
+	Iterator
+}
+
+func (it *DiscardIterator) Next() bool {
+	for it.Iterator.Next() {
+	}
+
+	return false
 }

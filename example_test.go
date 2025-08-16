@@ -53,18 +53,28 @@ func Example() {
 	defer stream.Close()
 
 	// Iterate over the results
-	err = stream.Iterate(func(r *chai.Row) error {
+	it, err := stream.Iterator()
+	if err != nil {
+		panic(err)
+	}
+	defer it.Close()
+
+	for it.Next() {
 		var u User
+
+		r, err := it.Row()
+		if err != nil {
+			panic(err)
+		}
 
 		err = r.StructScan(&u)
 		if err != nil {
-			return err
+			panic(err)
 		}
 
 		fmt.Println(u)
-		return nil
-	})
-	if err != nil {
+	}
+	if err := it.Error(); err != nil {
 		panic(err)
 	}
 
