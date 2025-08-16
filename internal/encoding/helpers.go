@@ -415,3 +415,17 @@ func Separator(dst, a, b []byte) []byte {
 		}
 	}
 }
+
+// Split returns the length of the prefix (namespace) that should be used as
+// the user key prefix for pebble. Our keys encode a namespace as the first
+// integer value. Use DecodeInt to find its size.
+func Split(k []byte) int {
+	if len(k) == 0 {
+		return 0
+	}
+
+	// Our keys encode a namespace as the first integer value. Use DecodeInt
+	// to find its encoded size and return that as the prefix length.
+	_, n := DecodeInt(k)
+	return n
+}

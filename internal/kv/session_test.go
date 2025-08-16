@@ -126,7 +126,7 @@ func TestRollback(t *testing.T) {
 }
 
 func TestStorePut(t *testing.T) {
-	key := encoding.EncodeText(nil, "foo")
+	key := encoding.EncodeInt64(nil, 1)
 
 	t.Run("Should insert data", func(t *testing.T) {
 		st := kvBuilder(t)
@@ -174,8 +174,8 @@ func TestStorePut(t *testing.T) {
 
 // TestStoreGet verifies Get behaviour.
 func TestStoreGet(t *testing.T) {
-	foo := encoding.EncodeText(nil, "foo")
-	bar := encoding.EncodeText(nil, "bar")
+	foo := encoding.EncodeInt64(nil, 1)
+	bar := encoding.EncodeInt64(nil, 2)
 
 	t.Run("Should fail if not found", func(t *testing.T) {
 		st := kvBuilder(t)
@@ -203,8 +203,8 @@ func TestStoreGet(t *testing.T) {
 
 // TestStoreDelete verifies Delete behaviour.
 func TestStoreDelete(t *testing.T) {
-	foo := encoding.EncodeText(nil, "foo")
-	bar := encoding.EncodeText(nil, "bar")
+	foo := encoding.EncodeInt64(nil, 1)
+	bar := encoding.EncodeInt64(nil, 2)
 
 	t.Run("Should delete the right object", func(t *testing.T) {
 		st := kvBuilder(t)

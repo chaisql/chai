@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/cockroachdb/errors v1.12.0
-	github.com/cockroachdb/pebble/v2 v2.0.6
+	github.com/cockroachdb/pebble/v2 v2.0.7
 	github.com/dromara/carbon/v2 v2.6.11
 	github.com/stretchr/testify v1.10.0
 )

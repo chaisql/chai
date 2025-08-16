@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"bytes"
 	"math"
 	"os"
 	"path/filepath"
@@ -105,12 +106,22 @@ func NewEngine(path string, opts Options) (*PebbleEngine, error) {
 
 // DefaultComparer is the default implementation of the Comparer interface for chai.
 var DefaultComparer = &pebble.Comparer{
-	Compare:        encoding.Compare,
-	Equal:          encoding.Equal,
-	AbbreviatedKey: encoding.AbbreviatedKey,
-	FormatKey:      pebble.DefaultComparer.FormatKey,
-	Separator:      encoding.Separator,
-	Successor:      encoding.Successor,
+	Compare: func(a, b []byte) int {
+		an := encoding.Split(a)
+		bn := encoding.Split(b)
+		if prefixCmp := bytes.Compare(a[:an], b[:bn]); prefixCmp != 0 {
+			return prefixCmp
+		}
+		return encoding.Compare(a[an:], b[bn:])
+	},
+	Equal:                encoding.Equal,
+	AbbreviatedKey:       encoding.AbbreviatedKey,
+	FormatKey:            pebble.DefaultComparer.FormatKey,
+	Separator:            encoding.Separator,
+	Successor:            encoding.Successor,
+	Split:                encoding.Split,
+	ComparePointSuffixes: encoding.Compare,
+	CompareRangeSuffixes: encoding.Compare,
 	// This name is part of the C++ Level-DB implementation's default file
 	// format, and should not be changed.
 	Name: "leveldb.BytewiseComparator",

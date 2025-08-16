@@ -318,9 +318,17 @@ func (rs *Rows) Next(dest []driver.Value) error {
 		case types.TypeTimestamp:
 			dest[i] = types.AsTime(v)
 		case types.TypeText:
-			dest[i] = types.AsString(v)
+			// Make a copy of the string to avoid issues with re-use.
+			s := types.AsString(v)
+			cp := make([]byte, len(s))
+			copy(cp, s)
+			dest[i] = string(cp)
 		case types.TypeBlob:
-			dest[i] = types.AsByteSlice(v)
+			// Make a copy of the byte slice to avoid issues with re-use.
+			b := types.AsByteSlice(v)
+			cp := make([]byte, len(b))
+			copy(cp, b)
+			dest[i] = cp
 		default:
 			panic("unsupported type: " + v.Type().String())
 		}
