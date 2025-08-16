@@ -52,7 +52,7 @@ func NewEngineWith(path string, opts Options, popts *pebble.Options) (*PebbleEng
 		popts = &pebble.Options{}
 	}
 
-	popts.FormatMajorVersion = pebble.FormatPrePebblev1MarkedCompacted
+	popts.FormatMajorVersion = pebble.FormatColumnarBlocks
 	popts.Comparer = DefaultComparer
 	if popts.Logger == nil {
 		popts.Logger = pebbleutil.NoopLoggerAndTracer{}
@@ -99,8 +99,6 @@ func NewEngine(path string, opts Options) (*PebbleEngine, error) {
 
 		pbpath = filepath.Join(path, "pebble")
 	}
-
-	popts.FormatMajorVersion = pebble.FormatVirtualSSTables
 
 	return NewEngineWith(pbpath, opts, &popts)
 }
