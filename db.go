@@ -573,10 +573,18 @@ type Iterator struct {
 }
 
 func (it *Iterator) Close() error {
+	if it.it == nil {
+		return nil
+	}
+
 	return it.it.Close()
 }
 
 func (it *Iterator) Next() bool {
+	if it.it == nil {
+		return false
+	}
+
 	it.err = nil
 	if it.ctx != nil {
 		if err := it.ctx.Err(); err != nil {
@@ -591,6 +599,10 @@ func (it *Iterator) Next() bool {
 func (it *Iterator) Error() error {
 	if it.err != nil {
 		return it.err
+	}
+
+	if it.it == nil {
+		return nil
 	}
 
 	return it.it.Error()

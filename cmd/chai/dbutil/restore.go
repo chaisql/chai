@@ -2,17 +2,17 @@ package dbutil
 
 import (
 	"context"
+	"database/sql"
 	"io"
 	"os"
 
-	"github.com/chaisql/chai"
 	"github.com/cockroachdb/errors"
 )
 
 // Restore a database from a file created by chai dump.
 // This function can be provided with an existing database (chai cli use case),
 // otherwise new database is being created.
-func Restore(ctx context.Context, db *chai.DB, dumpFile, dbPath string) error {
+func Restore(ctx context.Context, db *sql.DB, dumpFile, dbPath string) error {
 	if dbPath == "" {
 		return errors.New("database path expected")
 	}
@@ -28,7 +28,7 @@ func Restore(ctx context.Context, db *chai.DB, dumpFile, dbPath string) error {
 	defer file.Close()
 
 	if db == nil {
-		db, err = OpenDB(ctx, dbPath)
+		db, err = OpenDB(dbPath)
 		if err != nil {
 			return err
 		}

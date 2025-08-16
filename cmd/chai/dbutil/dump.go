@@ -1,24 +1,24 @@
 package dbutil
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
-
-	"github.com/chaisql/chai"
 )
 
 // Dump takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
-func Dump(db *chai.DB, w io.Writer, tables ...string) error {
-	conn, err := db.Connect()
+func Dump(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) error {
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin(false)
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -29,7 +29,7 @@ func Dump(db *chai.DB, w io.Writer, tables ...string) error {
 	}
 
 	i := 0
-	err = QueryTables(tx, tables, func(name, query string) error {
+	err = QueryTables(ctx, tx, tables, func(name, query string) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -38,7 +38,7 @@ func Dump(db *chai.DB, w io.Writer, tables ...string) error {
 		}
 		i++
 
-		return dumpTable(tx, w, query, name)
+		return dumpTable(ctx, tx, w, query, name)
 	})
 	if err != nil {
 		_, er := fmt.Fprintln(w, "ROLLBACK;")
@@ -50,51 +50,43 @@ func Dump(db *chai.DB, w io.Writer, tables ...string) error {
 }
 
 // dumpTable displays the content of the given table as SQL statements.
-func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
+func dumpTable(ctx context.Context, tx *sql.Tx, w io.Writer, query, tableName string) error {
 	// Dump schema first.
 	if err := dumpSchema(tx, w, query, tableName); err != nil {
 		return err
 	}
 
 	q := fmt.Sprintf("SELECT * FROM %s", tableName)
-	res, err := tx.Query(q)
+	rows, err := tx.Query(q)
 	if err != nil {
 		return err
 	}
-	defer res.Close()
+	defer rows.Close()
 
-	// Inserts statements.
-	it, err := res.Iterator()
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.Next() {
-		r, err := it.Row()
+	for rows.Next() {
+		cols, err := rows.Columns()
 		if err != nil {
 			return err
 		}
 
-		cols, err := r.Columns()
-		if err != nil {
-			return err
+		values := make([]any, len(cols))
+		valuePtrs := make([]any, len(cols))
+		for i := range cols {
+			valuePtrs[i] = &values[i]
 		}
-
-		m := make(map[string]interface{}, len(cols))
-		err = r.MapScan(m)
+		err = rows.Scan(valuePtrs...)
 		if err != nil {
 			return err
 		}
 
 		var sb strings.Builder
 
-		for i, c := range cols {
+		for i := range cols {
 			if i > 0 {
 				sb.WriteString(", ")
 			}
 
-			v := m[c]
+			v := values[i]
 			if v == nil {
 				sb.WriteString("NULL")
 				continue
@@ -108,26 +100,26 @@ func dumpTable(tx *chai.Tx, w io.Writer, query, tableName string) error {
 		}
 	}
 
-	return it.Error()
+	return rows.Err()
 }
 
 // DumpSchema takes a database and dumps its schema as SQL queries in the given writer.
 // If tables are provided, only selected tables will be outputted.
-func DumpSchema(db *chai.DB, w io.Writer, tables ...string) error {
-	conn, err := db.Connect()
+func DumpSchema(ctx context.Context, db *sql.DB, w io.Writer, tables ...string) error {
+	conn, err := db.Conn(ctx)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 
-	tx, err := conn.Begin(false)
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
 	i := 0
-	return QueryTables(tx, tables, func(name, query string) error {
+	return QueryTables(ctx, tx, tables, func(name, query string) error {
 		// Blank separation between tables.
 		if i > 0 {
 			if _, err := fmt.Fprintln(w, ""); err != nil {
@@ -141,14 +133,14 @@ func DumpSchema(db *chai.DB, w io.Writer, tables ...string) error {
 }
 
 // dumpSchema displays the schema of the given table as SQL statements.
-func dumpSchema(tx *chai.Tx, w io.Writer, query string, tableName string) error {
+func dumpSchema(tx *sql.Tx, w io.Writer, query string, tableName string) error {
 	_, err := fmt.Fprintf(w, "%s;\n", query)
 	if err != nil {
 		return err
 	}
 
 	// Indexes statements.
-	res, err := tx.Query(`
+	rows, err := tx.Query(`
 		SELECT sql FROM __chai_catalog WHERE 
 			type = 'index' AND owner_table_name = ? OR
 			type = 'sequence' AND owner_table_name IS NULL
@@ -156,23 +148,11 @@ func dumpSchema(tx *chai.Tx, w io.Writer, query string, tableName string) error 
 	if err != nil {
 		return err
 	}
-	defer res.Close()
+	defer rows.Close()
 
-	it, err := res.Iterator()
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for it.Next() {
+	for rows.Next() {
 		var q string
-		r, err := it.Row()
-		if err != nil {
-			return err
-		}
-
-		err = r.Scan(&q)
-		if err != nil {
+		if err := rows.Scan(&q); err != nil {
 			return err
 		}
 
@@ -181,5 +161,5 @@ func dumpSchema(tx *chai.Tx, w io.Writer, query string, tableName string) error 
 		}
 	}
 
-	return it.Error()
+	return rows.Err()
 }

@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 
+	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/urfave/cli/v3"
@@ -32,7 +33,7 @@ func NewPebbleCommand() *cli.Command {
 	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
 		path := cmd.String("path")
 
-		db, err := dbutil.OpenDB(ctx, path)
+		db, err := chai.Open(path)
 		if err != nil {
 			return err
 		}
