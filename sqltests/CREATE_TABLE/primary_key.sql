@@ -81,3 +81,13 @@ CREATE TABLE test(a INT PRIMARY KEY, b INT, PRIMARY KEY(a));
 -- test: table constraint: duplicate
 CREATE TABLE test(a INT PRIMARY KEY, b INT, PRIMARY KEY(b));
 -- error:
+
+-- test: named table constraint preserved for PRIMARY KEY
+CREATE TABLE test(a INTEGER, b INTEGER, CONSTRAINT my_pk PRIMARY KEY (a DESC, b));
+SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+/* result:
+{
+  "name": "test",
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, CONSTRAINT my_pk PRIMARY KEY (a DESC, b))"
+}
+*/

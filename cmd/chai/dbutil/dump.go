@@ -146,7 +146,7 @@ func dumpSchema(tx *sql.Tx, w io.Writer, query string, tableName string) error {
 	// Indexes statements.
 	rows, err := tx.Query(`
 		SELECT sql FROM __chai_catalog WHERE 
-			type = 'index' AND owner_table_name = ? OR
+			type = 'index' AND owner_table_name = $1 OR
 			type = 'sequence' AND owner_table_name IS NULL
 	`, tableName)
 	if err != nil {

@@ -74,8 +74,7 @@ func TestSelectStmt(t *testing.T) {
 		{"With offset", "SELECT * FROM test WHERE size = 10 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With limit then offset", "SELECT * FROM test WHERE size = 10 LIMIT 1 OFFSET 1", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With offset then limit", "SELECT * FROM test WHERE size = 10 OFFSET 1 LIMIT 1", true, "", nil},
-		{"With positional params", "SELECT * FROM test WHERE color = ? OR height = ?", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, []interface{}{"red", 100}},
-		{"With named params", "SELECT * FROM test WHERE color = $a OR height = $d", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, []interface{}{sql.Named("a", "red"), sql.Named("d", 100)}},
+		{"With positional params", "SELECT * FROM test WHERE color = $1 OR height = $2", false, `[{"k":1,"color":"red","size":10,"shape":"square","height":null,"weight":null},{"k":3,"color":null,"size":null,"shape":null,"height":100,"weight":200}]`, []interface{}{"red", 100}},
 		{"With pk()", "SELECT color FROM test", false, `[{"color":"red"},{"color":"blue"},{"color":null}]`, []interface{}{sql.Named("a", "red"), sql.Named("d", 100)}},
 		{"With pk in cond, gt", "SELECT * FROM test WHERE k > 0 AND weight = 100", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
 		{"With pk in cond, =", "SELECT * FROM test WHERE k = 2.0 AND weight = 100", false, `[{"k":2,"color":"blue","size":10,"shape":null,"height":null,"weight":100}]`, nil},
@@ -245,7 +244,7 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 
 		var a int
-		err = db.QueryRow("SELECT a FROM test LIMIT ? OFFSET ?", 1, 1).Scan(&a)
+		err = db.QueryRow("SELECT a FROM test LIMIT $1 OFFSET $2", 1, 1).Scan(&a)
 		require.NoError(t, err)
 		require.Equal(t, 2, a)
 	})
@@ -288,7 +287,7 @@ func TestDistinct(t *testing.T) {
 
 			for i := 0; i < total; i++ {
 				unique, nonunique := typ.generateValue(i, notUnique)
-				_, err = tx.Exec(`INSERT INTO test VALUES (?, ?, ?, null)`, unique, nonunique, unique)
+				_, err = tx.Exec(`INSERT INTO test VALUES ($1, $2, $3, null)`, unique, nonunique, unique)
 				require.NoError(t, err)
 			}
 			err = tx.Commit()

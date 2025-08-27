@@ -72,14 +72,8 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 		s.r.unread()
 		return DOT, pos, ""
 	case '$':
-		tok, _, lit := s.scanIdent(false)
-
-		if tok != IDENT {
-			return tok, pos, "$" + lit
-		}
-		return NAMEDPARAM, pos, "$" + lit
-	case '?':
-		return POSITIONALPARAM, pos, ""
+		lit := s.scanDigits()
+		return POSITIONALPARAM, pos, "$" + lit
 	case '+':
 		return ADD, pos, ""
 	case '-':

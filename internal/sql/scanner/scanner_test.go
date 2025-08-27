@@ -81,9 +81,8 @@ func TestScanner_Scan(t *testing.T) {
 		{s: "`foo\\`bar\\``", tok: IDENT, lit: "foo`bar`"},
 		{s: "test`", tok: BADSTRING, lit: "", pos: Pos{Line: 0, Char: 3}},
 		{s: "`test", tok: BADSTRING, lit: "test"},
-		{s: "$host", tok: NAMEDPARAM, lit: "$host"},
-		{s: "$`host param`", tok: NAMEDPARAM, lit: "$host param"},
-		{s: "?", tok: POSITIONALPARAM, lit: ""},
+		{s: "?", tok: ILLEGAL, lit: "?"},
+		{s: "$10", tok: POSITIONALPARAM, lit: "$10"},
 
 		// Booleans
 		{s: `true`, tok: TRUE},

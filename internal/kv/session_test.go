@@ -319,7 +319,7 @@ func TestQueries(t *testing.T) {
 		defer tx.Rollback()
 
 		for i := 1; i < 200; i++ {
-			_, err = tx.Exec("INSERT INTO test (a) VALUES (?)", i)
+			_, err = tx.Exec("INSERT INTO test (a) VALUES ($1)", i)
 			require.NoError(t, err)
 		}
 

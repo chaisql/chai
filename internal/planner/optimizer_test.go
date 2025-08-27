@@ -400,12 +400,12 @@ func TestSelectIndex_Composite(t *testing.T) {
 				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
 		},
 		{
-			"FROM foo WHERE a > ? AND d > ?",
+			"FROM foo WHERE a > $1 AND d > $2",
 			stream.New(table.Scan("foo")).
-				Pipe(rows.Filter(parser.MustParseExpr("a > ?"))).
-				Pipe(rows.Filter(parser.MustParseExpr("d > ?"))),
+				Pipe(rows.Filter(parser.MustParseExpr("a > $1"))).
+				Pipe(rows.Filter(parser.MustParseExpr("d > $2"))),
 			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `(1)`), Exclusive: true})).
-				Pipe(rows.Filter(parser.MustParseExpr("d > 1"))),
+				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 AND c = 3",

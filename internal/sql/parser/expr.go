@@ -213,21 +213,12 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		p.Unscan()
 
 		return p.parseColumn()
-	case scanner.NAMEDPARAM:
-		if len(lit) == 1 {
-			return nil, errors.WithStack(&ParseError{Message: "missing param name"})
-		}
-		if p.orderedParams > 0 {
-			return nil, errors.WithStack(&ParseError{Message: "cannot mix positional arguments with named arguments"})
-		}
-		p.namedParams++
-		return expr.NamedParam(lit[1:]), nil
 	case scanner.POSITIONALPARAM:
-		if p.namedParams > 0 {
-			return nil, errors.WithStack(&ParseError{Message: "cannot mix positional arguments with named arguments"})
+		pp, err := strconv.Atoi(lit[1:])
+		if err != nil {
+			return nil, errors.WithStack(&ParseError{Message: "invalid positional parameter syntax", Pos: pos})
 		}
-		p.orderedParams++
-		return expr.PositionalParam(p.orderedParams), nil
+		return expr.PositionalParam(pp), nil
 	case scanner.STRING:
 		if strings.HasPrefix(lit, `\x`) {
 			blob, err := hex.DecodeString(lit[2:])

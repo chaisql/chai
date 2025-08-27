@@ -257,7 +257,6 @@ func Clone(e Expr) Expr {
 		}
 	case LiteralValue,
 		*Column,
-		NamedParam,
 		PositionalParam,
 		NextValueFor,
 		Wildcard:

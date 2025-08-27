@@ -29,7 +29,7 @@ func TestDriver(t *testing.T) {
 	require.EqualValues(t, 0, n)
 
 	for i := 0; i < 10; i++ {
-		_, err = db.Exec("INSERT INTO test (a, b, c) VALUES (?, ?, ?)", i, fmt.Sprintf("foo%d", i), i%2 == 0)
+		_, err = db.Exec("INSERT INTO test (a, b, c) VALUES ($1, $2, $3)", i, fmt.Sprintf("foo%d", i), i%2 == 0)
 		require.NoError(t, err)
 	}
 
@@ -150,24 +150,7 @@ func TestDriver(t *testing.T) {
 	})
 
 	t.Run("Params", func(t *testing.T) {
-		rows, err := db.Query("SELECT a FROM test WHERE a = ?", 5)
-		require.NoError(t, err)
-		defer rows.Close()
-
-		var count int
-		var a int
-		for rows.Next() {
-			err = rows.Scan(&a)
-			require.NoError(t, err)
-			require.Equal(t, 5, a)
-			count++
-		}
-		require.NoError(t, rows.Err())
-		require.Equal(t, 1, count)
-	})
-
-	t.Run("Named Params", func(t *testing.T) {
-		rows, err := db.Query("SELECT a FROM test WHERE a = $val", sql.Named("val", 5))
+		rows, err := db.Query("SELECT a FROM test WHERE a = $1", 5)
 		require.NoError(t, err)
 		defer rows.Close()
 
@@ -270,7 +253,7 @@ func TestDriverWithTimeValues(t *testing.T) {
 	defer db.Close()
 
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	_, err = db.Exec("CREATE TABLE test(a TIMESTAMP); INSERT INTO test (a) VALUES (?)", now)
+	_, err = db.Exec("CREATE TABLE test(a TIMESTAMP); INSERT INTO test (a) VALUES ($1)", now)
 	require.NoError(t, err)
 
 	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})

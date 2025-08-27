@@ -29,8 +29,7 @@ func TestUpdateStmt(t *testing.T) {
 		{"SET / With cond", "UPDATE test SET a = 'FOO2', b = 2 WHERE a = 'foo2'", false, `[{"a":"foo1","b":"bar1","c":"baz1","d":null,"e":null},{"a":"FOO2","b":"2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
 		{"SET / With cond / with missing column", "UPDATE test SET f = 'boo' WHERE d = 'bar3'", true, ``, nil},
 		{"SET / Field not found", "UPDATE test SET a = 1, b = 2 WHERE a = f", true, ``, nil},
-		{"SET / Positional params", "UPDATE test SET a = ?, b = ? WHERE a = ?", false, `[{"a":"a","b":"b","c":"baz1","d":null,"e":null},{"a":"foo2","b":"bar2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},
-		{"SET / Named params", "UPDATE test SET a = $a, b = $b WHERE a = $c", false, `[{"a":"a","b":"b","c":"baz1","d":null,"e":null},{"a":"foo2","b":"bar2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, []interface{}{sql.Named("b", "b"), sql.Named("a", "a"), sql.Named("c", "foo1")}},
+		{"SET / Positional params", "UPDATE test SET a = $1, b = $2 WHERE a = $3", false, `[{"a":"a","b":"b","c":"baz1","d":null,"e":null},{"a":"foo2","b":"bar2","c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, []interface{}{"a", "b", "foo1"}},
 	}
 
 	for _, test := range tests {

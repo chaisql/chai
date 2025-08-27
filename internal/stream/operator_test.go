@@ -233,7 +233,7 @@ func TestTableReplace(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY, b INTEGER)")
 
-			testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?, ?)", environment.Param{Value: test.a}, environment.Param{Value: test.b})
+			testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1, $2)", environment.Param{Value: test.a}, environment.Param{Value: test.b})
 
 			in := environment.New(nil, tx, nil, nil)
 
@@ -303,7 +303,7 @@ func TestTableDelete(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY)")
 
 			for _, a := range test.a {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: a})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1)", environment.Param{Value: a})
 			}
 
 			env := environment.New(nil, tx, nil, nil)

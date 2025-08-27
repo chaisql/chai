@@ -100,11 +100,11 @@ func TestParserExpr(t *testing.T) {
 				expr.Eq(&expr.Column{Name: "age"}, testutil.IntegerValue(10)),
 				expr.Eq(&expr.Column{Name: "age"}, testutil.IntegerValue(11)),
 			), false},
-		{"AND then OR", "age >= 10 AND age > $age OR age < 10.4",
+		{"AND then OR", "age >= 10 AND age > $4 OR age < 10.4",
 			expr.Or(
 				expr.And(
 					expr.Gte(&expr.Column{Name: "age"}, testutil.IntegerValue(10)),
-					expr.Gt(&expr.Column{Name: "age"}, expr.NamedParam("age")),
+					expr.Gt(&expr.Column{Name: "age"}, expr.PositionalParam(4)),
 				),
 				expr.Lt(&expr.Column{Name: "age"}, testutil.DoubleValue(10.4)),
 			), false},
@@ -148,19 +148,12 @@ func TestParserParams(t *testing.T) {
 		expected expr.Expr
 		errored  bool
 	}{
-		{"one positional", "age = ?", expr.Eq(&expr.Column{Name: "age"}, expr.PositionalParam(1)), false},
-		{"multiple positional", "age = ? AND age <= ?",
+		{"one positional", "age = $1", expr.Eq(&expr.Column{Name: "age"}, expr.PositionalParam(1)), false},
+		{"multiple positional", "age >= $111 AND age <= $11",
 			expr.And(
-				expr.Eq(&expr.Column{Name: "age"}, expr.PositionalParam(1)),
-				expr.Lte(&expr.Column{Name: "age"}, expr.PositionalParam(2)),
+				expr.Gte(&expr.Column{Name: "age"}, expr.PositionalParam(111)),
+				expr.Lte(&expr.Column{Name: "age"}, expr.PositionalParam(11)),
 			), false},
-		{"one named", "age = $age", expr.Eq(&expr.Column{Name: "age"}, expr.NamedParam("age")), false},
-		{"multiple named", "age = $foo OR age = $bar",
-			expr.Or(
-				expr.Eq(&expr.Column{Name: "age"}, expr.NamedParam("foo")),
-				expr.Eq(&expr.Column{Name: "age"}, expr.NamedParam("bar")),
-			), false},
-		{"mixed", "age >= ? AND age > $foo OR age < ?", nil, true},
 	}
 
 	for _, test := range tests {

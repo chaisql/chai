@@ -58,7 +58,7 @@ func TestTempTreeSort(t *testing.T) {
 			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
 
 			for _, val := range test.values {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: val})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1)", environment.Param{Value: val})
 			}
 
 			err := testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {

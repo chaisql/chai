@@ -31,12 +31,12 @@ func ExampleTx() {
 		panic(err)
 	}
 
-	_, err = tx.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
+	_, err = tx.Exec("INSERT INTO user (id, name, age) VALUES ($1, $2, $3)", 10, "foo", 15)
 	if err != nil {
 		panic(err)
 	}
 
-	r := tx.QueryRow("SELECT id, name, age FROM user WHERE name = ?", "foo")
+	r := tx.QueryRow("SELECT id, name, age FROM user WHERE name = $1", "foo")
 
 	var u User
 	err = r.Scan(&u.ID, &u.Name, &u.Age)
@@ -221,7 +221,7 @@ func TestWWConcurrency(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := 0; j < iterations; j++ {
-				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES (?, ?)`, id*1000+j, fmt.Sprintf("sample text %d", j))
+				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES ($1, $2)`, id*1000+j, fmt.Sprintf("sample text %d", j))
 				require.NoError(t, err)
 			}
 		}(i)
@@ -271,7 +271,7 @@ func TestRWConcurrency(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			for j := range iterations {
-				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES (?, ?)`, id*1000+j, fmt.Sprintf("sample text %d", j))
+				_, err := db.Exec(`INSERT INTO foo (a, b) VALUES ($1, $2)`, id*1000+j, fmt.Sprintf("sample text %d", j))
 				require.NoError(t, err)
 			}
 		}(i)

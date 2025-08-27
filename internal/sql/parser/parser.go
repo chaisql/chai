@@ -15,9 +15,7 @@ import (
 
 // Parser represents an Chai SQL Parser.
 type Parser struct {
-	s             *scanner.Scanner
-	orderedParams int
-	namedParams   int
+	s *scanner.Scanner
 }
 
 // NewParser returns a new instance of Parser.

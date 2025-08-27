@@ -16,7 +16,7 @@ func QueryTables(ctx context.Context, tx *sql.Tx, tables []string, fn func(name,
 		var arg string
 
 		for i := range tables {
-			arg += "?"
+			arg += fmt.Sprintf("$%d", i+1)
 
 			if i < len(tables)-1 {
 				arg += ", "
@@ -53,7 +53,7 @@ func ListIndexes(ctx context.Context, db *sql.DB, tableName string) ([]string, e
 	var listName []string
 	q := "SELECT sql FROM __chai_catalog WHERE type = 'index'"
 	if tableName != "" {
-		q += " AND owner_table_name = ?"
+		q += " AND owner_table_name = $1"
 	}
 
 	rows, err := db.QueryContext(ctx, q, tableName)

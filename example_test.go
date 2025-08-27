@@ -34,13 +34,13 @@ func Example() {
 	}
 
 	// Insert some data
-	_, err = db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", 10, "foo", 15)
+	_, err = db.Exec("INSERT INTO user (id, name, age) VALUES ($1, $2, $3)", 10, "foo", 15)
 	if err != nil {
 		panic(err)
 	}
 
 	// Query some rows
-	rows, err := db.Query("SELECT * FROM user WHERE id > ?", 1)
+	rows, err := db.Query("SELECT * FROM user WHERE id > $1", 1)
 	if err != nil {
 		panic(err)
 	}

@@ -17,8 +17,7 @@ const (
 
 	// IDENT and the following are Chai SQL literal tokens.
 	IDENT           // main
-	NAMEDPARAM      // $param
-	POSITIONALPARAM // ?
+	POSITIONALPARAM // $1
 	NUMBER          // 12345.67
 	INTEGER         // 12345
 	STRING          // "abc"

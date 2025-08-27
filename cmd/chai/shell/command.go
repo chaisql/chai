@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/cockroachdb/errors"
@@ -146,7 +147,7 @@ func runTablesCmd(ctx context.Context, db *sql.DB, w io.Writer) error {
 func runIndexesCmd(ctx context.Context, db *sql.DB, tableName string, w io.Writer) error {
 	// ensure table exists
 	if tableName != "" {
-		err := db.QueryRowContext(ctx, "SELECT 1 FROM __chai_catalog WHERE name = ? AND type = 'table' LIMIT 1", tableName).Scan(new(int))
+		err := db.QueryRowContext(ctx, "SELECT 1 FROM __chai_catalog WHERE name = $1 AND type = 'table' LIMIT 1", tableName).Scan(new(int))
 		if err != nil {
 			if sql.ErrNoRows == err {
 				return errors.Wrapf(err, "table %s does not exist", tableName)
@@ -268,7 +269,8 @@ func runImportCmd(ctx context.Context, db *sql.DB, fileType, path, table string)
 				if i > 0 {
 					sb.WriteString(",")
 				}
-				sb.WriteString("?")
+				sb.WriteString("$")
+				sb.WriteString(strconv.Itoa(i + 1))
 			}
 
 			stmt, err = tx.Prepare(sb.String())

@@ -430,7 +430,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 					x := types.AsInt64(v)
 					c = &x
 				}
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?, ?, ?)", environment.Param{Value: a}, environment.Param{Value: b}, environment.Param{Value: c})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1, $2, $3)", environment.Param{Value: a}, environment.Param{Value: b}, environment.Param{Value: c})
 			}
 
 			op := getOp(db, tx, "idx_test_a", test.indexOn, test.reverse, test.ranges...)

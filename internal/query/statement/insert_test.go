@@ -16,9 +16,8 @@ func TestInsertStmt(t *testing.T) {
 		expected string
 		params   []any
 	}{
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES (?, 'e', ?)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
-		{"Values / Named Params", "INSERT INTO test (a, b, c) VALUES ($d, 'e', $f)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{sql.Named("f", "f"), sql.Named("d", "d")}},
-		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', ?)", true, "", []any{'e'}},
+		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES ($1, 'e', $2)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
+		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', $1)", true, "", []any{'e'}},
 		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 

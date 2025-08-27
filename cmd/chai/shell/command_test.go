@@ -106,11 +106,11 @@ func TestSaveCommand(t *testing.T) {
 		CREATE INDEX idx_a_b ON test (a, b);
 	`)
 		require.NoError(t, err)
-		_, err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 1, 2)
+		_, err = db.Exec("INSERT INTO test (a, b) VALUES ($1, $2)", 1, 2)
 		require.NoError(t, err)
-		_, err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 2, 2)
+		_, err = db.Exec("INSERT INTO test (a, b) VALUES ($1, $2)", 2, 2)
 		require.NoError(t, err)
-		_, err = db.Exec("INSERT INTO test (a, b) VALUES (?, ?)", 3, 2)
+		_, err = db.Exec("INSERT INTO test (a, b) VALUES ($1, $2)", 3, 2)
 		require.NoError(t, err)
 
 		// save the dummy database

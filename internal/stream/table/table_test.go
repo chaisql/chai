@@ -140,7 +140,7 @@ func TestTableScan(t *testing.T) {
 				v, err := r.Get("a")
 				require.NoError(t, err)
 
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: types.AsInt64(v)})
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1)", environment.Param{Value: types.AsInt64(v)})
 			}
 
 			op := table.Scan("test", test.ranges...)
