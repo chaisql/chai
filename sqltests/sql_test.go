@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -62,7 +63,10 @@ func TestSQL(t *testing.T) {
 		}
 		defer f.Close()
 
-		ts := parse(f, path)
+		ts, err := parse(f, path)
+		if err != nil {
+			return err
+		}
 
 		absPath, err := filepath.Abs(path)
 		if err != nil {
@@ -169,13 +173,18 @@ type testSuite struct {
 	Suites   []suite
 }
 
-func parse(r io.Reader, filename string) *testSuite {
+func parse(r io.Reader, filename string) (*testSuite, error) {
 	s := bufio.NewScanner(r)
 	ts := testSuite{
 		Filename: filename,
 	}
 
 	var curTest *test
+
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, err
+	}
 
 	var readingResult bool
 	var readingSetup bool
@@ -239,13 +248,16 @@ func parse(r io.Reader, filename string) *testSuite {
 		case strings.HasPrefix(line, "/* result:"), strings.HasPrefix(line, "/*result:"):
 			readingResult = true
 		case strings.HasPrefix(line, "-- error:"):
-			error := strings.TrimPrefix(line, "-- error:")
-			error = strings.TrimSpace(error)
-			if error == "" {
+			if curTest == nil {
+				return nil, fmt.Errorf("missing test directive. line: %q, file: %v:%d", line, absPath, lineCount)
+			}
+			errorString := strings.TrimPrefix(line, "-- error:")
+			errorString = strings.TrimSpace(errorString)
+			if errorString == "" {
 				// handle the case where error was used but without a message
 				curTest.Fails = true
 			} else {
-				curTest.ErrorMatch = error
+				curTest.ErrorMatch = errorString
 				curTest.Fails = true
 			}
 			curTest = nil
@@ -270,7 +282,7 @@ func parse(r io.Reader, filename string) *testSuite {
 		}
 	}
 
-	return &ts
+	return &ts, nil
 }
 
 func RequireRowsEqf(t *testing.T, raw string, rows *sql.Rows, msg string, args ...any) {

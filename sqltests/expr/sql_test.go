@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/testutil"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSQLExpr(t *testing.T) {
-	filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
+	err := filepath.Walk(".", func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -27,4 +28,5 @@ func TestSQLExpr(t *testing.T) {
 		})
 		return nil
 	})
+	require.NoError(t, err)
 }

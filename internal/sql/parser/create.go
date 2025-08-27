@@ -536,8 +536,8 @@ func (p *Parser) parseCreateSequenceStatement() (*statement.CreateSequenceStmt, 
 			if err != nil {
 				return nil, err
 			}
-			if v < 0 {
-				return nil, &ParseError{Message: "cache value must be positive"}
+			if v <= 0 {
+				return nil, &ParseError{Message: "CACHE must be greater than zero"}
 			}
 			cache = &v
 

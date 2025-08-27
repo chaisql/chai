@@ -330,7 +330,7 @@ func (s *SequenceInfo) String() string {
 		fmt.Fprintf(&b, " START WITH %d", s.Start)
 	}
 
-	if s.Cache != 1 {
+	if s.Cache > 1 {
 		fmt.Fprintf(&b, " CACHE %d", s.Cache)
 	}
 
