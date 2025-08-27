@@ -25,16 +25,12 @@ func New(statements ...statement.Statement) Query {
 type Context struct {
 	Ctx    context.Context
 	DB     *database.Database
-	Tx     *database.Transaction
+	Conn   *database.Connection
 	Params []environment.Param
 }
 
 func (c *Context) GetTx() *database.Transaction {
-	if c.Tx != nil {
-		return c.Tx
-	}
-
-	return c.DB.GetAttachedTx()
+	return c.Conn.GetTx()
 }
 
 // Prepare the statements by calling their Prepare methods.
@@ -54,15 +50,10 @@ func (q *Query) Prepare(context *Context) error {
 			}
 		}
 
-		p, ok := stmt.(statement.Preparer)
-		if !ok {
-			return nil
-		}
-
 		if tx == nil {
 			tx = context.GetTx()
 			if tx == nil {
-				tx, err = context.DB.BeginTx(&database.TxOptions{
+				tx, err = context.Conn.BeginTx(&database.TxOptions{
 					ReadOnly: true,
 				})
 				if err != nil {
@@ -72,10 +63,23 @@ func (q *Query) Prepare(context *Context) error {
 			}
 		}
 
-		stmt, err := p.Prepare(&statement.Context{
-			DB: context.DB,
-			Tx: tx,
-		})
+		sctx := &statement.Context{
+			DB:   context.DB,
+			Conn: context.Conn,
+			Tx:   tx,
+		}
+
+		err = stmt.Bind(sctx)
+		if err != nil {
+			return err
+		}
+
+		p, ok := stmt.(statement.Preparer)
+		if !ok {
+			return nil
+		}
+
+		stmt, err := p.Prepare(sctx)
 		if err != nil {
 			return err
 		}
@@ -110,10 +114,10 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		res = statement.Result{}
 
 		if qa, ok := stmt.(queryAlterer); ok {
-			err = qa.alterQuery(context.DB, &q)
+			err = qa.alterQuery(context.Conn, &q)
 			if err != nil {
 				if tx := context.GetTx(); tx != nil {
-					tx.Rollback()
+					_ = tx.Rollback()
 				}
 				return nil, err
 			}
@@ -122,7 +126,7 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		}
 
 		if q.tx == nil {
-			q.tx, err = context.DB.BeginTx(&database.TxOptions{
+			q.tx, err = context.Conn.BeginTx(&database.TxOptions{
 				ReadOnly: stmt.IsReadOnly(),
 			})
 			if err != nil {
@@ -132,12 +136,13 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 
 		res, err = stmt.Run(&statement.Context{
 			DB:     context.DB,
+			Conn:   context.Conn,
 			Tx:     q.tx,
 			Params: context.Params,
 		})
 		if err != nil {
 			if q.autoCommit {
-				q.tx.Rollback()
+				_ = q.tx.Rollback()
 			}
 
 			return nil, err
@@ -147,10 +152,10 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 		// and the current statement is not read-only,
 		// iterate over the result.
 		if !stmt.IsReadOnly() && i+1 < len(q.Statements) {
-			err = res.Iterate(func(database.Row) error { return nil })
+			err = res.Skip()
 			if err != nil {
 				if q.autoCommit {
-					q.tx.Rollback()
+					_ = q.tx.Rollback()
 				}
 
 				return nil, err
@@ -185,5 +190,5 @@ func (q Query) Run(context *Context) (*statement.Result, error) {
 }
 
 type queryAlterer interface {
-	alterQuery(db *database.Database, q *Query) error
+	alterQuery(conn *database.Connection, q *Query) error
 }

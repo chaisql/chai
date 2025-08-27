@@ -333,7 +333,7 @@ type teaWriter struct {
 func (w *teaWriter) Write(p []byte) (n int, err error) {
 	idx := bytes.LastIndex(p, []byte("\n"))
 
-	if idx == len(p)-1 {
+	if idx == -1 || idx == len(p)-1 {
 		w.buf.Write(p)
 		w.ch <- w.buf.String()
 		w.buf.Reset()

@@ -1,92 +1,58 @@
 package database
 
 import (
-	"encoding/binary"
-	"strings"
-
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
 
-// EncodeObject validates a row against all the constraints of the table
+// EncodeRow validates a row against all the constraints of the table
 // and encodes it.
-func (t *TableInfo) EncodeObject(tx *Transaction, dst []byte, o types.Object) ([]byte, error) {
-	if ed, ok := o.(*encoding.EncodedObject); ok {
-		return ed.Encoded, nil
+func (t *TableInfo) EncodeRow(tx *Transaction, dst []byte, r row.Row) ([]byte, error) {
+	if ed, ok := RowIsEncoded(r, &t.ColumnConstraints); ok {
+		return ed.encoded, nil
 	}
 
-	return encodeObject(tx, dst, &t.FieldConstraints, o)
+	return encodeRow(tx, dst, &t.ColumnConstraints, r)
 }
 
-func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Object) ([]byte, error) {
-	var err error
-
-	// loop over all the defined field contraints in order.
-	for _, fc := range fcs.Ordered {
-
+func encodeRow(tx *Transaction, dst []byte, ccs *ColumnConstraints, r row.Row) ([]byte, error) {
+	// loop over all the defined column contraints in order.
+	for _, cc := range ccs.Ordered {
 		// get the column from the row
-		v, err := o.GetByField(fc.Field)
-		if err != nil && !errors.Is(err, types.ErrFieldNotFound) {
+		v, err := r.Get(cc.Column)
+		if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 			return nil, err
 		}
 
-		// if the field is not found OR NULL, and the field has a default value, use the default value,
+		// if the column is not found OR NULL, and the column has a default value, use the default value,
 		// otherwise return an error
 		if v == nil {
-			if fc.DefaultValue != nil {
-				v, err = fc.DefaultValue.Eval(tx, o)
+			if cc.DefaultValue != nil {
+				v, err = cc.DefaultValue.Eval(tx, r)
 				if err != nil {
 					return nil, err
 				}
 			}
 		}
 
-		// if the field is not found OR NULL, and the field is required, return an error
-		if fc.IsNotNull && (v == nil || v.Type() == types.NullValue) {
-			return nil, &ConstraintViolationError{Constraint: "NOT NULL", Paths: []object.Path{object.NewPath(fc.Field)}}
-		}
-
 		if v == nil {
 			v = types.NewNullValue()
 		}
 
+		// if the column is not found OR NULL, and the column is required, return an error
+		if cc.IsNotNull && v.Type() == types.TypeNull {
+			return nil, &ConstraintViolationError{Constraint: "NOT NULL", Columns: []string{cc.Column}}
+		}
+
 		// ensure the value is of the correct type
-		if fc.Type != types.AnyValue {
-			v, err = object.CastAs(v, fc.Type)
-			if err != nil {
-				return nil, err
-			}
-		} else if v.Type() == types.TimestampValue {
-			// without a type constraint, timestamp values must
-			// always be stored as text to avoid mixed representations.
-			v, err = object.CastAsText(v)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// Encode the value only.
-		if v.Type() == types.ObjectValue {
-			// encode map length
-			mlen := len(fc.AnonymousType.FieldConstraints.Ordered)
-			if fc.AnonymousType.FieldConstraints.AllowExtraFields {
-				mlen += 1
-			}
-			dst = encoding.EncodeArrayLength(dst, mlen)
-			dst, err = encodeObject(tx, dst, &fc.AnonymousType.FieldConstraints, types.As[types.Object](v))
-		} else {
-			dst, err = encoding.EncodeValue(dst, v, false)
-		}
+		v, err = v.CastAs(cc.Type)
 		if err != nil {
 			return nil, err
 		}
-	}
 
-	// encode the extra fields, if any.
-	if fcs.AllowExtraFields {
-		dst, err = encodeExtraFields(dst, fcs, o)
+		dst, err = v.Encode(dst)
 		if err != nil {
 			return nil, err
 		}
@@ -95,170 +61,61 @@ func encodeObject(tx *Transaction, dst []byte, fcs *FieldConstraints, o types.Ob
 	return dst, nil
 }
 
-func encodeExtraFields(dst []byte, fcs *FieldConstraints, d types.Object) ([]byte, error) {
-	// count the number of extra fields
-	extraFields := 0
-	err := d.Iterate(func(field string, value types.Value) error {
-		_, ok := fcs.ByField[field]
-		if ok {
-			return nil
-		}
-		extraFields++
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// encode row length
-	dst = encoding.EncodeObjectLength(dst, extraFields)
-	if extraFields == 0 {
-		return dst, nil
-	}
-
-	fields := make(map[string]struct{}, extraFields)
-
-	err = d.Iterate(func(field string, value types.Value) error {
-		_, ok := fcs.ByField[field]
-		if ok {
-			return nil
-		}
-
-		// ensure the field is not repeated
-		if _, ok := fields[field]; ok {
-			return errors.New("duplicate field " + field)
-		}
-		fields[field] = struct{}{}
-
-		// encode the field name first
-		dst = encoding.EncodeText(dst, field)
-
-		// then encode the value
-		if value.Type() == types.TimestampValue {
-			// without a type constraint, timestamp values must
-			// always be stored as text to avoid mixed representations.
-			value, err = object.CastAsText(value)
-			if err != nil {
-				return err
-			}
-		}
-
-		dst, err = encoding.EncodeValue(dst, value, false)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return dst, nil
+type EncodedRow struct {
+	encoded           []byte
+	columnConstraints *ColumnConstraints
 }
 
-type EncodedObject struct {
-	encoded          []byte
-	fieldConstraints *FieldConstraints
-}
-
-func NewEncodedObject(fcs *FieldConstraints, data []byte) *EncodedObject {
-	e := EncodedObject{
-		fieldConstraints: fcs,
-		encoded:          data,
+func NewEncodedRow(ccs *ColumnConstraints, data []byte) *EncodedRow {
+	e := EncodedRow{
+		columnConstraints: ccs,
+		encoded:           data,
 	}
 
 	return &e
 }
 
-func (e *EncodedObject) ResetWith(fcs *FieldConstraints, data []byte) {
-	e.fieldConstraints = fcs
+func (e *EncodedRow) ResetWith(ccs *ColumnConstraints, data []byte) {
+	e.columnConstraints = ccs
 	e.encoded = data
 }
 
-func (e *EncodedObject) skipToExtra(b []byte) int {
-	l := len(e.fieldConstraints.Ordered)
-
-	var n int
-	for i := 0; i < l; i++ {
-		nn := encoding.Skip(b[n:])
-		n += nn
+func (e *EncodedRow) decodeValue(fc *ColumnConstraint, b []byte) (types.Value, int, error) {
+	if b[0] == encoding.NullValue {
+		return types.NewNullValue(), 1, nil
 	}
 
-	return n
-}
-
-func (e *EncodedObject) decodeValue(fc *FieldConstraint, b []byte) (types.Value, int, error) {
-	c := b[0]
-
-	if fc.Type == types.ObjectValue && c == encoding.ArrayValue {
-		// skip array
-		after := encoding.SkipArray(b[1:])
-
-		// skip type
-		b = b[1:]
-
-		// skip length
-		_, n := binary.Uvarint(b)
-		b = b[n:]
-
-		return types.NewObjectValue(NewEncodedObject(&fc.AnonymousType.FieldConstraints, b)), after + 1, nil
-	}
-
-	v, n := encoding.DecodeValue(b, fc.Type == types.AnyValue || fc.Type == types.ArrayValue /* intAsDouble */)
-
-	if fc.Type == types.TimestampValue && v.Type() == types.IntegerValue {
-		v = types.NewTimestampValue(encoding.ConvertToTimestamp(types.As[int64](v)))
-	}
-
-	// ensure the returned value is of the correct type
-	if fc.Type != types.AnyValue {
-		var err error
-		v, err = object.CastAs(v, fc.Type)
-		if err != nil {
-			return nil, 0, err
-		}
-	}
-
-	if v.Type() == types.TextValue {
-		s := strings.Clone(types.As[string](v))
-		v = types.NewTextValue(s)
-	}
+	v, n := fc.Type.Def().Decode(b)
 
 	return v, n, nil
 }
 
-// GetByField decodes the selected field from the buffer.
-func (e *EncodedObject) GetByField(field string) (v types.Value, err error) {
+// Get decodes the selected column from the buffer.
+func (e *EncodedRow) Get(column string) (v types.Value, err error) {
 	b := e.encoded
 
-	// get the field from the list of field constraints
-	fc, ok := e.fieldConstraints.ByField[field]
-	if ok {
-		// skip all fields before the selected field
-		for i := 0; i < fc.Position; i++ {
-			n := encoding.Skip(b)
-			b = b[n:]
-		}
-
-		v, _, err = e.decodeValue(fc, b)
-		return
+	// get the column from the list of column constraints
+	cc, ok := e.columnConstraints.ByColumn[column]
+	if !ok {
+		return nil, errors.Wrapf(types.ErrColumnNotFound, "%s not found", column)
 	}
 
-	// if extra fields are not allowed, return an error
-	if !e.fieldConstraints.AllowExtraFields {
-		return nil, errors.Wrapf(types.ErrFieldNotFound, "field %q not found", field)
+	// skip all columns before the selected column
+	for i := 0; i < cc.Position; i++ {
+		n := encoding.Skip(b)
+		b = b[n:]
 	}
 
-	// otherwise, decode the field from the extra fields
-	n := e.skipToExtra(b)
-	b = b[n:]
-
-	return encoding.DecodeObject(b, true /* intAsDouble */).GetByField(field)
+	v, _, err = e.decodeValue(cc, b)
+	return
 }
 
 // Iterate decodes each columns one by one and passes them to fn
 // until the end of the row or until fn returns an error.
-func (e *EncodedObject) Iterate(fn func(field string, value types.Value) error) error {
+func (e *EncodedRow) Iterate(fn func(column string, value types.Value) error) error {
 	b := e.encoded
 
-	for _, fc := range e.fieldConstraints.Ordered {
+	for _, fc := range e.columnConstraints.Ordered {
 		v, n, err := e.decodeValue(fc, b)
 		if err != nil {
 			return err
@@ -266,25 +123,31 @@ func (e *EncodedObject) Iterate(fn func(field string, value types.Value) error) 
 
 		b = b[n:]
 
-		if v.Type() == types.NullValue {
-			continue
-		}
-
-		err = fn(fc.Field, v)
+		err = fn(fc.Column, v)
 		if err != nil {
 			return err
 		}
 	}
 
-	if !e.fieldConstraints.AllowExtraFields {
-		return nil
-	}
-
-	return encoding.DecodeObject(b, true /* intAsDouble */).Iterate(func(field string, value types.Value) error {
-		return fn(field, value)
-	})
+	return nil
 }
 
-func (e *EncodedObject) MarshalJSON() ([]byte, error) {
-	return object.MarshalJSON(e)
+func RowIsEncoded(r row.Row, ccs *ColumnConstraints) (*EncodedRow, bool) {
+	br, ok := r.(*BasicRow)
+	if ok {
+		r = br.Row
+	}
+	ed, ok := r.(*EncodedRow)
+	if !ok {
+		return nil, false
+	}
+
+	// if the pointers are the same, the column constraints are the same
+	// otherwise it means we created a copy of the constraints and probably
+	// altered them (ie. ALTER TABLE)
+	if ed.columnConstraints == ccs {
+		return ed, true
+	}
+
+	return nil, false
 }

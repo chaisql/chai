@@ -1,12 +1,13 @@
 package database
 
 import (
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 )
 
 type Row interface {
-	// Iterate goes through all the fields of the row and calls the given function
+	// Iterate goes through all the columns of the row and calls the given function
 	// by passing the column name
 	Iterate(fn func(column string, value types.Value) error) error
 
@@ -17,19 +18,14 @@ type Row interface {
 	// TableName returns the name of the table the row belongs to.
 	TableName() string
 
-	// MarshalJSON encodes the row as JSON.
-	MarshalJSON() ([]byte, error)
-
 	// Key returns the row key.
 	Key() *tree.Key
-
-	Object() types.Object
 }
 
 var _ Row = (*LazyRow)(nil)
 
-// LazyRow holds an LazyRow key and lazily loads the LazyRow on demand when the Iterate or GetByField method is called.
-// It implements the Row and the object.Keyer interfaces.
+// LazyRow holds an LazyRow key and lazily loads the LazyRow on demand when the Iterate or Get method is called.
+// It implements the Row and the row.Keyer interfaces.
 type LazyRow struct {
 	key   *tree.Key
 	table *Table
@@ -55,10 +51,6 @@ func (r *LazyRow) Iterate(fn func(name string, value types.Value) error) error {
 }
 
 func (r *LazyRow) Get(name string) (types.Value, error) {
-	return r.GetByField(name)
-}
-
-func (r *LazyRow) GetByField(field string) (types.Value, error) {
 	var err error
 	if r.row == nil {
 		r.row, err = r.table.GetRow(r.key)
@@ -67,19 +59,7 @@ func (r *LazyRow) GetByField(field string) (types.Value, error) {
 		}
 	}
 
-	return r.row.Get(field)
-}
-
-func (r *LazyRow) MarshalJSON() ([]byte, error) {
-	if r.row == nil {
-		var err error
-		r.row, err = r.table.GetRow(r.key)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return r.row.(interface{ MarshalJSON() ([]byte, error) }).MarshalJSON()
+	return r.row.Get(name)
 }
 
 func (r *LazyRow) Key() *tree.Key {
@@ -90,48 +70,42 @@ func (r *LazyRow) TableName() string {
 	return r.table.Info.TableName
 }
 
-func (r *LazyRow) Object() types.Object {
-	if r.row == nil {
-		var err error
-		r.row, err = r.table.GetRow(r.key)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	return r.row.Object()
-}
-
 var _ Row = (*BasicRow)(nil)
 
 type BasicRow struct {
-	tableName string
-	key       *tree.Key
-	obj       types.Object
+	row.Row
+	tableName   string
+	key         *tree.Key
+	originalRow Row
 }
 
-func NewBasicRow(obj types.Object) *BasicRow {
+func NewBasicRow(r row.Row) *BasicRow {
 	return &BasicRow{
-		obj: obj,
+		Row: r,
 	}
 }
 
-func (r *BasicRow) ResetWith(tableName string, key *tree.Key, obj types.Object) {
+func (r *BasicRow) ResetWith(tableName string, key *tree.Key, rr row.Row) {
 	r.tableName = tableName
 	r.key = key
-	r.obj = obj
+	r.Row = rr
 }
 
-func (r *BasicRow) Iterate(fn func(name string, value types.Value) error) error {
-	return r.obj.Iterate(fn)
+func (r *BasicRow) SetOriginalRow(original Row) {
+	r.originalRow = original
 }
 
-func (r *BasicRow) Get(name string) (types.Value, error) {
-	return r.obj.GetByField(name)
-}
+func (r *BasicRow) OriginalRow() Row {
+	if r.originalRow != nil {
+		return r.originalRow
+	}
 
-func (r *BasicRow) MarshalJSON() ([]byte, error) {
-	return r.obj.(interface{ MarshalJSON() ([]byte, error) }).MarshalJSON()
+	br, ok := r.Row.(*BasicRow)
+	if ok {
+		return br.OriginalRow()
+	}
+
+	return nil
 }
 
 func (r *BasicRow) Key() *tree.Key {
@@ -142,12 +116,21 @@ func (r *BasicRow) TableName() string {
 	return r.tableName
 }
 
-func (r *BasicRow) Object() types.Object {
-	return r.obj
+type Result interface {
+	// Iterator returns an iterator over the rows in the result.
+	Iterator() (Iterator, error)
 }
 
-type RowIterator interface {
-	// Iterate goes through all the rows of the table and calls the given function by passing each one of them.
-	// If the given function returns an error, the iteration stops.
-	Iterate(fn func(Row) error) error
+type Iterator interface {
+	// Next moves the iterator to the next row.
+	Next() bool
+
+	// Row returns the current row.
+	Row() (Row, error)
+
+	// Close closes the iterator.
+	Close() error
+
+	// Error returns any error that occurred during iteration.
+	Error() error
 }

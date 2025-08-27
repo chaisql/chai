@@ -8,6 +8,8 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*ReIndexStmt)(nil)
+
 // ReIndexStmt is a DSL that allows creating a full REINDEX statement.
 type ReIndexStmt struct {
 	basePreparedStatement
@@ -26,8 +28,12 @@ func NewReIndexStatement() *ReIndexStmt {
 	return &p
 }
 
+func (stmt *ReIndexStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // Prepare implements the Preparer interface.
-func (stmt ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
+func (stmt *ReIndexStmt) Prepare(ctx *Context) (Statement, error) {
 	var indexNames []string
 
 	if stmt.TableOrIndexName == "" {

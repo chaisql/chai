@@ -1,11 +1,10 @@
 package statement_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
-	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,8 +28,8 @@ func TestReIndex(t *testing.T) {
 			defer cleanup()
 
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE test1(a any, b any);
-				CREATE TABLE test2(a any, b any);
+				CREATE TABLE test1(a TEXT, b TEXT);
+				CREATE TABLE test2(a TEXT, b TEXT);
 
 				CREATE INDEX idx_test1_a ON test1(a);
 				CREATE INDEX idx_test1_b ON test1(b);
@@ -45,38 +44,35 @@ func TestReIndex(t *testing.T) {
 			c := tx.Catalog
 			for _, idxName := range c.ListIndexes("") {
 				idx, err := c.GetIndex(tx, idxName)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				err = idx.Truncate()
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			for _, idxName := range tx.Catalog.ListIndexes("") {
 				idx, err := tx.Catalog.GetIndex(tx, idxName)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				info, err := tx.Catalog.GetIndexInfo(idxName)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 
-				shouldBeIndexed := false
-				for _, name := range test.expectReIndexed {
-					if name == info.IndexName {
-						shouldBeIndexed = true
-						break
-					}
-				}
+				shouldBeIndexed := slices.Contains(test.expectReIndexed, info.IndexName)
 
 				i := 0
-				err = idx.Tree.IterateOnRange(nil, false, func(*tree.Key, []byte) error {
+				it, err := idx.Tree.Iterator(nil)
+				require.NoError(t, err)
+				defer it.Close()
+
+				for it.First(); it.Valid(); it.Next() {
 					i++
-					return nil
-				})
-				assert.NoError(t, err)
+				}
+				require.NoError(t, it.Error())
 				if shouldBeIndexed {
 					require.Equal(t, 2, i)
 				} else {
@@ -84,7 +80,7 @@ func TestReIndex(t *testing.T) {
 				}
 			}
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
 }

@@ -10,6 +10,10 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*CreateTableStmt)(nil)
+var _ Statement = (*CreateIndexStmt)(nil)
+var _ Statement = (*CreateSequenceStmt)(nil)
+
 // CreateTableStmt represents a parsed CREATE TABLE statement.
 type CreateTableStmt struct {
 	IfNotExists bool
@@ -19,6 +23,10 @@ type CreateTableStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *CreateTableStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *CreateTableStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the Create table statement in the given transaction.
@@ -56,11 +64,11 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
 			_, err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
-				Paths:  tc.Paths,
-				Unique: true,
+				Columns: tc.Columns,
+				Unique:  true,
 				Owner: database.Owner{
 					TableName: stmt.Info.TableName,
-					Paths:     tc.Paths,
+					Columns:   tc.Columns,
 				},
 				KeySortOrder: tc.SortOrder,
 			})
@@ -82,6 +90,10 @@ type CreateIndexStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *CreateIndexStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *CreateIndexStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run runs the Create index statement in the given transaction.
@@ -120,6 +132,10 @@ type CreateSequenceStmt struct {
 // IsReadOnly always returns false. It implements the Statement interface.
 func (stmt *CreateSequenceStmt) IsReadOnly() bool {
 	return false
+}
+
+func (stmt *CreateSequenceStmt) Bind(ctx *Context) error {
+	return nil
 }
 
 // Run the statement in the given transaction.

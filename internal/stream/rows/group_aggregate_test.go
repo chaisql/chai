@@ -1,19 +1,18 @@
 package rows_test
 
 import (
-	"strconv"
 	"testing"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
@@ -23,32 +22,32 @@ func TestAggregate(t *testing.T) {
 		name     string
 		groupBy  expr.Expr
 		builders []expr.AggregatorBuilder
-		in       []types.Object
-		want     []types.Object
+		in       []int
+		want     []row.Row
 		fails    bool
 	}{
 		{
 			"fake count",
 			nil,
 			makeAggregatorBuilders("agg"),
-			[]types.Object{testutil.MakeObject(t, `{"a": 10}`)},
-			[]types.Object{testutil.MakeObject(t, `{"agg": 1}`)},
+			[]int{10},
+			[]row.Row{testutil.MakeRow(t, `{"agg": 1}`)},
 			false,
 		},
 		{
 			"count",
 			nil,
 			[]expr.AggregatorBuilder{functions.NewCount(expr.Wildcard{})},
-			[]types.Object{testutil.MakeObject(t, `{"a": 10}`)},
-			[]types.Object{testutil.MakeObject(t, `{"COUNT(*)": 1}`)},
+			[]int{10},
+			[]row.Row{testutil.MakeRow(t, `{"COUNT(*)": 1}`)},
 			false,
 		},
 		{
 			"count/groupBy",
 			parser.MustParseExpr("a % 2"),
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
-			generateSeqDocs(t, 10),
-			[]types.Object{testutil.MakeObject(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeObject(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
+			generateSeq(t, 10),
+			[]row.Row{testutil.MakeRow(t, `{"a % 2": 0, "COUNT(a)": 5, "AVG(a)": 4.0}`), testutil.MakeRow(t, `{"a % 2": 1, "COUNT(a)": 5, "AVG(a)": 5.0}`)},
 			false,
 		},
 		{
@@ -56,15 +55,15 @@ func TestAggregate(t *testing.T) {
 			nil,
 			[]expr.AggregatorBuilder{&functions.Count{Expr: parser.MustParseExpr("a")}, &functions.Avg{Expr: parser.MustParseExpr("a")}},
 			nil,
-			[]types.Object{testutil.MakeObject(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
+			[]row.Row{testutil.MakeRow(t, `{"COUNT(a)": 0, "AVG(a)": 0.0}`)},
 			false,
 		},
 		{
 			"no aggregator",
 			parser.MustParseExpr("a % 2"),
 			nil,
-			generateSeqDocs(t, 4),
-			testutil.MakeObjects(t, `{"a % 2": 0}`, `{"a % 2": 1}`),
+			generateSeq(t, 4),
+			testutil.MakeRows(t, `{"a % 2": 0}`, `{"a % 2": 1}`),
 			false,
 		},
 	}
@@ -76,13 +75,11 @@ func TestAggregate(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
 
-			for _, doc := range test.in {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ?", environment.Param{Value: doc})
+			for _, val := range test.in {
+				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES (?)", environment.Param{Value: val})
 			}
 
-			var env environment.Environment
-			env.DB = db
-			env.Tx = tx
+			env := environment.New(db, tx, nil, nil)
 
 			s := stream.New(table.Scan("test"))
 			if test.groupBy != nil {
@@ -91,21 +88,22 @@ func TestAggregate(t *testing.T) {
 
 			s = s.Pipe(rows.GroupAggregate(test.groupBy, test.builders...))
 
-			var got []types.Object
-			err := s.Iterate(&env, func(env *environment.Environment) error {
-				r, ok := env.GetRow()
-				require.True(t, ok)
-				var fb object.FieldBuffer
-				fb.Copy(r.Object())
+			var got []row.Row
+			err := s.Iterate(env, func(r database.Row) error {
+				var fb row.ColumnBuffer
+				err := fb.Copy(r)
+				if err != nil {
+					return err
+				}
 				got = append(got, &fb)
 				return nil
 			})
 			if test.fails {
-				assert.Error(t, err)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				for i, doc := range test.want {
-					testutil.RequireObjEqual(t, doc, got[i])
+					testutil.RequireRowEqual(t, doc, got[i])
 				}
 
 				require.Equal(t, len(test.want), len(got))
@@ -126,7 +124,7 @@ type fakeAggregator struct {
 }
 
 func (f *fakeAggregator) Eval(env *environment.Environment) (types.Value, error) {
-	return types.NewIntegerValue(f.count), nil
+	return types.NewBigintValue(f.count), nil
 }
 
 func (f *fakeAggregator) Aggregate(env *environment.Environment) error {
@@ -168,12 +166,12 @@ func makeAggregatorBuilders(names ...string) []expr.AggregatorBuilder {
 	return aggs
 }
 
-func generateSeqDocs(t testing.TB, max int) (docs []types.Object) {
+func generateSeq(t testing.TB, max int) (vals []int) {
 	t.Helper()
 
 	for i := 0; i < max; i++ {
-		docs = append(docs, testutil.MakeObject(t, `{"a": `+strconv.Itoa(i)+`}`))
+		vals = append(vals, i)
 	}
 
-	return docs
+	return vals
 }

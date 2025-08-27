@@ -2,10 +2,12 @@
 package database
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/kv"
 	"github.com/cockroachdb/errors"
 )
@@ -18,12 +20,12 @@ type Database struct {
 	catalogMu sync.RWMutex
 	catalog   *Catalog
 
-	// If this is non-nil, the user is running an explicit transaction
-	// using the BEGIN statement.
-	// Only one attached transaction can be run at a time and any calls to DB.Begin()
-	// will cause an error until that transaction is rolled back or commited.
-	attachedTransaction *Transaction
-	attachedTxMu        sync.Mutex
+	// context used to notify all connections that the database is closing.
+	closeContext context.Context
+	closeCancel  context.CancelFunc
+
+	// waitgroup to wait for all connections to be closed.
+	connectionWg sync.WaitGroup
 
 	// This is used to prevent creating a new transaction
 	// during certain operations (commit, close, etc.)
@@ -32,16 +34,16 @@ type Database struct {
 	// This limits the number of write transactions to 1.
 	writetxmu sync.Mutex
 
-	// TransactionIDs is used to assign transaction an ID at runtime.
+	// transactionIDs is used to assign transaction an ID at runtime.
 	// Since transaction IDs are not persisted and not used for concurrent
 	// access, we can use 8 bytes ids that will be reset every time
 	// the database restarts.
-	TransactionIDs uint64
+	transactionIDs atomic.Uint64
 
 	closeOnce sync.Once
 
 	// Underlying kv store.
-	Store *kv.Store
+	Engine engine.Engine
 }
 
 // Options are passed to Open to control
@@ -54,17 +56,13 @@ type Options struct {
 // It may parse a SQL representation of the catalog
 // and return a Catalog that represents all entities stored on disk.
 type CatalogLoader interface {
-	LoadCatalog(kv.Session) (*Catalog, error)
+	LoadCatalog(engine.Session) (*Catalog, error)
 }
 
 // TxOptions are passed to Begin to configure transactions.
 type TxOptions struct {
 	// Open a read-only transaction.
 	ReadOnly bool
-	// Set the transaction as global at the database level.
-	// Any queries run by the database will use that transaction until it is
-	// rolled back or commited.
-	Attached bool
 }
 
 func Open(path string, opts *Options) (*Database, error) {
@@ -78,18 +76,21 @@ func Open(path string, opts *Options) (*Database, error) {
 	}
 
 	db := Database{
-		Store: store,
+		Engine: store,
 	}
+
+	// create a context that will be cancelled when the database is closed.
+	db.closeContext, db.closeCancel = context.WithCancel(context.Background())
 
 	// ensure the rollback segment doesn't contain any data that needs to be rolled back
 	// due to a previous crash.
-	err = db.Store.ResetRollbackSegment()
+	err = db.Engine.Recover()
 	if err != nil {
 		return nil, err
 	}
 
 	// clean up the transient namespaces
-	err = db.Store.CleanupTransientNamespaces()
+	err = db.Engine.CleanupTransientNamespaces()
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +129,9 @@ func (db *Database) Close() error {
 	var err error
 
 	db.closeOnce.Do(func() {
+		db.closeCancel()
+
+		db.connectionWg.Wait()
 		err = db.closeDatabase()
 	})
 
@@ -135,16 +139,8 @@ func (db *Database) Close() error {
 }
 
 func (db *Database) closeDatabase() error {
-	// If there is an attached transaction
-	// it must be rolled back before closing the engine.
-	if tx := db.GetAttachedTx(); tx != nil {
-		_ = tx.Rollback()
-	}
-	db.writetxmu.Lock()
-	defer db.writetxmu.Unlock()
-
 	// release all sequences
-	tx, err := db.beginTx(nil)
+	tx, err := db.beginTxUnlocked(nil)
 	if err != nil {
 		return err
 	}
@@ -167,23 +163,32 @@ func (db *Database) closeDatabase() error {
 		return err
 	}
 
-	return db.Store.Close()
+	return db.Engine.Close()
 }
 
-// GetAttachedTx returns the transaction attached to the database. It returns nil if there is no
-// such transaction.
-// The returned transaction is not thread safe.
-func (db *Database) GetAttachedTx() *Transaction {
-	db.attachedTxMu.Lock()
-	defer db.attachedTxMu.Unlock()
+// Connect returns a new connection to the database.
+// The returned connection is not thread safe.
+// It is the caller's responsibility to close the connection.
+func (db *Database) Connect() (*Connection, error) {
+	if db.closeContext.Err() != nil {
+		return nil, errors.New("database is closed")
+	}
 
-	return db.attachedTransaction
+	db.connectionWg.Add(1)
+	return &Connection{
+		db:  db,
+		ctx: db.closeContext,
+	}, nil
 }
 
 // Begin starts a new transaction with default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
 func (db *Database) Begin(writable bool) (*Transaction, error) {
-	return db.BeginTx(&TxOptions{
+	if db.closeContext.Err() != nil {
+		return nil, errors.New("database is closed")
+	}
+
+	return db.beginTx(&TxOptions{
 		ReadOnly: !writable,
 	})
 }
@@ -191,12 +196,10 @@ func (db *Database) Begin(writable bool) (*Transaction, error) {
 // BeginTx starts a new transaction with the given options.
 // If opts is empty, it will use the default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
-// If the Attached option is passed, it opens a database level transaction, which gets
-// attached to the database and prevents any other transaction to be opened afterwards
-// until it gets rolled back or commited.
-func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
-	db.txmu.RLock()
-	defer db.txmu.RUnlock()
+func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
+	if db.closeContext.Err() != nil {
+		return nil, errors.New("database is closed")
+	}
 
 	if opts == nil {
 		opts = new(TxOptions)
@@ -206,47 +209,37 @@ func (db *Database) BeginTx(opts *TxOptions) (*Transaction, error) {
 		db.writetxmu.Lock()
 	}
 
-	db.attachedTxMu.Lock()
-	defer db.attachedTxMu.Unlock()
+	db.txmu.RLock()
+	defer db.txmu.RUnlock()
 
-	if db.attachedTransaction != nil {
-		return nil, errors.New("cannot open a transaction within a transaction")
-	}
-
-	return db.beginTx(opts)
+	return db.beginTxUnlocked(opts)
 }
 
-// beginTx creates a transaction without locks.
-func (db *Database) beginTx(opts *TxOptions) (*Transaction, error) {
+// beginTxUnlocked creates a transaction without locks.
+func (db *Database) beginTxUnlocked(opts *TxOptions) (*Transaction, error) {
 	if opts == nil {
 		opts = &TxOptions{}
 	}
 
-	var sess kv.Session
+	var sess engine.Session
 	if opts.ReadOnly {
-		sess = db.Store.NewSnapshotSession()
+		sess = db.Engine.NewSnapshotSession()
 	} else {
-		sess = db.Store.NewBatchSession()
+		sess = db.Engine.NewBatchSession()
 	}
 
 	tx := Transaction{
 		db:       db,
-		Store:    db.Store,
+		Engine:   db.Engine,
 		Session:  sess,
 		Writable: !opts.ReadOnly,
-		ID:       atomic.AddUint64(&db.TransactionIDs, 1),
+		ID:       db.transactionIDs.Add(1),
 		Catalog:  db.Catalog(),
 		TxStart:  time.Now(),
 	}
 
 	if !opts.ReadOnly {
 		tx.WriteTxMu = &db.writetxmu
-	}
-
-	if opts.Attached {
-		db.attachedTransaction = &tx
-		tx.OnRollbackHooks = append(tx.OnRollbackHooks, db.releaseAttachedTx)
-		tx.OnCommitHooks = append(tx.OnCommitHooks, db.releaseAttachedTx)
 	}
 
 	return &tx, nil
@@ -263,13 +256,4 @@ func (db *Database) SetCatalog(c *Catalog) {
 	db.catalogMu.Lock()
 	db.catalog = c
 	db.catalogMu.Unlock()
-}
-
-func (db *Database) releaseAttachedTx() {
-	db.attachedTxMu.Lock()
-	defer db.attachedTxMu.Unlock()
-
-	if db.attachedTransaction != nil {
-		db.attachedTransaction = nil
-	}
 }

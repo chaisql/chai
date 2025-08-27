@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/chaisql/chai/internal/kv"
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
@@ -31,11 +31,9 @@ type Index struct {
 func NewIndex(tr *tree.Tree, opts IndexInfo) *Index {
 	return &Index{
 		Tree:  tr,
-		Arity: len(opts.Paths),
+		Arity: len(opts.Columns),
 	}
 }
-
-var errStop = errors.New("stop")
 
 // Set associates values with a key. If Unique is set to false, it is
 // possible to associate multiple keys for the same value
@@ -79,20 +77,34 @@ func (idx *Index) Exists(vs []types.Value) (bool, *tree.Key, error) {
 	var found bool
 	var dKey *tree.Key
 
-	err := idx.Tree.IterateOnRange(&tree.Range{Min: seek, Max: seek}, false, func(k *tree.Key, _ []byte) error {
-		values, err := k.Decode()
+	it, err := idx.Tree.Iterator(&tree.Range{Min: seek, Max: seek})
+	if err != nil {
+		return false, nil, err
+	}
+	defer it.Close()
+
+	it.First()
+
+	if it.Valid() {
+		k, err := it.Key().Decode()
 		if err != nil {
-			return err
+			return false, nil, err
 		}
 
-		dKey = tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
+		dKey = tree.NewEncodedKey(types.AsByteSlice(k[len(k)-1]))
 		found = true
-		return errStop
-	})
-	if err == errStop {
-		err = nil
 	}
-	return found, dKey, err
+
+	return found, dKey, it.Error()
+}
+
+func (idx *Index) Iterator(rng *tree.Range) (*IndexIterator, error) {
+	it, err := idx.Tree.Iterator(rng)
+	if err != nil {
+		return nil, err
+	}
+
+	return &IndexIterator{it}, nil
 }
 
 // Delete all the references to the key from the index.
@@ -103,51 +115,28 @@ func (idx *Index) Delete(vs []types.Value, key []byte) error {
 		Max: vk,
 	}
 
-	err := idx.iterateOnRange(&rng, false, func(itmKey *tree.Key, pk *tree.Key) error {
-		if bytes.Equal(pk.Encoded, key) {
-			err := idx.Tree.Delete(itmKey)
-			if err == nil {
-				err = errStop
-			}
-
-			return err
-		}
-
-		return nil
-	})
-	if errors.Is(err, errStop) {
-		return nil
-	}
+	it, err := idx.Iterator(&rng)
 	if err != nil {
 		return err
 	}
+	defer it.Close()
 
-	return errors.WithStack(kv.ErrKeyNotFound)
-}
-
-func (idx *Index) IterateOnRange(rng *tree.Range, reverse bool, fn func(key *tree.Key) error) error {
-	return idx.iterateOnRange(rng, reverse, func(itmKey, key *tree.Key) error {
-		return fn(key)
-	})
-}
-
-func (idx *Index) iterateOnRange(rng *tree.Range, reverse bool, fn func(itmKey *tree.Key, key *tree.Key) error) error {
-	return idx.Tree.IterateOnRange(rng, reverse, idx.iterator(fn))
-}
-
-func (idx *Index) iterator(fn func(itmKey *tree.Key, key *tree.Key) error) func(k *tree.Key, d []byte) error {
-	return func(k *tree.Key, _ []byte) error {
-		// we don't care about the value, we just want to extract the key
-		// which is the last element of the encoded array
-		values, err := k.Decode()
+	for it.First(); it.Valid(); it.Next() {
+		pk, err := it.Value()
 		if err != nil {
 			return err
 		}
 
-		pk := tree.NewEncodedKey(types.As[[]byte](values[len(values)-1]))
-
-		return fn(k, pk)
+		if bytes.Equal(pk.Encoded, key) {
+			return idx.Tree.Delete(it.Key())
+		}
 	}
+
+	if err := it.Error(); err != nil {
+		return err
+	}
+
+	return errors.WithStack(engine.ErrKeyNotFound)
 }
 
 // Truncate deletes all the index data.

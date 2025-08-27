@@ -9,7 +9,7 @@ import (
 // parseBeginStatement parses a BEGIN statement.
 func (p *Parser) parseBeginStatement() (statement.Statement, error) {
 	// Parse "BEGIN".
-	if err := p.parseTokens(scanner.BEGIN); err != nil {
+	if err := p.ParseTokens(scanner.BEGIN); err != nil {
 		return nil, err
 	}
 
@@ -40,7 +40,7 @@ func (p *Parser) parseBeginStatement() (statement.Statement, error) {
 // parseRollbackStatement parses a ROLLBACK statement.
 func (p *Parser) parseRollbackStatement() (statement.Statement, error) {
 	// Parse "ROLLBACK".
-	if err := p.parseTokens(scanner.ROLLBACK); err != nil {
+	if err := p.ParseTokens(scanner.ROLLBACK); err != nil {
 		return nil, err
 	}
 
@@ -53,7 +53,7 @@ func (p *Parser) parseRollbackStatement() (statement.Statement, error) {
 // parseCommitStatement parses a COMMIT statement.
 func (p *Parser) parseCommitStatement() (statement.Statement, error) {
 	// Parse "COMMIT".
-	if err := p.parseTokens(scanner.COMMIT); err != nil {
+	if err := p.ParseTokens(scanner.COMMIT); err != nil {
 		return nil, err
 	}
 	// parse optional TRANSACTION token

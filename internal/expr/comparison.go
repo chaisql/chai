@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/types"
 )
@@ -24,7 +23,7 @@ func newCmpOp(a, b Expr, t scanner.Token) *cmpOp {
 // Comparing with NULL always evaluates to NULL.
 func (op *cmpOp) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
@@ -40,20 +39,28 @@ func (op *cmpOp) Eval(env *environment.Environment) (types.Value, error) {
 func (op *cmpOp) compare(l, r types.Value) (bool, error) {
 	switch op.Tok {
 	case scanner.EQ:
-		return types.IsEqual(l, r)
+		return l.EQ(r)
 	case scanner.NEQ:
-		return types.IsNotEqual(l, r)
+		eq, err := l.EQ(r)
+		if err != nil {
+			return false, err
+		}
+		return !eq, nil
 	case scanner.GT:
-		return types.IsGreaterThan(l, r)
+		return l.GT(r)
 	case scanner.GTE:
-		return types.IsGreaterThanOrEqual(l, r)
+		return l.GTE(r)
 	case scanner.LT:
-		return types.IsLesserThan(l, r)
+		return l.LT(r)
 	case scanner.LTE:
-		return types.IsLesserThanOrEqual(l, r)
+		return l.LTE(r)
 	default:
 		panic(fmt.Sprintf("unknown token %v", op.Tok))
 	}
+}
+
+func (op *cmpOp) Clone() Expr {
+	return &cmpOp{op.simpleOperator.Clone()}
 }
 
 // Eq creates an expression that returns true if a equals b.
@@ -99,6 +106,13 @@ func Between(a Expr) func(x, b Expr) Expr {
 	}
 }
 
+func (op *BetweenOperator) Clone() Expr {
+	return &BetweenOperator{
+		op.simpleOperator.Clone(),
+		Clone(op.X),
+	}
+}
+
 func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, error) {
 	x, err := op.X.Eval(env)
 	if err != nil {
@@ -106,21 +120,20 @@ func (op *BetweenOperator) Eval(env *environment.Environment) (types.Value, erro
 	}
 
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
+		if a.Type() == types.TypeNull || b.Type() == types.TypeNull || x.Type() == types.TypeNull {
 			return NullLiteral, nil
 		}
 
-		ok, err := types.IsGreaterThanOrEqual(x, a)
-		if !ok || err != nil {
-			return FalseLiteral, err
+		ok, err := x.Between(a, b)
+		if err != nil {
+			return NullLiteral, err
 		}
 
-		ok, err = types.IsLesserThanOrEqual(x, b)
-		if !ok || err != nil {
-			return FalseLiteral, err
+		if ok {
+			return TrueLiteral, nil
 		}
 
-		return TrueLiteral, nil
+		return FalseLiteral, nil
 	})
 }
 
@@ -140,25 +153,77 @@ func IsComparisonOperator(op Operator) bool {
 }
 
 type InOperator struct {
-	*simpleOperator
+	a  Expr
+	b  Expr
+	op scanner.Token
 }
 
 // In creates an expression that evaluates to the result of a IN b.
-func In(a, b Expr) Expr {
-	return &InOperator{&simpleOperator{a, b, scanner.IN}}
+func In(a Expr, b Expr) Expr {
+	return &InOperator{a, b, scanner.IN}
+}
+
+func (op *InOperator) Clone() Expr {
+	return &InOperator{
+		Clone(op.a),
+		Clone(op.b),
+		op.op,
+	}
+}
+
+func (op *InOperator) Precedence() int {
+	return op.op.Precedence()
+}
+
+func (op *InOperator) LeftHand() Expr {
+	return op.a
+}
+
+func (op *InOperator) RightHand() Expr {
+	return op.b
+}
+
+func (op *InOperator) SetLeftHandExpr(a Expr) {
+	op.a = a
+}
+
+func (op *InOperator) SetRightHandExpr(b Expr) {}
+
+func (op *InOperator) Token() scanner.Token {
+	return op.op
+}
+
+func (op *InOperator) String() string {
+	return fmt.Sprintf("%v IN %v", op.a, op.b)
 }
 
 func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
-	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		if a.Type() == types.NullValue || b.Type() == types.NullValue {
-			return NullLiteral, nil
+	a, err := op.validateLeftExpression(op.a)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	b, err := op.validateRightExpression(op.b)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	va, err := a.Eval(env)
+	if err != nil {
+		return NullLiteral, err
+	}
+
+	if va.Type() == types.TypeNull {
+		return NullLiteral, nil
+	}
+
+	for _, bb := range b {
+		v, err := bb.Eval(env)
+		if err != nil {
+			return NullLiteral, err
 		}
 
-		if b.Type() != types.ArrayValue {
-			return FalseLiteral, nil
-		}
-
-		ok, err := object.ArrayContains(types.As[types.Array](b), a)
+		ok, err := va.EQ(v)
 		if err != nil {
 			return NullLiteral, err
 		}
@@ -166,17 +231,48 @@ func (op *InOperator) Eval(env *environment.Environment) (types.Value, error) {
 		if ok {
 			return TrueLiteral, nil
 		}
-		return FalseLiteral, nil
-	})
+	}
+
+	return FalseLiteral, nil
+}
+
+func (op *InOperator) validateLeftExpression(a Expr) (Expr, error) {
+	switch t := a.(type) {
+	case Parentheses:
+		return op.validateLeftExpression(t.E)
+	case *Column:
+		return a, nil
+	case LiteralValue:
+		return a, nil
+	}
+
+	return nil, fmt.Errorf("invalid left expression for IN operator: %v", a)
+}
+
+func (op *InOperator) validateRightExpression(b Expr) (LiteralExprList, error) {
+	switch t := b.(type) {
+	case Parentheses:
+		return LiteralExprList{b.(Parentheses).E}, nil
+	case LiteralExprList:
+		return t, nil
+	}
+
+	return nil, fmt.Errorf("invalid right expression for IN operator: %v", b)
 }
 
 type NotInOperator struct {
-	InOperator
+	*InOperator
 }
 
 // NotIn creates an expression that evaluates to the result of a NOT IN b.
-func NotIn(a, b Expr) Expr {
-	return &NotInOperator{InOperator{&simpleOperator{a, b, scanner.NIN}}}
+func NotIn(a Expr, b Expr) Expr {
+	return &NotInOperator{&InOperator{a, b, scanner.NIN}}
+}
+
+func (op *NotInOperator) Clone() Expr {
+	return &NotInOperator{
+		op.InOperator.Clone().(*InOperator),
+	}
 }
 
 func (op *NotInOperator) Eval(env *environment.Environment) (types.Value, error) {
@@ -196,9 +292,15 @@ func Is(a, b Expr) Expr {
 	return &IsOperator{&simpleOperator{a, b, scanner.IN}}
 }
 
+func (op *IsOperator) Clone() Expr {
+	return &IsOperator{
+		op.simpleOperator.Clone(),
+	}
+}
+
 func (op *IsOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		ok, err := types.IsEqual(a, b)
+		ok, err := a.EQ(b)
 		if err != nil {
 			return NullLiteral, err
 		}
@@ -219,13 +321,19 @@ func IsNot(a, b Expr) Expr {
 	return &IsNotOperator{&simpleOperator{a, b, scanner.ISN}}
 }
 
+func (op *IsNotOperator) Clone() Expr {
+	return &IsNotOperator{
+		op.simpleOperator.Clone(),
+	}
+}
+
 func (op *IsNotOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(a, b types.Value) (types.Value, error) {
-		ok, err := types.IsNotEqual(a, b)
+		eq, err := a.EQ(b)
 		if err != nil {
 			return NullLiteral, err
 		}
-		if ok {
+		if !eq {
 			return TrueLiteral, nil
 		}
 

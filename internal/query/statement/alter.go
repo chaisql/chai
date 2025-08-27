@@ -9,20 +9,27 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
+var _ Statement = (*AlterTableRenameStmt)(nil)
+var _ Statement = (*AlterTableAddColumnStmt)(nil)
+
 // AlterTableRenameStmt is a DSL that allows creating a full ALTER TABLE query.
 type AlterTableRenameStmt struct {
 	TableName    string
 	NewTableName string
 }
 
+func (stmt *AlterTableRenameStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // IsReadOnly always returns false. It implements the Statement interface.
-func (stmt AlterTableRenameStmt) IsReadOnly() bool {
+func (stmt *AlterTableRenameStmt) IsReadOnly() bool {
 	return false
 }
 
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
+func (stmt *AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
 	var res Result
 
 	if stmt.TableName == "" {
@@ -43,7 +50,7 @@ func (stmt AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
 
 type AlterTableAddColumnStmt struct {
 	TableName        string
-	FieldConstraint  *database.FieldConstraint
+	ColumnConstraint *database.ColumnConstraint
 	TableConstraints database.TableConstraints
 }
 
@@ -52,13 +59,17 @@ func (stmt *AlterTableAddColumnStmt) IsReadOnly() bool {
 	return false
 }
 
+func (stmt *AlterTableAddColumnStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.
 // It implements the Statement interface.
 // The statement rebuilds the table.
 func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	var err error
 
-	// get the table before adding the field constraint
+	// get the table before adding the column constraint
 	// and assign the table to the table.Scan operator
 	// so that it can decode the records properly
 	scan := table.Scan(stmt.TableName)
@@ -70,11 +81,11 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	// get the current list of indexes
 	indexNames := ctx.Tx.Catalog.ListIndexes(stmt.TableName)
 
-	// add the field constraint to the table
-	err = ctx.Tx.CatalogWriter().AddFieldConstraint(
+	// add the column constraint to the table
+	err = ctx.Tx.CatalogWriter().AddColumnConstraint(
 		ctx.Tx,
 		stmt.TableName,
-		stmt.FieldConstraint,
+		stmt.ColumnConstraint,
 		stmt.TableConstraints)
 	if err != nil {
 		return Result{}, err
@@ -86,11 +97,11 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	for _, tc := range stmt.TableConstraints {
 		if tc.Unique {
 			idx, err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
-				Paths:  tc.Paths,
-				Unique: true,
+				Columns: tc.Columns,
+				Unique:  true,
 				Owner: database.Owner{
 					TableName: stmt.TableName,
-					Paths:     tc.Paths,
+					Columns:   tc.Columns,
 				},
 			})
 			if err != nil {
@@ -122,6 +133,9 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 
 		// validate the record against the new schema
 		s = s.Pipe(table.Validate(stmt.TableName))
+
+		// generate primary key
+		s = s.Pipe(table.GenerateKey(stmt.TableName))
 
 		// insert the record with the new primary key
 		s = s.Pipe(table.Insert(stmt.TableName))
@@ -163,7 +177,7 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 
 	// do NOT optimize the stream
 	return Result{
-		Iterator: &StreamStmtIterator{
+		Result: &StreamStmtResult{
 			Stream:  s,
 			Context: ctx,
 		},

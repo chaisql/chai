@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/types"
 )
 
@@ -14,98 +14,46 @@ type Param struct {
 	Name string
 
 	// Value is the parameter value.
-	Value interface{}
+	Value any
 }
 
 // Environment contains information about the context in which
 // the expression is evaluated.
 type Environment struct {
-	Params []Param
-	Vars   *object.FieldBuffer
-	Row    database.Row
-	DB     *database.Database
-	Tx     *database.Transaction
-
-	baseRow database.BasicRow
-
-	Outer *Environment
+	db     *database.Database
+	tx     *database.Transaction
+	params []Param
+	row    row.Row
 }
 
-func New(r database.Row, params ...Param) *Environment {
+func New(db *database.Database, tx *database.Transaction, params []Param, row row.Row) *Environment {
 	env := Environment{
-		Params: params,
-		Row:    r,
+		db:     db,
+		tx:     tx,
+		params: params,
+		row:    row,
 	}
 
 	return &env
 }
 
-func (e *Environment) GetOuter() *Environment {
-	return e.Outer
-}
-
-func (e *Environment) SetOuter(env *Environment) {
-	e.Outer = env
-}
-
-func (e *Environment) Get(path object.Path) (v types.Value, ok bool) {
-	if e.Vars != nil {
-		v, err := path.GetValueFromObject(e.Vars)
-		if err == nil {
-			return v, true
-		}
+func (e *Environment) CloneWithRow(r row.Row) *Environment {
+	return &Environment{
+		db:     e.db,
+		tx:     e.tx,
+		params: e.params,
+		row:    r,
 	}
-
-	if e.Outer != nil {
-		return e.Outer.Get(path)
-	}
-
-	return types.NewNullValue(), false
 }
 
-func (e *Environment) Set(path object.Path, v types.Value) {
-	if e.Vars == nil {
-		e.Vars = object.NewFieldBuffer()
-	}
-
-	e.Vars.Set(path, v)
-}
-
-func (e *Environment) GetRow() (database.Row, bool) {
-	if e.Row != nil {
-		return e.Row, true
-	}
-
-	if e.Outer != nil {
-		return e.Outer.GetRow()
-	}
-
-	return nil, false
-}
-
-func (e *Environment) SetRow(r database.Row) {
-	e.Row = r
-}
-
-func (e *Environment) SetRowFromObject(o types.Object) {
-	e.baseRow.ResetWith("", nil, o)
-	e.Row = &e.baseRow
-}
-
-func (e *Environment) SetParams(params []Param) {
-	e.Params = params
+func (e *Environment) GetRow() (row.Row, bool) {
+	return e.row, e.row != nil
 }
 
 func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
-	if len(e.Params) == 0 {
-		if e.Outer != nil {
-			return e.Outer.GetParamByName(name)
-		}
-	}
-
-	for _, nv := range e.Params {
+	for _, nv := range e.params {
 		if nv.Name == name {
-			return object.NewValue(nv.Value)
+			return row.NewValue(nv.Value)
 		}
 	}
 
@@ -113,40 +61,18 @@ func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
 }
 
 func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {
-	if len(e.Params) == 0 {
-		if e.Outer != nil {
-			return e.Outer.GetParamByIndex(pos)
-		}
-	}
-
 	idx := int(pos - 1)
-	if idx >= len(e.Params) {
+	if idx >= len(e.params) {
 		return nil, fmt.Errorf("cannot find param number %d", pos)
 	}
 
-	return object.NewValue(e.Params[idx].Value)
+	return row.NewValue(e.params[idx].Value)
 }
 
 func (e *Environment) GetTx() *database.Transaction {
-	if e.Tx != nil {
-		return e.Tx
-	}
-
-	if outer := e.GetOuter(); outer != nil {
-		return outer.GetTx()
-	}
-
-	return nil
+	return e.tx
 }
 
 func (e *Environment) GetDB() *database.Database {
-	if e.DB != nil {
-		return e.DB
-	}
-
-	if outer := e.GetOuter(); outer != nil {
-		return outer.GetDB()
-	}
-
-	return nil
+	return e.db
 }

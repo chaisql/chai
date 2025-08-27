@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cockroachdb/errors"
-
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/stream"
@@ -35,66 +33,165 @@ func ScanReverse(name string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
 }
 
-// Iterate over the objects of the table. Each object is stored in the environment
-// that is passed to the fn function, using SetCurrentValue.
-func (it *ScanOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (op *ScanOperator) Clone() stream.Operator {
+	return &ScanOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		IndexName:    op.IndexName,
+		Ranges:       op.Ranges.Clone(),
+		Reverse:      op.Reverse,
+	}
+}
+
+func (op *ScanOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
-	index, err := tx.Catalog.GetIndex(tx, it.IndexName)
+	index, err := tx.Catalog.GetIndex(tx, op.IndexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	info, err := tx.Catalog.GetIndexInfo(it.IndexName)
+	info, err := tx.Catalog.GetIndexInfo(op.IndexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	table, err := tx.Catalog.GetTable(tx, info.Owner.TableName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
+	var ranges []*database.Range
 
-	var ptr database.LazyRow
-
-	newEnv.SetRow(&ptr)
-
-	if len(it.Ranges) == 0 {
-		return index.IterateOnRange(nil, it.Reverse, func(key *tree.Key) error {
-			ptr.ResetWith(table, key)
-
-			return fn(&newEnv)
-		})
-	}
-
-	ranges, err := it.Ranges.Eval(in)
-	if err != nil || len(ranges) != len(it.Ranges) {
-		return err
-	}
-
-	for _, rng := range ranges {
-		r, err := rng.ToTreeRange(&table.Info.FieldConstraints, info.Paths)
+	if len(op.Ranges) == 0 {
+		ranges = []*database.Range{nil}
+	} else {
+		ranges, err = op.Ranges.Eval(in)
 		if err != nil {
-			return err
+			return nil, err
 		}
+	}
 
-		err = index.IterateOnRange(r, it.Reverse, func(key *tree.Key) error {
-			ptr.ResetWith(table, key)
+	return &ScanIterator{
+		table:   table,
+		index:   index,
+		info:    info,
+		ranges:  ranges,
+		reverse: op.Reverse,
+	}, nil
+}
 
-			return fn(&newEnv)
-		})
-		if errors.Is(err, stream.ErrStreamClosed) {
-			err = nil
-		}
-		if err != nil {
-			return err
-		}
+type ScanIterator struct {
+	table   *database.Table
+	index   *database.Index
+	info    *database.IndexInfo
+	ranges  []*database.Range
+	reverse bool
+
+	cursor int
+	it     *database.IndexIterator
+	err    error
+	lr     database.LazyRow
+}
+
+func (it *ScanIterator) Close() error {
+	if it.it != nil {
+		return it.it.Close()
 	}
 
 	return nil
+}
+
+func (it *ScanIterator) Next() bool {
+	var r *tree.Range
+
+	if it.it == nil {
+		rng := it.ranges[0]
+		if rng != nil {
+			r, it.err = rng.ToTreeRange(&it.table.Info.ColumnConstraints, it.info.Columns)
+			if it.err != nil {
+				return false
+			}
+		}
+
+		it.it, it.err = it.index.Iterator(r)
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	if it.it.Move(it.reverse) {
+		return true
+	}
+
+	it.it.Close()
+	it.it = nil
+
+	it.cursor++
+
+	if it.cursor < len(it.ranges) {
+		rng := it.ranges[it.cursor]
+		if rng != nil {
+			r, it.err = rng.ToTreeRange(&it.table.Info.ColumnConstraints, it.info.Columns)
+			if it.err != nil {
+				return false
+			}
+		}
+
+		it.it, it.err = it.index.Iterator(r)
+		if it.err != nil {
+			return false
+		}
+
+		return it.it.Start(it.reverse)
+	}
+
+	return false
+}
+
+func (it *ScanIterator) Error() error {
+	return it.err
+}
+
+func (it *ScanIterator) Row() (database.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.it == nil {
+		return nil, nil
+	}
+
+	key, err := it.it.Value()
+	if err != nil {
+		return nil, err
+	}
+
+	it.lr.ResetWith(it.table, key)
+
+	return &it.lr, nil
+}
+
+func (it *ScanOperator) Columns(env *environment.Environment) ([]string, error) {
+	tx := env.GetTx()
+
+	idxInfo, err := tx.Catalog.GetIndexInfo(it.IndexName)
+	if err != nil {
+		return nil, err
+	}
+
+	info, err := tx.Catalog.GetTableInfo(idxInfo.Owner.TableName)
+	if err != nil {
+		return nil, err
+	}
+
+	columns := make([]string, len(info.ColumnConstraints.Ordered))
+	for i, c := range info.ColumnConstraints.Ordered {
+		columns[i] = c.Column
+	}
+
+	return columns, nil
 }
 
 func (it *ScanOperator) String() string {

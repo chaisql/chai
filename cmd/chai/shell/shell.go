@@ -3,6 +3,7 @@ package shell
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -15,10 +16,8 @@ import (
 	"github.com/agnivade/levenshtein"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/cockroachdb/errors"
-	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/chaisql/chai"
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 )
 
@@ -35,7 +34,7 @@ var (
 
 // A Shell manages a command line shell program for manipulating a Chai database.
 type Shell struct {
-	db   *chai.DB
+	db   *sql.DB
 	opts *Options
 
 	displayTime bool
@@ -73,15 +72,15 @@ func Run(ctx context.Context, opts *Options) error {
 
 	sh.opts = opts
 
-	db, err := dbutil.OpenDB(ctx, sh.opts.DBPath)
+	db, err := dbutil.OpenDB(sh.opts.DBPath)
 	if err != nil {
 		return err
 	}
-	sh.db = db.WithContext(ctx)
+	sh.db = db
 	defer func() {
 		closeErr := sh.db.Close()
 		if closeErr != nil {
-			err = multierr.Append(err, closeErr)
+			err = errors.Join(err, closeErr)
 		}
 	}()
 
@@ -99,7 +98,7 @@ func Run(ctx context.Context, opts *Options) error {
 	defer func() {
 		dumpErr := sh.dumpHistory()
 		if dumpErr != nil {
-			err = multierr.Append(err, dumpErr)
+			err = errors.Join(err, dumpErr)
 		}
 	}()
 
@@ -119,8 +118,7 @@ func Run(ctx context.Context, opts *Options) error {
 
 	g.Go(func() error {
 		ui := newTUI(&sh, promptExecCh)
-
-		p := tea.NewProgram(ui)
+		p := tea.NewProgram(ui, tea.WithFPS(120))
 		_, err = p.Run()
 		if err == nil {
 			return errExitCommand
@@ -168,7 +166,6 @@ func (sh *Shell) runExecutor(ctx context.Context, promptExecCh chan queryTask) e
 				continue
 			}
 
-			// if showtime is true, ensure it's a query, and it was executed.
 			if displayTime {
 				fmt.Fprintf(input.w, "Time: %s\n", time.Since(start))
 			}
@@ -310,7 +307,7 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 	switch cmd[0] {
 	case ".timer":
 		if len(cmd) != 2 || (cmd[1] != "on" && cmd[1] != "off") {
-			return fmt.Errorf(getUsage(".timer"))
+			return errors.New(getUsage(".timer"))
 		}
 
 		sh.displayTime = cmd[1] == "on"
@@ -319,13 +316,13 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 		return runHelpCmd(out)
 	case ".tables":
 		if len(cmd) > 1 {
-			return fmt.Errorf(getUsage(".tables"))
+			return errors.New(getUsage(".tables"))
 		}
 
-		return runTablesCmd(sh.db, out)
+		return runTablesCmd(ctx, sh.db, out)
 	case ".indexes":
 		if len(cmd) > 2 {
-			return fmt.Errorf(getUsage(".indexes"))
+			return errors.New(getUsage(".indexes"))
 		}
 
 		var tableName string
@@ -333,30 +330,25 @@ func (sh *Shell) runCommand(ctx context.Context, in string, out io.Writer) error
 			tableName = cmd[0]
 		}
 
-		return runIndexesCmd(sh.db, tableName, out)
+		return runIndexesCmd(ctx, sh.db, tableName, out)
 	case ".dump":
-		return dbutil.Dump(sh.db, out, cmd[1:]...)
+		return dbutil.Dump(ctx, sh.db, out, cmd[1:]...)
 	case ".save":
 		if len(cmd) != 2 {
 			return fmt.Errorf("cannot save without output path")
 		}
 		return runSaveCmd(ctx, sh.db, cmd[1])
 	case ".schema":
-		return dbutil.DumpSchema(sh.db, out, cmd[1:]...)
+		return dbutil.DumpSchema(ctx, sh.db, out, cmd[1:]...)
 	case ".import":
 		if len(cmd) != 4 {
-			return fmt.Errorf(getUsage(".import"))
+			return errors.New(getUsage(".import"))
 		}
 
-		return runImportCmd(sh.db, cmd[1], cmd[2], cmd[3])
-	case ".doc":
-		if len(cmd) != 2 {
-			return fmt.Errorf(getUsage(".doc"))
-		}
-		return runDocCmd(cmd[1], out)
+		return runImportCmd(ctx, sh.db, cmd[1], cmd[2], cmd[3])
 	case ".restore":
 		if len(cmd) != 2 {
-			return fmt.Errorf(getUsage(".restore"))
+			return errors.New(getUsage(".restore"))
 		}
 		return dbutil.Restore(ctx, sh.db, cmd[1], "./")
 	default:

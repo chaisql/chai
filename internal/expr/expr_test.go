@@ -5,24 +5,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/environment"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
 )
-
-var row database.Row = func() database.Row {
-	return database.NewBasicRow(object.NewFromJSON([]byte(`{
-		"a": 1,
-		"b": {"foo bar": [1, 2]},
-		"c": [1, {"foo": "bar"}, [1, 2]]
-	}`)))
-}()
-
-var envWithDoc = environment.New(row)
 
 var nullLiteral = types.NewNullValue()
 
@@ -31,11 +17,8 @@ func TestString(t *testing.T) {
 		`10.4`,
 		"true",
 		"500",
-		`foo.bar[1]`,
+		`foo`,
 		`"hello"`,
-		`[1, 2, "foo"]`,
-		`{a: "foo", b: 10}`,
-		"pk()",
 		"CAST(10 AS integer)",
 	}
 
@@ -48,7 +31,7 @@ func TestString(t *testing.T) {
 	testFn := func(s string, want string) {
 		t.Helper()
 		e, err := parser.NewParser(strings.NewReader(s)).ParseExpr()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		require.Equal(t, want, fmt.Sprintf("%v", e))
 	}
 
@@ -57,7 +40,7 @@ func TestString(t *testing.T) {
 	}
 
 	for _, op := range operators {
-		want := fmt.Sprintf("10.4 %s foo.bar[1]", op)
+		want := fmt.Sprintf("10.4 %s foo", op)
 		testFn(want, want)
 	}
 }

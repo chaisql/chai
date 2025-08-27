@@ -1,18 +1,19 @@
 package kv
 
 import (
+	"github.com/chaisql/chai/internal/engine"
 	"github.com/cockroachdb/errors"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
-var _ Session = (*BatchSession)(nil)
+var _ engine.Session = (*BatchSession)(nil)
 
 var (
 	tombStone = []byte{0}
 )
 
 type BatchSession struct {
-	Store           *Store
+	Store           *PebbleEngine
 	DB              *pebble.DB
 	Batch           *pebble.Batch
 	closed          bool
@@ -21,7 +22,7 @@ type BatchSession struct {
 	keys            map[string]struct{}
 }
 
-func (s *Store) NewBatchSession() *BatchSession {
+func (s *PebbleEngine) NewBatchSession() engine.Session {
 	// before creating a batch session, create a shared snapshot
 	// at this point-in-time.
 	s.LockSharedSnapshot()
@@ -142,7 +143,7 @@ func (s *BatchSession) Insert(k, v []byte) error {
 		return err
 	}
 	if ok {
-		return ErrKeyAlreadyExists
+		return engine.ErrKeyAlreadyExists
 	}
 
 	s.keys[string(k)] = struct{}{}
@@ -190,7 +191,7 @@ func (s *BatchSession) Delete(k []byte) error {
 // DeleteRange deletes all keys in the given range.
 // This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	it, err := s.Iterator(&IterOptions{
+	it, err := s.Iterator(&engine.IterOptions{
 		LowerBound: start,
 		UpperBound: end,
 	})
@@ -209,7 +210,7 @@ func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
 	return nil
 }
 
-func (s *BatchSession) Iterator(opts *IterOptions) (Iterator, error) {
+func (s *BatchSession) Iterator(opts *engine.IterOptions) (engine.Iterator, error) {
 	err := s.applyBatch()
 	if err != nil {
 		return nil, err
@@ -224,6 +225,9 @@ func (s *BatchSession) Iterator(opts *IterOptions) (Iterator, error) {
 	}
 
 	it, err := s.DB.NewIter(popts)
+	if err != nil {
+		return nil, err
+	}
 
 	return &iterator{
 		Iterator: it,

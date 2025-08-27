@@ -5,7 +5,6 @@ import (
 
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 )
@@ -21,33 +20,59 @@ func Skip(e expr.Expr) *SkipOperator {
 	return &SkipOperator{E: e}
 }
 
-// Iterate implements the Operator interface.
-func (op *SkipOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
+func (op *SkipOperator) Clone() stream.Operator {
+	return &SkipOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		E:            expr.Clone(op.E),
+	}
+}
+
+func (op *SkipOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	v, err := op.E.Eval(in)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !v.Type().IsNumber() {
-		return fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
+		return nil, fmt.Errorf("offset expression must evaluate to a number, got %q", v.Type())
 	}
 
-	v, err = object.CastAsInteger(v)
+	v, err = v.CastAs(types.TypeBigint)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	n := types.As[int64](v)
-	var skipped int64
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if skipped < n {
-			skipped++
-			return nil
+	return &SkipIterator{
+		Iterator: prev,
+		n:        types.AsInt64(v),
+	}, nil
+}
+
+type SkipIterator struct {
+	stream.Iterator
+
+	skipped int64
+	n       int64
+}
+
+func (it *SkipIterator) Next() bool {
+	if it.skipped < it.n {
+		for it.Iterator.Next() {
+			if it.skipped < it.n {
+				it.skipped++
+				continue
+			}
+
+			return true
 		}
+	}
 
-		return f(out)
-	})
+	return it.Iterator.Next()
 }
 
 func (op *SkipOperator) String() string {

@@ -3,10 +3,10 @@ package database
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/stringutil"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
@@ -24,35 +24,35 @@ type TableInfo struct {
 	// Name of the rowid sequence if any.
 	RowidSequenceName string
 
-	FieldConstraints FieldConstraints
-	TableConstraints TableConstraints
+	ColumnConstraints ColumnConstraints
+	TableConstraints  TableConstraints
 
 	PrimaryKey *PrimaryKey
 }
 
-func (ti *TableInfo) AddFieldConstraint(newFc *FieldConstraint) error {
-	if ti.FieldConstraints.ByField == nil {
-		ti.FieldConstraints.ByField = make(map[string]*FieldConstraint)
+func (ti *TableInfo) AddColumnConstraint(newCc *ColumnConstraint) error {
+	if ti.ColumnConstraints.ByColumn == nil {
+		ti.ColumnConstraints.ByColumn = make(map[string]*ColumnConstraint)
 	}
 
-	return ti.FieldConstraints.Add(newFc)
+	return ti.ColumnConstraints.Add(newCc)
 }
 
 func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	// ensure the field paths exist
-	for _, p := range newTc.Paths {
-		if ti.GetFieldConstraintForPath(p) == nil {
-			return fmt.Errorf("field %q does not exist for table %q", p, ti.TableName)
+	for _, c := range newTc.Columns {
+		if ti.GetColumnConstraint(c) == nil {
+			return fmt.Errorf("column %q does not exist for table %q", c, ti.TableName)
 		}
 	}
 
 	// ensure paths are not duplicated
 	// i.e. PRIMARY KEY (a, a) is not allowed
 	m := make(map[string]bool)
-	for _, p := range newTc.Paths {
-		ps := p.String()
+	for _, c := range newTc.Columns {
+		ps := c
 		if _, ok := m[ps]; ok {
-			return fmt.Errorf("duplicate path %q for constraint", ps)
+			return fmt.Errorf("duplicate column %q for constraint", ps)
 		}
 		m[ps] = true
 	}
@@ -64,9 +64,9 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 			return fmt.Errorf("multiple primary keys for table %q are not allowed", ti.TableName)
 		}
 
-		// add NOT NULL constraint to paths
-		for _, p := range newTc.Paths {
-			fc := ti.GetFieldConstraintForPath(p)
+		// add NOT NULL constraint to columns
+		for _, p := range newTc.Columns {
+			fc := ti.GetColumnConstraint(p)
 			fc.IsNotNull = true
 		}
 
@@ -94,14 +94,14 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	case newTc.Unique:
 		// ensure there is only one unique constraint for the same paths
 		for _, tc := range ti.TableConstraints {
-			if tc.Unique && tc.Paths.IsEqual(newTc.Paths) {
-				return errors.Errorf("duplicate UNIQUE table contraint on %q", newTc.Paths)
+			if tc.Unique && slices.Equal(tc.Columns, newTc.Columns) {
+				return errors.Errorf("duplicate UNIQUE table contraint on %q", newTc.Columns)
 			}
 		}
 
 		// generate name if not provided
 		if newTc.Name == "" {
-			newTc.Name = fmt.Sprintf("%s_%s_unique", ti.TableName, pathsToIndexName(newTc.Paths))
+			newTc.Name = fmt.Sprintf("%s_%s_unique", ti.TableName, columnsToIndexName(newTc.Columns))
 		}
 	default:
 		return errors.New("invalid table constraint")
@@ -120,6 +120,27 @@ func (ti *TableInfo) AddTableConstraint(newTc *TableConstraint) error {
 	return nil
 }
 
+// Validate ensures the constraints are valid.
+func (ti *TableInfo) Validate() error {
+	// ensure the primary key is valid
+	if ti.PrimaryKey != nil {
+		if len(ti.PrimaryKey.Columns) != len(ti.PrimaryKey.Types) {
+			return errors.New("invalid primary key")
+		}
+	}
+
+	// ensure the constraints are valid
+	for _, tc := range ti.TableConstraints {
+		if tc.Check != nil {
+			if err := tc.Check.Validate(ti); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (ti *TableInfo) BuildPrimaryKey() {
 	var pk PrimaryKey
 
@@ -128,11 +149,11 @@ func (ti *TableInfo) BuildPrimaryKey() {
 			continue
 		}
 
-		pk.Paths = tc.Paths
+		pk.Columns = tc.Columns
 		pk.SortOrder = tc.SortOrder
 
-		for _, pp := range tc.Paths {
-			fc := ti.GetFieldConstraintForPath(pp)
+		for _, pp := range tc.Columns {
+			fc := ti.GetColumnConstraint(pp)
 			if fc != nil {
 				pk.Types = append(pk.Types, fc.Type)
 			} else {
@@ -152,8 +173,8 @@ func (ti *TableInfo) PrimaryKeySortOrder() tree.SortOrder {
 	return ti.PrimaryKey.SortOrder
 }
 
-func (ti *TableInfo) GetFieldConstraintForPath(p object.Path) *FieldConstraint {
-	return ti.FieldConstraints.GetFieldConstraintForPath(p)
+func (ti *TableInfo) GetColumnConstraint(column string) *ColumnConstraint {
+	return ti.ColumnConstraints.GetColumnConstraint(column)
 }
 
 func (ti *TableInfo) EncodeKey(key *tree.Key) ([]byte, error) {
@@ -169,42 +190,28 @@ func (ti *TableInfo) EncodeKey(key *tree.Key) ([]byte, error) {
 func (ti *TableInfo) String() string {
 	var s strings.Builder
 
-	fmt.Fprintf(&s, "CREATE TABLE %s", stringutil.NormalizeIdentifier(ti.TableName, '`'))
-	if len(ti.FieldConstraints.Ordered) > 0 || len(ti.TableConstraints) > 0 || ti.FieldConstraints.AllowExtraFields {
-		s.WriteString(" (")
-	}
+	fmt.Fprintf(&s, "CREATE TABLE %s (", stringutil.NormalizeIdentifier(ti.TableName, '`'))
 
-	var hasConstraints bool
-	for i, fc := range ti.FieldConstraints.Ordered {
+	for i, fc := range ti.ColumnConstraints.Ordered {
 		if i > 0 {
 			s.WriteString(", ")
 		}
 
 		s.WriteString(fc.String())
-
-		hasConstraints = true
 	}
 
 	for i, tc := range ti.TableConstraints {
-		if i > 0 || hasConstraints {
+		if i == 0 && len(ti.ColumnConstraints.Ordered) > 0 {
+			s.WriteString(", ")
+		}
+		if i > 0 {
 			s.WriteString(", ")
 		}
 
 		s.WriteString(tc.String())
-		hasConstraints = true
 	}
 
-	if ti.FieldConstraints.AllowExtraFields {
-		if hasConstraints {
-			s.WriteString(", ")
-		}
-		s.WriteString("...")
-		hasConstraints = true
-	}
-
-	if hasConstraints {
-		s.WriteString(")")
-	}
+	s.WriteString(")")
 
 	return s.String()
 }
@@ -212,20 +219,20 @@ func (ti *TableInfo) String() string {
 // Clone creates another tableInfo with the same values.
 func (ti *TableInfo) Clone() *TableInfo {
 	cp := *ti
-	cp.FieldConstraints.Ordered = nil
-	cp.FieldConstraints.ByField = make(map[string]*FieldConstraint)
+	cp.ColumnConstraints.Ordered = nil
+	cp.ColumnConstraints.ByColumn = make(map[string]*ColumnConstraint)
 	cp.TableConstraints = nil
-	cp.FieldConstraints.Ordered = append(cp.FieldConstraints.Ordered, ti.FieldConstraints.Ordered...)
-	for i := range ti.FieldConstraints.Ordered {
-		cp.FieldConstraints.ByField[ti.FieldConstraints.Ordered[i].Field] = ti.FieldConstraints.Ordered[i]
+	cp.ColumnConstraints.Ordered = append(cp.ColumnConstraints.Ordered, ti.ColumnConstraints.Ordered...)
+	for i := range ti.ColumnConstraints.Ordered {
+		cp.ColumnConstraints.ByColumn[ti.ColumnConstraints.Ordered[i].Column] = ti.ColumnConstraints.Ordered[i]
 	}
 	cp.TableConstraints = append(cp.TableConstraints, ti.TableConstraints...)
 	return &cp
 }
 
 type PrimaryKey struct {
-	Paths     object.Paths
-	Types     []types.ValueType
+	Columns   []string
+	Types     []types.Type
 	SortOrder tree.SortOrder
 }
 
@@ -234,7 +241,7 @@ type IndexInfo struct {
 	// namespace of the store associated with the index.
 	StoreNamespace tree.Namespace
 	IndexName      string
-	Paths          []object.Path
+	Columns        []string
 
 	// Sort order of each indexed field.
 	KeySortOrder tree.SortOrder
@@ -259,13 +266,13 @@ func (idx *IndexInfo) String() string {
 
 	fmt.Fprintf(&s, "INDEX %s ON %s (", stringutil.NormalizeIdentifier(idx.IndexName, '`'), stringutil.NormalizeIdentifier(idx.Owner.TableName, '`'))
 
-	for i, p := range idx.Paths {
+	for i, p := range idx.Columns {
 		if i > 0 {
 			s.WriteString(", ")
 		}
 
-		// Path
-		s.WriteString(p.String())
+		// Column
+		s.WriteString(p)
 
 		if idx.KeySortOrder.IsDesc(i) {
 			s.WriteString(" DESC")
@@ -281,10 +288,8 @@ func (idx *IndexInfo) String() string {
 func (i IndexInfo) Clone() *IndexInfo {
 	c := i
 
-	c.Paths = make([]object.Path, len(i.Paths))
-	for i, p := range i.Paths {
-		c.Paths[i] = p.Clone()
-	}
+	c.Columns = make([]string, len(i.Columns))
+	copy(c.Columns, i.Columns)
 
 	return &c
 }
@@ -348,5 +353,5 @@ func (s SequenceInfo) Clone() *SequenceInfo {
 // path must also be filled.
 type Owner struct {
 	TableName string
-	Paths     object.Paths
+	Columns   []string
 }

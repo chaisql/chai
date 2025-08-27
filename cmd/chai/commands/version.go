@@ -1,10 +1,11 @@
 package commands
 
 import (
+	"context"
 	"fmt"
 	"runtime/debug"
 
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewVersionCommand returns a cli.Command for "chai version".
@@ -12,7 +13,7 @@ func NewVersionCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "version",
 		Usage: "Shows Chai and Chai CLI version",
-		Action: func(c *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			var cliVersion, chaiVersion string
 			info, ok := debug.ReadBuildInfo()
 

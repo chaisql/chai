@@ -4,12 +4,13 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/path"
 	"github.com/chaisql/chai/internal/stream/rows"
+	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/types"
+	"github.com/cockroachdb/errors"
 )
 
 var optimizerRules = []func(sctx *StreamContext) error{
@@ -25,11 +26,11 @@ var optimizerRules = []func(sctx *StreamContext) error{
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
+func Optimize(s *stream.Stream, catalog *database.Catalog, params []environment.Param) (*stream.Stream, error) {
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
 		// If the first operation is a concat, optimize all streams individually.
 		for i, st := range firstNode.Streams {
-			ss, err := Optimize(st, catalog)
+			ss, err := Optimize(st, catalog, params)
 			if err != nil {
 				return nil, err
 			}
@@ -42,7 +43,7 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 	if firstNode, ok := s.First().(*stream.UnionOperator); ok {
 		// If the first operation is a union, optimize all streams individually.
 		for i, st := range firstNode.Streams {
-			ss, err := Optimize(st, catalog)
+			ss, err := Optimize(st, catalog, params)
 			if err != nil {
 				return nil, err
 			}
@@ -52,20 +53,23 @@ func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, erro
 		return s, nil
 	}
 
-	return optimize(s, catalog)
+	return optimize(s, catalog, params)
 }
 
 type StreamContext struct {
 	Catalog       *database.Catalog
+	TableInfo     *database.TableInfo
+	Params        []environment.Param
 	Stream        *stream.Stream
 	Filters       []*rows.FilterOperator
 	Projections   []*rows.ProjectOperator
 	TempTreeSorts []*rows.TempTreeSortOperator
 }
 
-func NewStreamContext(s *stream.Stream) *StreamContext {
+func NewStreamContext(s *stream.Stream, catalog *database.Catalog) *StreamContext {
 	sctx := StreamContext{
-		Stream: s,
+		Stream:  s,
+		Catalog: catalog,
 	}
 
 	n := s.First()
@@ -74,6 +78,14 @@ func NewStreamContext(s *stream.Stream) *StreamContext {
 
 	for n != nil {
 		switch t := n.(type) {
+		case *table.ScanOperator:
+			if catalog != nil {
+				ti, err := sctx.Catalog.GetTableInfo(t.TableName)
+				if err != nil {
+					panic(err)
+				}
+				sctx.TableInfo = ti
+			}
 		case *rows.FilterOperator:
 			if prevIsFilter || len(sctx.Filters) == 0 {
 				sctx.Filters = append(sctx.Filters, t)
@@ -130,9 +142,9 @@ func (sctx *StreamContext) removeProjectionNode(index int) {
 	sctx.Projections = append(sctx.Projections[:index], sctx.Projections[index+1:]...)
 }
 
-func optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
-	sctx := NewStreamContext(s)
-	sctx.Catalog = catalog
+func optimize(s *stream.Stream, catalog *database.Catalog, params []environment.Param) (*stream.Stream, error) {
+	sctx := NewStreamContext(s, catalog)
+	sctx.Params = params
 
 	for _, rule := range optimizerRules {
 		err := rule(sctx)
@@ -221,24 +233,25 @@ func PrecalculateExprRule(sctx *StreamContext) error {
 	for n != nil {
 		switch t := n.(type) {
 		case *rows.FilterOperator:
-			t.Expr, err = precalculateExpr(t.Expr)
+			t.Expr, err = precalculateExpr(sctx, t.Expr)
 		case *rows.ProjectOperator:
 			for i := range t.Exprs {
-				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
+				t.Exprs[i], err = precalculateExpr(sctx, t.Exprs[i])
 				if err != nil {
 					return err
 				}
 			}
 		case *rows.TempTreeSortOperator:
-			t.Expr, err = precalculateExpr(t.Expr)
+			t.Expr, err = precalculateExpr(sctx, t.Expr)
 		case *path.SetOperator:
-			t.Expr, err = precalculateExpr(t.Expr)
+			t.Expr, err = precalculateExpr(sctx, t.Expr)
 		case *rows.EmitOperator:
-			for i := range t.Exprs {
-				t.Exprs[i], err = precalculateExpr(t.Exprs[i])
+			for i := range t.Rows {
+				e, err := precalculateExpr(sctx, expr.LiteralExprList(t.Rows[i].Exprs))
 				if err != nil {
 					return err
 				}
+				t.Rows[i].Exprs = e.(expr.LiteralExprList)
 			}
 		}
 
@@ -256,62 +269,24 @@ func PrecalculateExprRule(sctx *StreamContext) error {
 // expression nodes when possible.
 // it returns a new expression with simplified nodes.
 // if no simplification is possible it returns the same expression.
-func precalculateExpr(e expr.Expr) (expr.Expr, error) {
+func precalculateExpr(sctx *StreamContext, e expr.Expr) (expr.Expr, error) {
 	switch t := e.(type) {
 	case expr.LiteralExprList:
 		// we assume that the list of expressions contains only literals
 		// until proven wrong.
-		literalsOnly := true
 		for i, te := range t {
-			newExpr, err := precalculateExpr(te)
+			newExpr, err := precalculateExpr(sctx, te)
 			if err != nil {
 				return nil, err
-			}
-			if _, ok := newExpr.(expr.LiteralValue); !ok {
-				literalsOnly = false
 			}
 			t[i] = newExpr
 		}
-
-		// if literalsOnly is still true, it means we have a list or expressions
-		// that only contain constant values (ex: [1, true]).
-		// We can transform that into a types.Array.
-		if literalsOnly {
-			var vb object.ValueBuffer
-			for i := range t {
-				vb.Append(t[i].(expr.LiteralValue).Value)
-			}
-
-			return expr.LiteralValue{Value: types.NewArrayValue(&vb)}, nil
+	case expr.PositionalParam, expr.NamedParam:
+		v, err := t.Eval(environment.New(nil, nil, sctx.Params, nil))
+		if err != nil {
+			return nil, err
 		}
-	case *expr.KVPairs:
-		// we assume that the list of kvpairs contains only literals
-		// until proven wrong.
-		literalsOnly := true
-
-		var err error
-		for i, kv := range t.Pairs {
-			kv.V, err = precalculateExpr(kv.V)
-			if err != nil {
-				return nil, err
-			}
-			if _, ok := kv.V.(expr.LiteralValue); !ok {
-				literalsOnly = false
-			}
-			t.Pairs[i] = kv
-		}
-
-		// if literalsOnly is still true, it means we have a list of kvpairs
-		// that only contain constant values (ex: {"a": 1, "b": true}.
-		// We can transform that into a types.Object.
-		if literalsOnly {
-			var fb object.FieldBuffer
-			for i := range t.Pairs {
-				fb.Add(t.Pairs[i].K, types.Value(t.Pairs[i].V.(expr.LiteralValue).Value))
-			}
-
-			return expr.LiteralValue{Value: types.NewObjectValue(&fb)}, nil
-		}
+		return expr.LiteralValue{Value: v}, nil
 	case expr.Operator:
 		// since expr.Operator is an interface,
 		// this optimization must only be applied to
@@ -324,11 +299,11 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 			return e, nil
 		}
 
-		lh, err := precalculateExpr(t.LeftHand())
+		lh, err := precalculateExpr(sctx, t.LeftHand())
 		if err != nil {
 			return nil, err
 		}
-		rh, err := precalculateExpr(t.RightHand())
+		rh, err := precalculateExpr(sctx, t.RightHand())
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +311,7 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 		t.SetRightHandExpr(rh)
 
 		if b, ok := t.(*expr.BetweenOperator); ok {
-			b.X, err = precalculateExpr(b.X)
+			b.X, err = precalculateExpr(sctx, b.X)
 			if err != nil {
 				return nil, err
 			}
@@ -346,21 +321,137 @@ func precalculateExpr(e expr.Expr) (expr.Expr, error) {
 			}
 		}
 
-		_, leftIsLit := lh.(expr.LiteralValue)
-		_, rightIsLit := rh.(expr.LiteralValue)
+		lv, leftIsLit := lh.(expr.LiteralValue)
+		rv, rightIsLit := rh.(expr.LiteralValue)
 		// if both operands are literals, we can precalculate them now
 		if leftIsLit && rightIsLit {
 			v, err := t.Eval(&environment.Environment{})
-			// any error encountered here is unexpected
 			if err != nil {
-				panic(err)
+				return nil, err
 			}
 			// we replace this expression with the result of its evaluation
 			return expr.LiteralValue{Value: v}, nil
 		}
+
+		// if one operand is a column and the other is a literal
+		// we can check if the types are compatible
+		lc, leftIsCol := lh.(*expr.Column)
+		rc, rightIsCol := rh.(*expr.Column)
+
+		if leftIsCol && rightIsLit {
+			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(lc.Name).Type
+			if !tp.Def().IsComparableWith(rv.Value.Type()) {
+				return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, rh)
+			}
+
+			if tp.Def().IsIndexComparableWith(rv.Value.Type()) {
+				v, err := rv.Value.CastAs(tp)
+				if err != nil {
+					return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, rh)
+				}
+				t.SetRightHandExpr(expr.LiteralValue{Value: v})
+			}
+		}
+
+		if leftIsLit && rightIsCol {
+			tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(rc.Name).Type
+			if !tp.Def().IsComparableWith(lv.Value.Type()) {
+				return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, lh)
+			}
+
+			if tp.Def().IsIndexComparableWith(lv.Value.Type()) {
+				v, err := lv.Value.CastAs(tp)
+				if err != nil {
+					return nil, errors.Errorf("invalid input syntax for type %s: %s", tp, lh)
+				}
+				t.SetLeftHandExpr(expr.LiteralValue{Value: v})
+			}
+		}
+
+		return t, nil
 	}
 
 	return e, nil
+}
+
+func CheckExprTypeRule(sctx *StreamContext) error {
+	n := sctx.Stream.Op
+	var err error
+
+	for n != nil {
+		switch t := n.(type) {
+		case *rows.FilterOperator:
+			err = checkExprType(sctx, t.Expr)
+		case *rows.ProjectOperator:
+			for i := range t.Exprs {
+				err = checkExprType(sctx, t.Exprs[i])
+				if err != nil {
+					return err
+				}
+			}
+		case *rows.TempTreeSortOperator:
+			err = checkExprType(sctx, t.Expr)
+		case *path.SetOperator:
+			err = checkExprType(sctx, t.Expr)
+		case *rows.EmitOperator:
+			for i := range t.Rows {
+				err := checkExprType(sctx, expr.LiteralExprList(t.Rows[i].Exprs))
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		if err != nil {
+			return err
+		}
+
+		n = n.GetPrev()
+	}
+
+	return err
+}
+
+func checkExprType(sctx *StreamContext, e expr.Expr) (err error) {
+	op, ok := e.(expr.Operator)
+	if !ok {
+		return nil
+	}
+
+	lh := op.LeftHand()
+	rh := op.RightHand()
+
+	lc, leftIsCol := lh.(*expr.Column)
+	rc, rightIsCol := rh.(*expr.Column)
+
+	lv, leftIsLit := lh.(expr.LiteralValue)
+	rv, rightIsLit := rh.(expr.LiteralValue)
+
+	if leftIsCol && rightIsCol {
+		return nil
+	}
+
+	if leftIsCol && rightIsLit {
+		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(lc.Name).Type
+		_, err := rv.Value.CastAs(tp)
+		if err != nil {
+			return errors.Errorf("invalid input syntax for type %s: %s", tp, rh)
+		}
+
+		return nil
+	}
+
+	if leftIsLit && rightIsCol {
+		tp := sctx.TableInfo.ColumnConstraints.GetColumnConstraint(rc.Name).Type
+		_, err := lv.Value.CastAs(tp)
+		if err != nil {
+			return errors.Errorf("invalid input syntax for type %s: %s", tp, lh)
+		}
+
+		return nil
+	}
+
+	return nil
 }
 
 // RemoveUnnecessaryFilterNodesRule removes any filter node whose
@@ -386,21 +477,6 @@ func RemoveUnnecessaryFilterNodesRule(sctx *StreamContext) error {
 
 			// if the expr is truthy, we remove the node from the stream
 			sctx.removeFilterNodeByIndex(i)
-		case *expr.InOperator:
-			// IN operator with empty array
-			// ex: WHERE a IN []
-			lv, ok := t.RightHand().(expr.LiteralValue)
-			if ok && lv.Value.Type() == types.ArrayValue {
-				l, err := object.ArrayLength(types.As[types.Array](lv.Value))
-				if err != nil {
-					return err
-				}
-				// if the array is empty, we return an empty stream
-				if l == 0 {
-					sctx.Stream = new(stream.Stream)
-					return nil
-				}
-			}
 		}
 	}
 
@@ -438,17 +514,17 @@ func RemoveUnnecessaryTempSortNodesRule(sctx *StreamContext) error {
 		return nil
 	}
 
-	lpath, ok := sctx.TempTreeSorts[0].Expr.(expr.Path)
+	lcol, ok := sctx.TempTreeSorts[0].Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
-	rpath, ok := sctx.TempTreeSorts[1].Expr.(expr.Path)
+	rcol, ok := sctx.TempTreeSorts[1].Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
-	if !lpath.IsEqual(rpath) {
+	if lcol.Name != rcol.Name {
 		return nil
 	}
 

@@ -34,12 +34,8 @@ type NotFoundError struct {
 	Name string
 }
 
-func NewRowNotFoundError() error {
-	return NewNotFoundError("row")
-}
-
 func NewNotFoundError(name string) error {
-	return &NotFoundError{Name: name}
+	return errors.WithStack(&NotFoundError{Name: name})
 }
 
 func (a NotFoundError) Error() string {

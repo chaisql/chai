@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/encoding"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
@@ -31,120 +31,26 @@ func TempTreeSortReverse(e expr.Expr) *TempTreeSortOperator {
 	return &TempTreeSortOperator{Expr: e, Desc: true}
 }
 
-func (op *TempTreeSortOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
-	db := in.GetDB()
-
-	catalog := in.GetTx().Catalog
-	tns := catalog.GetFreeTransientNamespace()
-	tr, cleanup, err := tree.NewTransient(db.Store.NewTransientSession(), tns, 0)
-	if err != nil {
-		return err
+func (op *TempTreeSortOperator) Clone() stream.Operator {
+	return &TempTreeSortOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Expr:         expr.Clone(op.Expr),
+		Desc:         op.Desc,
 	}
-	defer cleanup()
+}
 
-	var counter int64
-
-	var buf []byte
-	err = op.Prev.Iterate(in, func(out *environment.Environment) error {
-		buf = buf[:0]
-		// evaluate the sort expression
-		v, err := op.Expr.Eval(out)
-		if err != nil {
-			return err
-		}
-
-		if types.IsNull(v) {
-			// the expression might be pointing to the original row.
-			v, err = op.Expr.Eval(out.Outer)
-			if err != nil {
-				// the only valid error here is a missing field.
-				if !errors.Is(err, types.ErrFieldNotFound) {
-					return err
-				}
-			}
-		}
-
-		row, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		var info *database.TableInfo
-		if row.TableName() != "" {
-			info, err = catalog.GetTableInfo(row.TableName())
-			if err != nil {
-				return err
-			}
-
-			buf, err = info.EncodeObject(in.GetTx(), buf, row.Object())
-			if err != nil {
-				return err
-			}
-		} else {
-			buf, err = encoding.EncodeObject(buf, row.Object())
-			if err != nil {
-				return err
-			}
-		}
-
-		var encKey []byte
-		key := row.Key()
-		if key != nil {
-			encKey, err = info.EncodeKey(key)
-			if err != nil {
-				return err
-			}
-		}
-
-		tk := tree.NewKey(v, types.NewTextValue(row.TableName()), types.NewBlobValue(encKey), types.NewIntegerValue(counter))
-
-		counter++
-
-		return tr.Put(tk, buf)
-	})
+func (op *TempTreeSortOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	var newEnv environment.Environment
-	newEnv.SetOuter(in)
-	var br database.BasicRow
-	return tr.IterateOnRange(nil, op.Desc, func(k *tree.Key, data []byte) error {
-		kv, err := k.Decode()
-		if err != nil {
-			return err
-		}
-
-		var tableName string
-		tf := kv[1]
-		if tf.Type() != types.NullValue {
-			tableName = types.As[string](tf)
-		}
-
-		var key *tree.Key
-		kf := kv[2]
-		if kf.Type() != types.NullValue {
-			key = tree.NewEncodedKey(types.As[[]byte](kf))
-		}
-
-		var obj types.Object
-
-		if tableName != "" {
-			info, err := catalog.GetTableInfo(tableName)
-			if err != nil {
-				return err
-			}
-			obj = database.NewEncodedObject(&info.FieldConstraints, data)
-		} else {
-			obj = encoding.DecodeObject(data, false /* intAsDouble */)
-		}
-
-		br.ResetWith(tableName, key, obj)
-
-		newEnv.SetRow(&br)
-
-		return fn(&newEnv)
-	})
+	return &TempTreeSortIterator{
+		prev: prev,
+		expr: op.Expr,
+		desc: op.Desc,
+		env:  in,
+	}, nil
 }
 
 func (op *TempTreeSortOperator) String() string {
@@ -153,4 +59,205 @@ func (op *TempTreeSortOperator) String() string {
 	}
 
 	return fmt.Sprintf("rows.TempTreeSort(%s)", op.Expr)
+}
+
+func encodeTempRow(buf []byte, r row.Row) ([]byte, error) {
+	var values []types.Value
+	err := r.Iterate(func(column string, v types.Value) error {
+		values = append(values, types.NewTextValue(column))
+		values = append(values, types.NewIntegerValue(int32(v.Type())))
+		values = append(values, v)
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to iterate row")
+	}
+
+	return types.EncodeValuesAsKey(buf, values...)
+}
+
+func decodeTempRow(b []byte) row.Row {
+	cb := row.NewColumnBuffer()
+
+	for len(b) > 0 {
+		colv, n := types.DecodeValue(b)
+		b = b[n:]
+		typev, n := types.DecodeValue(b)
+		b = b[n:]
+		v, n := types.Type(types.AsInt32(typev)).Def().Decode(b)
+		cb.Add(types.AsString(colv), v)
+		b = b[n:]
+	}
+
+	return cb
+}
+
+type TempTreeSortIterator struct {
+	prev    stream.Iterator
+	expr    expr.Expr
+	desc    bool
+	env     *environment.Environment
+	err     error
+	temp    *tree.Tree
+	tempIt  *tree.Iterator
+	cleanup func() error
+}
+
+func (it *TempTreeSortIterator) Close() error {
+	var errs []error
+	if it.tempIt != nil {
+		err := it.tempIt.Close()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if it.cleanup != nil {
+		err := it.cleanup()
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	err := it.prev.Close()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
+}
+
+func (it *TempTreeSortIterator) Next() bool {
+	it.err = nil
+
+	if it.tempIt != nil {
+		return it.tempIt.Move(it.desc)
+	}
+
+	// create a temporary tree
+	db := it.env.GetDB()
+	tns := it.env.GetTx().Catalog.GetFreeTransientNamespace()
+	it.temp, it.cleanup, it.err = tree.NewTransient(db.Engine.NewTransientSession(), tns, 0)
+	if it.err != nil {
+		return false
+	}
+
+	// iterate over the steam and add it to the temp tree
+	if err := it.iterateOnStream(); err != nil {
+		it.err = err
+		return false
+	}
+
+	it.tempIt, it.err = it.temp.Iterator(nil)
+	if it.err != nil {
+		return false
+	}
+
+	return it.tempIt.Start(it.desc)
+}
+
+func (it *TempTreeSortIterator) iterateOnStream() error {
+	var buf []byte
+	var counter int64
+
+	for it.prev.Next() {
+		buf = buf[:0]
+
+		r, err := it.prev.Row()
+		if err != nil {
+			return err
+		}
+
+		// evaluate the sort expression
+		v, err := it.expr.Eval(it.env.CloneWithRow(r))
+		if err != nil {
+			if !errors.Is(err, types.ErrColumnNotFound) {
+				return err
+			}
+
+			v = nil
+		}
+
+		if v == nil {
+			// the expression might be pointing to the original row.
+			dr, ok := r.(*database.BasicRow)
+			if ok {
+				v, err = it.expr.Eval(it.env.CloneWithRow(dr.OriginalRow()))
+				if err != nil {
+					return err
+				}
+			}
+			if !ok {
+				return types.ErrColumnNotFound
+			}
+		}
+
+		buf, err = encodeTempRow(buf, r)
+		if err != nil {
+			return errors.Wrap(err, "failed to encode row")
+		}
+
+		var encKey []byte
+		key := r.Key()
+		if key != nil {
+			info, err := it.env.GetTx().Catalog.GetTableInfo(r.TableName())
+			if err != nil {
+				return err
+			}
+			encKey, err = info.EncodeKey(key)
+			if err != nil {
+				return err
+			}
+		}
+
+		tk := tree.NewKey(v, types.NewTextValue(r.TableName()), types.NewBlobValue(encKey), types.NewBigintValue(counter))
+
+		counter++
+
+		err = it.temp.Put(tk, buf)
+		if err != nil {
+			return err
+		}
+	}
+	if err := it.prev.Error(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (it *TempTreeSortIterator) Error() error {
+	return it.err
+}
+
+func (it *TempTreeSortIterator) Row() (database.Row, error) {
+	kv, err := it.tempIt.Key().Decode()
+	if err != nil {
+		return nil, err
+	}
+
+	var tableName string
+	tf := kv[1]
+	if tf.Type() != types.TypeNull {
+		tableName = types.AsString(tf)
+	}
+
+	var key *tree.Key
+	kf := kv[2]
+	if kf.Type() != types.TypeNull {
+		key = tree.NewEncodedKey(types.AsByteSlice(kf))
+	}
+
+	data, err := it.tempIt.Value()
+	if err != nil {
+		return nil, err
+	}
+
+	r := decodeTempRow(data)
+
+	var basicRow database.BasicRow
+
+	basicRow.ResetWith(tableName, key, r)
+
+	return &basicRow, nil
 }

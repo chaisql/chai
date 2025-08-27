@@ -5,11 +5,8 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,27 +19,27 @@ func TestParserCreateIndex(t *testing.T) {
 	}{
 		{"Basic", "CREATE INDEX idx ON test (foo)", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{object.Path(testutil.ParseObjectPath(t, "foo"))},
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			}}, false},
-		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo.bar[1])", &statement.CreateIndexStmt{
+		{"If not exists", "CREATE INDEX IF NOT EXISTS idx ON test (foo)", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{object.Path(testutil.ParseObjectPath(t, "foo.bar[1]"))},
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"},
 			}, IfNotExists: true}, false},
-		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo[3].baz)", &statement.CreateIndexStmt{
+		{"Unique", "CREATE UNIQUE INDEX IF NOT EXISTS idx ON test (foo)", &statement.CreateIndexStmt{
 			Info: database.IndexInfo{
-				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Paths: []object.Path{object.Path(testutil.ParseObjectPath(t, "foo[3].baz"))}, Unique: true,
+				IndexName: "idx", Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"}, Unique: true,
 			}, IfNotExists: true}, false},
-		{"No name", "CREATE UNIQUE INDEX ON test (foo[3].baz)", &statement.CreateIndexStmt{
-			Info: database.IndexInfo{Owner: database.Owner{TableName: "test"}, Paths: []object.Path{object.Path(testutil.ParseObjectPath(t, "foo[3].baz"))}, Unique: true}}, false},
-		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo[3].baz)", nil, true},
+		{"No name", "CREATE UNIQUE INDEX ON test (foo)", &statement.CreateIndexStmt{
+			Info: database.IndexInfo{Owner: database.Owner{TableName: "test"}, Columns: []string{"foo"}, Unique: true}}, false},
+		{"No name with IF NOT EXISTS", "CREATE UNIQUE INDEX IF NOT EXISTS ON test (foo)", nil, true},
 		{"More than 1 path", "CREATE INDEX idx ON test (foo, bar)",
 			&statement.CreateIndexStmt{
 				Info: database.IndexInfo{
 					IndexName: "idx",
 					Owner:     database.Owner{TableName: "test"},
-					Paths: []object.Path{
-						object.Path(testutil.ParseObjectPath(t, "foo")),
-						object.Path(testutil.ParseObjectPath(t, "bar")),
+					Columns: []string{
+						"foo",
+						"bar",
 					},
 				},
 			},
@@ -54,10 +51,10 @@ func TestParserCreateIndex(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})
@@ -195,10 +192,10 @@ func TestParserCreateSequence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			q, err := parser.ParseQuery(test.s)
 			if test.errored {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Len(t, q.Statements, 1)
 			require.EqualValues(t, test.expected, q.Statements[0])
 		})

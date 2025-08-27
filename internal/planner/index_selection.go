@@ -1,14 +1,15 @@
 package planner
 
 import (
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/index"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/chaisql/chai/internal/tree"
+	"github.com/chaisql/chai/internal/types"
 )
 
 // SelectIndex attempts to replace a sequential scan by an index scan or a pk scan by
@@ -92,7 +93,7 @@ func SelectIndex(sctx *StreamContext) error {
 	}
 
 	// ensure the table exists
-	_, err := sctx.Catalog.GetTableInfo(seq.TableName)
+	info, err := sctx.Catalog.GetTableInfo(seq.TableName)
 	if err != nil {
 		return err
 	}
@@ -105,6 +106,7 @@ func SelectIndex(sctx *StreamContext) error {
 	is := indexSelector{
 		tableScan: seq,
 		sctx:      sctx,
+		info:      info,
 	}
 
 	return is.selectIndex()
@@ -116,6 +118,7 @@ func SelectIndex(sctx *StreamContext) error {
 type indexSelector struct {
 	tableScan *table.ScanOperator
 	sctx      *StreamContext
+	info      *database.TableInfo
 }
 
 func (i *indexSelector) selectIndex() error {
@@ -126,7 +129,11 @@ func (i *indexSelector) selectIndex() error {
 
 	// get all contiguous filter nodes that can be indexed
 	for _, f := range i.sctx.Filters {
-		filter := i.isFilterIndexable(f)
+		filter, err := i.isFilterIndexable(f)
+		if err != nil {
+			return err
+		}
+
 		if filter == nil {
 			continue
 		}
@@ -158,7 +165,7 @@ func (i *indexSelector) selectIndex() error {
 	}
 	pk := tb.PrimaryKey
 	if pk != nil {
-		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Paths, pk.SortOrder, nodes)
+		selected = i.associateIndexWithNodes(tb.TableName, false, false, pk.Columns, pk.SortOrder, nodes)
 		if selected != nil {
 			cost = selected.Cost()
 		}
@@ -172,7 +179,7 @@ func (i *indexSelector) selectIndex() error {
 			return err
 		}
 
-		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Paths, idxInfo.KeySortOrder, nodes)
+		candidate := i.associateIndexWithNodes(idxInfo.IndexName, true, idxInfo.Unique, idxInfo.Columns, idxInfo.KeySortOrder, nodes)
 
 		if candidate == nil {
 			continue
@@ -224,44 +231,44 @@ func (i *indexSelector) selectIndex() error {
 	return nil
 }
 
-func (i *indexSelector) isFilterIndexable(f *rows.FilterOperator) *indexableNode {
+func (i *indexSelector) isFilterIndexable(f *rows.FilterOperator) (*indexableNode, error) {
 	// only operators can associate this node to an index
 	op, ok := f.Expr.(expr.Operator)
 	if !ok {
-		return nil
+		return nil, nil
 	}
 
 	// ensure the operator is compatible
 	if !operatorIsIndexCompatible(op) {
-		return nil
+		return nil, nil
 	}
 
 	// determine if the operator could benefit from an index
-	ok, path, e := operatorCanUseIndex(op)
-	if !ok {
-		return nil
+	ok, path, e, err := i.operatorCanUseIndex(op)
+	if !ok || err != nil {
+		return nil, err
 	}
 
 	node := indexableNode{
 		node:     f,
-		path:     path,
+		col:      path,
 		operator: op.Token(),
 		operand:  e,
 	}
 
-	return &node
+	return &node, nil
 }
 
 func (i *indexSelector) isTempTreeSortIndexable(n *rows.TempTreeSortOperator) *indexableNode {
-	// only paths can be associated with an index
-	path, ok := n.Expr.(expr.Path)
+	// only columns can be associated with an index
+	col, ok := n.Expr.(*expr.Column)
 	if !ok {
 		return nil
 	}
 
 	return &indexableNode{
 		node:     n,
-		path:     object.Path(path),
+		col:      col.Name,
 		desc:     n.Desc,
 		operator: scanner.ORDER,
 	}
@@ -282,14 +289,14 @@ func (i *indexSelector) isTempTreeSortIndexable(n *rows.TempTreeSortOperator) *i
 //	 -> range = {min: [3], exact: true}
 //	rows.Filter(a IN (1, 2))
 //	 -> ranges = [1], [2]
-func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, paths []object.Path, sortOrder tree.SortOrder, nodes indexableNodes) *candidate {
-	found := make([]*indexableNode, 0, len(paths))
+func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, isUnique bool, columns []string, sortOrder tree.SortOrder, nodes indexableNodes) *candidate {
+	found := make([]*indexableNode, 0, len(columns))
 	var desc bool
 
 	var hasIn bool
 	var sorter *indexableNode
-	for _, p := range paths {
-		ns := nodes.getByPath(p)
+	for _, p := range columns {
+		ns := nodes.getByColumn(p)
 		if len(ns) == 0 {
 			break
 		}
@@ -316,7 +323,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 		}
 
 		// if we have both a filter and a TempSort node, we can merge them
-		if filter != nil && sorter != nil {
+		if sorter != nil {
 			filter.orderBy = sorter
 			sorter = nil
 		}
@@ -394,7 +401,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 	if !hasIn {
 		ranges = stream.Ranges{i.buildRangeFromFilterNodes(found...)}
 	} else {
-		ranges = i.buildRangesFromFilterNodes(paths, found)
+		ranges = i.buildRangesFromFilterNodes(columns, found)
 	}
 
 	c := candidate{
@@ -436,7 +443,7 @@ func (i *indexSelector) associateIndexWithNodes(treeName string, isIndex bool, i
 	return &c
 }
 
-func (i *indexSelector) buildRangesFromFilterNodes(paths []object.Path, filters []*indexableNode) stream.Ranges {
+func (i *indexSelector) buildRangesFromFilterNodes(columns []string, filters []*indexableNode) stream.Ranges {
 	// build a 2 dimentional list of all expressions
 	// so that: rows.Filter(a IN (10, 11)) | rows.Filter(b = 20) | rows.Filter(c IN (30, 31))
 	// becomes:
@@ -467,7 +474,7 @@ func (i *indexSelector) buildRangesFromFilterNodes(paths []object.Path, filters 
 	var ranges stream.Ranges
 
 	i.walkExpr(l, func(row []expr.Expr) {
-		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, paths[:len(row)], row...))
+		ranges = append(ranges, i.buildRangeFromOperator(scanner.EQ, columns[:len(row)], row...))
 	})
 
 	return ranges
@@ -496,23 +503,23 @@ func (i *indexSelector) walkExpr(l [][]expr.Expr, fn func(row []expr.Expr)) {
 }
 
 func (i *indexSelector) buildRangeFromFilterNodes(filters ...*indexableNode) stream.Range {
-	// first, generate a list of paths and a list of expressions
-	paths := make([]object.Path, 0, len(filters))
+	// first, generate a list of colums and a list of expressions
+	colums := make([]string, 0, len(filters))
 	el := make(expr.LiteralExprList, 0, len(filters))
 	for i := range filters {
-		paths = append(paths, filters[i].path)
+		colums = append(colums, filters[i].col)
 		el = append(el, filters[i].operand)
 	}
 
 	// use last filter node to determine the direction of the range
 	filter := filters[len(filters)-1]
 
-	return i.buildRangeFromOperator(filter.operator, paths, el...)
+	return i.buildRangeFromOperator(filter.operator, colums, el...)
 }
 
-func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, paths []object.Path, operands ...expr.Expr) stream.Range {
+func (i *indexSelector) buildRangeFromOperator(lastOp scanner.Token, columns []string, operands ...expr.Expr) stream.Range {
 	rng := stream.Range{
-		Paths: paths,
+		Columns: columns,
 	}
 
 	el := expr.LiteralExprList(operands)
@@ -569,21 +576,21 @@ type indexableNode struct {
 	// For filter nodes
 	// the expression of the node
 	// has been broken into
-	// <path> <operator> <operand>
+	// <col> <operator> <operand>
 	// Ex:   WHERE a.b[0] > 5 + 5
 	// Gives:
-	// - path: a.b[0]
+	// - col: a.b[0]
 	// - operator: scanner.GT
 	// - operand: 5 + 5
 	// For TempTreeSort nodes
 	// the expression of the node
 	// has been broken into
-	// <path> <direction>
+	// <col> <direction>
 	// Ex:  ORDER BY a.b[0] ASC
 	// Gives:
-	// - path: a.b[0]
+	// - col: a.b[0]
 	// - desc: false
-	path     object.Path
+	col      string
 	operator scanner.Token
 	operand  expr.Expr
 	desc     bool
@@ -595,13 +602,13 @@ type indexableNode struct {
 
 type indexableNodes []*indexableNode
 
-// getByPath returns all indexable nodes for the given path.
+// getByColumn returns all indexable nodes for the given path.
 // TODO(asdine): add a rule that merges nodes that point to the
 // same path.
-func (n indexableNodes) getByPath(p object.Path) []*indexableNode {
+func (n indexableNodes) getByColumn(c string) []*indexableNode {
 	var nodes []*indexableNode
 	for _, fn := range n {
-		if fn.path.IsEqual(p) {
+		if fn.col == c {
 			nodes = append(nodes, fn)
 		}
 	}
@@ -654,62 +661,144 @@ func operatorIsIndexCompatible(op expr.Operator) bool {
 	return false
 }
 
-func operatorCanUseIndex(op expr.Operator) (bool, object.Path, expr.Expr) {
-	lf, leftIsPath := op.LeftHand().(expr.Path)
-	rf, rightIsPath := op.RightHand().(expr.Path)
+func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, expr.Expr, error) {
+	switch op.Token() {
+	case scanner.IN:
+		return i.inOperatorCanUseIndex(op)
+	case scanner.BETWEEN:
+		return i.betweenOperatorCanUseIndex(op)
+	}
 
-	// Special case for IN operator: only left operand is valid for index usage
-	// valid:   a IN [1, 2, 3]
-	// invalid: 1 IN a
-	// invalid: a IN (b + 1, 2)
-	if op.Token() == scanner.IN {
-		if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
-			rh := op.RightHand()
-			// The IN operator can use indexes only if the right hand side is an expression list.
-			if _, ok := rh.(expr.LiteralExprList); !ok {
-				return false, nil, nil
-			}
-			return true, object.Path(lf), rh
+	lh := op.LeftHand()
+	rh := op.RightHand()
+	lc, leftIsCol := lh.(*expr.Column)
+	rc, rightIsCol := rh.(*expr.Column)
+
+	var cc *database.ColumnConstraint
+	if leftIsCol {
+		cc = i.info.ColumnConstraints.GetColumnConstraint(lc.Name)
+	} else if rightIsCol {
+		cc = i.info.ColumnConstraints.GetColumnConstraint(rc.Name)
+	}
+	if cc == nil {
+		return false, "", nil, nil
+	}
+
+	// column OP literal
+	if leftIsCol {
+		ok, v, err := exprIsCompatibleLiteral(rh, cc.Type)
+		if !ok || err != nil {
+			return false, "", nil, err
 		}
 
-		return false, nil, nil
+		return true, lc.Name, v, nil
 	}
 
-	// Special case for BETWEEN operator: Given this expression (x BETWEEN a AND b),
-	// we can only use the index if the "x" is a path and "a" and "b" don't contain path expressions.
-	if op.Token() == scanner.BETWEEN {
-		bt := op.(*expr.BetweenOperator)
-		x, xIsPath := bt.X.(expr.Path)
-		if !xIsPath || exprContainsPath(bt.LeftHand()) || exprContainsPath(bt.RightHand()) {
-			return false, nil, nil
+	// literal OP column
+	if rightIsCol {
+		ok, v, err := exprIsCompatibleLiteral(lh, cc.Type)
+		if !ok || err != nil {
+			return false, "", nil, err
 		}
 
-		return true, object.Path(x), expr.LiteralExprList{bt.LeftHand(), bt.RightHand()}
+		return true, rc.Name, v, nil
 	}
 
-	// path OP expr
-	if leftIsPath && !rightIsPath && !exprContainsPath(op.RightHand()) {
-		return true, object.Path(lf), op.RightHand()
-	}
-
-	// expr OP path
-	if rightIsPath && !leftIsPath && !exprContainsPath(op.LeftHand()) {
-		return true, object.Path(rf), op.LeftHand()
-	}
-
-	return false, nil, nil
+	return false, "", nil, nil
 }
 
-func exprContainsPath(e expr.Expr) bool {
-	var hasPath bool
+// Special case for IN operator: only left operand is valid for index usage
+// valid:   a IN (1, 2, 3)
+// invalid: 1 IN a
+// invalid: a IN (b + 1, 2)
+func (i *indexSelector) inOperatorCanUseIndex(op expr.Operator) (bool, string, expr.Expr, error) {
+	rh := op.RightHand()
+	_, rightIsCol := rh.(*expr.Column)
+	if rightIsCol {
+		return false, "", nil, nil
+	}
 
-	expr.Walk(e, func(e expr.Expr) bool {
-		if _, ok := e.(expr.Path); ok {
-			hasPath = true
-			return false
+	lh := op.LeftHand()
+	lc, leftIsCol := lh.(*expr.Column)
+
+	if !leftIsCol {
+		return false, "", nil, nil
+	}
+
+	// The IN operator can use indexes only if:
+	// - the right hand side is an expression list
+	// - each element of the list is a literal value
+	// - each value has the same type as the column
+	rlist, ok := rh.(expr.LiteralExprList)
+	if !ok {
+		return false, "", nil, nil
+	}
+
+	cc := i.info.ColumnConstraints.GetColumnConstraint(lc.Name)
+	if cc == nil {
+		return false, "", nil, nil
+	}
+
+	// Ensure that each element of the list is a literal value
+	// and that each value has the same type as the column
+	for i, e := range rlist {
+		ok, v, err := exprIsCompatibleLiteral(e, cc.Type)
+		if !ok || err != nil {
+			return false, "", nil, err
 		}
-		return true
-	})
 
-	return hasPath
+		rlist[i] = v
+	}
+
+	return true, lc.Name, rlist, nil
+}
+
+// Special case for BETWEEN operator: Given this expression (x BETWEEN a AND b),
+// we can only use the index if the "x" is a column and "a" and "b" are literal values.
+func (i *indexSelector) betweenOperatorCanUseIndex(op expr.Operator) (bool, string, expr.Expr, error) {
+	lh := op.LeftHand()
+	rh := op.RightHand()
+
+	bt := op.(*expr.BetweenOperator)
+	x, xIsCol := bt.X.(*expr.Column)
+	if !xIsCol {
+		return false, "", nil, nil
+	}
+
+	cc := i.info.ColumnConstraints.GetColumnConstraint(x.Name)
+	if cc == nil {
+		return false, "", nil, nil
+	}
+
+	lok, lv, err := exprIsCompatibleLiteral(lh, cc.Type)
+	if err != nil {
+		return false, "", nil, err
+	}
+	rok, rv, err := exprIsCompatibleLiteral(rh, cc.Type)
+	if err != nil {
+		return false, "", nil, err
+	}
+	if !xIsCol || !lok || !rok {
+		return false, "", nil, nil
+	}
+
+	return true, x.Name, expr.LiteralExprList{lv, rv}, nil
+}
+
+func exprIsCompatibleLiteral(e expr.Expr, tp types.Type) (bool, expr.LiteralValue, error) {
+	l, ok := e.(expr.LiteralValue)
+	if !ok {
+		return false, expr.LiteralValue{}, nil
+	}
+
+	if !l.Value.Type().Def().IsIndexComparableWith(tp) {
+		return false, expr.LiteralValue{}, nil
+	}
+
+	v, err := l.Value.CastAs(tp)
+	if err != nil {
+		return false, expr.LiteralValue{}, err
+	}
+
+	return true, expr.LiteralValue{Value: v}, nil
 }

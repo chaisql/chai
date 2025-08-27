@@ -3,23 +3,20 @@ package commands
 import (
 	"context"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/chaisql/chai/cmd/chai/dbutil"
 	"github.com/chaisql/chai/cmd/chai/shell"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // NewApp creates the Chai CLI app.
-func NewApp() *cli.App {
-	app := cli.NewApp()
-	app.Name = "chai"
-	app.Usage = "Shell for the ChaiSQL database"
-	app.EnableBashCompletion = true
+func NewApp() *cli.Command {
+	var cmd cli.Command
+	cmd.Name = "chai"
+	cmd.Usage = "Shell for the ChaiSQL database"
+	cmd.EnableShellCompletion = true
 
-	app.Commands = []*cli.Command{
-		NewInsertCommand(),
+	cmd.Commands = []*cli.Command{
 		NewVersionCommand(),
 		NewDumpCommand(),
 		NewRestoreCommand(),
@@ -27,48 +24,24 @@ func NewApp() *cli.App {
 		NewPebbleCommand(),
 	}
 
-	// inject cancelable context to all commands (except the shell command)
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		defer cancel()
-		<-ch
-	}()
-
-	for i := range app.Commands {
-		action := app.Commands[i].Action
-		app.Commands[i].Action = func(c *cli.Context) error {
-			c.Context = ctx
-			return action(c)
-		}
-	}
-
 	// Root command
-	app.Action = func(c *cli.Context) error {
-		dbpath := c.Args().First()
+	cmd.Action = func(ctx context.Context, cmd *cli.Command) error {
+		dbpath := cmd.Args().First()
 
 		if dbutil.CanReadFromStandardInput() {
-			db, err := dbutil.OpenDB(c.Context, dbpath)
+			db, err := dbutil.OpenDB(dbpath)
 			if err != nil {
 				return err
 			}
 			defer db.Close()
 
-			return dbutil.ExecSQL(c.Context, db, os.Stdin, os.Stdout)
+			return dbutil.ExecSQL(ctx, db, os.Stdin, os.Stdout)
 		}
 
-		return shell.Run(c.Context, &shell.Options{
+		return shell.Run(ctx, &shell.Options{
 			DBPath: dbpath,
 		})
 	}
 
-	app.After = func(c *cli.Context) error {
-		cancel()
-		return nil
-	}
-
-	return app
+	return &cmd
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/chaisql/chai/internal/stream/table"
 )
 
+var _ Statement = (*DeleteStmt)(nil)
+
 // DeleteConfig holds DELETE configuration.
 type DeleteStmt struct {
 	basePreparedStatement
@@ -16,7 +18,7 @@ type DeleteStmt struct {
 	TableName        string
 	WhereExpr        expr.Expr
 	OffsetExpr       expr.Expr
-	OrderBy          expr.Path
+	OrderBy          *expr.Column
 	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
 }
@@ -30,6 +32,30 @@ func NewDeleteStatement() *DeleteStmt {
 	}
 
 	return &p
+}
+
+func (stmt *DeleteStmt) Bind(ctx *Context) error {
+	err := BindExpr(ctx, stmt.TableName, stmt.WhereExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.OffsetExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.OrderBy)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.LimitExpr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {

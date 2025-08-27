@@ -5,8 +5,9 @@ import (
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
 )
+
+var _ Statement = (*PreparedStreamStmt)(nil)
 
 // StreamStmt is a StreamStmt using a Stream.
 type StreamStmt struct {
@@ -16,13 +17,8 @@ type StreamStmt struct {
 
 // Prepare implements the Preparer interface.
 func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
-	st, err := planner.Optimize(s.Stream, ctx.Tx.Catalog)
-	if err != nil {
-		return nil, err
-	}
-
 	return &PreparedStreamStmt{
-		Stream:   st,
+		Stream:   s.Stream,
 		ReadOnly: s.ReadOnly,
 	}, nil
 }
@@ -33,12 +29,21 @@ type PreparedStreamStmt struct {
 	ReadOnly bool
 }
 
+func (s *PreparedStreamStmt) Bind(ctx *Context) error {
+	return nil
+}
+
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
 func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
+	st, err := planner.Optimize(s.Stream.Clone(), ctx.Tx.Catalog, ctx.Params)
+	if err != nil {
+		return Result{}, err
+	}
+
 	return Result{
-		Iterator: &StreamStmtIterator{
-			Stream:  s.Stream,
+		Result: &StreamStmtResult{
+			Stream:  st,
 			Context: ctx,
 		},
 	}, nil
@@ -53,30 +58,14 @@ func (s *PreparedStreamStmt) String() string {
 	return s.Stream.String()
 }
 
-// StreamStmtIterator iterates over a stream.
-type StreamStmtIterator struct {
+// StreamStmtResult iterates over a stream.
+type StreamStmtResult struct {
 	Stream  *stream.Stream
 	Context *Context
 }
 
-func (s *StreamStmtIterator) Iterate(fn func(r database.Row) error) error {
-	var env environment.Environment
-	env.DB = s.Context.DB
-	env.Tx = s.Context.Tx
-	env.SetParams(s.Context.Params)
+func (s *StreamStmtResult) Iterator() (database.Iterator, error) {
+	env := environment.New(s.Context.DB, s.Context.Tx, s.Context.Params, nil)
 
-	err := s.Stream.Iterate(&env, func(env *environment.Environment) error {
-		// if there is no row in this specific environment,
-		// the last operator is not outputting anything
-		// worth returning to the user.
-		if env.Row == nil {
-			return nil
-		}
-
-		return fn(env.Row)
-	})
-	if errors.Is(err, stream.ErrStreamClosed) {
-		err = nil
-	}
-	return err
+	return s.Stream.Iterator(env)
 }

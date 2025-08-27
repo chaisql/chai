@@ -6,7 +6,6 @@ import (
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/cockroachdb/errors"
 )
 
 // A DeleteOperator replaces objects in the table
@@ -20,33 +19,78 @@ func Delete(tableName string) *DeleteOperator {
 	return &DeleteOperator{Name: tableName}
 }
 
+func (op *DeleteOperator) Clone() stream.Operator {
+	return &DeleteOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Name:         op.Name,
+	}
+}
+
 // Iterate implements the Operator interface.
-func (op *DeleteOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var table *database.Table
+func (op *DeleteOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		if table == nil {
-			var err error
-			table, err = out.GetTx().Catalog.GetTable(out.GetTx(), op.Name)
-			if err != nil {
-				return err
-			}
-		}
+	table, err := in.GetTx().Catalog.GetTable(in.GetTx(), op.Name)
+	if err != nil {
+		return nil, err
+	}
 
-		r, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
-
-		err := table.Delete(r.Key())
-		if err != nil {
-			return err
-		}
-
-		return f(out)
-	})
+	return &DeleteIterator{
+		Iterator: prev,
+		name:     op.Name,
+		table:    table,
+	}, nil
 }
 
 func (op *DeleteOperator) String() string {
 	return fmt.Sprintf("table.Delete('%s')", op.Name)
+}
+
+type DeleteIterator struct {
+	stream.Iterator
+
+	name  string
+	table *database.Table
+	row   database.Row
+	err   error
+}
+
+func (it *DeleteIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	err = it.table.Delete(r.Key())
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	it.row = r
+
+	return true
+}
+
+func (it *DeleteIterator) Row() (database.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+	return it.row, nil
+}
+
+func (it *DeleteIterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.Iterator.Error()
 }

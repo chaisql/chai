@@ -1,448 +1,146 @@
 package types
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"math"
-	"strconv"
-	"strings"
 	"time"
-
-	"github.com/chaisql/chai/internal/stringutil"
-	"github.com/cockroachdb/errors"
-	"github.com/dromara/carbon/v2"
 )
 
-var (
-	epoch   = carbon.EpochValue().TimestampMicro()
-	maxTime = math.MaxInt64 - epoch
-	minTime = math.MinInt64 + epoch
-)
+type Value interface {
+	Comparable
 
-// A Value stores encoded data alongside its type.
-type value[T any] struct {
-	tp ValueType
-	v  T
+	Type() Type
+	V() any
+	IsZero() (bool, error)
+	String() string
+	MarshalJSON() ([]byte, error)
+	MarshalText() ([]byte, error)
+	TypeDef() TypeDefinition
+	Encode(dst []byte) ([]byte, error)
+	EncodeAsKey(dst []byte) ([]byte, error)
+	CastAs(t Type) (Value, error)
 }
 
-var _ Value = &value[bool]{}
-
-// NewNullValue returns a SQL NULL value.
-func NewNullValue() Value {
-	return &value[struct{}]{
-		tp: NullValue,
-	}
+func AsBool(v Value) bool {
+	return v.V().(bool)
 }
 
-// NewBoolValue returns a SQL BOOL value.
-func NewBoolValue(x bool) Value {
-	return &value[bool]{
-		tp: BooleanValue,
-		v:  x,
-	}
-}
-
-// NewIntegerValue returns a SQL INTEGER value.
-func NewIntegerValue(x int64) Value {
-	return &value[int64]{
-		tp: IntegerValue,
-		v:  x,
-	}
-}
-
-// NewDoubleValue returns a SQL DOUBLE value.
-func NewDoubleValue(x float64) Value {
-	return &value[float64]{
-		tp: DoubleValue,
-		v:  x,
-	}
-}
-
-// NewTimestampValue returns a SQL TIMESTAMP value.
-func NewTimestampValue(x time.Time) Value {
-	return &value[time.Time]{
-		tp: TimestampValue,
-		v:  x.UTC(),
-	}
-}
-
-// NewBlobValue returns a SQL BLOB value.
-func NewBlobValue(x []byte) Value {
-	return &value[[]byte]{
-		tp: BlobValue,
-		v:  x,
-	}
-}
-
-// NewTextValue returns a SQL TEXT value.
-func NewTextValue(x string) Value {
-	return &value[string]{
-		tp: TextValue,
-		v:  x,
-	}
-}
-
-// NewArrayValue returns a SQL ARRAY value.
-func NewArrayValue(a Array) Value {
-	return &value[Array]{
-		tp: ArrayValue,
-		v:  a,
-	}
-}
-
-// NewObjectValue returns a SQL OBJECT value.
-func NewObjectValue(d Object) Value {
-	return &value[Object]{
-		tp: ObjectValue,
-		v:  d,
-	}
-}
-
-// NewValueWith creates a value with the given type and value.
-func NewValueWith[T any](t ValueType, v T) Value {
-	return &value[T]{
-		tp: t,
-		v:  v,
-	}
-}
-
-func (v *value[T]) V() any {
-	if v.tp == NullValue {
-		return nil
+func AsInt32(v Value) int32 {
+	iv, ok := v.(IntegerValue)
+	if ok {
+		return int32(iv)
 	}
 
-	return v.v
+	if bv, ok := v.(BigintValue); ok {
+		if bv < math.MinInt32 || bv > math.MaxInt32 {
+			panic(fmt.Errorf("value %d out of range for int32", bv))
+		}
+		return int32(bv)
+	}
+
+	return v.V().(int32)
 }
 
-func (v *value[T]) Type() ValueType {
-	return v.tp
+func AsInt64(v Value) int64 {
+	biv, ok := v.(BigintValue)
+	if ok {
+		return int64(biv)
+	}
+
+	iv, ok := v.(IntegerValue)
+	if ok {
+		return int64(iv)
+	}
+
+	return v.V().(int64)
 }
 
-func As[T any](v Value) T {
-	vv, ok := v.(*value[T])
+func AsFloat64(v Value) float64 {
+	dv, ok := v.(DoubleValue)
 	if !ok {
-		return v.V().(T)
+		return v.V().(float64)
 	}
 
-	return vv.v
+	return float64(dv)
 }
 
-func Is[T any](v Value) (T, bool) {
-	vv, ok := v.(*value[T])
+func AsTime(v Value) time.Time {
+	tv, ok := v.(TimestampValue)
 	if !ok {
-		x, ok := v.V().(T)
-		return x, ok
+		return v.V().(time.Time)
 	}
 
-	return vv.v, true
+	return time.Time(tv)
+}
+
+func AsString(v Value) string {
+	tv, ok := v.(TextValue)
+	if !ok {
+		return v.V().(string)
+	}
+
+	return string(tv)
+}
+
+func AsByteSlice(v Value) []byte {
+	bv, ok := v.(BlobValue)
+	if !ok {
+		return v.V().([]byte)
+	}
+
+	return bv
 }
 
 func IsNull(v Value) bool {
-	return v == nil || v.Type() == NullValue
+	return v == nil || v.Type() == TypeNull
 }
 
-// IsTruthy returns whether v is not equal to the zero value of its type.
+// IsTruthy returns whether v is not Equal to the zero value of its type.
 func IsTruthy(v Value) (bool, error) {
-	if v.Type() == NullValue {
+	if v.Type() == TypeNull {
 		return false, nil
 	}
 
-	b, err := IsZeroValue(v)
+	b, err := v.IsZero()
 	return !b, err
 }
 
-// IsZeroValue indicates if the value data is the zero value for the value type.
-// This function doesn't perform any allocation.
-func IsZeroValue(v Value) (bool, error) {
-	switch v.Type() {
-	case BooleanValue:
-		return !As[bool](v), nil
-	case IntegerValue:
-		return As[int64](v) == int64(0), nil
-	case DoubleValue:
-		return As[float64](v) == float64(0), nil
-	case TimestampValue:
-		return As[time.Time](v).IsZero(), nil
-	case BlobValue:
-		return As[[]byte](v) == nil, nil
-	case TextValue:
-		return As[string](v) == "", nil
-	case ArrayValue:
-		// The zero value of an array is an empty array.
-		// Thus, if GetByIndex(0) returns the ErrValueNotFound
-		// it means that the array is empty.
-		_, err := As[Array](v).GetByIndex(0)
-		if errors.Is(err, ErrValueNotFound) {
-			return true, nil
-		}
-		return false, err
-	case ObjectValue:
-		err := As[Object](v).Iterate(func(_ string, _ Value) error {
-			// We return an error in the first iteration to stop it.
-			return errors.WithStack(errStop)
-		})
-		if err == nil {
-			// If err is nil, it means that we didn't iterate,
-			// thus the object is empty.
-			return true, nil
-		}
-		if errors.Is(err, errStop) {
-			// If err is errStop, it means that we iterate
-			// at least once, thus the object is not empty.
-			return false, nil
-		}
-		// An unexpecting error occurs, let's return it!
-		return false, err
-	}
-
-	return false, nil
+// ValueScanner implements the sql.Scanner interface for Value.
+// The src value will be of one of the following types:
+//
+//	int32
+//	int64
+//	float64
+//	bool
+//	[]byte
+//	string
+//	time.Time
+//	nil - for NULL values
+type ValueScanner struct {
+	V Value
 }
 
-func (v *value[T]) String() string {
-	data, _ := v.MarshalText()
-	return string(data)
-}
-
-func (v *value[T]) MarshalText() ([]byte, error) {
-	return MarshalTextIndent(v, "", "")
-}
-
-func MarshalTextIndent(v Value, prefix, indent string) ([]byte, error) {
-	var buf bytes.Buffer
-
-	err := marshalText(&buf, v, prefix, indent, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
-}
-
-func marshalText(dst *bytes.Buffer, v Value, prefix, indent string, depth int) error {
-	if v.V() == nil {
-		dst.WriteString("NULL")
-		return nil
-	}
-
-	switch v.Type() {
-	case NullValue:
-		dst.WriteString("NULL")
-		return nil
-	case BooleanValue:
-		dst.WriteString(strconv.FormatBool(As[bool](v)))
-		return nil
-	case IntegerValue:
-		dst.WriteString(strconv.FormatInt(As[int64](v), 10))
-		return nil
-	case DoubleValue:
-		f := As[float64](v)
-		abs := math.Abs(f)
-		fmt := byte('f')
-		if abs != 0 {
-			if abs < 1e-6 || abs >= 1e15 {
-				fmt = 'e'
-			}
-		}
-
-		// By default the precision is -1 to use the smallest number of digits.
-		// See https://pkg.go.dev/strconv#FormatFloat
-		prec := -1
-		// if the number is round, add .0
-		if float64(int64(f)) == f {
-			prec = 1
-		}
-		dst.WriteString(strconv.FormatFloat(As[float64](v), fmt, prec, 64))
-		return nil
-	case TimestampValue:
-		dst.WriteString(strconv.Quote(As[time.Time](v).Format(time.RFC3339Nano)))
-		return nil
-	case TextValue:
-		dst.WriteString(strconv.Quote(As[string](v)))
-		return nil
-	case BlobValue:
-		src := As[[]byte](v)
-		dst.WriteString("\"\\x")
-		hex.NewEncoder(dst).Write(src)
-		dst.WriteByte('"')
-		return nil
-	case ArrayValue:
-		var nonempty bool
-		dst.WriteByte('[')
-		err := As[Array](v).Iterate(func(i int, value Value) error {
-			nonempty = true
-			if i > 0 {
-				dst.WriteByte(',')
-				if prefix == "" {
-					dst.WriteByte(' ')
-				}
-			}
-			newline(dst, prefix, indent, depth+1)
-
-			return marshalText(dst, value, prefix, indent, depth+1)
-		})
-		if err != nil {
-			return err
-		}
-		if nonempty && prefix != "" {
-			newline(dst, prefix, indent, depth)
-		}
-		dst.WriteByte(']')
-		return nil
-	case ObjectValue:
-		dst.WriteByte('{')
-		var i int
-		err := As[Object](v).Iterate(func(field string, value Value) error {
-			if i > 0 {
-				dst.WriteByte(',')
-				if prefix == "" {
-					dst.WriteByte(' ')
-				}
-			}
-			newline(dst, prefix, indent, depth+1)
-			i++
-
-			var ident string
-			if strings.HasPrefix(field, "\"") {
-				ident = stringutil.NormalizeIdentifier(field, '`')
-			} else {
-				ident = stringutil.NormalizeIdentifier(field, '"')
-			}
-			dst.WriteString(ident)
-			dst.WriteString(": ")
-
-			return marshalText(dst, value, prefix, indent, depth+1)
-		})
-		if err != nil {
-			return err
-		}
-		newline(dst, prefix, indent, depth)
-		dst.WriteRune('}')
-		return nil
+func (v *ValueScanner) Scan(src any) error {
+	switch t := src.(type) {
+	case int32:
+		v.V = NewIntegerValue(t)
+	case int64:
+		v.V = NewBigintValue(t)
+	case float64:
+		v.V = NewDoubleValue(t)
+	case bool:
+		v.V = NewBooleanValue(t)
+	case []byte:
+		v.V = NewBlobValue(t)
+	case string:
+		v.V = NewTextValue(t)
+	case time.Time:
+		v.V = NewTimestampValue(t)
+	case nil:
+		v.V = NewNullValue()
 	default:
-		return fmt.Errorf("unexpected type: %d", v.Type())
-	}
-}
-
-func newline(dst *bytes.Buffer, prefix, indent string, depth int) {
-	dst.WriteString(prefix)
-	for i := 0; i < depth; i++ {
-		dst.WriteString(indent)
-	}
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (v *value[T]) MarshalJSON() ([]byte, error) {
-	switch v.Type() {
-	case BooleanValue, IntegerValue, TextValue, TimestampValue:
-		return v.MarshalText()
-	case NullValue:
-		return []byte("null"), nil
-	case DoubleValue:
-		f := As[float64](v)
-		abs := math.Abs(f)
-		fmt := byte('f')
-		if abs != 0 {
-			if abs < 1e-6 || abs >= 1e15 {
-				fmt = 'e'
-			}
-		}
-
-		// By default the precision is -1 to use the smallest number of digits.
-		// See https://pkg.go.dev/strconv#FormatFloat
-		prec := -1
-		return strconv.AppendFloat(nil, As[float64](v), fmt, prec, 64), nil
-	case BlobValue:
-		src := As[[]byte](v)
-		dst := make([]byte, base64.StdEncoding.EncodedLen(len(src))+2)
-		dst[0] = '"'
-		dst[len(dst)-1] = '"'
-		base64.StdEncoding.Encode(dst[1:], src)
-		return dst, nil
-	case ArrayValue:
-		return jsonArray{Array: As[Array](v)}.MarshalJSON()
-	case ObjectValue:
-		return jsonObject{Object: As[Object](v)}.MarshalJSON()
-	default:
-		return nil, fmt.Errorf("unexpected type: %d", v.Type())
-	}
-}
-
-type jsonArray struct {
-	Array
-}
-
-func (j jsonArray) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-
-	buf.WriteRune('[')
-	err := j.Array.Iterate(func(i int, v Value) error {
-		if i > 0 {
-			buf.WriteString(", ")
-		}
-
-		data, err := v.MarshalJSON()
-		if err != nil {
-			return err
-		}
-
-		_, err = buf.Write(data)
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	buf.WriteRune(']')
-
-	return buf.Bytes(), nil
-}
-
-type jsonObject struct {
-	Object
-}
-
-func (j jsonObject) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-
-	buf.WriteByte('{')
-
-	var notFirst bool
-	err := j.Object.Iterate(func(f string, v Value) error {
-		if notFirst {
-			buf.WriteString(", ")
-		}
-		notFirst = true
-
-		buf.WriteString(strconv.Quote(f))
-		buf.WriteString(": ")
-
-		data, err := v.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		_, err = buf.Write(data)
-		return err
-	})
-	if err != nil {
-		return nil, err
+		return fmt.Errorf("unexpected type: %T", src)
 	}
 
-	buf.WriteByte('}')
-
-	return buf.Bytes(), nil
-}
-
-func ParseTimestamp(s string) (time.Time, error) {
-	c := carbon.Parse(s, "UTC")
-	if c.Error != nil {
-		return time.Time{}, errors.New("invalid timestamp")
-	}
-
-	ts := c.TimestampMicro()
-	if ts > maxTime || ts < minTime {
-		return time.Time{}, errors.New("timestamp out of range")
-	}
-
-	return c.StdTime(), nil
+	return nil
 }

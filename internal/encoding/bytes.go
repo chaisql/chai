@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"encoding/binary"
-	"unsafe"
 )
 
 func EncodeBlob(dst []byte, x []byte) []byte {
@@ -39,5 +38,5 @@ func DecodeText(b []byte) (string, int) {
 	// decode the length as a varint
 	l, n := binary.Uvarint(b)
 	b = b[n : n+int(l)]
-	return *(*string)(unsafe.Pointer(&b)), 1 + n + int(l)
+	return string(b), 1 + n + int(l)
 }

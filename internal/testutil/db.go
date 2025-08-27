@@ -11,12 +11,11 @@ import (
 	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
-	"github.com/chaisql/chai/internal/testutil/assert"
 	"github.com/chaisql/chai/internal/tree"
 	"github.com/stretchr/testify/require"
 )
 
-func NewEngine(t testing.TB) *kv.Store {
+func NewEngine(t testing.TB) *kv.PebbleEngine {
 	t.Helper()
 
 	st, err := kv.NewEngine(":memory:", kv.Options{
@@ -52,7 +51,7 @@ func NewTestDB(t testing.TB) *database.Database {
 	db, err := database.Open(":memory:", &database.Options{
 		CatalogLoader: catalogstore.LoadCatalog,
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		db.Close()
@@ -61,16 +60,33 @@ func NewTestDB(t testing.TB) *database.Database {
 	return db
 }
 
+func NewTestConn(t testing.TB, db *database.Database) *database.Connection {
+	t.Helper()
+
+	conn, err := db.Connect()
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		conn.Close()
+	})
+
+	return conn
+}
+
 func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func()) {
 	t.Helper()
 
 	db := NewTestDB(t)
+	conn := NewTestConn(t, db)
 
-	tx, err := db.Begin(true)
-	assert.NoError(t, err)
+	tx, err := conn.BeginTx(&database.TxOptions{
+		ReadOnly: false,
+	})
+	require.NoError(t, err)
 
 	return db, tx, func() {
-		tx.Rollback()
+		err = tx.Rollback()
+		require.NoError(t, err)
 	}
 }
 
@@ -81,9 +97,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	}
 	defer res.Close()
 
-	return res.Iterate(func(database.Row) error {
-		return nil
-	})
+	return res.Skip()
 }
 
 func Query(db *database.Database, tx *database.Transaction, q string, params ...environment.Param) (*statement.Result, error) {
@@ -92,7 +106,7 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 		return nil, err
 	}
 
-	ctx := &query.Context{Ctx: context.Background(), DB: db, Tx: tx, Params: params}
+	ctx := &query.Context{Ctx: context.Background(), DB: db, Conn: tx.Connection(), Params: params}
 	err = pq.Prepare(ctx)
 	if err != nil {
 		return nil, err
@@ -105,11 +119,11 @@ func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q s
 	t.Helper()
 
 	err := Exec(db, tx, q, params...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func MustQuery(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) *statement.Result {
 	res, err := Query(db, tx, q, params...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	return res
 }

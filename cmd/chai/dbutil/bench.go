@@ -1,6 +1,8 @@
 package dbutil
 
 import (
+	"context"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"io"
@@ -8,8 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/chaisql/chai"
 )
 
 type BenchOptions struct {
@@ -22,21 +22,26 @@ type BenchOptions struct {
 }
 
 type preparer interface {
-	Prepare(q string) (*chai.Statement, error)
+	PrepareContext(ctx context.Context, q string) (*sql.Stmt, error)
 }
 
-type execer func(q string, args ...interface{}) error
+type execer func(query string, args ...any) (sql.Result, error)
 
 // Bench takes a database and dumps its content as SQL queries in the given writer.
 // If tables is provided, only selected tables will be outputted.
-func Bench(db *chai.DB, query string, opt BenchOptions) error {
-	var tx *chai.Tx
-	var p preparer = db
+func Bench(ctx context.Context, db *sql.DB, query string, opt BenchOptions) error {
+	var tx *sql.Tx
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	var p preparer = conn
 	var e execer = db.Exec
-	var err error
 
 	if opt.SameTx {
-		tx, err = db.Begin(true)
+		tx, err = conn.BeginTx(ctx, nil)
 		if err != nil {
 			return err
 		}
@@ -46,19 +51,19 @@ func Bench(db *chai.DB, query string, opt BenchOptions) error {
 	}
 
 	if opt.Init != "" {
-		err := e(opt.Init)
+		_, err := e(opt.Init)
 		if err != nil {
 			return err
 		}
 	}
 
 	if opt.Prepare {
-		stmt, err := p.Prepare(query)
+		stmt, err := p.PrepareContext(ctx, query)
 		if err != nil {
 			return err
 		}
-		e = func(q string, args ...interface{}) error {
-			return stmt.Exec()
+		e = func(query string, args ...any) (sql.Result, error) {
+			return stmt.ExecContext(ctx, args...)
 		}
 	}
 
@@ -76,7 +81,7 @@ func Bench(db *chai.DB, query string, opt BenchOptions) error {
 		for j := 0; j < opt.SampleSize; j++ {
 			start := time.Now()
 
-			err := e(query)
+			_, err := e(query)
 			total += time.Since(start)
 			if err != nil {
 				return err

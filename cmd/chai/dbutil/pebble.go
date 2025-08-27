@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/encoding"
-	"github.com/cockroachdb/pebble"
+	"github.com/cockroachdb/pebble/v2"
 )
 
 type DumpPebbleOptions struct {
@@ -17,9 +17,7 @@ func DumpPebble(c context.Context, db *pebble.DB, opt DumpPebbleOptions) error {
 	if err != nil {
 		return err
 	}
-	defer func(iter *pebble.Iterator) {
-		_ = iter.Close()
-	}(iter)
+	defer iter.Close()
 
 	var curns int64
 	for iter.First(); iter.Valid(); iter.Next() {

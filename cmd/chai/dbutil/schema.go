@@ -1,62 +1,83 @@
 package dbutil
 
 import (
-	"github.com/chaisql/chai"
+	"context"
+	"database/sql"
+	"fmt"
+
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
 )
 
-func QueryTables(tx *chai.Tx, tables []string, fn func(name, query string) error) error {
+func QueryTables(ctx context.Context, tx *sql.Tx, tables []string, fn func(name, query string) error) error {
 	query := "SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name NOT LIKE '__chai_%'"
+	var args []any
 	if len(tables) > 0 {
-		query += " AND name IN ?"
+		var arg string
+
+		for i := range tables {
+			arg += "?"
+
+			if i < len(tables)-1 {
+				arg += ", "
+			}
+
+			args = append(args, tables[i])
+		}
+
+		query += fmt.Sprintf(" AND name IN (%s)", arg)
 	}
 
-	res, err := tx.Query(query, tables)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
-	defer res.Close()
+	defer rows.Close()
 
-	return res.Iterate(func(r *chai.Row) error {
-		// Get table name.
+	for rows.Next() {
 		var name, query string
-		if err := r.Scan(&name, &query); err != nil {
+		err := rows.Scan(&name, &query)
+		if err != nil {
 			return err
 		}
 
-		return fn(name, query)
-	})
+		if err := fn(name, query); err != nil {
+			return err
+		}
+	}
+
+	return rows.Err()
 }
 
-func ListIndexes(db *chai.DB, tableName string) ([]string, error) {
+func ListIndexes(ctx context.Context, db *sql.DB, tableName string) ([]string, error) {
 	var listName []string
 	q := "SELECT sql FROM __chai_catalog WHERE type = 'index'"
 	if tableName != "" {
-		q += " AND owner.table_name = ?"
+		q += " AND owner_table_name = ?"
 	}
-	res, err := db.Query(q, tableName)
+
+	rows, err := db.QueryContext(ctx, q, tableName)
 	if err != nil {
 		return nil, err
 	}
-	defer res.Close()
+	defer rows.Close()
 
-	err = res.Iterate(func(r *chai.Row) error {
+	for rows.Next() {
 		var query string
-		err = r.Scan(&query)
+
+		err = rows.Scan(&query)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		q, err := parser.ParseQuery(query)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
-		return nil
-	})
-	if err != nil {
+	}
+	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 

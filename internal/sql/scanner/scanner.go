@@ -69,14 +69,6 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 			s.r.unread()
 			return s.scanNumber()
 		}
-		if ch1 == '.' {
-			ch2, _ := s.r.read()
-			if ch2 == '.' {
-				return ELLIPSIS, pos, "..."
-			}
-
-			return ILLEGAL, pos, ""
-		}
 		s.r.unread()
 		return DOT, pos, ""
 	case '$':
@@ -221,12 +213,13 @@ func (s *scanner) skipUntilEndComment() error {
 			// We might be at the end.
 		star:
 			ch2, _ := s.r.read()
-			if ch2 == '/' {
+			switch ch2 {
+			case '/':
 				return nil
-			} else if ch2 == '*' {
+			case '*':
 				// We are back in the state machine since we see a star.
 				goto star
-			} else if ch2 == eof {
+			case eof:
 				return io.EOF
 			}
 		} else if ch1 == eof {

@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
+	"github.com/chaisql/chai/internal/row"
 	"github.com/chaisql/chai/internal/stream"
-	"github.com/chaisql/chai/internal/tree"
 	"github.com/chaisql/chai/internal/types"
-	"github.com/cockroachdb/errors"
 )
 
 // A ProjectOperator applies an expression on each value of the stream and returns a new value.
@@ -24,31 +23,37 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 	return &ProjectOperator{Exprs: exprs}
 }
 
-// Iterate implements the Operator interface.
-func (op *ProjectOperator) Iterate(in *environment.Environment, f func(out *environment.Environment) error) error {
-	var mask RowMask
-	var newEnv environment.Environment
+func (op *ProjectOperator) Clone() stream.Operator {
+	exprs := make([]expr.Expr, len(op.Exprs))
+	for i, e := range op.Exprs {
+		exprs[i] = expr.Clone(e)
+	}
+	return &ProjectOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		Exprs:        exprs,
+	}
+}
 
-	if op.Prev == nil {
-		mask.Env = in
-		mask.Exprs = op.Exprs
-		newEnv.SetRow(&mask)
-		newEnv.SetOuter(in)
-		return f(&newEnv)
+func (op *ProjectOperator) Columns(env *environment.Environment) ([]string, error) {
+	var cols, prev []string
+	var err error
+
+	for _, e := range op.Exprs {
+		if _, ok := e.(expr.Wildcard); ok {
+			if prev == nil {
+				prev, err = op.Prev.Columns(env)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			cols = append(cols, prev...)
+		} else {
+			cols = append(cols, e.String())
+		}
 	}
 
-	return op.Prev.Iterate(in, func(env *environment.Environment) error {
-		row, ok := env.GetRow()
-		if ok {
-			mask.tableName = row.TableName()
-			mask.key = row.Key()
-		}
-		mask.Env = env
-		mask.Exprs = op.Exprs
-		newEnv.SetRow(&mask)
-		newEnv.SetOuter(env)
-		return f(&newEnv)
-	})
+	return cols, nil
 }
 
 func (op *ProjectOperator) String() string {
@@ -65,99 +70,127 @@ func (op *ProjectOperator) String() string {
 	return b.String()
 }
 
-type RowMask struct {
-	Env       *environment.Environment
-	Exprs     []expr.Expr
-	key       *tree.Key
-	tableName string
-}
-
-func (m *RowMask) Key() *tree.Key {
-	return m.key
-}
-
-func (m *RowMask) Object() types.Object {
-	return m
-}
-
-func (m *RowMask) TableName() string {
-	return m.tableName
-}
-
-func (m *RowMask) Get(column string) (v types.Value, err error) {
-	return m.GetByField(column)
-}
-
-func (m *RowMask) GetByField(field string) (v types.Value, err error) {
-	for _, e := range m.Exprs {
-		if _, ok := e.(expr.Wildcard); ok {
-			r, ok := m.Env.GetRow()
-			if !ok {
-				continue
-			}
-
-			v, err = r.Get(field)
-			if errors.Is(err, types.ErrFieldNotFound) {
-				continue
-			}
-			return
-		}
-
-		if ne, ok := e.(*expr.NamedExpr); ok && ne.Name() == field {
-			return e.Eval(m.Env)
-		}
-
-		if e.(fmt.Stringer).String() == field {
-			return e.Eval(m.Env)
-		}
+func (op *ProjectOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
+	if op.Prev == nil {
+		return &ExprIterator{
+			env:   in,
+			exprs: op.Exprs,
+		}, nil
 	}
 
-	err = types.ErrFieldNotFound
-	return
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProjectIterator{
+		Iterator: prev,
+		env:      in,
+		exprs:    op.Exprs,
+	}, nil
 }
 
-func (m *RowMask) Iterate(fn func(field string, value types.Value) error) error {
-	for _, e := range m.Exprs {
-		if _, ok := e.(expr.Wildcard); ok {
-			r, ok := m.Env.GetRow()
-			if !ok {
-				return nil
-			}
+type ExprIterator struct {
+	env   *environment.Environment
+	exprs []expr.Expr
+	row   *database.BasicRow
+	buf   *row.ColumnBuffer
+	err   error
+}
 
-			err := r.Iterate(fn)
+func (it *ExprIterator) Next() bool {
+	it.err = nil
+
+	if it.row != nil {
+		return false
+	}
+
+	it.buf = row.NewColumnBuffer()
+
+	for _, e := range it.exprs {
+		v, err := e.Eval(it.env)
+		if err != nil {
+			it.err = err
+			return false
+		}
+
+		it.buf.Add(e.String(), v)
+	}
+	it.row = database.NewBasicRow(it.buf)
+
+	return true
+}
+
+func (it *ExprIterator) Close() error {
+	return nil
+}
+
+func (it *ExprIterator) Error() error {
+	return it.err
+}
+
+func (it *ExprIterator) Row() (database.Row, error) {
+	return it.row, nil
+}
+
+type ProjectIterator struct {
+	stream.Iterator
+
+	env   *environment.Environment
+	exprs []expr.Expr
+	row   database.BasicRow
+	buf   row.ColumnBuffer
+	err   error
+}
+
+func (it *ProjectIterator) Next() bool {
+	it.buf.Reset()
+
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	r, err := it.Iterator.Row()
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	env := it.env.CloneWithRow(r)
+
+	for _, e := range it.exprs {
+		if _, ok := e.(expr.Wildcard); ok {
+			err = r.Iterate(func(field string, value types.Value) error {
+				it.buf.Add(field, value)
+				return nil
+			})
 			if err != nil {
-				return err
+				it.err = err
+				return false
 			}
 
 			continue
 		}
 
-		var col string
-		if ne, ok := e.(*expr.NamedExpr); ok {
-			col = ne.Name()
-		} else {
-			col = e.(fmt.Stringer).String()
+		v, err := e.Eval(env)
+		if err != nil {
+			it.err = err
+			return false
 		}
 
-		v, err := e.Eval(m.Env)
-		if err != nil {
-			return err
-		}
-
-		err = fn(col, v)
-		if err != nil {
-			return err
-		}
+		it.buf.Add(e.String(), v)
 	}
 
-	return nil
+	it.row.ResetWith(r.TableName(), it.row.Key(), &it.buf)
+	it.row.SetOriginalRow(r)
+
+	return true
 }
 
-func (m *RowMask) String() string {
-	b, _ := types.NewObjectValue(m).MarshalText()
-	return string(b)
+func (it *ProjectIterator) Error() error {
+	return it.err
 }
 
-func (d *RowMask) MarshalJSON() ([]byte, error) {
-	return object.MarshalJSON(d)
+func (it *ProjectIterator) Row() (database.Row, error) {
+	return &it.row, nil
 }

@@ -1,0 +1,9 @@
+go 1.25.0
+
+use (
+	.
+	./cmd/chai
+	./sqltests
+)
+
+replace github.com/chaisql/chai v0.17.0 => ./

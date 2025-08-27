@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/object"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
 	"github.com/chaisql/chai/internal/stream/table"
 	"github.com/cockroachdb/errors"
 )
+
+var _ Statement = (*SelectStmt)(nil)
 
 type SelectCoreStmt struct {
 	TableName       string
@@ -20,12 +21,38 @@ type SelectCoreStmt struct {
 	ProjectionExprs []expr.Expr
 }
 
-func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
+func (stmt *SelectCoreStmt) Bind(ctx *Context) error {
+	err := BindExpr(ctx, stmt.TableName, stmt.WhereExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.TableName, stmt.GroupByExpr)
+	if err != nil {
+		return err
+	}
+
+	for i := range stmt.ProjectionExprs {
+		err = BindExpr(ctx, stmt.TableName, stmt.ProjectionExprs[i])
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 	isReadOnly := true
 
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
+		_, err := ctx.Tx.Catalog.GetTableInfo(stmt.TableName)
+		if err != nil {
+			return nil, err
+		}
+
 		s = s.Pipe(table.Scan(stmt.TableName))
 	}
 
@@ -54,10 +81,13 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 
 			// check if this is the same expression as the one used in the GROUP BY clause
 			if expr.Equal(e, stmt.GroupByExpr) {
-				// if so, replace the expression with a path expression
+				// if so, replace the expression with a column expression
 				stmt.ProjectionExprs[i] = &expr.NamedExpr{
 					ExprName: ne.ExprName,
-					Expr:     expr.Path(object.NewPath(e.String())),
+					Expr: &expr.Column{
+						Name:  e.String(),
+						Table: stmt.TableName,
+					},
 				}
 				continue
 			}
@@ -79,16 +109,15 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 		var aggregators []expr.AggregatorBuilder
 
 		for _, pe := range stmt.ProjectionExprs {
-			ne, ok := pe.(*expr.NamedExpr)
-			if !ok {
-				continue
-			}
-			e := ne.Expr
+			expr.Walk(pe, func(e expr.Expr) bool {
+				// check if the projected expression contains an aggregation function
+				if agg, ok := e.(expr.AggregatorBuilder); ok {
+					aggregators = append(aggregators, agg)
+					return true
+				}
 
-			// check if the projected expression is an aggregation function
-			if agg, ok := e.(expr.AggregatorBuilder); ok {
-				aggregators = append(aggregators, agg)
-			}
+				return true
+			})
 		}
 
 		// add Aggregation node
@@ -104,7 +133,7 @@ func (stmt *SelectCoreStmt) Prepare(*Context) (*StreamStmt, error) {
 		for _, e := range stmt.ProjectionExprs {
 			expr.Walk(e, func(e expr.Expr) bool {
 				switch e.(type) {
-				case expr.Path, expr.Wildcard:
+				case *expr.Column, expr.Wildcard:
 					err = errors.New("no tables specified")
 					return false
 				default:
@@ -148,7 +177,7 @@ type SelectStmt struct {
 
 	CompoundSelect    []*SelectCoreStmt
 	CompoundOperators []scanner.Token
-	OrderBy           expr.Path
+	OrderBy           *expr.Column
 	OrderByDirection  scanner.Token
 	OffsetExpr        expr.Expr
 	LimitExpr         expr.Expr
@@ -163,6 +192,32 @@ func NewSelectStatement() *SelectStmt {
 	}
 
 	return &p
+}
+
+func (stmt *SelectStmt) Bind(ctx *Context) error {
+	for i := range stmt.CompoundSelect {
+		err := stmt.CompoundSelect[i].Bind(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.OrderBy)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.OffsetExpr)
+	if err != nil {
+		return err
+	}
+
+	err = BindExpr(ctx, stmt.CompoundSelect[0].TableName, stmt.LimitExpr)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Prepare implements the Preparer interface.

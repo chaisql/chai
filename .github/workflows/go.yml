@@ -17,24 +17,18 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.21
-
-      - name: Vendor
-        run: go mod vendor
+          go-version: 1.23
 
       - name: Build
         run: make
 
-      - name: Install go-acc
-        run: go install github.com/ory/go-acc@latest
-
-      - name: Test Chai
-        run: go-acc $(go list ./...) -- -mod vendor -race -timeout=2m
+      - name: Test ChaiSQL
+        run: go test -race -timeout=2m ./...
+      
+      - name: SQL tests
+        run: cd ./sqltests && go test -race -timeout=2m ./... && cd -
 
       - name: Test Chai CLI
         run: cd ./cmd/chai && go test -race ./... && cd -
-
-      - name: Upload Codecov
-        run: bash <(curl -s https://codecov.io/bash)

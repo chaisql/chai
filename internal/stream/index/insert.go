@@ -3,13 +3,14 @@ package index
 import (
 	"fmt"
 
+	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/cockroachdb/errors"
 )
 
-// InsertOperator reads the input stream and indexes each object.
+// InsertOperator reads the input stream and indexes each row.
 type InsertOperator struct {
 	stream.BaseOperator
 
@@ -22,53 +23,109 @@ func Insert(indexName string) *InsertOperator {
 	}
 }
 
-func (op *InsertOperator) Iterate(in *environment.Environment, fn func(out *environment.Environment) error) error {
+func (op *InsertOperator) Clone() stream.Operator {
+	return &InsertOperator{
+		BaseOperator: op.BaseOperator.Clone(),
+		indexName:    op.indexName,
+	}
+}
+
+func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
 	idx, err := tx.Catalog.GetIndex(tx, op.indexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	info, err := tx.Catalog.GetIndexInfo(op.indexName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	tinfo, err := tx.Catalog.GetTableInfo(info.Owner.TableName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return op.Prev.Iterate(in, func(out *environment.Environment) error {
-		r, ok := out.GetRow()
-		if !ok {
-			return errors.New("missing row")
-		}
+	prev, err := op.Prev.Iterator(in)
+	if err != nil {
+		return nil, err
+	}
 
-		vs := make([]types.Value, 0, len(info.Paths))
-		for _, path := range info.Paths {
-			v, err := path.GetValueFromObject(r.Object())
-			if err != nil {
-				v = types.NewNullValue()
-			}
-			vs = append(vs, v)
-		}
-
-		encKey, err := tinfo.EncodeKey(r.Key())
-		if err != nil {
-			return err
-		}
-
-		err = idx.Set(vs, encKey)
-		if err != nil {
-			return fmt.Errorf("error while inserting index value: %w", err)
-		}
-
-		return fn(out)
-	})
+	return &InsertIterator{
+		Iterator: prev,
+		index:    idx,
+		tinfo:    tinfo,
+		info:     info,
+	}, nil
 }
 
 func (op *InsertOperator) String() string {
 	return fmt.Sprintf("index.Insert(%q)", op.indexName)
+}
+
+type InsertIterator struct {
+	stream.Iterator
+
+	tinfo *database.TableInfo
+	info  *database.IndexInfo
+	index *database.Index
+	row   database.Row
+	err   error
+}
+
+func (it *InsertIterator) Next() bool {
+	if !it.Iterator.Next() {
+		return false
+	}
+
+	it.row, it.err = it.Iterator.Row()
+	if it.err != nil {
+		return false
+	}
+	if it.row == nil || it.row.Key() == nil {
+		it.err = errors.New("missing row")
+		return false
+	}
+
+	vs := make([]types.Value, 0, len(it.info.Columns))
+	for _, column := range it.info.Columns {
+		v, err := it.row.Get(column)
+		if err != nil {
+			v = types.NewNullValue()
+		}
+		vs = append(vs, v)
+	}
+
+	k := it.row.Key()
+
+	encKey, err := it.tinfo.EncodeKey(k)
+	if err != nil {
+		it.err = err
+		return false
+	}
+
+	it.err = it.index.Set(vs, encKey)
+	return it.err == nil
+}
+
+func (it *InsertIterator) Error() error {
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.Iterator.Error()
+}
+
+func (it *InsertIterator) Row() (database.Row, error) {
+	if it.err != nil {
+		return nil, it.err
+	}
+
+	if it.row != nil {
+		return it.row, nil
+	}
+
+	return it.Iterator.Row()
 }

@@ -2,11 +2,11 @@ package dbutil
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"testing"
 
-	"github.com/chaisql/chai"
-	"github.com/chaisql/chai/internal/testutil/assert"
+	_ "github.com/chaisql/chai"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,8 +21,8 @@ func TestDump(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db, err := chai.Open(":memory:")
-			assert.NoError(t, err)
+			db, err := sql.Open("chai", ":memory:")
+			require.NoError(t, err)
 			defer db.Close()
 
 			var want bytes.Buffer
@@ -53,41 +53,41 @@ func TestDump(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b ANY, c ANY, ...);", table)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b INTEGER, c INTEGER);", table)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_a ON %s (a);`, table, table)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
 				q = fmt.Sprintf(`CREATE INDEX idx_%s_b_c ON %s (b, c);`, table, table)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 1, 2, 3)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 1, 2, 3)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 2, 2, 2)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 2, 2, 2)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 
-				q = fmt.Sprintf(`INSERT INTO %s VALUES {"a": %d, "b": %d, "c": %d};`, table, 3, 2, 1)
-				err = db.Exec(q)
-				assert.NoError(t, err)
+				q = fmt.Sprintf(`INSERT INTO %s VALUES (%d, %d, %d);`, table, 3, 2, 1)
+				_, err = db.Exec(q)
+				require.NoError(t, err)
 				writeToBuf(q + "\n")
 			}
 			want.WriteString("COMMIT;\n")
 
 			var got bytes.Buffer
-			err = Dump(db, &got, tt.tables...)
-			assert.NoError(t, err)
+			err = Dump(t.Context(), db, &got, tt.tables...)
+			require.NoError(t, err)
 
 			require.Equal(t, want.String(), got.String())
 		})
