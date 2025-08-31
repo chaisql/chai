@@ -89,7 +89,7 @@ func (f *ColumnConstraints) Add(newCc *ColumnConstraint) error {
 				return fmt.Errorf("default value %q cannot be converted to type %q", newCc.DefaultValue, newCc.Type)
 			}
 		} else {
-			// if there is an error, we know we are using a function that returns an integer (NEXT VALUE FOR)
+			// if there is an error, we know we are using a function that returns an integer (like nextval)
 			// which is the only one compatible for the moment.
 			// Integers can be converted to other integers, doubles, texts and bools.
 			// TODO: rework

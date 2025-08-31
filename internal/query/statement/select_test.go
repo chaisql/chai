@@ -221,13 +221,13 @@ func TestSelectStmt(t *testing.T) {
 
 		// normal query
 		var a, seq int
-		err = db.QueryRow("SELECT a, NEXT VALUE FOR seq FROM test").Scan(&a, &seq)
+		err = db.QueryRow("SELECT a, nextval('seq') FROM test").Scan(&a, &seq)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 1, seq)
 
 		// query with no table
-		err = db.QueryRow("SELECT NEXT VALUE FOR seq").Scan(&seq)
+		err = db.QueryRow("SELECT nextval('seq')").Scan(&seq)
 		require.NoError(t, err)
 		require.Equal(t, 2, seq)
 	})

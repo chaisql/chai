@@ -71,7 +71,7 @@ func TestOpen(t *testing.T) {
 		CREATE SEQUENCE seqD INCREMENT BY 10 CYCLE MINVALUE 100 NO MAXVALUE START 500;
 
 		INSERT INTO tableB (a) VALUES (1);
-		INSERT INTO tableC (a, b) VALUES (1, NEXT VALUE FOR seqD);
+		INSERT INTO tableC (a, b) VALUES (1, nextval('seqD'));
 	`)
 	require.NoError(t, err)
 

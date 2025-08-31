@@ -163,9 +163,9 @@ func TestParserSelect(t *testing.T) {
 				Pipe(rows.GroupAggregate(nil, functions.NewCount(expr.Wildcard{}))).
 				Pipe(rows.Project(parseNamedExpr(t, "COUNT(*)"))),
 			true, false},
-		{"With NEXT VALUE FOR", "SELECT NEXT VALUE FOR foo FROM test",
+		{"With nextval", "SELECT nextval('foo') FROM test",
 			stream.New(table.Scan("test")).
-				Pipe(rows.Project(parseNamedExpr(t, "NEXT VALUE FOR foo"))),
+				Pipe(rows.Project(parseNamedExpr(t, "nextval(\"foo\")"))),
 			false, false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
@@ -371,7 +371,7 @@ func TestParserSelect(t *testing.T) {
 			)),
 			true, false,
 		},
-		{"WithMultipleCompoundOpsAndNextValueFor/4", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c UNION ALL SELECT NEXT VALUE FOR foo FROM d",
+		{"WithMultipleCompoundOpsAndNextValueFor/4", "SELECT * FROM a UNION ALL SELECT * FROM b UNION SELECT * FROM c UNION ALL SELECT nextval('foo') FROM d",
 			stream.New(stream.Concat(
 				stream.New(stream.Union(
 					stream.New(stream.Concat(
@@ -383,7 +383,7 @@ func TestParserSelect(t *testing.T) {
 					stream.New(table.Scan("c")).
 						Pipe(rows.Project(expr.Wildcard{})),
 				)),
-				stream.New(table.Scan("d")).Pipe(rows.Project(parseNamedExpr(t, "NEXT VALUE FOR foo"))),
+				stream.New(table.Scan("d")).Pipe(rows.Project(parseNamedExpr(t, "nextval(\"foo\")"))),
 			)),
 			false, false,
 		},

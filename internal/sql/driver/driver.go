@@ -114,7 +114,7 @@ func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 		return nil, err
 	}
 
-	return Stmt{
+	return &Stmt{
 		pq:   pq,
 		conn: c,
 	}, nil
@@ -167,17 +167,17 @@ type Stmt struct {
 }
 
 // NumInput returns the number of placeholder parameters.
-func (s Stmt) NumInput() int { return -1 }
+func (s *Stmt) NumInput() int { return -1 }
 
 // Exec executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
-func (s Stmt) Exec(args []driver.Value) (driver.Result, error) {
+func (s *Stmt) Exec(args []driver.Value) (driver.Result, error) {
 	return nil, errors.New("not implemented")
 }
 
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
-func (s Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
+func (s *Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -221,7 +221,7 @@ func (s Stmt) Query(args []driver.Value) (driver.Rows, error) {
 
 // QueryContext executes a query that may return rows, such as a
 // SELECT.
-func (s Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -294,7 +294,15 @@ func (rs *Rows) Close() error {
 }
 
 func (rs *Rows) Next(dest []driver.Value) error {
-	if rs.it == nil || !rs.it.Next() {
+	if rs.it == nil {
+		return io.EOF
+	}
+
+	if !rs.it.Next() {
+		if err := rs.it.Error(); err != nil {
+			return err
+		}
+
 		return io.EOF
 	}
 

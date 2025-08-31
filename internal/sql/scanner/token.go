@@ -113,7 +113,6 @@ const (
 	LIMIT
 	MAXVALUE
 	MINVALUE
-	NEXT
 	NO
 	NOT
 	NOTHING
@@ -139,7 +138,6 @@ const (
 	UNION
 	UNIQUE
 	UPDATE
-	VALUE
 	VALUES
 	WITH
 	WHERE
@@ -258,7 +256,6 @@ var tokens = [...]string{
 	LIMIT:       "LIMIT",
 	MAXVALUE:    "MAXVALUE",
 	MINVALUE:    "MINVALUE",
-	NEXT:        "NEXT",
 	NO:          "NO",
 	NOT:         "NOT",
 	NOTHING:     "NOTHING",
@@ -284,7 +281,6 @@ var tokens = [...]string{
 	UNION:       "UNION",
 	UNIQUE:      "UNIQUE",
 	UPDATE:      "UPDATE",
-	VALUE:       "VALUE",
 	VALUES:      "VALUES",
 	WITH:        "WITH",
 	WHERE:       "WHERE",

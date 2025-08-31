@@ -295,17 +295,6 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 			return nil, err
 		}
 		return expr.Not(e), nil
-	case scanner.NEXT:
-		err := p.ParseTokens(scanner.VALUE, scanner.FOR)
-		if err != nil {
-			return nil, err
-		}
-		seqName, err := p.parseIdent()
-		if err != nil {
-			return nil, err
-		}
-
-		return expr.NextValueFor{SeqName: seqName}, nil
 	default:
 		return nil, newParseError(scanner.Tokstr(tok, lit), nil, pos)
 	}

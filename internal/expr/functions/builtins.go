@@ -110,6 +110,13 @@ var builtinFunctions = Definitions{
 			return &Trim{Expr: args, TrimFunc: strings.TrimRight, Name: "RTRIM"}, nil
 		},
 	},
+	"nextval": &definition{
+		name:  "nextval",
+		arity: 1,
+		constructorFn: func(args ...expr.Expr) (expr.Function, error) {
+			return &NextVal{Expr: args[0]}, nil
+		},
+	},
 
 	"floor":  floor,
 	"abs":    abs,
@@ -797,4 +804,62 @@ func (n *Now) Params() []expr.Expr { return nil }
 
 func (n *Now) String() string {
 	return "NOW()"
+}
+
+type NextVal struct {
+	Expr expr.Expr
+}
+
+func (t *NextVal) Clone() expr.Expr {
+	return &NextVal{
+		Expr: expr.Clone(t.Expr),
+	}
+}
+
+func (t *NextVal) Eval(env *environment.Environment) (types.Value, error) {
+	seqNameV, err := t.Expr.Eval(env)
+	if err != nil {
+		return nil, err
+	}
+	if seqNameV.Type() != types.TypeText {
+		return nil, fmt.Errorf("nextval argument must be a string")
+	}
+
+	tx := env.GetTx()
+	if tx == nil {
+		return types.NewNullValue(), fmt.Errorf(`nextval cannot be evaluated`)
+	}
+
+	seq, err := tx.Catalog.GetSequence(types.AsString(seqNameV))
+	if err != nil {
+		return types.NewNullValue(), err
+	}
+
+	i, err := seq.Next(tx)
+	if err != nil {
+		return types.NewNullValue(), err
+	}
+
+	return types.NewBigintValue(i), nil
+}
+
+// IsEqual compares this expression with the other expression and returns
+// true if they are equal.
+func (t *NextVal) IsEqual(other expr.Expr) bool {
+	if other == nil {
+		return false
+	}
+
+	o, ok := other.(*NextVal)
+	if !ok {
+		return false
+	}
+
+	return expr.Equal(t.Expr, o.Expr)
+}
+
+func (t *NextVal) Params() []expr.Expr { return []expr.Expr{t.Expr} }
+
+func (t *NextVal) String() string {
+	return fmt.Sprintf("nextval(%v)", t.Expr)
 }

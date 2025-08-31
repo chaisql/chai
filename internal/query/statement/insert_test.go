@@ -150,29 +150,6 @@ INSERT INTO test (a, b) VALUES (1, 10); UPDATE test SET a = 2, b = 20 WHERE a = 
 		]
 		`)
 	})
-
-	t.Run("with NEXT VALUE FOR", func(t *testing.T) {
-		db, err := sql.Open("chai", ":memory:")
-		require.NoError(t, err)
-		defer db.Close()
-
-		_, err = db.Exec(`CREATE SEQUENCE seq; CREATE TABLE test(a int, b int default NEXT VALUE FOR seq)`)
-		require.NoError(t, err)
-
-		_, err = db.Exec(`insert into test (a) VALUES (1), (2), (3)`)
-		require.NoError(t, err)
-
-		res, err := db.Query("SELECT * FROM test")
-		require.NoError(t, err)
-
-		testutil.RequireJSONArrayEq(t, res, `
-		[
-			{"a": 1, "b": 1},
-			{"a": 2, "b": 2},
-			{"a": 3, "b": 3}
-		]
-		`)
-	})
 }
 
 func TestInsertSelect(t *testing.T) {

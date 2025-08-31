@@ -233,7 +233,7 @@ LOOP:
 				scanner.NULL,
 				scanner.LPAREN,   // only opening parenthesis are necessary
 				scanner.LBRACKET, // only opening brackets are necessary
-				scanner.NEXT,
+				scanner.IDENT,
 			)
 			if err != nil {
 				return nil, nil, err

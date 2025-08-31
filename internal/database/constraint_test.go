@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/testutil"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -46,19 +47,19 @@ func TestColumnConstraintsAdd(t *testing.T) {
 			false,
 		},
 		{
-			"Default value conversion, typed constraint, NEXT VALUE FOR",
+			"Default value conversion, typed constraint, nextval",
 			[]*database.ColumnConstraint{{Column: "a", Type: types.TypeInteger}},
-			database.ColumnConstraint{Column: "b", Type: types.TypeInteger, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+			database.ColumnConstraint{Column: "b", Type: types.TypeInteger, DefaultValue: expr.Constraint(&functions.NextVal{Expr: testutil.TextValue("seq")})},
 			[]*database.ColumnConstraint{
 				{Position: 0, Column: "a", Type: types.TypeInteger},
-				{Position: 1, Column: "b", Type: types.TypeInteger, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+				{Position: 1, Column: "b", Type: types.TypeInteger, DefaultValue: expr.Constraint(&functions.NextVal{Expr: testutil.TextValue("seq")})},
 			},
 			false,
 		},
 		{
-			"Default value conversion, typed constraint, NEXT VALUE FOR with blob",
+			"Default value conversion, typed constraint, nextval with blob",
 			[]*database.ColumnConstraint{{Column: "a", Type: types.TypeInteger}},
-			database.ColumnConstraint{Column: "b", Type: types.TypeBlob, DefaultValue: expr.Constraint(expr.NextValueFor{SeqName: "seq"})},
+			database.ColumnConstraint{Column: "b", Type: types.TypeBlob, DefaultValue: expr.Constraint(&functions.NextVal{Expr: testutil.TextValue("seq")})},
 			nil,
 			true,
 		},

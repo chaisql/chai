@@ -153,50 +153,6 @@ func Walk(e Expr, fn func(Expr) bool) bool {
 	return true
 }
 
-type NextValueFor struct {
-	SeqName string
-}
-
-// Eval calls the underlying expression Eval method.
-func (n NextValueFor) Eval(env *environment.Environment) (types.Value, error) {
-	tx := env.GetTx()
-
-	if tx == nil {
-		return NullLiteral, fmt.Errorf(`NEXT VALUE FOR cannot be evaluated`)
-	}
-
-	seq, err := tx.Catalog.GetSequence(n.SeqName)
-	if err != nil {
-		return NullLiteral, err
-	}
-
-	i, err := seq.Next(tx)
-	if err != nil {
-		return NullLiteral, err
-	}
-
-	return types.NewBigintValue(i), nil
-}
-
-// IsEqual compares this expression with the other expression and returns
-// true if they are equal.
-func (n NextValueFor) IsEqual(other Expr) bool {
-	if other == nil {
-		return false
-	}
-
-	o, ok := other.(NextValueFor)
-	if !ok {
-		return false
-	}
-
-	return o.SeqName == n.SeqName
-}
-
-func (n NextValueFor) String() string {
-	return fmt.Sprintf("NEXT VALUE FOR %s", n.SeqName)
-}
-
 // // Type returns the expected type of the expression without evaluating it.
 // // Query parameters are not allowed and will return an error.
 // func Type(e Expr, info *database.TableInfo) (types.Type, error) {
@@ -258,7 +214,6 @@ func Clone(e Expr) Expr {
 	case LiteralValue,
 		*Column,
 		PositionalParam,
-		NextValueFor,
 		Wildcard:
 		return e
 	}

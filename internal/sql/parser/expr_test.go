@@ -115,9 +115,7 @@ func TestParserExpr(t *testing.T) {
 		{"NOT", "NOT 10", expr.Not(testutil.IntegerValue(10)), false},
 		{"NOT", "NOT NOT", nil, true},
 		{"NOT", "NOT NOT 10", expr.Not(expr.Not(testutil.IntegerValue(10))), false},
-		{"NEXT VALUE FOR", "NEXT VALUE FOR hello", expr.NextValueFor{SeqName: "hello"}, false},
-		{"NEXT VALUE FOR", "NEXT VALUE FOR `good morning`", expr.NextValueFor{SeqName: "good morning"}, false},
-		{"NEXT VALUE FOR", "NEXT VALUE FOR 10", nil, true},
+		{"nextval", "nextval('hello')", &functions.NextVal{Expr: testutil.TextValue("hello")}, false},
 
 		// functions
 		{"count(expr) function", "count(a)", &functions.Count{Expr: &expr.Column{Name: "a"}}, false},

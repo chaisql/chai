@@ -85,14 +85,14 @@ CREATE TABLE test(a BLOB DEFAULT 1 AND 1);
 CREATE TABLE test(a BLOB DEFAULT b);
 -- error:
 
--- test: DEFAULT NEXT VALUE FOR sequence
+-- test: DEFAULT nextval sequence
 CREATE SEQUENCE seq1;
-CREATE TABLE test(a INTEGER DEFAULT NEXT VALUE FOR seq1);
+CREATE TABLE test(a INTEGER DEFAULT nextval('seq1'));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER DEFAULT NEXT VALUE FOR seq1)"
+  "sql": "CREATE TABLE test (a INTEGER DEFAULT nextval(\"seq1\"))"
 }
 */
 
@@ -106,14 +106,14 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: DEFAULT (NEXT VALUE FOR sequence)
+-- test: DEFAULT (nextval sequence)
 CREATE SEQUENCE seq_paren;
-CREATE TABLE test(a INTEGER DEFAULT (NEXT VALUE FOR seq_paren));
+CREATE TABLE test(a INTEGER DEFAULT (nextval('seq_paren')));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER DEFAULT NEXT VALUE FOR seq_paren)"
+  "sql": "CREATE TABLE test (a INTEGER DEFAULT nextval(\"seq_paren\"))"
 }
 */
 

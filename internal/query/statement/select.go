@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/chaisql/chai/internal/expr"
+	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/rows"
@@ -148,11 +149,13 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 	s = s.Pipe(rows.Project(stmt.ProjectionExprs...))
 
 	// SELECT is read-only most of the time, unless it's using some expressions
-	// that require write access and that are allowed to be run, such as NEXT VALUE FOR
+	// that require write access and that are allowed to be run, such as nextval
 	for _, e := range stmt.ProjectionExprs {
 		expr.Walk(e, func(e expr.Expr) bool {
 			switch e.(type) {
-			case expr.NextValueFor:
+			case *expr.NamedExpr:
+				return true
+			case *functions.NextVal:
 				isReadOnly = false
 				return false
 			default:
