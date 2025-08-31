@@ -39,15 +39,6 @@ func ValidateOnConflictDoNothing(indexName string) *ValidateOperator {
 	}
 }
 
-func (op *ValidateOperator) Clone() stream.Operator {
-	return &ValidateOperator{
-		BaseOperator:        op.BaseOperator.Clone(),
-		IndexName:           op.IndexName,
-		OnConflict:          op.OnConflict.Clone(),
-		OnConflictDoNothing: op.OnConflictDoNothing,
-	}
-}
-
 func (op *ValidateOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
@@ -160,10 +151,8 @@ func (it *ValidateIterator) Next() bool {
 		it.br.ResetWith(it.row.TableName(), key, it.row)
 
 		// execute the onConflict stream
-		clone := it.onConflict.Clone()
-
-		stream.InsertBefore(clone.Op, stream.Rows(it.columns, &it.br))
-		newIt, err := clone.Iterator(it.env)
+		stream.InsertBefore(it.onConflict.Op, stream.Rows(it.columns, &it.br))
+		newIt, err := it.onConflict.Iterator(it.env)
 		if err != nil {
 			it.err = err
 			return false

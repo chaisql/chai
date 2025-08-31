@@ -115,25 +115,6 @@ func (s *Stream) String() string {
 	return sb.String()
 }
 
-func (s *Stream) Clone() *Stream {
-	if s == nil {
-		return nil
-	}
-
-	if s.Op == nil {
-		return New(nil)
-	}
-
-	op := s.First()
-	var ops []Operator
-	for op != nil {
-		ops = append(ops, op.Clone())
-		op = op.GetNext()
-	}
-
-	return New(Pipe(ops...))
-}
-
 func InsertBefore(op, newOp Operator) Operator {
 	if op != nil {
 		prev := op.GetPrev()

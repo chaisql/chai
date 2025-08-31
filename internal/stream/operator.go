@@ -29,7 +29,6 @@ type Operator interface {
 	GetNext() Operator
 	GetPrev() Operator
 	String() string
-	Clone() Operator
 	Columns(env *environment.Environment) ([]string, error)
 }
 

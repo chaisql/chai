@@ -5,6 +5,7 @@ import (
 
 	"github.com/chaisql/chai/internal/database"
 	errs "github.com/chaisql/chai/internal/errors"
+	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/index"
 	"github.com/chaisql/chai/internal/stream/table"
@@ -93,11 +94,17 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (*Result, error) {
 		Pipe(index.Insert(stmt.Info.IndexName)).
 		Pipe(stream.Discard())
 
-	ss := PreparedStreamStmt{
-		Stream: s,
+	st, err := planner.Optimize(s, ctx.Conn.GetTx().Catalog, ctx.Params)
+	if err != nil {
+		return nil, err
 	}
 
-	return ss.Run(ctx)
+	return &Result{
+		Result: &StreamStmtResult{
+			Stream:  st,
+			Context: ctx,
+		},
+	}, nil
 }
 
 // CreateSequenceStmt represents a parsed CREATE SEQUENCE statement.

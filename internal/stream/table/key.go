@@ -39,15 +39,6 @@ func GenerateKeyOnConflictDoNothing(tableName string) *GenerateKeyOperator {
 	}
 }
 
-func (op *GenerateKeyOperator) Clone() stream.Operator {
-	return &GenerateKeyOperator{
-		BaseOperator:        op.BaseOperator.Clone(),
-		TableName:           op.TableName,
-		OnConflict:          op.OnConflict.Clone(),
-		OnConflictDoNothing: op.OnConflictDoNothing,
-	}
-}
-
 func (op *GenerateKeyOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 
@@ -186,10 +177,9 @@ func (it *GenerateKeyIterator) generateKey(r database.Row) (*tree.Key, error) {
 	it.br.ResetWith(it.tableName, k, r)
 
 	// execute the onConflict stream
-	clone := it.onConflict.Clone()
-	stream.InsertBefore(clone.Op, stream.Rows(it.columns, &it.br))
+	stream.InsertBefore(it.onConflict.Op, stream.Rows(it.columns, &it.br))
 
-	newIt, err := clone.Iterator(it.env)
+	newIt, err := it.onConflict.Iterator(it.env)
 	if err != nil {
 		return nil, err
 	}
