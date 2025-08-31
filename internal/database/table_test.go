@@ -21,7 +21,13 @@ var errDontCommit = errors.New("don't commit please")
 func update(t testing.TB, db *database.Database, fn func(tx *database.Transaction) error) {
 	t.Helper()
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	tx, err := conn.BeginTx(&database.TxOptions{
+		ReadOnly: false,
+	})
 	require.NoError(t, err)
 	defer tx.Rollback()
 
@@ -63,7 +69,7 @@ func createTable(t testing.TB, tx *database.Transaction, info database.TableInfo
 	stmt := statement.CreateTableStmt{Info: info}
 
 	res, err := stmt.Run(&statement.Context{
-		Tx: tx,
+		Conn: tx.Connection(),
 	})
 	require.NoError(t, err)
 	res.Close()
@@ -80,7 +86,7 @@ func createTableIfNotExists(t testing.TB, tx *database.Transaction, info databas
 	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
 	res, err := stmt.Run(&statement.Context{
-		Tx: tx,
+		Conn: tx.Connection(),
 	})
 	require.NoError(t, err)
 	res.Close()

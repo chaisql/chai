@@ -29,14 +29,14 @@ func TestParserTransactions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.s, func(t *testing.T) {
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, test.expected, q.Statements[0])
+			require.Len(t, stmts, 1)
+			require.EqualValues(t, test.expected, stmts[0])
 		})
 	}
 }

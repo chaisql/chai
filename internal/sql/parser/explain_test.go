@@ -10,7 +10,7 @@ import (
 )
 
 func TestParserExplain(t *testing.T) {
-	slct := statement.NewSelectStatement()
+	var slct statement.SelectStmt
 	slct.CompoundSelect = []*statement.SelectCoreStmt{
 		{TableName: "test", ProjectionExprs: []expr.Expr{expr.Wildcard{}}},
 	}
@@ -21,20 +21,20 @@ func TestParserExplain(t *testing.T) {
 		expected statement.Statement
 		errored  bool
 	}{
-		{"Explain select", "EXPLAIN SELECT * FROM test", &statement.ExplainStmt{Statement: slct}, false},
+		{"Explain select", "EXPLAIN SELECT * FROM test", &statement.ExplainStmt{Statement: &slct}, false},
 		{"Multiple Explains", "EXPLAIN EXPLAIN CREATE TABLE test", nil, true},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
-			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, test.expected, q.Statements[0])
+			require.Len(t, stmts, 1)
+			require.EqualValues(t, test.expected, stmts[0])
 		})
 	}
 }

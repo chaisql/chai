@@ -157,7 +157,13 @@ func TestSequence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			db := testutil.NewTestDB(t)
 
-			tx, err := db.Begin(true)
+			conn, err := db.Connect()
+			require.NoError(t, err)
+			defer conn.Close()
+
+			tx, err := conn.BeginTx(&database.TxOptions{
+				ReadOnly: false,
+			})
 			require.NoError(t, err)
 			defer tx.Rollback()
 
@@ -193,7 +199,13 @@ func TestSequence(t *testing.T) {
 	t.Run("default cache", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.BeginTx(&database.TxOptions{
+			ReadOnly: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -230,7 +242,13 @@ func TestSequence(t *testing.T) {
 	t.Run("cache", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.BeginTx(&database.TxOptions{
+			ReadOnly: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -276,7 +294,13 @@ func TestSequence(t *testing.T) {
 	t.Run("cache desc", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.BeginTx(&database.TxOptions{
+			ReadOnly: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -323,7 +347,13 @@ func TestSequence(t *testing.T) {
 	t.Run("read-only", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.BeginTx(&database.TxOptions{
+			ReadOnly: false,
+		})
 		require.NoError(t, err)
 
 		err = tx.CatalogWriter().CreateSequence(tx, &database.SequenceInfo{
@@ -339,7 +369,9 @@ func TestSequence(t *testing.T) {
 		require.NoError(t, err)
 
 		// open a read-only tx
-		tx, err = db.Begin(false)
+		tx, err = conn.BeginTx(&database.TxOptions{
+			ReadOnly: true,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 
@@ -353,7 +385,13 @@ func TestSequence(t *testing.T) {
 	t.Run("release", func(t *testing.T) {
 		db := testutil.NewTestDB(t)
 
-		tx, err := db.Begin(true)
+		conn, err := db.Connect()
+		require.NoError(t, err)
+		defer conn.Close()
+
+		tx, err := conn.BeginTx(&database.TxOptions{
+			ReadOnly: false,
+		})
 		require.NoError(t, err)
 		defer tx.Rollback()
 

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/tree"
@@ -24,7 +23,7 @@ func NewParser(r io.Reader) *Parser {
 }
 
 // ParseQuery parses a query string and returns its AST representation.
-func ParseQuery(s string) (query.Query, error) {
+func ParseQuery(s string) ([]statement.Statement, error) {
 	return NewParser(strings.NewReader(s)).ParseQuery()
 }
 
@@ -45,7 +44,7 @@ func MustParseExpr(s string) expr.Expr {
 }
 
 // ParseQuery parses a Chai SQL string and returns a Query.
-func (p *Parser) ParseQuery() (query.Query, error) {
+func (p *Parser) ParseQuery() ([]statement.Statement, error) {
 	var statements []statement.Statement
 
 	err := p.Parse(func(s statement.Statement) error {
@@ -53,10 +52,10 @@ func (p *Parser) ParseQuery() (query.Query, error) {
 		return nil
 	})
 	if err != nil {
-		return query.Query{}, err
+		return nil, err
 	}
 
-	return query.Query{Statements: statements}, nil
+	return statements, nil
 }
 
 // ParseQuery parses a Chai SQL string and returns a Query.

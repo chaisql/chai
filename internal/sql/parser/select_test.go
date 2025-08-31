@@ -1,12 +1,10 @@
 package parser_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
-	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
@@ -37,7 +35,7 @@ func TestParserSelect(t *testing.T) {
 		if len(table) > 0 {
 			tb = table[0]
 		}
-		err := statement.BindExpr(&statement.Context{DB: db, Tx: tx, Conn: tx.Connection()}, tb, e)
+		err := statement.BindExpr(&statement.Context{DB: db, Conn: tx.Connection()}, tb, e)
 		require.NoError(t, err)
 		return e
 	}
@@ -391,27 +389,20 @@ func TestParserSelect(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			if test.mustFail {
 				require.Error(t, err)
 				return
 			}
+			require.Len(t, stmts, 1)
 
-			err = q.Prepare(&query.Context{
-				Ctx:  context.Background(),
+			stmt, err := stmts[0].(statement.Preparer).Prepare(&statement.Context{
 				DB:   db,
 				Conn: tx.Connection(),
 			})
 			require.NoError(t, err)
 
-			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, &statement.PreparedStreamStmt{ReadOnly: test.readOnly, Stream: test.expected}, q.Statements[0].(*statement.PreparedStreamStmt))
+			require.Equal(t, test.expected.String(), stmt.(*statement.SelectStmt).Stream.String())
 		})
-	}
-}
-
-func BenchmarkSelect(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		_, _ = parser.ParseQuery("SELECT a, b AS `foo` FROM `some table` WHERE d.e[100] >= 12 AND c.d IN ([1, true], [2, false]) GROUP BY d.e[0] LIMIT 10 + 10 OFFSET 20 - 20 ORDER BY d DESC")
 	}
 }

@@ -20,20 +20,9 @@ type CreateTableStmt struct {
 	Info        database.TableInfo
 }
 
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *CreateTableStmt) IsReadOnly() bool {
-	return false
-}
-
-func (stmt *CreateTableStmt) Bind(ctx *Context) error {
-	return nil
-}
-
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
-	var res Result
-
+func (stmt *CreateTableStmt) Run(ctx *Context) (*Result, error) {
 	// if there is no primary key, create a rowid sequence
 	if stmt.Info.PrimaryKey == nil {
 		seq := database.SequenceInfo{
@@ -45,25 +34,25 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 				TableName: stmt.Info.TableName,
 			},
 		}
-		err := ctx.Tx.CatalogWriter().CreateSequence(ctx.Tx, &seq)
+		err := ctx.Conn.GetTx().CatalogWriter().CreateSequence(ctx.Conn.GetTx(), &seq)
 		if err != nil {
-			return res, err
+			return nil, err
 		}
 
 		stmt.Info.RowidSequenceName = seq.Name
 	}
 
-	err := ctx.Tx.CatalogWriter().CreateTable(ctx.Tx, stmt.Info.TableName, &stmt.Info)
+	err := ctx.Conn.GetTx().CatalogWriter().CreateTable(ctx.Conn.GetTx(), stmt.Info.TableName, &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
-			return res, nil
+			return nil, nil
 		}
 	}
 
 	// create a unique index for every unique constraint
 	for _, tc := range stmt.Info.TableConstraints {
 		if tc.Unique {
-			_, err = ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
+			_, err = ctx.Conn.GetTx().CatalogWriter().CreateIndex(ctx.Conn.GetTx(), &database.IndexInfo{
 				Columns: tc.Columns,
 				Unique:  true,
 				Owner: database.Owner{
@@ -73,12 +62,12 @@ func (stmt *CreateTableStmt) Run(ctx *Context) (Result, error) {
 				KeySortOrder: tc.SortOrder,
 			})
 			if err != nil {
-				return res, err
+				return nil, err
 			}
 		}
 	}
 
-	return res, err
+	return nil, err
 }
 
 // CreateIndexStmt represents a parsed CREATE INDEX statement.
@@ -87,28 +76,17 @@ type CreateIndexStmt struct {
 	Info        database.IndexInfo
 }
 
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *CreateIndexStmt) IsReadOnly() bool {
-	return false
-}
-
-func (stmt *CreateIndexStmt) Bind(ctx *Context) error {
-	return nil
-}
-
 // Run runs the Create index statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
-	var res Result
-
-	_, err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &stmt.Info)
+func (stmt *CreateIndexStmt) Run(ctx *Context) (*Result, error) {
+	_, err := ctx.Conn.GetTx().CatalogWriter().CreateIndex(ctx.Conn.GetTx(), &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
-			return res, nil
+			return nil, nil
 		}
 	}
 	if err != nil {
-		return res, err
+		return nil, err
 	}
 
 	s := stream.New(table.Scan(stmt.Info.Owner.TableName)).
@@ -116,8 +94,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (Result, error) {
 		Pipe(stream.Discard())
 
 	ss := PreparedStreamStmt{
-		Stream:   s,
-		ReadOnly: false,
+		Stream: s,
 	}
 
 	return ss.Run(ctx)
@@ -129,25 +106,14 @@ type CreateSequenceStmt struct {
 	Info        database.SequenceInfo
 }
 
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *CreateSequenceStmt) IsReadOnly() bool {
-	return false
-}
-
-func (stmt *CreateSequenceStmt) Bind(ctx *Context) error {
-	return nil
-}
-
 // Run the statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *CreateSequenceStmt) Run(ctx *Context) (Result, error) {
-	var res Result
-
-	err := ctx.Tx.CatalogWriter().CreateSequence(ctx.Tx, &stmt.Info)
+func (stmt *CreateSequenceStmt) Run(ctx *Context) (*Result, error) {
+	err := ctx.Conn.GetTx().CatalogWriter().CreateSequence(ctx.Conn.GetTx(), &stmt.Info)
 	if stmt.IfNotExists {
 		if errs.IsAlreadyExistsError(err) {
-			return res, nil
+			return nil, nil
 		}
 	}
-	return res, err
+	return nil, err
 }

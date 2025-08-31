@@ -15,43 +15,25 @@ type StreamStmt struct {
 	ReadOnly bool
 }
 
-// Prepare implements the Preparer interface.
-func (s *StreamStmt) Prepare(ctx *Context) (Statement, error) {
-	return &PreparedStreamStmt{
-		Stream:   s.Stream,
-		ReadOnly: s.ReadOnly,
-	}, nil
-}
-
 // PreparedStreamStmt is a PreparedStreamStmt using a Stream.
 type PreparedStreamStmt struct {
-	Stream   *stream.Stream
-	ReadOnly bool
-}
-
-func (s *PreparedStreamStmt) Bind(ctx *Context) error {
-	return nil
+	Stream *stream.Stream
 }
 
 // Run returns a result containing the stream. The stream will be executed by calling the Iterate method of
 // the result.
-func (s *PreparedStreamStmt) Run(ctx *Context) (Result, error) {
-	st, err := planner.Optimize(s.Stream.Clone(), ctx.Tx.Catalog, ctx.Params)
+func (s *PreparedStreamStmt) Run(ctx *Context) (*Result, error) {
+	st, err := planner.Optimize(s.Stream.Clone(), ctx.Conn.GetTx().Catalog, ctx.Params)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
-	return Result{
+	return &Result{
 		Result: &StreamStmtResult{
 			Stream:  st,
 			Context: ctx,
 		},
 	}, nil
-}
-
-// IsReadOnly reports whether the stream will modify the database or only read it.
-func (s *PreparedStreamStmt) IsReadOnly() bool {
-	return s.ReadOnly
 }
 
 func (s *PreparedStreamStmt) String() string {
@@ -65,7 +47,7 @@ type StreamStmtResult struct {
 }
 
 func (s *StreamStmtResult) Iterator() (database.Iterator, error) {
-	env := environment.New(s.Context.DB, s.Context.Tx, s.Context.Params, nil)
+	env := environment.New(s.Context.DB, s.Context.Conn.GetTx(), s.Context.Params, nil)
 
 	return s.Stream.Iterator(env)
 }

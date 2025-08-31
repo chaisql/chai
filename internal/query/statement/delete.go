@@ -13,7 +13,7 @@ var _ Statement = (*DeleteStmt)(nil)
 
 // DeleteConfig holds DELETE configuration.
 type DeleteStmt struct {
-	basePreparedStatement
+	PreparedStreamStmt
 
 	TableName        string
 	WhereExpr        expr.Expr
@@ -21,17 +21,6 @@ type DeleteStmt struct {
 	OrderBy          *expr.Column
 	LimitExpr        expr.Expr
 	OrderByDirection scanner.Token
-}
-
-func NewDeleteStatement() *DeleteStmt {
-	var p DeleteStmt
-
-	p.basePreparedStatement = basePreparedStatement{
-		Preparer: &p,
-		ReadOnly: false,
-	}
-
-	return &p
 }
 
 func (stmt *DeleteStmt) Bind(ctx *Context) error {
@@ -81,7 +70,7 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 		s = s.Pipe(rows.Take(stmt.LimitExpr))
 	}
 
-	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Conn.GetTx().Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
 		s = s.Pipe(index.Delete(indexName))
 	}
@@ -90,10 +79,6 @@ func (stmt *DeleteStmt) Prepare(c *Context) (Statement, error) {
 
 	s = s.Pipe(stream.Discard())
 
-	st := StreamStmt{
-		Stream:   s,
-		ReadOnly: false,
-	}
-
-	return st.Prepare(c)
+	stmt.PreparedStreamStmt.Stream = s
+	return stmt, nil
 }

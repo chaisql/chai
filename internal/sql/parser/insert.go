@@ -12,7 +12,7 @@ import (
 
 // parseInsertStatement parses an insert string and returns a Statement AST row.
 func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
-	stmt := statement.NewInsertStatement()
+	var stmt statement.InsertStmt
 	var err error
 
 	// Parse "INSERT INTO".
@@ -64,7 +64,7 @@ func (p *Parser) parseInsertStatement() (*statement.InsertStmt, error) {
 		return nil, err
 	}
 
-	return stmt, nil
+	return &stmt, nil
 }
 
 // parseColumnList parses a list of columns in the form: (column, column, ...), if exists.

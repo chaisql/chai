@@ -19,12 +19,18 @@ func TestExecSQL(t *testing.T) {
 	err = ExecSQL(t.Context(), db, strings.NewReader(`
 		CREATE TABLE test(a INT, b TEXT);
 		CREATE INDEX idx_a ON test (a);
+		BEGIN;
+		INSERT INTO test (a, b) VALUES (10, 'aa'), (20, 'bb'), (30, 'cc');
+		ROLLBACK;
+		BEGIN;
 		INSERT INTO test (a, b) VALUES (1, 'a'), (2, 'b'), (3, 'c');
 		SELECT * FROM test;
+		COMMIT;
+		SELECT b, a FROM test;
 	`), &got)
 	require.NoError(t, err)
 
-	require.Equal(t, "a|b\n1|\"a\"\n2|\"b\"\n3|\"c\"\n", got.String())
+	require.Equal(t, "a|b\n1|\"a\"\n2|\"b\"\n3|\"c\"\n\nb|a\n\"a\"|1\n\"b\"|2\n\"c\"|3\n", got.String())
 
 	var res struct {
 		A int

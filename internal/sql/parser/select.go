@@ -10,10 +10,10 @@ import (
 // parseSelectStatement parses a select string and returns a Statement AST row.
 // This function assumes the SELECT token has already been consumed.
 func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
-	stmt := statement.NewSelectStatement()
+	var stmt statement.SelectStmt
 
 	// Parse SELECT ... [UNION | UNION ALL | INTERSECT] SELECT ...
-	err := p.parseCompoundSelectStatement(stmt)
+	err := p.parseCompoundSelectStatement(&stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -36,7 +36,7 @@ func (p *Parser) parseSelectStatement() (*statement.SelectStmt, error) {
 		return nil, errors.Wrap(err, "failed to parse OFFSET clause")
 	}
 
-	return stmt, nil
+	return &stmt, nil
 }
 
 func (p *Parser) parseCompoundSelectStatement(stmt *statement.SelectStmt) error {

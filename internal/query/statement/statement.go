@@ -1,6 +1,8 @@
 package statement
 
 import (
+	"context"
+
 	"github.com/chaisql/chai/internal/database"
 	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
@@ -9,33 +11,31 @@ import (
 
 // A Statement represents a unique action that can be executed against the database.
 type Statement interface {
-	Bind(*Context) error
-	Run(*Context) (Result, error)
+	Run(*Context) (*Result, error)
+}
+
+// Optional interface that allows a statement to specify if it is read-only.
+// Defaults to false if not implemented.
+type ReadOnly interface {
 	IsReadOnly() bool
 }
 
-type basePreparedStatement struct {
-	Preparer Preparer
-	ReadOnly bool
+// Optional interface that allows a statement to specify if they need a transaction.
+// Defaults to true if not implemented.
+// If true, the engine will auto-commit.
+type Transactional interface {
+	NeedsTransaction() bool
 }
 
-func (stmt *basePreparedStatement) IsReadOnly() bool {
-	return stmt.ReadOnly
-}
-
-func (stmt *basePreparedStatement) Run(ctx *Context) (Result, error) {
-	s, err := stmt.Preparer.Prepare(ctx)
-	if err != nil {
-		return Result{}, err
-	}
-
-	return s.Run(ctx)
+// Optional interface that allows a statement to specify if they need to be bound to database
+// objects.
+type Bindable interface {
+	Bind(*Context) error
 }
 
 type Context struct {
 	DB     *database.Database
 	Conn   *database.Connection
-	Tx     *database.Transaction
 	Params []environment.Param
 }
 
@@ -90,7 +90,10 @@ func (r *Result) Iterate(fn func(r database.Row) error) (err error) {
 // Skip iterates over the result and skips all rows.
 // It is useful when you need the query to be executed
 // but don't care about the results.
-func (r *Result) Skip() (err error) {
+func (r *Result) Skip(ctx context.Context) (err error) {
+	if r == nil {
+		return nil
+	}
 	if r.Result == nil {
 		return nil
 	}
@@ -107,6 +110,9 @@ func (r *Result) Skip() (err error) {
 	defer it.Close()
 
 	for it.Next() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 	}
 
 	return it.Error()
@@ -122,7 +128,7 @@ func (r *Result) Columns() ([]string, error) {
 		return nil, nil
 	}
 
-	env := environment.New(stmt.Context.DB, stmt.Context.Tx, stmt.Context.Params, nil)
+	env := environment.New(stmt.Context.DB, stmt.Context.Conn.GetTx(), stmt.Context.Params, nil)
 	return stmt.Stream.Columns(env)
 }
 
@@ -158,7 +164,7 @@ func BindExpr(ctx *Context, tableName string, e expr.Expr) (err error) {
 
 	var info *database.TableInfo
 	if tableName != "" {
-		info, err = ctx.Tx.Catalog.GetTableInfo(tableName)
+		info, err = ctx.Conn.GetTx().Catalog.GetTableInfo(tableName)
 		if err != nil {
 			return err
 		}

@@ -20,7 +20,13 @@ import (
 func updateCatalog(t testing.TB, db *database.Database, fn func(tx *database.Transaction, catalog *database.CatalogWriter) error) {
 	t.Helper()
 
-	tx, err := db.Begin(true)
+	conn, err := db.Connect()
+	require.NoError(t, err)
+	defer conn.Close()
+
+	tx, err := conn.BeginTx(&database.TxOptions{
+		ReadOnly: false,
+	})
 	require.NoError(t, err)
 	defer tx.Rollback()
 

@@ -18,34 +18,23 @@ type AlterTableRenameStmt struct {
 	NewTableName string
 }
 
-func (stmt *AlterTableRenameStmt) Bind(ctx *Context) error {
-	return nil
-}
-
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *AlterTableRenameStmt) IsReadOnly() bool {
-	return false
-}
-
 // Run runs the ALTER TABLE statement in the given transaction.
 // It implements the Statement interface.
-func (stmt *AlterTableRenameStmt) Run(ctx *Context) (Result, error) {
-	var res Result
-
+func (stmt *AlterTableRenameStmt) Run(ctx *Context) (*Result, error) {
 	if stmt.TableName == "" {
-		return res, errors.New("missing table name")
+		return nil, errors.New("missing table name")
 	}
 
 	if stmt.NewTableName == "" {
-		return res, errors.New("missing new table name")
+		return nil, errors.New("missing new table name")
 	}
 
 	if stmt.TableName == stmt.NewTableName {
-		return res, errs.AlreadyExistsError{Name: stmt.NewTableName}
+		return nil, errs.AlreadyExistsError{Name: stmt.NewTableName}
 	}
 
-	err := ctx.Tx.CatalogWriter().RenameTable(ctx.Tx, stmt.TableName, stmt.NewTableName)
-	return res, err
+	err := ctx.Conn.GetTx().CatalogWriter().RenameTable(ctx.Conn.GetTx(), stmt.TableName, stmt.NewTableName)
+	return nil, err
 }
 
 type AlterTableAddColumnStmt struct {
@@ -54,41 +43,32 @@ type AlterTableAddColumnStmt struct {
 	TableConstraints database.TableConstraints
 }
 
-// IsReadOnly always returns false. It implements the Statement interface.
-func (stmt *AlterTableAddColumnStmt) IsReadOnly() bool {
-	return false
-}
-
-func (stmt *AlterTableAddColumnStmt) Bind(ctx *Context) error {
-	return nil
-}
-
 // Run runs the ALTER TABLE ADD COLUMN statement in the given transaction.
 // It implements the Statement interface.
 // The statement rebuilds the table.
-func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
+func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (*Result, error) {
 	var err error
 
 	// get the table before adding the column constraint
 	// and assign the table to the table.Scan operator
 	// so that it can decode the records properly
 	scan := table.Scan(stmt.TableName)
-	scan.Table, err = ctx.Tx.Catalog.GetTable(ctx.Tx, stmt.TableName)
+	scan.Table, err = ctx.Conn.GetTx().Catalog.GetTable(ctx.Conn.GetTx(), stmt.TableName)
 	if err != nil {
-		return Result{}, errors.Wrap(err, "failed to get table")
+		return nil, errors.Wrap(err, "failed to get table")
 	}
 
 	// get the current list of indexes
-	indexNames := ctx.Tx.Catalog.ListIndexes(stmt.TableName)
+	indexNames := ctx.Conn.GetTx().Catalog.ListIndexes(stmt.TableName)
 
 	// add the column constraint to the table
-	err = ctx.Tx.CatalogWriter().AddColumnConstraint(
-		ctx.Tx,
+	err = ctx.Conn.GetTx().CatalogWriter().AddColumnConstraint(
+		ctx.Conn.GetTx(),
 		stmt.TableName,
 		stmt.ColumnConstraint,
 		stmt.TableConstraints)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	// create a unique index for every unique constraint
@@ -96,7 +76,7 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	var newIdxs []*database.IndexInfo
 	for _, tc := range stmt.TableConstraints {
 		if tc.Unique {
-			idx, err := ctx.Tx.CatalogWriter().CreateIndex(ctx.Tx, &database.IndexInfo{
+			idx, err := ctx.Conn.GetTx().CatalogWriter().CreateIndex(ctx.Conn.GetTx(), &database.IndexInfo{
 				Columns: tc.Columns,
 				Unique:  true,
 				Owner: database.Owner{
@@ -105,7 +85,7 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 				},
 			})
 			if err != nil {
-				return Result{}, err
+				return nil, err
 			}
 
 			newIdxs = append(newIdxs, idx)
@@ -141,11 +121,11 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 		s = s.Pipe(table.Insert(stmt.TableName))
 
 		// insert the record into the all the indexes
-		indexNames = ctx.Tx.Catalog.ListIndexes(stmt.TableName)
+		indexNames = ctx.Conn.GetTx().Catalog.ListIndexes(stmt.TableName)
 		for _, indexName := range indexNames {
-			info, err := ctx.Tx.Catalog.GetIndexInfo(indexName)
+			info, err := ctx.Conn.GetTx().Catalog.GetIndexInfo(indexName)
 			if err != nil {
-				return Result{}, err
+				return nil, err
 			}
 			if info.Unique {
 				s = s.Pipe(index.Validate(indexName))
@@ -176,7 +156,7 @@ func (stmt *AlterTableAddColumnStmt) Run(ctx *Context) (Result, error) {
 	s = s.Pipe(stream.Discard())
 
 	// do NOT optimize the stream
-	return Result{
+	return &Result{
 		Result: &StreamStmtResult{
 			Stream:  s,
 			Context: ctx,

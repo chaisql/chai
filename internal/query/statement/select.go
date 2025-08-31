@@ -43,13 +43,33 @@ func (stmt *SelectCoreStmt) Bind(ctx *Context) error {
 	return nil
 }
 
-func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
-	isReadOnly := true
+func (stmt *SelectCoreStmt) IsReadOnly() bool {
+	var isReadOnly = true
 
+	// SELECT is read-only most of the time, unless it's using some expressions
+	// that require write access and that are allowed to be run, such as nextval
+	for _, e := range stmt.ProjectionExprs {
+		expr.Walk(e, func(e expr.Expr) bool {
+			switch e.(type) {
+			case *expr.NamedExpr:
+				return true
+			case *functions.NextVal:
+				isReadOnly = false
+				return false
+			default:
+				return true
+			}
+		})
+	}
+
+	return isReadOnly
+}
+
+func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*stream.Stream, error) {
 	var s *stream.Stream
 
 	if stmt.TableName != "" {
-		_, err := ctx.Tx.Catalog.GetTableInfo(stmt.TableName)
+		_, err := ctx.Conn.GetTx().Catalog.GetTableInfo(stmt.TableName)
 		if err != nil {
 			return nil, err
 		}
@@ -148,35 +168,16 @@ func (stmt *SelectCoreStmt) Prepare(ctx *Context) (*StreamStmt, error) {
 	}
 	s = s.Pipe(rows.Project(stmt.ProjectionExprs...))
 
-	// SELECT is read-only most of the time, unless it's using some expressions
-	// that require write access and that are allowed to be run, such as nextval
-	for _, e := range stmt.ProjectionExprs {
-		expr.Walk(e, func(e expr.Expr) bool {
-			switch e.(type) {
-			case *expr.NamedExpr:
-				return true
-			case *functions.NextVal:
-				isReadOnly = false
-				return false
-			default:
-				return true
-			}
-		})
-	}
-
 	if stmt.Distinct {
 		s = stream.New(stream.Union(s))
 	}
 
-	return &StreamStmt{
-		Stream:   s,
-		ReadOnly: isReadOnly,
-	}, nil
+	return s, nil
 }
 
 // SelectStmt holds SELECT configuration.
 type SelectStmt struct {
-	basePreparedStatement
+	PreparedStreamStmt
 
 	CompoundSelect    []*SelectCoreStmt
 	CompoundOperators []scanner.Token
@@ -186,15 +187,13 @@ type SelectStmt struct {
 	LimitExpr         expr.Expr
 }
 
-func NewSelectStatement() *SelectStmt {
-	var p SelectStmt
-
-	p.basePreparedStatement = basePreparedStatement{
-		Preparer: &p,
-		ReadOnly: true,
+func (stmt *SelectStmt) IsReadOnly() bool {
+	for i := range stmt.CompoundSelect {
+		if !stmt.CompoundSelect[i].IsReadOnly() {
+			return false
+		}
 	}
-
-	return &p
+	return true
 }
 
 func (stmt *SelectStmt) Bind(ctx *Context) error {
@@ -230,7 +229,6 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 	var prev scanner.Token
 
 	var coreStmts []*stream.Stream
-	var readOnly bool = true
 
 	for i, coreSelect := range stmt.CompoundSelect {
 		coreStmt, err := coreSelect.Prepare(ctx)
@@ -239,16 +237,11 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 		}
 
 		if len(stmt.CompoundSelect) == 1 {
-			s = coreStmt.Stream
-			readOnly = coreStmt.ReadOnly
+			s = coreStmt
 			break
 		}
 
-		coreStmts = append(coreStmts, coreStmt.Stream)
-
-		if !coreStmt.ReadOnly {
-			readOnly = false
-		}
+		coreStmts = append(coreStmts, coreStmt)
 
 		var tok scanner.Token
 		if i < len(stmt.CompoundOperators) {
@@ -285,10 +278,6 @@ func (stmt *SelectStmt) Prepare(ctx *Context) (Statement, error) {
 		s = s.Pipe(rows.Take(stmt.LimitExpr))
 	}
 
-	st := StreamStmt{
-		Stream:   s,
-		ReadOnly: readOnly,
-	}
-
-	return st.Prepare(ctx)
+	stmt.PreparedStreamStmt.Stream = s
+	return stmt, nil
 }

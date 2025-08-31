@@ -11,12 +11,12 @@ import (
 )
 
 func TestParserMultiStatement(t *testing.T) {
-	slct := statement.NewSelectStatement()
+	var slct statement.SelectStmt
 	slct.CompoundSelect = []*statement.SelectCoreStmt{
 		{TableName: "foo", ProjectionExprs: []expr.Expr{expr.Wildcard{}}},
 	}
 
-	dlt := statement.NewDeleteStatement()
+	var dlt statement.DeleteStmt
 	dlt.TableName = "foo"
 
 	tests := []struct {
@@ -26,16 +26,16 @@ func TestParserMultiStatement(t *testing.T) {
 	}{
 		{"OnlyCommas", ";;;", nil},
 		{"TrailingComma", "SELECT * FROM foo;;;DELETE FROM foo;", []statement.Statement{
-			slct,
-			dlt,
+			&slct,
+			&dlt,
 		}},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			require.NoError(t, err)
-			require.EqualValues(t, test.expected, q.Statements)
+			require.EqualValues(t, test.expected, stmts)
 		})
 	}
 }

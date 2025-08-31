@@ -8,7 +8,7 @@ import (
 
 // parseUpdateStatement parses a update string and returns a Statement AST row.
 func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
-	stmt := statement.NewUpdateStatement()
+	var stmt statement.UpdateStmt
 	var err error
 
 	// Parse "UPDATE".
@@ -42,7 +42,7 @@ func (p *Parser) parseUpdateStatement() (*statement.UpdateStmt, error) {
 		return nil, err
 	}
 
-	return stmt, nil
+	return &stmt, nil
 }
 
 // parseSetClause parses the "SET" clause of the query.

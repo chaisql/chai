@@ -13,7 +13,7 @@ var _ Statement = (*UpdateStmt)(nil)
 
 // UpdateConfig holds UPDATE configuration.
 type UpdateStmt struct {
-	basePreparedStatement
+	PreparedStreamStmt
 
 	TableName string
 
@@ -23,17 +23,6 @@ type UpdateStmt struct {
 	SetPairs []UpdateSetPair
 
 	WhereExpr expr.Expr
-}
-
-func NewUpdateStatement() *UpdateStmt {
-	var p UpdateStmt
-
-	p.basePreparedStatement = basePreparedStatement{
-		Preparer: &p,
-		ReadOnly: false,
-	}
-
-	return &p
 }
 
 type UpdateSetPair struct {
@@ -64,7 +53,7 @@ func (stmt *UpdateStmt) Bind(ctx *Context) error {
 
 // Prepare implements the Preparer interface.
 func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
-	ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
+	ti, err := c.Conn.GetTx().Catalog.GetTableInfo(stmt.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +88,7 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	// TODO(asdine): This removes ALL indexed fields for each row
 	// even if the update modified a single field. We should only
 	// update the indexed fields that were modified.
-	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Conn.GetTx().Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
 		s = s.Pipe(index.Delete(indexName))
 	}
@@ -114,7 +103,7 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	for _, indexName := range indexNames {
-		info, err := c.Tx.Catalog.GetIndexInfo(indexName)
+		info, err := c.Conn.GetTx().Catalog.GetIndexInfo(indexName)
 		if err != nil {
 			return nil, err
 		}
@@ -127,10 +116,6 @@ func (stmt *UpdateStmt) Prepare(c *Context) (Statement, error) {
 
 	s = s.Pipe(stream.Discard())
 
-	st := StreamStmt{
-		Stream:   s,
-		ReadOnly: false,
-	}
-
-	return st.Prepare(c)
+	stmt.PreparedStreamStmt.Stream = s
+	return stmt, nil
 }

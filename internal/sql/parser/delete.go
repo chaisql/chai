@@ -9,7 +9,7 @@ import (
 
 // parseDeleteStatement parses a delete string and returns a Statement AST row.
 func (p *Parser) parseDeleteStatement() (statement.Statement, error) {
-	stmt := statement.NewDeleteStatement()
+	var stmt statement.DeleteStmt
 	var err error
 
 	// Parse "DELETE FROM".
@@ -49,5 +49,5 @@ func (p *Parser) parseDeleteStatement() (statement.Statement, error) {
 		return nil, err
 	}
 
-	return stmt, nil
+	return &stmt, nil
 }

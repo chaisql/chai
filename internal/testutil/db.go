@@ -85,8 +85,7 @@ func NewTestTx(t testing.TB) (*database.Database, *database.Transaction, func())
 	require.NoError(t, err)
 
 	return db, tx, func() {
-		err = tx.Rollback()
-		require.NoError(t, err)
+		_ = tx.Rollback()
 	}
 }
 
@@ -97,7 +96,7 @@ func Exec(db *database.Database, tx *database.Transaction, q string, params ...e
 	}
 	defer res.Close()
 
-	return res.Skip()
+	return res.Skip(context.Background())
 }
 
 func Query(db *database.Database, tx *database.Transaction, q string, params ...environment.Param) (*statement.Result, error) {
@@ -107,12 +106,8 @@ func Query(db *database.Database, tx *database.Transaction, q string, params ...
 	}
 
 	ctx := &query.Context{Ctx: context.Background(), DB: db, Conn: tx.Connection(), Params: params}
-	err = pq.Prepare(ctx)
-	if err != nil {
-		return nil, err
-	}
 
-	return pq.Run(ctx)
+	return query.New(pq...).Run(ctx)
 }
 
 func MustExec(t *testing.T, db *database.Database, tx *database.Transaction, q string, params ...environment.Param) {

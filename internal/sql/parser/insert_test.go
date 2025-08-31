@@ -1,11 +1,9 @@
 package parser_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
@@ -221,23 +219,22 @@ func TestParserInsert(t *testing.T) {
 
 			testutil.MustExec(t, db, tx, "CREATE TABLE test(a TEXT, b TEXT); CREATE TABLE foo(c TEXT, d TEXT);")
 
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			if test.fails {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			err = q.Prepare(&query.Context{
-				Ctx:  context.Background(),
+			require.Len(t, stmts, 1)
+
+			stmt, err := stmts[0].(statement.Preparer).Prepare(&statement.Context{
 				DB:   db,
 				Conn: tx.Connection(),
 			})
 			require.NoError(t, err)
 
-			require.Len(t, q.Statements, 1)
-
-			require.Equal(t, test.expected.String(), q.Statements[0].(*statement.PreparedStreamStmt).Stream.String())
+			require.Equal(t, test.expected.String(), stmt.(*statement.InsertStmt).Stream.String())
 		})
 	}
 }

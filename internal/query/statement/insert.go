@@ -15,7 +15,7 @@ var _ Statement = (*InsertStmt)(nil)
 
 // InsertStmt holds INSERT configuration.
 type InsertStmt struct {
-	basePreparedStatement
+	PreparedStreamStmt
 
 	TableName  string
 	Values     []expr.Expr
@@ -23,17 +23,6 @@ type InsertStmt struct {
 	SelectStmt Preparer
 	Returning  []expr.Expr
 	OnConflict database.OnConflictAction
-}
-
-func NewInsertStatement() *InsertStmt {
-	var p InsertStmt
-
-	p.basePreparedStatement = basePreparedStatement{
-		Preparer: &p,
-		ReadOnly: false,
-	}
-
-	return &p
 }
 
 func (stmt *InsertStmt) Bind(ctx *Context) error {
@@ -45,7 +34,7 @@ func (stmt *InsertStmt) Bind(ctx *Context) error {
 	}
 
 	if stmt.SelectStmt != nil {
-		if s, ok := stmt.SelectStmt.(Statement); ok {
+		if s, ok := stmt.SelectStmt.(Bindable); ok {
 			err := s.Bind(ctx)
 			if err != nil {
 				return err
@@ -68,7 +57,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 
 	var columns []string
 	if stmt.Values != nil {
-		ti, err := c.Tx.Catalog.GetTableInfo(stmt.TableName)
+		ti, err := c.Conn.GetTx().Catalog.GetTableInfo(stmt.TableName)
 		if err != nil {
 			return nil, err
 		}
@@ -129,7 +118,7 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 			return nil, err
 		}
 
-		s = selectStream.(*PreparedStreamStmt).Stream
+		s = selectStream.(*SelectStmt).Stream
 
 		// ensure we are not reading and writing to the same table.
 		// TODO(asdine): if same table, write content to a temp table.
@@ -157,9 +146,9 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 	}
 
 	// check unique constraints
-	indexNames := c.Tx.Catalog.ListIndexes(stmt.TableName)
+	indexNames := c.Conn.GetTx().Catalog.ListIndexes(stmt.TableName)
 	for _, indexName := range indexNames {
-		info, err := c.Tx.Catalog.GetIndexInfo(indexName)
+		info, err := c.Conn.GetTx().Catalog.GetIndexInfo(indexName)
 		if err != nil {
 			return nil, err
 		}
@@ -189,10 +178,6 @@ func (stmt *InsertStmt) Prepare(c *Context) (Statement, error) {
 		s = s.Pipe(stream.Discard())
 	}
 
-	st := StreamStmt{
-		Stream:   s,
-		ReadOnly: false,
-	}
-
-	return st.Prepare(c)
+	stmt.PreparedStreamStmt.Stream = s
+	return stmt, nil
 }

@@ -17,8 +17,10 @@ import (
 )
 
 var (
-	_ driver.Driver        = (*Driver)(nil)
-	_ driver.DriverContext = (*Driver)(nil)
+	_ driver.Driver         = (*Driver)(nil)
+	_ driver.DriverContext  = (*Driver)(nil)
+	_ driver.QueryerContext = (*Conn)(nil)
+	_ driver.ExecerContext  = (*Conn)(nil)
 )
 
 // Driver is a driver.Driver that can open a new connection to a Chai database.
@@ -98,24 +100,100 @@ func (c *Conn) Prepare(q string) (driver.Stmt, error) {
 	return c.PrepareContext(context.Background(), q)
 }
 
-// PrepareContext returns a prepared statement, bound to this connection.
-func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
-	pq, err := parser.ParseQuery(q)
+func (c *Conn) ExecContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Result, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	statements, err := parser.ParseQuery(q)
 	if err != nil {
 		return nil, err
 	}
 
-	err = pq.Prepare(&query.Context{
-		Ctx:  ctx,
-		DB:   c.db,
-		Conn: c.conn,
+	res, err := query.New(statements...).Run(&query.Context{
+		Ctx:    ctx,
+		DB:     c.DB(),
+		Conn:   c.conn,
+		Params: NamedValueToParams(args),
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		er := res.Close()
+		if err == nil {
+			err = er
+		}
+	}()
+
+	return ExecResult{}, res.Skip(ctx)
+}
+
+func (c *Conn) QueryContext(ctx context.Context, q string, args []driver.NamedValue) (driver.Rows, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	statements, err := parser.ParseQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := query.New(statements...).Run(&query.Context{
+		Ctx:    ctx,
+		DB:     c.DB(),
+		Conn:   c.conn,
+		Params: NamedValueToParams(args),
 	})
 	if err != nil {
 		return nil, err
 	}
 
+	return NewRows(res)
+}
+
+// PrepareContext returns a prepared statement, bound to this connection.
+func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error) {
+	statements, err := parser.ParseQuery(q)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(statements) != 1 {
+		return nil, errors.New("cannot insert multiple commands into a prepared statement")
+	}
+
+	sctx := statement.Context{
+		DB:   c.db,
+		Conn: c.conn,
+	}
+
+	tx, err := c.conn.BeginTx(&database.TxOptions{
+		ReadOnly: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	stmt := statements[0]
+
+	if b, ok := stmt.(statement.Bindable); ok {
+		err = b.Bind(&sctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if p, ok := stmt.(statement.Preparer); ok {
+		stmt, err = p.Prepare(&sctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &Stmt{
-		pq:   pq,
+		stmt: stmt,
 		conn: c,
 	}, nil
 }
@@ -162,7 +240,7 @@ func (c *Conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 // Stmt is a prepared statement. It is bound to a Conn and not
 // used by multiple goroutines concurrently.
 type Stmt struct {
-	pq   query.Query
+	stmt statement.Statement
 	conn *Conn
 }
 
@@ -178,14 +256,11 @@ func (s *Stmt) Exec(args []driver.Value) (driver.Result, error) {
 // ExecContext executes a query that doesn't return rows, such
 // as an INSERT or UPDATE.
 func (s *Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (driver.Result, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
-	res, err := s.pq.Run(&query.Context{
-		Ctx:    ctx,
+	res, err := s.stmt.Run(&statement.Context{
 		DB:     s.conn.db,
 		Conn:   s.conn.conn,
 		Params: NamedValueToParams(args),
@@ -200,7 +275,26 @@ func (s *Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (drive
 		}
 	}()
 
-	return ExecResult{}, res.Skip()
+	return ExecResult{}, res.Skip(ctx)
+}
+
+// QueryContext executes a query that may return rows, such as a
+// SELECT.
+func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	res, err := s.stmt.Run(&statement.Context{
+		DB:     s.conn.db,
+		Conn:   s.conn.conn,
+		Params: NamedValueToParams(args),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return NewRows(res)
 }
 
 type ExecResult struct{}
@@ -219,28 +313,6 @@ func (s Stmt) Query(args []driver.Value) (driver.Rows, error) {
 	return nil, errors.New("not implemented")
 }
 
-// QueryContext executes a query that may return rows, such as a
-// SELECT.
-func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driver.Rows, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-	}
-
-	res, err := s.pq.Run(&query.Context{
-		Ctx:    ctx,
-		DB:     s.conn.db,
-		Conn:   s.conn.conn,
-		Params: NamedValueToParams(args),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRows(res)
-}
-
 // Close does nothing.
 func (s Stmt) Close() error {
 	return nil
@@ -253,6 +325,10 @@ type Rows struct {
 }
 
 func NewRows(res *statement.Result) (*Rows, error) {
+	if res == nil {
+		return &Rows{}, nil
+	}
+
 	columns, err := res.Columns()
 	if err != nil {
 		return nil, err

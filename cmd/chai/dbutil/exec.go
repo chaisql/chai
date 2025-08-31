@@ -31,18 +31,11 @@ func ExecSQL(ctx context.Context, db *sql.DB, r io.Reader, w io.Writer) error {
 
 		var stmtWithOutputCount int
 		return parser.NewParser(r).Parse(func(s statement.Statement) error {
-			qq := query.New(s)
-			qctx := query.Context{
+			res, err := query.New(s).Run(&query.Context{
 				Ctx:  ctx,
 				DB:   conn.DB(),
 				Conn: conn.Conn(),
-			}
-			err := qq.Prepare(&qctx)
-			if err != nil {
-				return err
-			}
-
-			res, err := qq.Run(&qctx)
+			})
 			if err != nil {
 				return err
 			}

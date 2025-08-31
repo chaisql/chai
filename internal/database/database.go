@@ -95,7 +95,7 @@ func Open(path string, opts *Options) (*Database, error) {
 		return nil, err
 	}
 
-	tx, err := db.Begin(true)
+	tx, err := db.begin(true)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +183,7 @@ func (db *Database) Connect() (*Connection, error) {
 
 // Begin starts a new transaction with default options.
 // The returned transaction must be closed either by calling Rollback or Commit.
-func (db *Database) Begin(writable bool) (*Transaction, error) {
+func (db *Database) begin(writable bool) (*Transaction, error) {
 	if db.closeContext.Err() != nil {
 		return nil, errors.New("database is closed")
 	}

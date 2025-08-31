@@ -19,7 +19,7 @@ type ExplainStmt struct {
 }
 
 func (stmt *ExplainStmt) Bind(ctx *Context) error {
-	if s, ok := stmt.Statement.(Statement); ok {
+	if s, ok := stmt.Statement.(Bindable); ok {
 		return s.Bind(ctx)
 	}
 
@@ -30,26 +30,36 @@ func (stmt *ExplainStmt) Bind(ctx *Context) error {
 // If the statement is a stream, Optimize will be called prior to
 // displaying all the operations.
 // Explain currently only works on SELECT, UPDATE, INSERT and DELETE statements.
-func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
+func (stmt *ExplainStmt) Run(ctx *Context) (*Result, error) {
 	st, err := stmt.Statement.Prepare(ctx)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
-	s, ok := st.(*PreparedStreamStmt)
-	if !ok {
-		return Result{}, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
+	var s *stream.Stream
+
+	switch stmt := st.(type) {
+	case *InsertStmt:
+		s = stmt.Stream
+	case *SelectStmt:
+		s = stmt.Stream
+	case *UpdateStmt:
+		s = stmt.Stream
+	case *DeleteStmt:
+		s = stmt.Stream
+	default:
+		return nil, errors.New("EXPLAIN only works on INSERT, SELECT, UPDATE AND DELETE statements")
 	}
 
 	// Optimize the stream.
-	s.Stream, err = planner.Optimize(s.Stream, ctx.Tx.Catalog, ctx.Params)
+	s, err = planner.Optimize(s, ctx.Conn.GetTx().Catalog, ctx.Params)
 	if err != nil {
-		return Result{}, err
+		return nil, err
 	}
 
 	var plan string
-	if s.Stream != nil {
-		plan = s.Stream.String()
+	if s != nil {
+		plan = s.String()
 	} else {
 		plan = "<no exec>"
 	}
@@ -62,7 +72,6 @@ func (stmt *ExplainStmt) Run(ctx *Context) (Result, error) {
 					Expr:     expr.LiteralValue{Value: types.NewTextValue(plan)},
 				}),
 		},
-		ReadOnly: true,
 	}
 	return newStatement.Run(ctx)
 }

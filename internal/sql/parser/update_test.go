@@ -1,11 +1,9 @@
 package parser_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/chaisql/chai/internal/expr"
-	"github.com/chaisql/chai/internal/query"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/sql/parser"
 	"github.com/chaisql/chai/internal/stream"
@@ -28,7 +26,7 @@ func TestParserUpdate(t *testing.T) {
 		if len(table) > 0 {
 			tb = table[0]
 		}
-		err := statement.BindExpr(&statement.Context{DB: db, Tx: tx, Conn: tx.Connection()}, tb, e)
+		err := statement.BindExpr(&statement.Context{DB: db, Conn: tx.Connection()}, tb, e)
 		require.NoError(t, err)
 		return e
 	}
@@ -66,22 +64,21 @@ func TestParserUpdate(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			q, err := parser.ParseQuery(test.s)
+			stmts, err := parser.ParseQuery(test.s)
 			if test.errored {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 
-			err = q.Prepare(&query.Context{
-				Ctx:  context.Background(),
+			stmt, err := stmts[0].(statement.Preparer).Prepare(&statement.Context{
 				DB:   db,
 				Conn: tx.Connection(),
 			})
 			require.NoError(t, err)
 
-			require.Len(t, q.Statements, 1)
-			require.EqualValues(t, &statement.PreparedStreamStmt{Stream: test.expected}, q.Statements[0].(*statement.PreparedStreamStmt))
+			require.Len(t, stmts, 1)
+			require.EqualValues(t, test.expected.String(), stmt.(*statement.UpdateStmt).Stream.String())
 		})
 	}
 }

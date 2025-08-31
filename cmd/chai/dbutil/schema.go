@@ -70,12 +70,12 @@ func ListIndexes(ctx context.Context, db *sql.DB, tableName string) ([]string, e
 			return nil, err
 		}
 
-		q, err := parser.ParseQuery(query)
+		statements, err := parser.ParseQuery(query)
 		if err != nil {
 			return nil, err
 		}
 
-		listName = append(listName, q.Statements[0].(*statement.CreateIndexStmt).Info.IndexName)
+		listName = append(listName, statements[0].(*statement.CreateIndexStmt).Info.IndexName)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
