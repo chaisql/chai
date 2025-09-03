@@ -15,8 +15,6 @@ type Engine interface {
 	Close() error
 	Rollback() error
 	Recover() error
-	LockSharedSnapshot()
-	UnlockSharedSnapshot()
 	CleanupTransientNamespaces() error
 	NewSnapshotSession() Session
 	NewBatchSession() Session

@@ -53,13 +53,13 @@ func NewEngineWith(path string, opts Options, popts *pebble.Options) (*PebbleEng
 		popts = &pebble.Options{}
 	}
 
-	popts.FormatMajorVersion = pebble.FormatColumnarBlocks
+	popts.FormatMajorVersion = pebble.FormatValueSeparation
 	popts.Comparer = DefaultComparer
 	if popts.Logger == nil {
 		popts.Logger = pebbleutil.NoopLoggerAndTracer{}
 	}
 
-	popts = popts.EnsureDefaults()
+	popts.EnsureDefaults()
 
 	db, err := pebble.Open(path, popts)
 	if err != nil {
