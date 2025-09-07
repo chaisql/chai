@@ -22,7 +22,7 @@ func Example() {
 	defer db.Close()
 
 	// Create a table.
-	_, err = db.Exec("CREATE TABLE user (id int, name text, age int)")
+	_, err = db.Exec("CREATE TABLE user (id int primary key, name text, age int)")
 	if err != nil {
 		panic(err)
 	}

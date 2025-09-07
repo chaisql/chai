@@ -33,7 +33,7 @@ func (stmt *DropTableStmt) Run(ctx *Context) (*Result, error) {
 		return nil, errors.New("missing table name")
 	}
 
-	tb, err := ctx.Conn.GetTx().Catalog.GetTable(ctx.Conn.GetTx(), stmt.TableName)
+	_, err := ctx.Conn.GetTx().Catalog.GetTable(ctx.Conn.GetTx(), stmt.TableName)
 	if err != nil {
 		if errs.IsNotFoundError(err) && stmt.IfExists {
 			err = nil
@@ -45,14 +45,6 @@ func (stmt *DropTableStmt) Run(ctx *Context) (*Result, error) {
 	err = ctx.Conn.GetTx().CatalogWriter().DropTable(ctx.Conn.GetTx(), stmt.TableName)
 	if err != nil {
 		return nil, err
-	}
-
-	// if there is no primary key, drop the rowid sequence
-	if tb.Info.PrimaryKey == nil {
-		err = ctx.Conn.GetTx().CatalogWriter().DropSequence(ctx.Conn.GetTx(), tb.Info.RowidSequenceName)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return nil, err

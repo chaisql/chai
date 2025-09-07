@@ -1,6 +1,6 @@
 -- setup:
-CREATE TABLE test(a timestamp);
-INSERT INTO test (a) VALUES ("2023"), ("2025"), ("2021"), ("2000");
+CREATE TABLE test(pk int primary key, a timestamp );
+INSERT INTO test VALUES (1, "2023"), (2, "2025"), (3, "2021"), (4, "2000");
 
 -- suite: no index
 
@@ -28,15 +28,19 @@ SELECT a FROM test ORDER BY a;
 SELECT * FROM test ORDER BY a;
 /* result:
 {
+    pk: 4,
     a: "2000-01-01T00:00:00Z",
 }
 {
+    pk: 3,
     a: "2021-01-01T00:00:00Z"
 }
 {
+    pk: 1,
     a: "2023-01-01T00:00:00Z"
 }
 {
+    pk: 2,
     a: "2025-01-01T00:00:00Z"
 }
 */
@@ -62,15 +66,19 @@ SELECT a FROM test ORDER BY a DESC;
 SELECT * FROM test ORDER BY a DESC;
 /* result:
 {
+    pk: 2,
     a: "2025-01-01T00:00:00Z",
 }
 {
+    pk: 1,
     a: "2023-01-01T00:00:00Z"
 }
 {
+    pk: 3,
     a: "2021-01-01T00:00:00Z"
 }
 {
+    pk: 4,
     a: "2000-01-01T00:00:00Z"
 }
 */

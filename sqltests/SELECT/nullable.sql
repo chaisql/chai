@@ -1,7 +1,7 @@
 -- test: one nullable column
-CREATE TABLE test (a INT);
-INSERT INTO test (a) VALUES (null), (null);
-SELECT * FROM test;
+CREATE TABLE test (pk INT PRIMARY KEY, a INT);
+INSERT INTO test (pk, a) VALUES (1, null), (2, null);
+SELECT a FROM test;
 /* result:
 {
     a: null
@@ -12,9 +12,9 @@ SELECT * FROM test;
 */
 
 -- test: first column null
-CREATE TABLE test (a INT, b INT);
-INSERT INTO test (b) VALUES (1), (2);
-SELECT * FROM test;
+CREATE TABLE test (pk INT PRIMARY KEY, a INT, b INT);
+INSERT INTO test (pk, b) VALUES (1, 1), (2, 2);
+SELECT a, b FROM test;
 /* result:
 {
     a: null,
@@ -27,9 +27,9 @@ SELECT * FROM test;
 */
 
 -- test: second column null
-CREATE TABLE test (a INT, b INT);
-INSERT INTO test (a) VALUES (1), (2);
-SELECT * FROM test;
+CREATE TABLE test (pk INT PRIMARY KEY, a INT, b INT);
+INSERT INTO test (pk, a) VALUES (1, 1), (2, 2);
+SELECT a, b FROM test;
 /* result:
 {
     a: 1,

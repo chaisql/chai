@@ -1,14 +1,13 @@
 package statement
 
 import (
-	"math"
-
 	"github.com/chaisql/chai/internal/database"
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/stream"
 	"github.com/chaisql/chai/internal/stream/index"
 	"github.com/chaisql/chai/internal/stream/table"
+	"github.com/cockroachdb/errors"
 )
 
 var _ Statement = (*CreateTableStmt)(nil)
@@ -24,23 +23,17 @@ type CreateTableStmt struct {
 // Run runs the Create table statement in the given transaction.
 // It implements the Statement interface.
 func (stmt *CreateTableStmt) Run(ctx *Context) (*Result, error) {
-	// if there is no primary key, create a rowid sequence
 	if stmt.Info.PrimaryKey == nil {
-		seq := database.SequenceInfo{
-			IncrementBy: 1,
-			Min:         1, Max: math.MaxInt64,
-			Start: 1,
-			Cache: 64,
-			Owner: database.Owner{
-				TableName: stmt.Info.TableName,
-			},
-		}
-		err := ctx.Conn.GetTx().CatalogWriter().CreateSequence(ctx.Conn.GetTx(), &seq)
-		if err != nil {
-			return nil, err
-		}
+		return nil, errors.New("table must have a primary key")
+	}
 
-		stmt.Info.RowidSequenceName = seq.Name
+	// for each primary key column, add a not null constraint
+	for _, col := range stmt.Info.PrimaryKey.Columns {
+		cc := stmt.Info.GetColumnConstraint(col)
+		if cc == nil {
+			return nil, errors.Errorf("primary key column %q does not exist", col)
+		}
+		cc.IsNotNull = true
 	}
 
 	err := ctx.Conn.GetTx().CatalogWriter().CreateTable(ctx.Conn.GetTx(), stmt.Info.TableName, &stmt.Info)

@@ -270,9 +270,13 @@ func (it *GroupAggregatorIterator) iterateOnPrev() (bool, error) {
 }
 
 func (it *GroupAggregatorIterator) Row() (database.Row, error) {
-	return it.row, it.err
+	return it.row, it.Error()
 }
 
 func (it *GroupAggregatorIterator) Error() error {
-	return it.err
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.prev.Error()
 }

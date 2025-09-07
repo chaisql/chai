@@ -217,7 +217,7 @@ func TestParserInsert(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test(a TEXT, b TEXT); CREATE TABLE foo(c TEXT, d TEXT);")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(a TEXT PRIMARY KEY, b TEXT); CREATE TABLE foo(c TEXT PRIMARY KEY, d TEXT);")
 
 			stmts, err := parser.ParseQuery(test.s)
 			if test.fails {

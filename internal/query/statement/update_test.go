@@ -39,7 +39,7 @@ func TestUpdateStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				_, err = db.Exec("CREATE TABLE test (a text not null, b text, c text, d text, e text)")
+				_, err = db.Exec("CREATE TABLE test (pk int primary key, a text not null, b text, c text, d text, e text)")
 				require.NoError(t, err)
 
 				if indexed {
@@ -47,11 +47,11 @@ func TestUpdateStmt(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				_, err = db.Exec("INSERT INTO test (a, b, c) VALUES ('foo1', 'bar1', 'baz1')")
+				_, err = db.Exec("INSERT INTO test (pk, a, b, c) VALUES (1, 'foo1', 'bar1', 'baz1')")
 				require.NoError(t, err)
-				_, err = db.Exec("INSERT INTO test (a, b) VALUES ('foo2', 'bar2')")
+				_, err = db.Exec("INSERT INTO test (pk, a, b) VALUES (2, 'foo2', 'bar2')")
 				require.NoError(t, err)
-				_, err = db.Exec("INSERT INTO test (a, d, e) VALUES ('foo3', 'bar3', 'baz3')")
+				_, err = db.Exec("INSERT INTO test (pk, a, d, e) VALUES (3, 'foo3', 'bar3', 'baz3')")
 				require.NoError(t, err)
 
 				_, err = db.Exec(test.query, test.params...)
@@ -61,7 +61,7 @@ func TestUpdateStmt(t *testing.T) {
 				}
 				require.NoError(t, err)
 
-				rows, err := db.Query("SELECT * FROM test")
+				rows, err := db.Query("SELECT a, b, c, d, e FROM test")
 				require.NoError(t, err)
 
 				testutil.RequireJSONArrayEq(t, rows, test.expected)

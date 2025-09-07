@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/chaisql/chai/internal/database"
-	"github.com/chaisql/chai/internal/database/catalogstore"
 	errs "github.com/chaisql/chai/internal/errors"
 	"github.com/chaisql/chai/internal/query/statement"
 	"github.com/chaisql/chai/internal/row"
@@ -49,6 +48,10 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 
 	ti := database.TableInfo{
 		TableName: "test",
+		PrimaryKey: &database.PrimaryKey{
+			Columns: []string{"a"},
+			Types:   []types.Type{types.TypeText},
+		},
 		ColumnConstraints: database.MustNewColumnConstraints(
 			&database.ColumnConstraint{
 				Position: 0,
@@ -61,11 +64,19 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 				Type:     types.TypeText,
 			},
 		),
+		TableConstraints: database.TableConstraints{
+			&database.TableConstraint{
+				PrimaryKey: true,
+				Columns:    []string{"a"},
+			},
+		},
 	}
 	return createTable(t, tx, ti), fn
 }
 
 func createTable(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
+	t.Helper()
+
 	stmt := statement.CreateTableStmt{Info: info}
 
 	res, err := stmt.Run(&statement.Context{
@@ -138,76 +149,6 @@ func TestTableGetRow(t *testing.T) {
 	})
 }
 
-// TestTableInsert verifies Insert behaviour.
-func TestTableInsert(t *testing.T) {
-	t.Run("Should generate the right rowid on existing databases", func(t *testing.T) {
-		path := t.TempDir()
-		db1, err := database.Open(path, &database.Options{
-			CatalogLoader: catalogstore.LoadCatalog,
-		})
-		require.NoError(t, err)
-
-		insertRow := func(db *database.Database) (rawKey *tree.Key) {
-			t.Helper()
-
-			update(t, db, func(tx *database.Transaction) error {
-				t.Helper()
-
-				// create table if not exists
-				ti := database.TableInfo{
-					TableName: "test",
-					ColumnConstraints: database.MustNewColumnConstraints(
-						&database.ColumnConstraint{
-							Position: 0,
-							Column:   "a",
-							Type:     types.TypeText,
-						},
-						&database.ColumnConstraint{
-							Position: 0,
-							Column:   "b",
-							Type:     types.TypeText,
-						},
-					),
-				}
-
-				tb := createTableIfNotExists(t, tx, ti)
-
-				r := newRow()
-				key, _, err := tb.Insert(r)
-				require.NoError(t, err)
-				require.NotEmpty(t, key)
-				rawKey = key
-				return nil
-			})
-			return
-		}
-
-		key1 := insertRow(db1)
-
-		err = db1.Close()
-		require.NoError(t, err)
-
-		// create a new database object
-		db2, err := database.Open(path, &database.Options{
-			CatalogLoader: catalogstore.LoadCatalog,
-		})
-		require.NoError(t, err)
-
-		key2 := insertRow(db2)
-
-		vs, err := key1.Decode()
-		require.NoError(t, err)
-		a := vs[0].V().(int64)
-
-		vs, err = key2.Decode()
-		require.NoError(t, err)
-		b := vs[0].V().(int64)
-
-		require.Equal(t, int64(a+1), int64(b))
-		db2.Close()
-	})
-}
-
 // TestTableDelete verifies Delete behaviour.
 func TestTableDelete(t *testing.T) {
 	t.Run("Should not fail if not found", func(t *testing.T) {
@@ -215,35 +156,6 @@ func TestTableDelete(t *testing.T) {
 		defer cleanup()
 		err := tb.Delete(tree.NewKey(types.NewIntegerValue(10)))
 		require.NoError(t, err)
-	})
-
-	t.Run("Should delete the right object", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		// create two objects, one with an additional field
-		row1 := newRow()
-		row1.Add("fieldc", types.NewIntegerValue(40))
-		row2 := newRow()
-
-		key1, _, err := tb.Insert(testutil.CloneRow(t, row1))
-		require.NoError(t, err)
-		key2, _, err := tb.Insert(testutil.CloneRow(t, row2))
-		require.NoError(t, err)
-
-		// delete the object
-		err = tb.Delete(key1)
-		require.NoError(t, err)
-
-		// try again, should fail
-		_, err = tb.GetRow(key1)
-		require.True(t, errs.IsNotFoundError(err))
-
-		// make sure it didn't also delete the other one
-		res, err := tb.GetRow(key2)
-		require.NoError(t, err)
-		_, err = res.Get("fieldc")
-		require.Error(t, err)
 	})
 }
 
@@ -307,30 +219,6 @@ func TestTableTruncate(t *testing.T) {
 
 		err := tb.Truncate()
 		require.NoError(t, err)
-	})
-
-	t.Run("Should truncate the table", func(t *testing.T) {
-		tb, cleanup := newTestTable(t)
-		defer cleanup()
-
-		// create two objects
-		row1 := newRow()
-		row2 := newRow()
-
-		_, _, err := tb.Insert(row1)
-		require.NoError(t, err)
-		_, _, err = tb.Insert(row2)
-		require.NoError(t, err)
-
-		err = tb.Truncate()
-		require.NoError(t, err)
-
-		it, err := tb.Iterator(nil)
-		require.NoError(t, err)
-		defer it.Close()
-
-		it.First()
-		require.False(t, it.Valid())
 	})
 }
 

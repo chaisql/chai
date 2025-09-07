@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test (a int);
+CREATE TABLE test (a int primary key);
 
 -- test: named index
 CREATE INDEX test_a_idx ON test(a);

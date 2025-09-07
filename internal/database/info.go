@@ -21,9 +21,6 @@ type TableInfo struct {
 	StoreNamespace tree.Namespace
 	ReadOnly       bool
 
-	// Name of the rowid sequence if any.
-	RowidSequenceName string
-
 	ColumnConstraints ColumnConstraints
 	TableConstraints  TableConstraints
 

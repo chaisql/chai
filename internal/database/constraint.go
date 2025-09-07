@@ -118,7 +118,7 @@ type TableExpression interface {
 }
 
 // A TableConstraint represent a constraint specific to a table
-// and not necessarily to a single field path.
+// and not necessarily to a single column.
 type TableConstraint struct {
 	Name       string
 	Columns    []string

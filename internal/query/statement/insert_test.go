@@ -16,8 +16,8 @@ func TestInsertStmt(t *testing.T) {
 		expected string
 		params   []any
 	}{
-		{"Values / Positional Params", "INSERT INTO test (a, b, c) VALUES ($1, 'e', $2)", false, `[{"a":"d","b":"e","c":"f"}]`, []interface{}{"d", "f"}},
-		{"Values / Invalid params", "INSERT INTO test (a, b, c) VALUES ('d', $1)", true, "", []any{'e'}},
+		{"Values / Positional Params", "INSERT INTO test (pk, a, b, c) VALUES (1, $1, 'e', $2)", false, `[{"a":"d","b":"e","c":"f"}]`, []any{"d", "f"}},
+		{"Values / Invalid params", "INSERT INTO test (pk, a, b, c) VALUES (1, 'd', $1)", true, "", []any{'e'}},
 		{"Select / same table", "INSERT INTO test SELECT * FROM test", true, ``, nil},
 	}
 
@@ -28,7 +28,7 @@ func TestInsertStmt(t *testing.T) {
 				require.NoError(t, err)
 				defer db.Close()
 
-				_, err = db.Exec("CREATE TABLE test(a TEXT, b TEXT, c TEXT)")
+				_, err = db.Exec("CREATE TABLE test(pk INT PRIMARY KEY, a TEXT, b TEXT, c TEXT)")
 				require.NoError(t, err)
 				if withIndexes {
 					_, err = db.Exec(`
@@ -46,7 +46,7 @@ func TestInsertStmt(t *testing.T) {
 				}
 				require.NoError(t, err)
 
-				rows, err := db.Query("SELECT * FROM test")
+				rows, err := db.Query("SELECT a, b, c FROM test")
 				require.NoError(t, err)
 
 				testutil.RequireJSONArrayEq(t, rows, test.expected)
@@ -62,7 +62,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		_, err = db.Exec(`CREATE TABLE test(a INT)`)
+		_, err = db.Exec(`CREATE TABLE test(a INT PRIMARY KEY)`)
 		require.NoError(t, err)
 
 		var a, A int
@@ -77,7 +77,7 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		_, err = db.Exec(`CREATE TABLE test(a int unique)`)
+		_, err = db.Exec(`CREATE TABLE test(a int primary key)`)
 		require.NoError(t, err)
 
 		_, err = db.Exec(`insert into test (a) VALUES (1), (1)`)
@@ -116,17 +116,17 @@ func TestInsertStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		_, err = db.Exec(`CREATE TABLE test(a INT UNIQUE, b INT)`)
+		_, err = db.Exec(`CREATE TABLE test(pk INT PRIMARY KEY, a INT UNIQUE, b INT)`)
 		require.NoError(t, err)
 
-		_, err = db.Exec(`insert into test (a, b) VALUES (1, 1)`)
+		_, err = db.Exec(`insert into test (pk, a, b) VALUES (1, 1, 1)`)
 		require.NoError(t, err)
 
-		_, err = db.Exec(`insert into test (a, b) VALUES (1, 2) ON CONFLICT DO REPLACE`)
+		_, err = db.Exec(`insert into test (pk, a, b) VALUES (2, 1, 2) ON CONFLICT DO REPLACE`)
 		require.NoError(t, err)
 
 		var a, b int
-		err = db.QueryRow(`SELECT * FROM test`).Scan(&a, &b)
+		err = db.QueryRow(`SELECT a, b FROM test`).Scan(&a, &b)
 		require.NoError(t, err)
 		require.Equal(t, 1, a)
 		require.Equal(t, 2, b)
@@ -164,7 +164,7 @@ func TestInsertSelect(t *testing.T) {
 		{"No columns / No projection", `INSERT INTO foo SELECT * FROM bar`, false, `[{"a":1, "b":10, "c":null, "d":null, "e":null}]`, nil},
 		{"No columns / Projection", `INSERT INTO foo SELECT a FROM bar`, false, `[{"a":1, "b":null, "c":null, "d":null, "e":null}]`, nil},
 		{"With columns / No Projection", `INSERT INTO foo (a, b) SELECT * FROM bar`, true, ``, nil},
-		{"With columns / Projection", `INSERT INTO foo (c, d) SELECT a, b FROM bar`, false, `[{"a":null, "b":null, "c":1, "d":10, "e":null}]`, nil},
+		{"With columns / Projection", `INSERT INTO foo (a, d) SELECT a, b FROM bar`, false, `[{"a":1, "b":null, "c":null, "d":10, "e":null}]`, nil},
 		{"Too many columns / No Projection", `INSERT INTO foo (c) SELECT * FROM bar`, true, ``, nil},
 		{"Too many columns / Projection", `INSERT INTO foo (c, d) SELECT a, b, c FROM bar`, true, ``, nil},
 		{"Too few columns / No Projection", `INSERT INTO foo (c, d, e) SELECT * FROM bar`, true, ``, nil},
@@ -178,8 +178,8 @@ func TestInsertSelect(t *testing.T) {
 			defer db.Close()
 
 			_, err = db.Exec(`
-				CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
-				CREATE TABLE bar(a INT, b INT, c INT, d INT, e INT);
+				CREATE TABLE foo(a INT PRIMARY KEY, b INT, c INT, d INT, e INT);
+				CREATE TABLE bar(a INT PRIMARY KEY, b INT, c INT, d INT, e INT);
 				INSERT INTO bar (a, b) VALUES (1, 10)
 			`)
 			require.NoError(t, err)

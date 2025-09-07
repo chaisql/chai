@@ -53,7 +53,7 @@ func TestDump(t *testing.T) {
 					writeToBuf("\n")
 				}
 
-				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER, b INTEGER, c INTEGER);", table)
+				q := fmt.Sprintf("CREATE TABLE %s (a INTEGER NOT NULL, b INTEGER, c INTEGER, CONSTRAINT %s_pk PRIMARY KEY (a));", table, table)
 				_, err = db.Exec(q)
 				require.NoError(t, err)
 				writeToBuf(q + "\n")

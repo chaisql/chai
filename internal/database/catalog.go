@@ -902,9 +902,6 @@ func tableInfoToRow(ti *TableInfo) row.Row {
 	buf.Add("type", types.NewTextValue(RelationTableType))
 	buf.Add("namespace", types.NewBigintValue(int64(ti.StoreNamespace)))
 	buf.Add("sql", types.NewTextValue(ti.String()))
-	if ti.RowidSequenceName != "" {
-		buf.Add("rowid_sequence_name", types.NewTextValue(ti.RowidSequenceName))
-	}
 
 	return buf
 }

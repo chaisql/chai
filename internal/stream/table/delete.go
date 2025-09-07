@@ -81,10 +81,7 @@ func (it *DeleteIterator) Next() bool {
 }
 
 func (it *DeleteIterator) Row() (database.Row, error) {
-	if it.err != nil {
-		return nil, it.err
-	}
-	return it.row, nil
+	return it.row, it.Error()
 }
 
 func (it *DeleteIterator) Error() error {

@@ -130,7 +130,7 @@ func (it *ExprIterator) Error() error {
 }
 
 func (it *ExprIterator) Row() (database.Row, error) {
-	return it.row, nil
+	return it.row, it.err
 }
 
 type ProjectIterator struct {
@@ -188,7 +188,11 @@ func (it *ProjectIterator) Next() bool {
 }
 
 func (it *ProjectIterator) Error() error {
-	return it.err
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.Iterator.Error()
 }
 
 func (it *ProjectIterator) Row() (database.Row, error) {

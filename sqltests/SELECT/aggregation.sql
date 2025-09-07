@@ -1,6 +1,6 @@
 -- setup:
-CREATE TABLE test(a int);
-INSERT INTO test (a) VALUES (1), (2), (3), (4), (5);
+CREATE TABLE test(pk INT PRIMARY KEY, a int);
+INSERT INTO test (pk, a) VALUES (1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
 
 -- test: GROUP BY a
 SELECT a FROM test GROUP BY a

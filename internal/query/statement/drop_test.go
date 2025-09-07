@@ -16,7 +16,7 @@ func TestDropTable(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE test1(a INT UNIQUE); CREATE TABLE test2(a INT); CREATE TABLE test3(a INT)")
+	_, err = db.Exec("CREATE TABLE test1(pk INT PRIMARY KEY, a INT UNIQUE); CREATE TABLE test2(pk INT PRIMARY KEY, a INT); CREATE TABLE test3(pk INT PRIMARY KEY, a INT)")
 	require.NoError(t, err)
 
 	_, err = db.Exec("DROP TABLE test1")
@@ -66,8 +66,8 @@ func TestDropIndex(t *testing.T) {
 	defer cleanup()
 
 	testutil.MustExec(t, db, tx, `
-		CREATE TABLE test1(foo text, bar int unique); CREATE INDEX idx_test1_foo ON test1(foo);
-		CREATE TABLE test2(bar text); CREATE INDEX idx_test2_bar ON test2(bar);
+		CREATE TABLE test1(pk int primary key, foo text, bar int unique); CREATE INDEX idx_test1_foo ON test1(foo);
+		CREATE TABLE test2(pk int primary key, bar text); CREATE INDEX idx_test2_bar ON test2(bar);
 	`)
 
 	testutil.MustExec(t, db, tx, "DROP INDEX idx_test2_bar")
@@ -92,7 +92,7 @@ func TestDropSequence(t *testing.T) {
 	defer cleanup()
 
 	testutil.MustExec(t, db, tx, `
-		CREATE TABLE test1(foo int);
+		CREATE TABLE test1(foo int primary key, bar int unique);
 		CREATE SEQUENCE seq1;
 		CREATE SEQUENCE seq2;
 	`)

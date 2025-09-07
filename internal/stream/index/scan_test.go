@@ -68,19 +68,19 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"no range", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`, `{"a": 2, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`, `{"pk": 2, "a": 2, "b": null, "c": null}`),
 			nil, false, false,
 		},
 		{
 			"no range", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 3}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 2, "c": null}`, `{"a": 2, "b": 3, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 2, "c": null}`, `{"pk": 2, "a": 2, "b": 3, "c": null}`),
 			nil, false, false,
 		},
 		{
 			"max:2", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`, `{"a": 2, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`, `{"pk": 2, "a": 2, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `(2)`), Columns: []string{"a"}},
 			},
@@ -98,7 +98,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"max:(2, 2)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `(2, 2)`), Columns: []string{"a", "b"}},
 			},
@@ -116,7 +116,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"max:1", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `(1)`), Columns: []string{"a"}},
 			},
@@ -125,7 +125,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"max:(1, 2)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `(1, 2)`), Columns: []string{"a", "b"}},
 			},
@@ -143,7 +143,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`, `{"a": 2, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`, `{"pk": 2, "a": 2, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a"}},
 			},
@@ -152,7 +152,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1),exclusive", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a"}, Exclusive: true},
 			},
@@ -161,7 +161,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1),exclusive", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a", "b"}, Exclusive: true},
 			},
@@ -170,7 +170,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(2, 1)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(2, 1)`),
@@ -194,7 +194,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min/max", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`, `{"a": 2, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`, `{"pk": 2, "a": 2, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1)`),
@@ -207,7 +207,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1, 1), max:[2,2]", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 2}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 2, "c": null}`, `{"a": 2, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 2, "c": null}`, `{"pk": 2, "a": 2, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1, 1)`),
@@ -220,7 +220,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1, 1), max:[2,2] bis", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 3}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 3, "c": null}`, `{"a": 2, "b": 2, "c": null}`), // [1, 3] < (2, 2)
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 3, "c": null}`, `{"pk": 2, "a": 2, "b": 2, "c": null}`), // [1, 3] < (2, 2)
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1, 1)`),
@@ -233,13 +233,13 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/no range", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": null, "c": null}`, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": null, "c": null}`, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			nil, true, false,
 		},
 		{
 			"reverse/max", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": null, "c": null}`, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": null, "c": null}`, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Max: testutil.ExprList(t, `(2)`), Columns: []string{"a"}},
 			},
@@ -248,7 +248,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/max", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": 2, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Max:     testutil.ExprList(t, `(2, 2)`),
@@ -260,7 +260,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/min", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": null, "c": null}`, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": null, "c": null}`, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a"}},
 			},
@@ -269,7 +269,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/min neg", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": -2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a"}},
 			},
@@ -278,7 +278,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/min", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 1, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 1, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1, 1)`),
@@ -290,7 +290,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/min/max", "a",
 			testutil.MakeRows(t, `{"a": 1}`, `{"a": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": null, "c": null}`, `{"a": 1, "b": null, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": null, "c": null}`, `{"pk": 1, "a": 1, "b": null, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1)`),
@@ -303,7 +303,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse/min/max", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 2, "c": null}`, `{"a": 1, "b": 1, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 2, "a": 2, "b": 2, "c": null}`, `{"pk": 1, "a": 1, "b": 1, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1, 1)`),
@@ -316,7 +316,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"max:(1)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 1, "c": null}`, `{"a": 1, "b": 9223372036854775807, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 1, "c": null}`, `{"pk": 3, "a": 1, "b": 9223372036854775807, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Max:     testutil.ExprList(t, `(1)`),
@@ -328,7 +328,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse max:(1)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": 1}`, `{"a": 2, "b": 2}`, `{"a": 1, "b": 9223372036854775807}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 9223372036854775807, "c": null}`, `{"a": 1, "b": 1, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 3, "a": 1, "b": 9223372036854775807, "c": null}`, `{"pk": 1, "a": 1, "b": 1, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Max:       testutil.ExprList(t, `(1)`),
@@ -342,7 +342,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"max:(1, 2)", "a, b, c",
 			testutil.MakeRows(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 2, "b": 2, "c":  2}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 2, "c": 1}`, `{"a": 1, "b": 2, "c": 9223372036854775807}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": 2, "c": 1}`, `{"pk": 3, "a": 1, "b": 2, "c": 9223372036854775807}`),
 			stream.Ranges{
 				stream.Range{
 					Max: testutil.ExprList(t, `(1, 2)`), Columns: []string{"a", "b", "c"},
@@ -353,7 +353,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
-			testutil.MakeRows(t, `{"a": 1, "b": -2, "c": null}`, `{"a": 1, "b": 1, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": -2, "c": null}`, `{"pk": 3, "a": 1, "b": 1, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a", "b"}},
 			},
@@ -362,7 +362,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1)", "a, b, c",
 			testutil.MakeRows(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": -2, "b": 2, "c": 1}`, `{"a": 1, "b": 1, "c": 2}`),
-			testutil.MakeRows(t, `{"a": 1, "b": -2, "c": 0}`, `{"a": 1, "b": 1, "c": 2}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": -2, "c": 0}`, `{"pk": 3, "a": 1, "b": 1, "c": 2}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a", "b", "c"}},
 			},
@@ -371,7 +371,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse min:(1)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 1, "b": 1}`),
-			testutil.MakeRows(t, `{"a": 1, "b": 1, "c": null}`, `{"a": 1, "b": -2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 3, "a": 1, "b": 1, "c": null}`, `{"pk": 1, "a": 1, "b": -2, "c": null}`),
 			stream.Ranges{
 				stream.Range{Min: testutil.ExprList(t, `(1)`), Columns: []string{"a", "b"}},
 			},
@@ -380,7 +380,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"min:(1), max(2)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
-			testutil.MakeRows(t, `{"a": 1, "b": -2, "c": null}`, `{"a": 2, "b": 42, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 1, "a": 1, "b": -2, "c": null}`, `{"pk": 3, "a": 2, "b": 42, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1)`),
@@ -393,7 +393,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 		{
 			"reverse min:(1), max(2)", "a, b",
 			testutil.MakeRows(t, `{"a": 1, "b": -2}`, `{"a": -2, "b": 2}`, `{"a": 2, "b": 42}`, `{"a": 3, "b": -1}`),
-			testutil.MakeRows(t, `{"a": 2, "b": 42, "c": null}`, `{"a": 1, "b": -2, "c": null}`),
+			testutil.MakeRows(t, `{"pk": 3, "a": 2, "b": 42, "c": null}`, `{"pk": 1, "a": 1, "b": -2, "c": null}`),
 			stream.Ranges{
 				stream.Range{
 					Min:     testutil.ExprList(t, `(1)`),
@@ -410,7 +410,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test (a BIGINT, b BIGINT, c BIGINT);")
+			testutil.MustExec(t, db, tx, "CREATE SEQUENCE seq; CREATE TABLE test (pk INT PRIMARY KEY DEFAULT nextval('seq'), a BIGINT, b BIGINT, c BIGINT);")
 
 			for _, r := range test.rowsInTable {
 				var a, b, c *int64
@@ -430,7 +430,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 					x := types.AsInt64(v)
 					c = &x
 				}
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1, $2, $3)", environment.Param{Value: a}, environment.Param{Value: b}, environment.Param{Value: c})
+				testutil.MustExec(t, db, tx, "INSERT INTO test (a, b, c) VALUES ($1, $2, $3)", environment.Param{Value: a}, environment.Param{Value: b}, environment.Param{Value: c})
 			}
 
 			op := getOp(db, tx, "idx_test_a", test.indexOn, test.reverse, test.ranges...)

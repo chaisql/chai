@@ -1,12 +1,14 @@
 -- setup:
 CREATE TABLE test(
+    pk INT PRIMARY KEY, 
     a TEXT,
     b INT,
     c BOOL,
     d DOUBLE
 );
 
-INSERT INTO test (a, b, c, d) VALUES (
+INSERT INTO test (pk, a, b, c, d) VALUES (
+    1,
     "FOO",
     42,
     true,

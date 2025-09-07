@@ -1,20 +1,20 @@
 -- test: enforced type
-CREATE TABLE test (a INT NOT NULL, b INT);
+CREATE TABLE test (a INT NOT NULL, b INT PRIMARY KEY);
 INSERT INTO test (b) VALUES (1);
 -- error:
 
 -- test: non-enforced type
-CREATE TABLE test (a NOT NULL, b INT);
+CREATE TABLE test (a NOT NULL, b INT PRIMARY KEY);
 INSERT INTO test (b) VALUES (1);
 -- error:
 
 -- test: with null
-CREATE TABLE test (a INT NOT NULL, b INT);
+CREATE TABLE test (a INT NOT NULL, b INT PRIMARY KEY);
 INSERT INTO test (a, b) VALUES (NULL, 1);
 -- error:
 
 -- test: with missing column and default
-CREATE TABLE test (a INT NOT NULL DEFAULT 10, b INT);
+CREATE TABLE test (a INT NOT NULL DEFAULT 10, b INT PRIMARY KEY);
 INSERT INTO test (b) VALUES (1);
 SELECT a, b FROM test;
 /* result:
@@ -25,6 +25,6 @@ SELECT a, b FROM test;
 */
 
 -- test: with null and default should fail
-CREATE TABLE test (a INT NOT NULL DEFAULT 10, b INT);
+CREATE TABLE test (a INT NOT NULL DEFAULT 10, b INT PRIMARY KEY);
 INSERT INTO test (a, b) VALUES (NULL, 1);
 -- error:

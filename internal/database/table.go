@@ -36,7 +36,7 @@ func (t *Table) Insert(r row.Row) (*tree.Key, Row, error) {
 		return nil, nil, errors.New("cannot write to read-only table")
 	}
 
-	key, isRowid, err := t.GenerateKey(r)
+	key, err := t.GenerateKey(r)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -47,13 +47,7 @@ func (t *Table) Insert(r row.Row) (*tree.Key, Row, error) {
 	}
 
 	// insert into the table
-	if !isRowid {
-		// if the key is not a rowid, make sure it doesn't exist
-		// by using Insert instead of Put
-		err = t.Tree.Insert(key, enc)
-	} else {
-		err = t.Tree.Put(key, enc)
-	}
+	err = t.Tree.Insert(key, enc)
 	if err != nil {
 		if errors.Is(err, engine.ErrKeyAlreadyExists) {
 			return nil, nil, &ConstraintViolationError{
@@ -195,38 +189,21 @@ func (t *Table) GetRow(key *tree.Key) (Row, error) {
 }
 
 // GenerateKey generates a key for o based on the table configuration.
-// if the table has a primary key, it extracts the field from
-// the object, converts it to the targeted type and returns
-// its encoded version.
-// if there are no primary key in the table, a default
-// key is generated, called the rowid.
 // It returns a boolean indicating whether the key is a rowid or not.
-func (t *Table) GenerateKey(r row.Row) (*tree.Key, bool, error) {
-	if pk := t.Info.PrimaryKey; pk != nil {
-		vs := make([]types.Value, 0, len(pk.Columns))
-		for _, c := range pk.Columns {
-			v, err := r.Get(c)
-			if errors.Is(err, types.ErrColumnNotFound) {
-				return nil, false, fmt.Errorf("missing primary key at path %q", c)
-			}
-			if err != nil {
-				return nil, false, err
-			}
-
-			vs = append(vs, v)
+func (t *Table) GenerateKey(r row.Row) (*tree.Key, error) {
+	pk := t.Info.PrimaryKey
+	vs := make([]types.Value, 0, len(pk.Columns))
+	for _, c := range pk.Columns {
+		v, err := r.Get(c)
+		if errors.Is(err, types.ErrColumnNotFound) {
+			return nil, fmt.Errorf("missing primary key at path %q", c)
+		}
+		if err != nil {
+			return nil, err
 		}
 
-		return tree.NewKey(vs...), false, nil
+		vs = append(vs, v)
 	}
 
-	seq, err := t.Tx.Catalog.GetSequence(t.Info.RowidSequenceName)
-	if err != nil {
-		return nil, true, err
-	}
-	rowid, err := seq.Next(t.Tx)
-	if err != nil {
-		return nil, true, err
-	}
-
-	return tree.NewKey(types.NewBigintValue(rowid)), true, nil
+	return tree.NewKey(vs...), nil
 }

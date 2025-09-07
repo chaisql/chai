@@ -39,7 +39,7 @@ func TestRunTablesCmd(t *testing.T) {
 			defer db.Close()
 
 			for _, tb := range test.tables {
-				_, err := db.Exec("CREATE TABLE " + tb + "(a INT)")
+				_, err := db.Exec("CREATE TABLE " + tb + "(a INT PRIMARY KEY)")
 				require.NoError(t, err)
 			}
 
@@ -71,10 +71,10 @@ func TestIndexesCmd(t *testing.T) {
 			defer db.Close()
 
 			_, err = db.Exec(`
-				CREATE TABLE foo(a INT, b INT);
+				CREATE TABLE foo(a INT PRIMARY KEY, b INT);
 				CREATE INDEX idx_foo_a ON foo (a);
 				CREATE INDEX idx_foo_b ON foo (b);
-				CREATE TABLE bar(a INT, b INT);
+				CREATE TABLE bar(a INT PRIMARY KEY, b INT);
 				CREATE INDEX idx_bar_a_b ON bar (a, b);
 			`)
 			require.NoError(t, err)
@@ -102,7 +102,7 @@ func TestSaveCommand(t *testing.T) {
 		defer db.Close()
 
 		_, err = db.Exec(`
-		CREATE TABLE test (a DOUBLE, b INT);
+		CREATE TABLE test (a DOUBLE PRIMARY KEY, b INT);
 		CREATE INDEX idx_a_b ON test (a, b);
 	`)
 		require.NoError(t, err)

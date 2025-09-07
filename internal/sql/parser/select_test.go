@@ -19,13 +19,13 @@ func TestParserSelect(t *testing.T) {
 	defer cleanup()
 
 	testutil.MustExec(t, db, tx, `
-		CREATE TABLE test(a TEXT, b TEXT, age int);
-		CREATE TABLE test1(age INT, a INT);
-		CREATE TABLE test2(age INT, a INT);
-		CREATE TABLE a(age INT, a INT);
-		CREATE TABLE b(age INT, a INT);
-		CREATE TABLE c(age INT, a INT);
-		CREATE TABLE d(age INT, a INT);
+		CREATE TABLE test(a TEXT PRIMARY KEY, b TEXT, age int);
+		CREATE TABLE test1(age INT PRIMARY KEY, a INT);
+		CREATE TABLE test2(age INT PRIMARY KEY, a INT);
+		CREATE TABLE a(age INT PRIMARY KEY, a INT);
+		CREATE TABLE b(age INT PRIMARY KEY, a INT);
+		CREATE TABLE c(age INT PRIMARY KEY, a INT);
+		CREATE TABLE d(age INT PRIMARY KEY, a INT);
 	`,
 	)
 

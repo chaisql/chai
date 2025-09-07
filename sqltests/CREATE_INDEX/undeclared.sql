@@ -1,14 +1,14 @@
 -- test: undeclared column
-CREATE TABLE test;
-CREATE INDEX test_a_idx ON test(a);
+CREATE TABLE test (a int primary key);
+CREATE INDEX test_b_idx ON test(b);
 -- error:
 
 -- test: undeclared column: IF NOT EXISTS
-CREATE TABLE test;
-CREATE INDEX IF NOT EXISTS test_a_idx ON test(a);
+CREATE TABLE test (a int primary key);
+CREATE INDEX IF NOT EXISTS test_b_idx ON test(b);
 -- error:
 
 -- test: undeclared column: other columns
-CREATE TABLE test(b int);
+CREATE TABLE test(b int primary key);
 CREATE INDEX test_a_idx ON test(a);
 -- error:

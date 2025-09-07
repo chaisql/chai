@@ -130,7 +130,7 @@ func (it *GenerateKeyIterator) Next() bool {
 }
 
 func (it *GenerateKeyIterator) Row() (database.Row, error) {
-	return &it.br, it.err
+	return &it.br, it.Error()
 }
 
 func (it *GenerateKeyIterator) Error() error {
@@ -142,14 +142,9 @@ func (it *GenerateKeyIterator) Error() error {
 }
 
 func (it *GenerateKeyIterator) generateKey(r database.Row) (*tree.Key, error) {
-	var isRowid bool
-	k, isRowid, err := it.table.GenerateKey(r)
+	k, err := it.table.GenerateKey(r)
 	if err != nil {
 		return nil, err
-	}
-
-	if isRowid {
-		return k, nil
 	}
 
 	// check if the primary key already exists

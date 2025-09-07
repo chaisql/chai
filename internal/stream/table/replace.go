@@ -74,10 +74,7 @@ func (it *ReplaceIterator) Next() bool {
 }
 
 func (it *ReplaceIterator) Row() (database.Row, error) {
-	if it.err != nil {
-		return nil, it.err
-	}
-	return it.row, nil
+	return it.row, it.Error()
 }
 
 func (it *ReplaceIterator) Error() error {

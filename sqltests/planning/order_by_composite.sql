@@ -1,16 +1,16 @@
 -- setup:
-CREATE TABLE test(a int, b int, c int);
+CREATE TABLE test(pk int primary key, a int, b int, c int);
 
 CREATE INDEX test_a_b ON test(a, b);
 
 INSERT INTO
-    test (a, b, c)
+    test (pk, a, b, c)
 VALUES
-    (1, 1, 1),
-    (2, 2, 2),
-    (3, 3, 3),
-    (4, 4, 4),
-    (5, 5, 5);
+    (1, 1, 1, 1),
+    (2, 2, 2, 2),
+    (3, 3, 3, 3),
+    (4, 4, 4, 4),
+    (5, 5, 5, 5);
 
 -- test: non-indexed column path, ASC
 EXPLAIN SELECT * FROM test ORDER BY c;

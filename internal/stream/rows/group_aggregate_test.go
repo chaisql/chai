@@ -73,7 +73,7 @@ func TestAggregate(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int primary key)")
 
 			for _, val := range test.in {
 				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1)", environment.Param{Value: val})

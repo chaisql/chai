@@ -182,7 +182,7 @@ func TestSelectStmt(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 
-		_, err = db.Exec("CREATE TABLE test(foo INT); CREATE INDEX idx_foo ON test(foo);")
+		_, err = db.Exec("CREATE TABLE test(foo INT PRIMARY KEY); CREATE INDEX idx_foo ON test(foo);")
 		require.NoError(t, err)
 
 		_, err = db.Exec(`INSERT INTO test (foo) VALUES (4), (2), (1), (3)`)
@@ -213,7 +213,7 @@ func TestSelectStmt(t *testing.T) {
 		defer db.Close()
 
 		_, err = db.Exec(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1);
 			CREATE SEQUENCE seq;
 		`)
@@ -238,7 +238,7 @@ func TestSelectStmt(t *testing.T) {
 		defer db.Close()
 
 		_, err = db.Exec(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1), (2), (3);
 		`)
 		require.NoError(t, err)

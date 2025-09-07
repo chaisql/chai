@@ -154,14 +154,6 @@ func tableInfoFromRow(r database.Row) (*database.TableInfo, error) {
 
 	ti.StoreNamespace = tree.Namespace(storeNamespace)
 
-	v, err = r.Get("rowid_sequence_name")
-	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
-		return nil, err
-	}
-	if err == nil && v.Type() != types.TypeNull {
-		ti.RowidSequenceName = types.AsString(v)
-	}
-
 	ti.BuildPrimaryKey()
 
 	return &ti, nil

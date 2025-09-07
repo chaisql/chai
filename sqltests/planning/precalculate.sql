@@ -1,5 +1,5 @@
 -- setup:
-CREATE table test(a int);
+CREATE table test(pk int primary key, a int);
 
 -- test: precalculate constant
 EXPLAIN SELECT * FROM test WHERE 3 + 4 > a + 3 % 2;

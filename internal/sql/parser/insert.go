@@ -82,6 +82,14 @@ func (p *Parser) parseSimpleColumnList() ([]string, error) {
 	if columns, err = p.parseIdentList(); err != nil {
 		return nil, err
 	}
+	set := make(map[string]struct{})
+	for _, c := range columns {
+		_, ok := set[c]
+		if ok {
+			return nil, errors.Errorf("column %q specified more than once", c)
+		}
+		set[c] = struct{}{}
+	}
 
 	// Parse required ) token.
 	if err := p.ParseTokens(scanner.RPAREN); err != nil {

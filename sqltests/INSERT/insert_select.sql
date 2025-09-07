@@ -1,6 +1,6 @@
 -- setup:
-CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
-CREATE TABLE bar(a INT, b INT);
+CREATE TABLE foo(a INT PRIMARY KEY, b INT, c INT, d INT, e INT);
+CREATE TABLE bar(a INT PRIMARY KEY, b INT);
 INSERT INTO bar (a, b) VALUES (1, 10);
 
 -- test: same table
@@ -47,14 +47,14 @@ SELECT * FROM foo;
 */
 
 -- test: With columns / Projection
-INSERT INTO foo (c, d) SELECT a, b FROM bar;
+INSERT INTO foo (a, c) SELECT b, a FROM bar;
 SELECT * FROM foo;
 /* result:
 {
-    "a":null,
+    "a":10,
     "b":null,
     "c":1,
-    "d":10,
+    "d":null,
     "e":null
 }
 */
