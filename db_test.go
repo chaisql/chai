@@ -66,7 +66,7 @@ func TestOpen(t *testing.T) {
 	_, err = db.Exec(`
 		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b DOUBLE PRIMARY KEY);
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
-		CREATE TABLE tableC (a INTEGER, b INTEGER);
+		CREATE TABLE tableC (a INTEGER PRIMARY KEY, b INTEGER);
 		CREATE INDEX tableC_a_b_idx ON tableC(a, b);
 		CREATE SEQUENCE seqD INCREMENT BY 10 CYCLE MINVALUE 100 NO MAXVALUE START 500;
 
@@ -98,9 +98,8 @@ func TestOpen(t *testing.T) {
 		`{"name":"tableA", "namespace":10, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b DOUBLE NOT NULL, CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b))", "type":"table"}`,
 		`{"name":"tableA_a_idx", "namespace":11, "owner_table_columns":"a", "owner_table_name":"tableA", "rowid_sequence_name":null, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "type":"index"}`,
 		`{"name":"tableB", "namespace":12, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "type":"table"}`,
-		`{"name":"tableC", "namespace":13, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":"tableC_seq", "sql":"CREATE TABLE tableC (a INTEGER, b INTEGER)",  "type":"table"}`,
+		`{"name":"tableC", "namespace":13, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableC (a INTEGER NOT NULL, b INTEGER, CONSTRAINT tableC_pk PRIMARY KEY (a))",  "type":"table"}`,
 		`{"name":"tableC_a_b_idx", "namespace":14, "owner_table_columns":null, "owner_table_name":"tableC", "rowid_sequence_name":null, "sql":"CREATE INDEX tableC_a_b_idx ON tableC (a, b)", "type":"index"}`,
-		`{"name":"tableC_seq", "namespace":null, "owner_table_columns":null, "owner_table_name":"tableC", "rowid_sequence_name":null, "sql":"CREATE SEQUENCE tableC_seq CACHE 64", "type":"sequence"}`,
 	}
 	testutil.RequireJSONEq(t, rows, want...)
 
@@ -278,4 +277,105 @@ func TestRWConcurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestOrderByConcurrency(t *testing.T) {
+	dir := t.TempDir()
+	db, err := sql.Open("chai", dir)
+	require.NoError(t, err)
+	defer db.Close()
+
+	tx, err := db.Begin()
+	require.NoError(t, err)
+	_, err = tx.Exec(`
+	CREATE TABLE foo (
+		a integer primary key,
+		b int not null
+	);`)
+	require.NoError(t, err)
+
+	for i := range 10_000 {
+		_, err := tx.Exec(`INSERT INTO foo (a, b) VALUES ($1, $2)`, i, i)
+		require.NoError(t, err)
+	}
+	require.NoError(t, tx.Commit())
+
+	iterations := 10
+	concurrency := 8
+
+	var wg sync.WaitGroup
+	wg.Add(concurrency)
+
+	for i := range concurrency {
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				var desc string
+				if j%2 == 0 {
+					desc = "DESC"
+				} else {
+					desc = "ASC"
+				}
+				func() {
+					rows, err := db.Query(`SELECT * FROM foo ORDER BY b ` + desc)
+					require.NoError(t, err)
+					defer rows.Close()
+
+					var count int
+					for rows.Next() {
+						var a int
+						var b int
+						err := rows.Scan(&a, &b)
+						require.NoError(t, err)
+						if desc == "ASC" {
+							require.Equal(t, count, a)
+							require.Equal(t, count, b)
+						} else {
+							require.Equal(t, 9_999-count, a)
+							require.Equal(t, 9_999-count, b)
+						}
+						count++
+					}
+					require.NoError(t, rows.Err())
+					require.Equal(t, 10_000, count)
+				}()
+			}
+		}(i)
+	}
+
+	wg.Wait()
+}
+
+func BenchmarkOrderBy(b *testing.B) {
+	dir := b.TempDir()
+	db, err := sql.Open("chai", dir)
+	require.NoError(b, err)
+	defer db.Close()
+
+	tx, err := db.Begin()
+	require.NoError(b, err)
+	_, err = tx.Exec(`
+	CREATE TABLE foo (
+		a integer primary key,
+		b int not null
+	);`)
+	require.NoError(b, err)
+
+	for i := range 10_000 {
+		_, err := tx.Exec(`INSERT INTO foo (a, b) VALUES ($1, $2)`, i, i)
+		require.NoError(b, err)
+	}
+	require.NoError(b, tx.Commit())
+
+	b.ResetTimer()
+	for b.Loop() {
+		rows, err := db.Query(`SELECT * FROM foo ORDER BY b`)
+		require.NoError(b, err)
+
+		for rows.Next() {
+			var a int
+			var b int
+			_ = rows.Scan(&a, &b)
+		}
+	}
 }

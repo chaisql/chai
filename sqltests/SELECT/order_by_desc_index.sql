@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test(a INT, b DOUBLE);
+CREATE TABLE test(a INT, b DOUBLE PRIMARY KEY);
 CREATE INDEX on test(a DESC, b DESC);
 INSERT INTO test (a, b) VALUES (50, 2), (100, 3), (10, 1), (100, 4);
 
@@ -78,7 +78,7 @@ SELECT a, b FROM test ORDER BY b DESC;
 EXPLAIN SELECT a, b FROM test ORDER BY b DESC;
 /* result:
 {
-    plan: "table.Scan(\"test\") | rows.Project(a, b) | rows.TempTreeSortReverse(b)"
+    plan: "table.ScanReverse(\"test\") | rows.Project(a, b)"
 }
 */
 

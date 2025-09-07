@@ -62,18 +62,34 @@ func (op *TempTreeSortOperator) String() string {
 }
 
 func encodeTempRow(buf []byte, r row.Row) ([]byte, error) {
-	var values []types.Value
+	// encode each column directly into buf: column name, type, value
 	err := r.Iterate(func(column string, v types.Value) error {
-		values = append(values, types.NewTextValue(column))
-		values = append(values, types.NewIntegerValue(int32(v.Type())))
-		values = append(values, v)
+		// encode column name as text
+		var e error
+		buf, e = types.NewTextValue(column).EncodeAsKey(buf)
+		if e != nil {
+			return e
+		}
+
+		// encode the type as an integer value
+		buf, e = types.NewIntegerValue(int32(v.Type())).EncodeAsKey(buf)
+		if e != nil {
+			return e
+		}
+
+		// encode the value itself
+		buf, e = v.EncodeAsKey(buf)
+		if e != nil {
+			return e
+		}
+
 		return nil
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to iterate row")
 	}
 
-	return types.EncodeValuesAsKey(buf, values...)
+	return buf, nil
 }
 
 func decodeTempRow(b []byte) row.Row {
@@ -227,7 +243,15 @@ func (it *TempTreeSortIterator) iterateOnStream() error {
 }
 
 func (it *TempTreeSortIterator) Error() error {
-	return it.err
+	if it.err != nil {
+		return it.err
+	}
+
+	if it.tempIt != nil {
+		return it.tempIt.Error()
+	}
+
+	return it.prev.Error()
 }
 
 func (it *TempTreeSortIterator) Row() (database.Row, error) {

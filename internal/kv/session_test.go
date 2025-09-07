@@ -252,7 +252,7 @@ func TestQueries(t *testing.T) {
 
 		var count int
 		err = db.QueryRow(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 			SELECT COUNT(*) FROM test;
 		`).Scan(&count)
@@ -282,7 +282,7 @@ func TestQueries(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = db.Exec(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
 		require.NoError(t, err)
@@ -295,10 +295,10 @@ func TestQueries(t *testing.T) {
 		require.NoError(t, err)
 
 		rows, err := db.Query(`
-			CREATE TABLE test(a INT);
-			INSERT INTO test (a) VALUES (1), (2), (3), (4);
+			CREATE TABLE test(pk INT PRIMARY KEY, a INT);
+			INSERT INTO test (pk, a) VALUES (1, 1), (2, 2), (3, 3), (4, 4);
 			UPDATE test SET a = 5;
-			SELECT * FROM test;
+			SELECT a FROM test;
 		`)
 		require.NoError(t, err)
 
@@ -311,7 +311,7 @@ func TestQueries(t *testing.T) {
 		db, err := sql.Open("chai", filepath.Join(dir, "pebble"))
 		require.NoError(t, err)
 
-		_, err = db.Exec("CREATE TABLE test(a INT)")
+		_, err = db.Exec("CREATE TABLE test(a INT PRIMARY KEY);")
 		require.NoError(t, err)
 
 		tx, err := db.Begin()
@@ -350,7 +350,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		var count int
 		err = tx.QueryRow(`
-				CREATE TABLE test(a INT);
+				CREATE TABLE test(a INT PRIMARY KEY);
 				INSERT INTO test (a) VALUES (1), (2), (3), (4);
 				SELECT COUNT(*) FROM test;
 			`).Scan(&count)
@@ -372,7 +372,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 		defer tx.Rollback()
 
 		_, err = tx.Exec(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4);
 		`)
 		require.NoError(t, err)
@@ -392,10 +392,10 @@ func TestQueriesSameTransaction(t *testing.T) {
 		defer tx.Rollback()
 
 		rows, err := tx.Query(`
-				CREATE TABLE test(a INT);
-				INSERT INTO test (a) VALUES (1), (2), (3), (4);
+				CREATE TABLE test(pk INT PRIMARY KEY, a INT);
+				INSERT INTO test (pk, a) VALUES (1, 1), (2, 2), (3, 3), (4, 4);
 				UPDATE test SET a = 5;
-				SELECT * FROM test;
+				SELECT a FROM test;
 			`)
 		require.NoError(t, err)
 
@@ -417,7 +417,7 @@ func TestQueriesSameTransaction(t *testing.T) {
 
 		var count int
 		err = tx.QueryRow(`
-			CREATE TABLE test(a INT);
+			CREATE TABLE test(a INT PRIMARY KEY);
 			INSERT INTO test (a) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 			DELETE FROM test WHERE a > 2;
 			SELECT COUNT(*) FROM test;

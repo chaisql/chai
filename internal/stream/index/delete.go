@@ -120,7 +120,7 @@ func (it *DeleteIterator) Next() bool {
 }
 
 func (it *DeleteIterator) Row() (database.Row, error) {
-	return it.row, it.err
+	return it.row, it.Error()
 }
 
 func (it *DeleteIterator) Error() error {

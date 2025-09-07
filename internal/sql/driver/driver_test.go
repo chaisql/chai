@@ -22,7 +22,7 @@ func TestDriver(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	res, err := db.Exec("CREATE TABLE test(a INT, b TEXT, c BOOL)")
+	res, err := db.Exec("CREATE TABLE test(a INT PRIMARY KEY, b TEXT, c BOOL)")
 	require.NoError(t, err)
 	n, err := res.RowsAffected()
 	require.Error(t, err)
@@ -243,7 +243,7 @@ func TestDriver(t *testing.T) {
 			INSERT INTO test (a, b, c) VALUES (12, 13, 14);
 			SELECT * FROM test;
 		`)
-		require.EqualError(t, err, "cannot increment sequence on read-only transaction")
+		require.EqualError(t, err, "cannot put in read-only mode")
 	})
 }
 
@@ -253,7 +253,7 @@ func TestDriverWithTimeValues(t *testing.T) {
 	defer db.Close()
 
 	now := time.Now().UTC().Truncate(time.Microsecond)
-	_, err = db.Exec("CREATE TABLE test(a TIMESTAMP); INSERT INTO test (a) VALUES ($1)", now)
+	_, err = db.Exec("CREATE TABLE test(a TIMESTAMP PRIMARY KEY); INSERT INTO test (a) VALUES ($1)", now)
 	require.NoError(t, err)
 
 	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{ReadOnly: true})

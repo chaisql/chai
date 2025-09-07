@@ -1,6 +1,6 @@
 -- setup:
 CREATE TABLE test(
-    a TEXT,
+    a TEXT PRIMARY KEY,
     b INT,
     c BOOL,
     d DOUBLE

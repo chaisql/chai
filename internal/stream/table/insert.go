@@ -90,7 +90,7 @@ func (it *InsertIterator) Next() bool {
 }
 
 func (it *InsertIterator) Row() (database.Row, error) {
-	return it.row, it.err
+	return it.row, it.Error()
 }
 
 func (it *InsertIterator) Error() error {

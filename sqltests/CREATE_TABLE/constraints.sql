@@ -1,50 +1,50 @@
 -- test: type
-CREATE TABLE test(a INTEGER);
+CREATE TABLE test(pk INT PRIMARY KEY, a INTEGER);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER)"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: NOT NULL
-CREATE TABLE test(a INT NOT NULL);
+CREATE TABLE test(pk INT PRIMARY KEY, a INT NOT NULL);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL)"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: default
-CREATE TABLE test(a INT DEFAULT 10);
+CREATE TABLE test(pk INT PRIMARY KEY, a INT DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER DEFAULT 10)"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: unique
-CREATE TABLE test(a INT UNIQUE);
+CREATE TABLE test(pk INT PRIMARY KEY, a INT UNIQUE);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER, CONSTRAINT test_a_unique UNIQUE (a))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER, CONSTRAINT test_a_unique UNIQUE (a), CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: check
-CREATE TABLE test(a INT CHECK(a > 10));
+CREATE TABLE test(pk INT PRIMARY KEY, a INT CHECK(a > 10));
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER, CONSTRAINT test_check CHECK (a > 10))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER, CONSTRAINT test_check CHECK (a > 10), CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 

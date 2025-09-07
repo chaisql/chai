@@ -1,6 +1,6 @@
 -- setup:
-CREATE TABLE foo(a INT, b INT, c INT, d INT, e INT);
-CREATE TABLE bar(a INT, b INT);
+CREATE TABLE foo(a INT PRIMARY KEY, b INT, c INT, d INT, e INT);
+CREATE TABLE bar(a INT PRIMARY KEY, b INT);
 INSERT INTO bar (a, b) VALUES (1, 10);
 
 -- test: same table

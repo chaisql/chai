@@ -184,7 +184,7 @@ func TestTableInsert(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test (a INTEGER PRIMARY KEY)")
 
 			in := environment.New(nil, tx, nil, nil)
 

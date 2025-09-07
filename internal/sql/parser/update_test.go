@@ -18,7 +18,7 @@ func TestParserUpdate(t *testing.T) {
 	db, tx, cleanup := testutil.NewTestTx(t)
 	defer cleanup()
 
-	testutil.MustExec(t, db, tx, "CREATE TABLE test(a INT, b TEXT)")
+	testutil.MustExec(t, db, tx, "CREATE TABLE test(pk INT PRIMARY KEY, a INT, b TEXT)")
 
 	parseExpr := func(s string, table ...string) expr.Expr {
 		e := parser.MustParseExpr(s)

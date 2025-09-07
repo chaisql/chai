@@ -17,7 +17,7 @@ func TestParserDelete(t *testing.T) {
 	db, tx, cleanup := testutil.NewTestTx(t)
 	defer cleanup()
 
-	testutil.MustExec(t, db, tx, "CREATE TABLE test(age int)")
+	testutil.MustExec(t, db, tx, "CREATE TABLE test(age int primary key)")
 
 	parseExpr := func(s string) expr.Expr {
 		e := parser.MustParseExpr(s)

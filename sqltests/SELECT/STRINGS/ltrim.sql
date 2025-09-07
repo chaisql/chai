@@ -1,9 +1,10 @@
 -- setup:
 CREATE TABLE test(
-    a TEXT
+    pk INT PRIMARY KEY,
+    a TEXT 
 );
 
-INSERT INTO test (a) VALUES (" hello "), ("!hello!"),  ("     !hello!  ");
+INSERT INTO test (pk, a) VALUES (1, " hello "), (2, "!hello!"),  (3, "     !hello!  ");
 
 -- test: LTRIM TEXT default
 SELECT LTRIM(a) FROM test;

@@ -79,7 +79,7 @@ WHERE
 */
 
 -- test: table constraint: multiple columns with order
-CREATE TABLE test(a INT, b INT, c INT, UNIQUE(a DESC, b ASC, c));
+CREATE TABLE test(a INT PRIMARY KEY, b INT, c INT, UNIQUE(a DESC, b ASC, c));
 SELECT name, sql 
 FROM __chai_catalog 
 WHERE 
@@ -89,7 +89,7 @@ WHERE
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER, b INTEGER, c INTEGER, CONSTRAINT test_a_b_c_unique UNIQUE (a DESC, b, c))"
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER, c INTEGER, CONSTRAINT test_a_b_c_unique UNIQUE (a DESC, b, c), CONSTRAINT test_pk PRIMARY KEY (a))"
 }
 {
   "name": "test_a_b_c_idx",

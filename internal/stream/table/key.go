@@ -130,7 +130,7 @@ func (it *GenerateKeyIterator) Next() bool {
 }
 
 func (it *GenerateKeyIterator) Row() (database.Row, error) {
-	return &it.br, it.err
+	return &it.br, it.Error()
 }
 
 func (it *GenerateKeyIterator) Error() error {

@@ -55,25 +55,15 @@ func TestTempTreeSort(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test(a int)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(pk int primary key, a int)")
 
-			for _, val := range test.values {
-				testutil.MustExec(t, db, tx, "INSERT INTO test VALUES ($1)", environment.Param{Value: val})
+			for i, val := range test.values {
+				testutil.MustExec(t, db, tx, "INSERT INTO test (pk, a) VALUES ($1, $2)", environment.Param{Value: i + 1}, environment.Param{Value: val})
 			}
-
-			err := testutil.MustQuery(t, db, tx, "SELECT * FROM test").Iterate(func(r database.Row) error {
-				d, err := row.MarshalJSON(r)
-				require.NoError(t, err)
-
-				t.Log(string(d))
-				return nil
-
-			})
-			require.NoError(t, err)
 
 			env := environment.New(db, tx, nil, nil)
 
-			s := stream.New(table.Scan("test"))
+			s := stream.New(table.Scan("test")).Pipe(rows.Project(parser.MustParseExpr("a")))
 			if test.desc {
 				s = s.Pipe(rows.TempTreeSortReverse(test.sortExpr))
 			} else {
@@ -81,9 +71,9 @@ func TestTempTreeSort(t *testing.T) {
 			}
 
 			var got []row.Row
-			err = s.Iterate(env, func(r database.Row) error {
+			err := s.Iterate(env, func(r database.Row) error {
 				fb := row.NewColumnBuffer()
-				err = fb.Copy(r)
+				err := fb.Copy(r)
 				if err != nil {
 					return err
 				}

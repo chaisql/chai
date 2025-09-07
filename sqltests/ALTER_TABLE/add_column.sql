@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test(a int);
+CREATE TABLE test(a int primary key);
 
 -- test: column constraints are updated
 INSERT INTO test VALUES (1), (2);
@@ -8,7 +8,7 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER, b INTEGER DEFAULT 0)"
+  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER DEFAULT 0, CONSTRAINT test_pk PRIMARY KEY (a))"
 }
 */
 

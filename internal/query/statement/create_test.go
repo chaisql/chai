@@ -29,7 +29,7 @@ func TestCreateIndex(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 
-			testutil.MustExec(t, db, tx, "CREATE TABLE test(foo TEXT, baz INT, baf BOOL)")
+			testutil.MustExec(t, db, tx, "CREATE TABLE test(pk INT PRIMARY KEY, foo TEXT, baz INT, baf BOOL)")
 
 			err := testutil.Exec(db, tx, test.query)
 			if test.fails {

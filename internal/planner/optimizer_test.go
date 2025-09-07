@@ -607,8 +607,8 @@ func TestOptimize(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a INT, b INT, c INT, d INT);
-				CREATE TABLE bar(a INT, b INT, c INT, d INT);
+				CREATE TABLE foo(pk INT PRIMARY KEY, a INT, b INT, c INT, d INT);
+				CREATE TABLE bar(pk INT PRIMARY KEY, a INT, b INT, c INT, d INT);
 			`)
 
 			got, err := planner.Optimize(
@@ -642,8 +642,8 @@ func TestOptimize(t *testing.T) {
 			db, tx, cleanup := testutil.NewTestTx(t)
 			defer cleanup()
 			testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a INT, b INT, c INT, d INT);
-				CREATE TABLE bar(a INT, b INT, c INT, d INT);
+				CREATE TABLE foo(pk INT PRIMARY KEY, a INT, b INT, c INT, d INT);
+				CREATE TABLE bar(pk INT PRIMARY KEY, a INT, b INT, c INT, d INT);
 			`)
 
 			got, err := planner.Optimize(
@@ -675,8 +675,8 @@ func TestOptimize(t *testing.T) {
 		db, tx, cleanup := testutil.NewTestTx(t)
 		defer cleanup()
 		testutil.MustExec(t, db, tx, `
-				CREATE TABLE foo(a INT, d INT);
-				CREATE TABLE bar(a INT, d INT);
+				CREATE TABLE foo(a INT PRIMARY KEY, d INT);
+				CREATE TABLE bar(a INT PRIMARY KEY, d INT);
 				CREATE INDEX idx_foo_a_d ON foo(a, d);
 				CREATE INDEX idx_bar_a_d ON bar(a, d);
 			`)

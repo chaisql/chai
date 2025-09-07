@@ -16,7 +16,7 @@ ALTER TABLE unknown RENAME TO test2;
 -- error:
 
 -- test: duplicate
-CREATE TABLE test2;
+CREATE TABLE test2(a int primary key);
 ALTER TABLE test2 RENAME TO test;
 -- error:
 

@@ -177,9 +177,13 @@ func (it *ValidateIterator) Next() bool {
 }
 
 func (it *ValidateIterator) Row() (database.Row, error) {
-	return it.row, it.err
+	return it.row, it.Error()
 }
 
 func (it *ValidateIterator) Error() error {
-	return it.err
+	if it.err != nil {
+		return it.err
+	}
+
+	return it.Iterator.Error()
 }

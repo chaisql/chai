@@ -119,13 +119,5 @@ func (it *InsertIterator) Error() error {
 }
 
 func (it *InsertIterator) Row() (database.Row, error) {
-	if it.err != nil {
-		return nil, it.err
-	}
-
-	if it.row != nil {
-		return it.row, nil
-	}
-
-	return it.Iterator.Row()
+	return it.row, it.Error()
 }

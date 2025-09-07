@@ -114,7 +114,7 @@ func (it *ValidateIterator) Next() bool {
 }
 
 func (it *ValidateIterator) Row() (database.Row, error) {
-	return &it.br, it.err
+	return &it.br, it.Error()
 }
 
 func (it *ValidateIterator) Error() error {

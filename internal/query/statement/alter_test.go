@@ -14,7 +14,7 @@ func TestAlterTable(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	_, err = db.Exec("CREATE TABLE foo(name TEXT, age INT)")
+	_, err = db.Exec("CREATE TABLE foo(name TEXT PRIMARY KEY, age INT)")
 	require.NoError(t, err)
 
 	// Insert some data into foo
