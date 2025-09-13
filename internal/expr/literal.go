@@ -37,14 +37,6 @@ func (v LiteralValue) Eval(*environment.Environment) (types.Value, error) {
 // LiteralExprList is a list of expressions.
 type LiteralExprList []Expr
 
-func (l LiteralExprList) Clone() Expr {
-	exprs := make(LiteralExprList, len(l))
-	for i, e := range l {
-		exprs[i] = Clone(e)
-	}
-	return exprs
-}
-
 // IsEqual compares this expression with the other expression and returns
 // true if they are equal.
 func (l LiteralExprList) IsEqual(o LiteralExprList) bool {

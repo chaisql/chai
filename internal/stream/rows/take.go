@@ -20,13 +20,6 @@ func Take(e expr.Expr) *TakeOperator {
 	return &TakeOperator{E: e}
 }
 
-func (op *TakeOperator) Clone() stream.Operator {
-	return &TakeOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		E:            expr.Clone(op.E),
-	}
-}
-
 // Iterate implements the Operator interface.
 func (op *TakeOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	v, err := op.E.Eval(in)

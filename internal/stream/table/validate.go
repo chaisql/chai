@@ -22,13 +22,6 @@ func Validate(tableName string) *ValidateOperator {
 	}
 }
 
-func (op *ValidateOperator) Clone() stream.Operator {
-	return &ValidateOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		TableName:    op.TableName,
-	}
-}
-
 func (op *ValidateOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 

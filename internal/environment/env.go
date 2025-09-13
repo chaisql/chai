@@ -37,7 +37,7 @@ func New(db *database.Database, tx *database.Transaction, params []Param, row ro
 	return &env
 }
 
-func (e *Environment) CloneWithRow(r row.Row) *Environment {
+func (e *Environment) Clone(r row.Row) *Environment {
 	return &Environment{
 		db:     e.db,
 		tx:     e.tx,
@@ -48,16 +48,6 @@ func (e *Environment) CloneWithRow(r row.Row) *Environment {
 
 func (e *Environment) GetRow() (row.Row, bool) {
 	return e.row, e.row != nil
-}
-
-func (e *Environment) GetParamByName(name string) (v types.Value, err error) {
-	for _, nv := range e.params {
-		if nv.Name == name {
-			return row.NewValue(nv.Value)
-		}
-	}
-
-	return nil, fmt.Errorf("param %s not found", name)
 }
 
 func (e *Environment) GetParamByIndex(pos int) (types.Value, error) {

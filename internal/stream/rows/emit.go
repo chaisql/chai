@@ -33,13 +33,6 @@ func (it *EmitOperator) Columns(env *environment.Environment) ([]string, error) 
 	return it.columns, nil
 }
 
-func (op *EmitOperator) Clone() stream.Operator {
-	return &EmitOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Rows:         op.Rows,
-	}
-}
-
 func (op *EmitOperator) String() string {
 	var sb strings.Builder
 

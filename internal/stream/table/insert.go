@@ -19,13 +19,6 @@ func Insert(tableName string) *InsertOperator {
 	return &InsertOperator{Name: tableName}
 }
 
-func (op *InsertOperator) Clone() stream.Operator {
-	return &InsertOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Name:         op.Name,
-	}
-}
-
 // Iterate implements the Operator interface.
 func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	prev, err := op.Prev.Iterator(in)

@@ -27,14 +27,6 @@ func Set(column string, e expr.Expr) *SetOperator {
 	}
 }
 
-func (op *SetOperator) Clone() stream.Operator {
-	return &SetOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Column:       op.Column,
-		Expr:         expr.Clone(op.Expr),
-	}
-}
-
 // Iterate implements the Operator interface.
 func (op *SetOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	prev, err := op.Prev.Iterator(in)
@@ -70,7 +62,7 @@ func (it *SetIterator) Row() (database.Row, error) {
 		return nil, err
 	}
 
-	v, err := it.expr.Eval(it.env.CloneWithRow(r))
+	v, err := it.expr.Eval(it.env.Clone(r))
 	if err != nil && !errors.Is(err, types.ErrColumnNotFound) {
 		return nil, err
 	}

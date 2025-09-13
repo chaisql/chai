@@ -35,13 +35,6 @@ func (op *FilterOperator) Iterator(in *environment.Environment) (stream.Iterator
 	}, nil
 }
 
-func (op *FilterOperator) Clone() stream.Operator {
-	return &FilterOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Expr:         expr.Clone(op.Expr),
-	}
-}
-
 func (op *FilterOperator) String() string {
 	return fmt.Sprintf("rows.Filter(%s)", op.Expr)
 }
@@ -63,7 +56,7 @@ func (it *FilterIterator) Next() bool {
 		}
 
 		var v types.Value
-		v, it.err = it.expr.Eval(it.env.CloneWithRow(it.r))
+		v, it.err = it.expr.Eval(it.env.Clone(it.r))
 		if it.err != nil {
 			return false
 		}

@@ -59,10 +59,6 @@ func (op *cmpOp) compare(l, r types.Value) (bool, error) {
 	}
 }
 
-func (op *cmpOp) Clone() Expr {
-	return &cmpOp{op.simpleOperator.Clone()}
-}
-
 // Eq creates an expression that returns true if a equals b.
 func Eq(a, b Expr) Expr {
 	return newCmpOp(a, b, scanner.EQ)
@@ -103,13 +99,6 @@ type BetweenOperator struct {
 func Between(a Expr) func(x, b Expr) Expr {
 	return func(x, b Expr) Expr {
 		return &BetweenOperator{&simpleOperator{a, b, scanner.BETWEEN}, x}
-	}
-}
-
-func (op *BetweenOperator) Clone() Expr {
-	return &BetweenOperator{
-		op.simpleOperator.Clone(),
-		Clone(op.X),
 	}
 }
 
@@ -161,14 +150,6 @@ type InOperator struct {
 // In creates an expression that evaluates to the result of a IN b.
 func In(a Expr, b Expr) Expr {
 	return &InOperator{a, b, scanner.IN}
-}
-
-func (op *InOperator) Clone() Expr {
-	return &InOperator{
-		Clone(op.a),
-		Clone(op.b),
-		op.op,
-	}
 }
 
 func (op *InOperator) Precedence() int {
@@ -269,12 +250,6 @@ func NotIn(a Expr, b Expr) Expr {
 	return &NotInOperator{&InOperator{a, b, scanner.NIN}}
 }
 
-func (op *NotInOperator) Clone() Expr {
-	return &NotInOperator{
-		op.InOperator.Clone().(*InOperator),
-	}
-}
-
 func (op *NotInOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return invertBoolResult(op.InOperator.Eval)(env)
 }
@@ -290,12 +265,6 @@ type IsOperator struct {
 // Is creates an expression that evaluates to the result of a IS b.
 func Is(a, b Expr) Expr {
 	return &IsOperator{&simpleOperator{a, b, scanner.IN}}
-}
-
-func (op *IsOperator) Clone() Expr {
-	return &IsOperator{
-		op.simpleOperator.Clone(),
-	}
 }
 
 func (op *IsOperator) Eval(env *environment.Environment) (types.Value, error) {
@@ -319,12 +288,6 @@ type IsNotOperator struct {
 // IsNot creates an expression that evaluates to the result of a IS NOT b.
 func IsNot(a, b Expr) Expr {
 	return &IsNotOperator{&simpleOperator{a, b, scanner.ISN}}
-}
-
-func (op *IsNotOperator) Clone() Expr {
-	return &IsNotOperator{
-		op.simpleOperator.Clone(),
-	}
 }
 
 func (op *IsNotOperator) Eval(env *environment.Environment) (types.Value, error) {

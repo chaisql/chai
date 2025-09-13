@@ -134,12 +134,6 @@ type TypeOf struct {
 	Expr expr.Expr
 }
 
-func (t *TypeOf) Clone() expr.Expr {
-	return &TypeOf{
-		Expr: expr.Clone(t.Expr),
-	}
-}
-
 func (t *TypeOf) Eval(env *environment.Environment) (types.Value, error) {
 	v, err := t.Expr.Eval(env)
 	if err != nil {
@@ -185,14 +179,6 @@ func NewCount(e expr.Expr) *Count {
 	return &Count{
 		Expr:     e,
 		wildcard: wc,
-	}
-}
-
-func (t *Count) Clone() expr.Expr {
-	return &Count{
-		Expr:     expr.Clone(t.Expr),
-		wildcard: t.wildcard,
-		Count:    t.Count,
 	}
 }
 
@@ -269,12 +255,6 @@ func (c *CountAggregator) String() string {
 // Min is the MIN aggregator function.
 type Min struct {
 	Expr expr.Expr
-}
-
-func (t *Min) Clone() expr.Expr {
-	return &Min{
-		Expr: expr.Clone(t.Expr),
-	}
 }
 
 // Eval extracts the min value from the given object and returns it.
@@ -381,12 +361,6 @@ type Max struct {
 	Expr expr.Expr
 }
 
-func (t *Max) Clone() expr.Expr {
-	return &Max{
-		Expr: expr.Clone(t.Expr),
-	}
-}
-
 // Eval extracts the max value from the given object and returns it.
 func (m *Max) Eval(env *environment.Environment) (types.Value, error) {
 	r, ok := env.GetRow()
@@ -484,12 +458,6 @@ func (m *MaxAggregator) String() string {
 // Sum is the SUM aggregator function.
 type Sum struct {
 	Expr expr.Expr
-}
-
-func (t *Sum) Clone() expr.Expr {
-	return &Sum{
-		Expr: expr.Clone(t.Expr),
-	}
 }
 
 // Eval extracts the sum value from the given object and returns it.
@@ -603,12 +571,6 @@ type Avg struct {
 	Expr expr.Expr
 }
 
-func (t *Avg) Clone() expr.Expr {
-	return &Avg{
-		Expr: expr.Clone(t.Expr),
-	}
-}
-
 // Eval extracts the average value from the given object and returns it.
 func (s *Avg) Eval(env *environment.Environment) (types.Value, error) {
 	r, ok := env.GetRow()
@@ -696,12 +658,6 @@ type Len struct {
 	Expr expr.Expr
 }
 
-func (t *Len) Clone() expr.Expr {
-	return &Len{
-		Expr: expr.Clone(t.Expr),
-	}
-}
-
 // Eval extracts the average value from the given object and returns it.
 func (s *Len) Eval(env *environment.Environment) (types.Value, error) {
 	val, err := s.Expr.Eval(env)
@@ -745,16 +701,6 @@ type Coalesce struct {
 	Exprs []expr.Expr
 }
 
-func (c *Coalesce) Clone() expr.Expr {
-	var clone Coalesce
-	clone.Exprs = make([]expr.Expr, 0, len(c.Exprs))
-	for _, e := range c.Exprs {
-		clone.Exprs = append(clone.Exprs, expr.Clone(e))
-	}
-
-	return &clone
-}
-
 func (c *Coalesce) Eval(e *environment.Environment) (types.Value, error) {
 	for _, exp := range c.Exprs {
 		v, err := exp.Eval(e)
@@ -777,10 +723,6 @@ func (c *Coalesce) Params() []expr.Expr {
 }
 
 type Now struct{}
-
-func (n *Now) Clone() expr.Expr {
-	return &Now{}
-}
 
 func (n *Now) Eval(env *environment.Environment) (types.Value, error) {
 	tx := env.GetTx()
@@ -808,12 +750,6 @@ func (n *Now) String() string {
 
 type NextVal struct {
 	Expr expr.Expr
-}
-
-func (t *NextVal) Clone() expr.Expr {
-	return &NextVal{
-		Expr: expr.Clone(t.Expr),
-	}
 }
 
 func (t *NextVal) Eval(env *environment.Environment) (types.Value, error) {

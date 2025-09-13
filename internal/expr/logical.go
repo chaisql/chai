@@ -18,12 +18,6 @@ func And(a, b Expr) Expr {
 	return &AndOp{&simpleOperator{a, b, scanner.AND}}
 }
 
-func (op *AndOp) Clone() Expr {
-	return &AndOp{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 // Eval implements the Expr interface. It evaluates a and b and returns true if both evaluate
 // to true.
 func (op *AndOp) Eval(env *environment.Environment) (types.Value, error) {
@@ -56,12 +50,6 @@ type OrOp struct {
 // Or creates an expression that first evaluates a, returns true if truthy, then evaluates b, returns true if truthy Or false if falsy.
 func Or(a, b Expr) Expr {
 	return &OrOp{&simpleOperator{a, b, scanner.OR}}
-}
-
-func (op *OrOp) Clone() Expr {
-	return &OrOp{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
 }
 
 // Eval implements the Expr interface. It evaluates a and b and returns true if a or b evalutate
@@ -102,12 +90,6 @@ type NotOp struct {
 // Not creates an expression that returns true if e is falsy.
 func Not(e Expr) Expr {
 	return &NotOp{&simpleOperator{a: e}}
-}
-
-func (op *NotOp) Clone() Expr {
-	return &NotOp{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
 }
 
 // Eval implements the Expr interface. It evaluates e and returns true if b is falsy

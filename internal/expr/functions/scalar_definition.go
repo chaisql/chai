@@ -56,18 +56,6 @@ type ScalarFunction struct {
 	params []expr.Expr
 }
 
-func (sf *ScalarFunction) Clone() expr.Expr {
-	exprs := make([]expr.Expr, 0, len(sf.params))
-	for _, e := range sf.params {
-		exprs = append(exprs, expr.Clone(e))
-	}
-
-	return &ScalarFunction{
-		def:    sf.def,
-		params: exprs,
-	}
-}
-
 // Eval returns a row.Value based on the given environment and the underlying function
 // definition.
 func (sf *ScalarFunction) Eval(env *environment.Environment) (types.Value, error) {

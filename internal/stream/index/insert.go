@@ -23,13 +23,6 @@ func Insert(indexName string) *InsertOperator {
 	}
 }
 
-func (op *InsertOperator) Clone() stream.Operator {
-	return &InsertOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		indexName:    op.indexName,
-	}
-}
-
 func (op *InsertOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 

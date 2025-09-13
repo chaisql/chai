@@ -33,15 +33,6 @@ func ScanReverse(name string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{IndexName: name, Ranges: ranges, Reverse: true}
 }
 
-func (op *ScanOperator) Clone() stream.Operator {
-	return &ScanOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		IndexName:    op.IndexName,
-		Ranges:       op.Ranges.Clone(),
-		Reverse:      op.Reverse,
-	}
-}
-
 func (op *ScanOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	tx := in.GetTx()
 

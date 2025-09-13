@@ -38,14 +38,6 @@ func (op *simpleOperator) Token() scanner.Token {
 	return op.Tok
 }
 
-func (op *simpleOperator) Clone() *simpleOperator {
-	return &simpleOperator{
-		a:   Clone(op.a),
-		b:   Clone(op.b),
-		Tok: op.Tok,
-	}
-}
-
 func (op *simpleOperator) eval(env *environment.Environment, fn func(a, b types.Value) (types.Value, error)) (types.Value, error) {
 	if op.a == nil || op.b == nil {
 		return NullLiteral, errors.New("missing operand")

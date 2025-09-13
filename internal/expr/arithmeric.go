@@ -17,12 +17,6 @@ type arithmeticOperator struct {
 	*simpleOperator
 }
 
-func (op *arithmeticOperator) Clone() Expr {
-	return &arithmeticOperator{
-		simpleOperator: op.simpleOperator.Clone(),
-	}
-}
-
 func (op *arithmeticOperator) Eval(env *environment.Environment) (types.Value, error) {
 	return op.simpleOperator.eval(env, func(va, vb types.Value) (types.Value, error) {
 		a, ok := va.(types.Numeric)

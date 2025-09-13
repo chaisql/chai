@@ -19,13 +19,6 @@ func Replace(tableName string) *ReplaceOperator {
 	return &ReplaceOperator{Name: tableName}
 }
 
-func (op *ReplaceOperator) Clone() stream.Operator {
-	return &ReplaceOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Name:         op.Name,
-	}
-}
-
 // Iterate implements the Operator interface.
 func (op *ReplaceOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	prev, err := op.Prev.Iterator(in)

@@ -20,13 +20,6 @@ func Skip(e expr.Expr) *SkipOperator {
 	return &SkipOperator{E: e}
 }
 
-func (op *SkipOperator) Clone() stream.Operator {
-	return &SkipOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		E:            expr.Clone(op.E),
-	}
-}
-
 func (op *SkipOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	v, err := op.E.Eval(in)
 	if err != nil {

@@ -31,16 +31,6 @@ func ScanReverse(tableName string, ranges ...stream.Range) *ScanOperator {
 	return &ScanOperator{TableName: tableName, Ranges: ranges, Reverse: true}
 }
 
-func (op *ScanOperator) Clone() stream.Operator {
-	return &ScanOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		TableName:    op.TableName,
-		Ranges:       op.Ranges.Clone(),
-		Reverse:      op.Reverse,
-		Table:        op.Table,
-	}
-}
-
 func (op *ScanOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	table := op.Table
 	var err error

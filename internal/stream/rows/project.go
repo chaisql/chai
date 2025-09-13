@@ -23,17 +23,6 @@ func Project(exprs ...expr.Expr) *ProjectOperator {
 	return &ProjectOperator{Exprs: exprs}
 }
 
-func (op *ProjectOperator) Clone() stream.Operator {
-	exprs := make([]expr.Expr, len(op.Exprs))
-	for i, e := range op.Exprs {
-		exprs[i] = expr.Clone(e)
-	}
-	return &ProjectOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Exprs:        exprs,
-	}
-}
-
 func (op *ProjectOperator) Columns(env *environment.Environment) ([]string, error) {
 	var cols, prev []string
 	var err error
@@ -156,7 +145,7 @@ func (it *ProjectIterator) Next() bool {
 		return false
 	}
 
-	env := it.env.CloneWithRow(r)
+	env := it.env.Clone(r)
 
 	for _, e := range it.exprs {
 		if _, ok := e.(expr.Wildcard); ok {

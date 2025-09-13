@@ -156,7 +156,7 @@ func TestTableScan(t *testing.T) {
 				require.NoError(t, err)
 
 				got = append(got, &fb)
-				v, err := env.GetParamByName("foo")
+				v, err := env.GetParamByIndex(1)
 				require.NoError(t, err)
 				require.Equal(t, types.NewBigintValue(1), v)
 				i++

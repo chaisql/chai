@@ -157,12 +157,6 @@ func Discard() *DiscardOperator {
 	return &DiscardOperator{}
 }
 
-func (it *DiscardOperator) Clone() Operator {
-	return &DiscardOperator{
-		BaseOperator: it.BaseOperator.Clone(),
-	}
-}
-
 // Iterator returns an iterator which discards all rows.
 func (op *DiscardOperator) Iterator(in *environment.Environment) (Iterator, error) {
 	prev, err := op.Prev.Iterator(in)

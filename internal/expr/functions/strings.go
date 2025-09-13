@@ -15,12 +15,6 @@ type Lower struct {
 	Expr expr.Expr
 }
 
-func (s *Lower) Clone() expr.Expr {
-	return &Lower{
-		Expr: expr.Clone(s.Expr),
-	}
-}
-
 func (s *Lower) Eval(env *environment.Environment) (types.Value, error) {
 	val, err := s.Expr.Eval(env)
 	if err != nil {
@@ -59,12 +53,6 @@ func (s *Lower) String() string {
 // It returns the upper-case version of a string
 type Upper struct {
 	Expr expr.Expr
-}
-
-func (s *Upper) Clone() expr.Expr {
-	return &Upper{
-		Expr: expr.Clone(s.Expr),
-	}
 }
 
 func (s *Upper) Eval(env *environment.Environment) (types.Value, error) {
@@ -112,18 +100,6 @@ type Trim struct {
 }
 
 type TrimFunc func(string, string) string
-
-func (s *Trim) Clone() expr.Expr {
-	exprs := make([]expr.Expr, len(s.Expr))
-	for i := range s.Expr {
-		exprs[i] = expr.Clone(s.Expr[i])
-	}
-	return &Trim{
-		Expr:     exprs,
-		TrimFunc: s.TrimFunc,
-		Name:     s.Name,
-	}
-}
 
 func (s *Trim) Eval(env *environment.Environment) (types.Value, error) {
 	if len(s.Expr) > 2 {

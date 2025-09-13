@@ -19,13 +19,6 @@ func Delete(tableName string) *DeleteOperator {
 	return &DeleteOperator{Name: tableName}
 }
 
-func (op *DeleteOperator) Clone() stream.Operator {
-	return &DeleteOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Name:         op.Name,
-	}
-}
-
 // Iterate implements the Operator interface.
 func (op *DeleteOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	prev, err := op.Prev.Iterator(in)

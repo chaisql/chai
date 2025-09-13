@@ -107,7 +107,7 @@ func TestColumnBuffer(t *testing.T) {
 			want   string
 			fails  bool
 		}{
-			// {"root", `{}`, `a`, types.NewIntegerValue(1), `{"a": 1}`, false},
+			{"root", `{}`, `a`, types.NewIntegerValue(1), `{"a": 1}`, false},
 			{"add column", `{"a": 1}`, `c`, types.NewTextValue("foo"), `{"a": 1, "c": "foo"}`, false},
 		}
 

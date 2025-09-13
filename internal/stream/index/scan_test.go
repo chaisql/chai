@@ -451,7 +451,7 @@ func testIndexScan(t *testing.T, getOp func(db *database.Database, tx *database.
 				require.NoError(t, err)
 
 				got = append(got, &fb)
-				v, err := env.GetParamByName("foo")
+				v, err := env.GetParamByIndex(1)
 				require.NoError(t, err)
 				require.Equal(t, types.BigintValue(1), v)
 				i++

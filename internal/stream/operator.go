@@ -65,10 +65,6 @@ func (op *BaseOperator) GetNext() Operator {
 	return op.Next
 }
 
-func (op BaseOperator) Clone() BaseOperator {
-	return op
-}
-
 func (op *BaseOperator) Columns(env *environment.Environment) ([]string, error) {
 	if op.Prev == nil {
 		return nil, nil
@@ -105,13 +101,6 @@ func (op *RowsOperator) Iterator(in *environment.Environment) (Iterator, error) 
 
 func (it *RowsOperator) Columns(env *environment.Environment) ([]string, error) {
 	return it.columns, nil
-}
-
-func (op *RowsOperator) Clone() Operator {
-	return &RowsOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Rows:         op.Rows,
-	}
 }
 
 func (op *RowsOperator) String() string {

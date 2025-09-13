@@ -31,14 +31,6 @@ func TempTreeSortReverse(e expr.Expr) *TempTreeSortOperator {
 	return &TempTreeSortOperator{Expr: e, Desc: true}
 }
 
-func (op *TempTreeSortOperator) Clone() stream.Operator {
-	return &TempTreeSortOperator{
-		BaseOperator: op.BaseOperator.Clone(),
-		Expr:         expr.Clone(op.Expr),
-		Desc:         op.Desc,
-	}
-}
-
 func (op *TempTreeSortOperator) Iterator(in *environment.Environment) (stream.Iterator, error) {
 	prev, err := op.Prev.Iterator(in)
 	if err != nil {
@@ -185,7 +177,7 @@ func (it *TempTreeSortIterator) iterateOnStream() error {
 		}
 
 		// evaluate the sort expression
-		v, err := it.expr.Eval(it.env.CloneWithRow(r))
+		v, err := it.expr.Eval(it.env.Clone(r))
 		if err != nil {
 			if !errors.Is(err, types.ErrColumnNotFound) {
 				return err
@@ -198,7 +190,7 @@ func (it *TempTreeSortIterator) iterateOnStream() error {
 			// the expression might be pointing to the original row.
 			dr, ok := r.(*database.BasicRow)
 			if ok {
-				v, err = it.expr.Eval(it.env.CloneWithRow(dr.OriginalRow()))
+				v, err = it.expr.Eval(it.env.Clone(dr.OriginalRow()))
 				if err != nil {
 					return err
 				}
