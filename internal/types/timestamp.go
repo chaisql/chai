@@ -14,14 +14,6 @@ var _ TypeDefinition = TimestampTypeDef{}
 
 type TimestampTypeDef struct{}
 
-func (TimestampTypeDef) New(v any) Value {
-	return NewTimestampValue(v.(time.Time))
-}
-
-func (TimestampTypeDef) Type() Type {
-	return TypeTimestamp
-}
-
 func (t TimestampTypeDef) Decode(src []byte) (Value, int) {
 	ts, n := encoding.DecodeTimestamp(src)
 	return NewTimestampValue(ts), n

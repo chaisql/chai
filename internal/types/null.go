@@ -9,14 +9,6 @@ var _ TypeDefinition = NullTypeDef{}
 
 type NullTypeDef struct{}
 
-func (NullTypeDef) New(v any) Value {
-	return NewNullValue()
-}
-
-func (NullTypeDef) Type() Type {
-	return TypeNull
-}
-
 func (NullTypeDef) Decode(src []byte) (Value, int) {
 	if src[0] != encoding.NullValue && src[0] != encoding.DESC_NullValue {
 		panic(errors.New("invalid encoded null value"))

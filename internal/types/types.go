@@ -202,8 +202,6 @@ func (t Type) IsAny() bool {
 }
 
 type TypeDefinition interface {
-	New(v any) Value
-	Type() Type
 	Decode(src []byte) (Value, int)
 	IsComparableWith(other Type) bool
 	IsIndexComparableWith(other Type) bool

@@ -12,14 +12,6 @@ var _ TypeDefinition = BigintTypeDef{}
 
 type BigintTypeDef struct{}
 
-func (BigintTypeDef) New(v any) Value {
-	return NewBigintValue(v.(int64))
-}
-
-func (BigintTypeDef) Type() Type {
-	return TypeBigint
-}
-
 func (BigintTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeInt(src)
 	return NewBigintValue(x), n

@@ -12,14 +12,6 @@ var _ TypeDefinition = IntegerTypeDef{}
 
 type IntegerTypeDef struct{}
 
-func (IntegerTypeDef) New(v any) Value {
-	return NewIntegerValue(v.(int32))
-}
-
-func (IntegerTypeDef) Type() Type {
-	return TypeInteger
-}
-
 func (IntegerTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeInt(src)
 	if x < math.MinInt32 || x > math.MaxInt32 {

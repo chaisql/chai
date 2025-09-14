@@ -13,14 +13,6 @@ var _ TypeDefinition = ByteaTypeDef{}
 
 type ByteaTypeDef struct{}
 
-func (ByteaTypeDef) New(v any) Value {
-	return NewByteaValue(v.([]byte))
-}
-
-func (ByteaTypeDef) Type() Type {
-	return TypeBytea
-}
-
 func (ByteaTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeBytea(src)
 	return NewByteaValue(x), n

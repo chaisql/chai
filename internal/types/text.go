@@ -14,14 +14,6 @@ var _ TypeDefinition = TextTypeDef{}
 
 type TextTypeDef struct{}
 
-func (TextTypeDef) New(v any) Value {
-	return NewTextValue(v.(string))
-}
-
-func (TextTypeDef) Type() Type {
-	return TypeText
-}
-
 func (TextTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeText(src)
 	return NewTextValue(x), n

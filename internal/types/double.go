@@ -12,14 +12,6 @@ var _ TypeDefinition = DoubleTypeDef{}
 
 type DoubleTypeDef struct{}
 
-func (DoubleTypeDef) New(v any) Value {
-	return NewDoubleValue(v.(float64))
-}
-
-func (DoubleTypeDef) Type() Type {
-	return TypeDouble
-}
-
 func (DoubleTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeFloat(src)
 	return NewDoubleValue(x), n

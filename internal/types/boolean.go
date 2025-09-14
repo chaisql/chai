@@ -11,14 +11,6 @@ var _ TypeDefinition = BooleanTypeDef{}
 
 type BooleanTypeDef struct{}
 
-func (BooleanTypeDef) New(v any) Value {
-	return NewBooleanValue(v.(bool))
-}
-
-func (BooleanTypeDef) Type() Type {
-	return TypeBoolean
-}
-
 func (t BooleanTypeDef) Decode(src []byte) (Value, int) {
 	b := encoding.DecodeBoolean(src)
 	return NewBooleanValue(b), 1
