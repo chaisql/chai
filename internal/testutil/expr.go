@@ -48,9 +48,9 @@ func TextValue(v string) expr.LiteralValue {
 	return expr.LiteralValue{Value: types.NewTextValue(v)}
 }
 
-// BlobValue creates a literal value of type Blob.
-func BlobValue(v []byte) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewBlobValue(v)}
+// ByteaValue creates a literal value of type bytea.
+func ByteaValue(v []byte) expr.LiteralValue {
+	return expr.LiteralValue{Value: types.NewByteaValue(v)}
 }
 
 func ExprList(t testing.TB, s string) expr.LiteralExprList {

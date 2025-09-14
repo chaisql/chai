@@ -4,17 +4,17 @@ import (
 	"encoding/binary"
 )
 
-func EncodeBlob(dst []byte, x []byte) []byte {
+func EncodeBytea(dst []byte, x []byte) []byte {
 	// encode the length as a varint
 	buf := make([]byte, binary.MaxVarintLen64+1)
-	buf[0] = BlobValue
+	buf[0] = ByteaValue
 	n := binary.PutUvarint(buf[1:], uint64(len(x)))
 
 	dst = append(dst, buf[:n+1]...)
 	return append(dst, x...)
 }
 
-func DecodeBlob(b []byte) ([]byte, int) {
+func DecodeBytea(b []byte) ([]byte, int) {
 	// skip type
 	b = b[1:]
 	// decode the length as a varint

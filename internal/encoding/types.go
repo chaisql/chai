@@ -54,7 +54,7 @@ const (
 	// 101 to 105: 5 types are free
 
 	// Binary
-	BlobValue byte = 103
+	ByteaValue byte = 103
 
 	// 104 to 109: 6 types are free
 
@@ -74,7 +74,7 @@ const (
 	// DESC_ prefix means that the value is encoded in reverse order.
 	DESC_ObjectValue   byte = 255 - ObjectValue
 	DESC_ArrayValue    byte = 255 - ArrayValue
-	DESC_BlobValue     byte = 255 - BlobValue
+	DESC_ByteaValue    byte = 255 - ByteaValue
 	DESC_TextValue     byte = 255 - TextValue
 	DESC_Float64Value  byte = 255 - Float64Value
 	DESC_Uint64Value   byte = 255 - Uint64Value

@@ -35,9 +35,9 @@ func TestParserExpr(t *testing.T) {
 		{"double quoted string", `"10.0"`, testutil.TextValue("10.0"), false},
 		{"single quoted string", "'-10.0'", testutil.TextValue("-10.0"), false},
 
-		// blobs
-		{"blob as hex string", `'\xff'`, testutil.BlobValue([]byte{255}), false},
-		{"invalid blob hex string", `'\xzz'`, nil, true},
+		// byteas
+		{"bytea as hex string", `'\xff'`, testutil.ByteaValue([]byte{255}), false},
+		{"invalid bytea hex string", `'\xzz'`, nil, true},
 
 		// parentheses
 		{"parentheses: empty", "()", nil, true},

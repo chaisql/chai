@@ -86,9 +86,9 @@ func NewValue(x any) (types.Value, error) {
 		if v == nil {
 			return types.NewNullValue(), nil
 		}
-		return types.NewBlobValue(*v), nil
+		return types.NewByteaValue(*v), nil
 	case []byte:
-		return types.NewBlobValue(v), nil
+		return types.NewByteaValue(v), nil
 	case *string:
 		if v == nil {
 			return types.NewNullValue(), nil

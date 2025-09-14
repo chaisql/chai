@@ -18,7 +18,7 @@ var encodedTypeToTypeDefs = map[byte]TypeDefinition{
 	encoding.Uint64Value:  BigintTypeDef{},
 	encoding.Float64Value: DoubleTypeDef{},
 	encoding.TextValue:    TextTypeDef{},
-	encoding.BlobValue:    BlobTypeDef{},
+	encoding.ByteaValue:   ByteaTypeDef{},
 }
 
 func DecodeValue(b []byte) (v Value, n int) {

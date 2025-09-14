@@ -58,7 +58,7 @@ func (idx *Index) Set(vs []types.Value, key []byte) error {
 	}
 
 	// append the key to the values
-	values := append(vs, types.NewBlobValue(key))
+	values := append(vs, types.NewByteaValue(key))
 
 	// create the key for the tree
 	treeKey := tree.NewKey(values...)

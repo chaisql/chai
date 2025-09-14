@@ -27,7 +27,7 @@ const (
 	TypeDouble
 	TypeTimestamp
 	TypeText
-	TypeBlob
+	TypeBytea
 )
 
 func (t Type) Def() TypeDefinition {
@@ -46,8 +46,8 @@ func (t Type) Def() TypeDefinition {
 		return TimestampTypeDef{}
 	case TypeText:
 		return TextTypeDef{}
-	case TypeBlob:
-		return BlobTypeDef{}
+	case TypeBytea:
+		return ByteaTypeDef{}
 	}
 
 	return nil
@@ -67,8 +67,8 @@ func (t Type) String() string {
 		return "double"
 	case TypeTimestamp:
 		return "timestamp"
-	case TypeBlob:
-		return "blob"
+	case TypeBytea:
+		return "bytea"
 	case TypeText:
 		return "text"
 	}
@@ -92,8 +92,8 @@ func (t Type) MinEnctype() byte {
 		return encoding.Int64Value
 	case TypeText:
 		return encoding.TextValue
-	case TypeBlob:
-		return encoding.BlobValue
+	case TypeBytea:
+		return encoding.ByteaValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -115,8 +115,8 @@ func (t Type) MinEnctypeDesc() byte {
 		return encoding.DESC_Uint64Value
 	case TypeText:
 		return encoding.DESC_TextValue
-	case TypeBlob:
-		return encoding.DESC_BlobValue
+	case TypeBytea:
+		return encoding.DESC_ByteaValue
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -138,8 +138,8 @@ func (t Type) MaxEnctype() byte {
 		return encoding.Uint64Value + 1
 	case TypeText:
 		return encoding.TextValue + 1
-	case TypeBlob:
-		return encoding.BlobValue + 1
+	case TypeBytea:
+		return encoding.ByteaValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}
@@ -159,8 +159,8 @@ func (t Type) MaxEnctypeDesc() byte {
 		return encoding.DESC_Int64Value + 1
 	case TypeText:
 		return encoding.DESC_TextValue + 1
-	case TypeBlob:
-		return encoding.DESC_BlobValue + 1
+	case TypeBytea:
+		return encoding.DESC_ByteaValue + 1
 	default:
 		panic(fmt.Sprintf("unsupported type %v", t))
 	}

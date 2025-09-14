@@ -16,7 +16,7 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 -- test: insert with types constraints
 CREATE TABLE test_tc(
     b bool, db double,
-    i bigint, bb blob, byt bytes,
+    i bigint, bb bytea, byt bytes,
     t text primary key
 );
 INSERT INTO test_tc (i, db, b, bb, byt, t) VALUES (10000000000, 21.21, true, "YmxvYlZhbHVlCg==", "Ynl0ZXNWYWx1ZQ==", "text");
@@ -26,7 +26,7 @@ SELECT * FROM test_tc;
   "b": true,
   "db": 21.21,
   "i": 10000000000,
-  "bb": CAST("YmxvYlZhbHVlCg==" AS BLOB),
+  "bb": CAST("YmxvYlZhbHVlCg==" AS BYTEA),
   "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
   "t": "text"
 }

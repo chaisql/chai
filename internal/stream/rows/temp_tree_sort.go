@@ -218,7 +218,7 @@ func (it *TempTreeSortIterator) iterateOnStream() error {
 			}
 		}
 
-		tk := tree.NewKey(v, types.NewTextValue(r.TableName()), types.NewBlobValue(encKey), types.NewBigintValue(counter))
+		tk := tree.NewKey(v, types.NewTextValue(r.TableName()), types.NewByteaValue(encKey), types.NewBigintValue(counter))
 
 		counter++
 

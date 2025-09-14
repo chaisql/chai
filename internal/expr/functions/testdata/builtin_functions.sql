@@ -23,7 +23,7 @@
 'text'
 
 > typeof('\xAA')
-'blob'
+'bytea'
 
 > typeof(NULL)
 'null'

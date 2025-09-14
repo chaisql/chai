@@ -69,7 +69,7 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 		}
 
 		// append the key to the buffer
-		s.buf = encoding.EncodeBlob(s.buf, key)
+		s.buf = encoding.EncodeBytea(s.buf, key)
 
 		err = b.Set(s.buf, v, nil)
 		if err != nil {
@@ -114,7 +114,7 @@ func (s *RollbackSegment) Rollback() error {
 		k = k[n:]
 
 		// get the key
-		uk, _ := encoding.DecodeBlob(k)
+		uk, _ := encoding.DecodeBytea(k)
 		v, err := it.ValueAndErr()
 
 		if bytes.Equal(v, tombStone) {

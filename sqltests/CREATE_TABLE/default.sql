@@ -102,15 +102,15 @@ CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT pk());
 -- error:
 
 -- test: incompatible expr
-CREATE TABLE test(pk INT PRIMARY KEY, a BLOB DEFAULT 1 + 4 / 4);
+CREATE TABLE test(pk INT PRIMARY KEY, a BYTEA DEFAULT 1 + 4 / 4);
 -- error:
 
 -- test: forbidden tokens: AND
-CREATE TABLE test(pk INT PRIMARY KEY, a BLOB DEFAULT 1 AND 1);
+CREATE TABLE test(pk INT PRIMARY KEY, a BYTEA DEFAULT 1 AND 1);
 -- error:
 
 -- test: forbidden tokens: path
-CREATE TABLE test(pk INT PRIMARY KEY, a BLOB DEFAULT b);
+CREATE TABLE test(pk INT PRIMARY KEY, a BYTEA DEFAULT b);
 -- error:
 
 -- test: DEFAULT nextval sequence

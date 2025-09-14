@@ -11,7 +11,7 @@ CREATE TABLE test(
     b double,
     c boolean,
     d text,
-    e blob
+    e bytea
 );
 
 INSERT INTO test VALUES
@@ -1053,7 +1053,7 @@ SELECT * FROM test WHERE d NOT IN ("a", "c");
     }
 */
 
--- test: blob =
+-- test: bytea =
 SELECT * FROM test WHERE e = "\xaa";
 /* result:
     {
@@ -1066,7 +1066,7 @@ SELECT * FROM test WHERE e = "\xaa";
     }
 */
 
--- test: blob !=
+-- test: bytea !=
 SELECT * FROM test WHERE e != "\xaa";
 /* result:
     {
@@ -1095,7 +1095,7 @@ SELECT * FROM test WHERE e != "\xaa";
     }
 */
 
--- test: blob >
+-- test: bytea >
 SELECT * FROM test WHERE e > "\xaa";
 /* result:
     {
@@ -1124,7 +1124,7 @@ SELECT * FROM test WHERE e > "\xaa";
     }
 */
 
--- test: blob >=
+-- test: bytea >=
 SELECT * FROM test WHERE e >= "\xaa";
 /* result:
     {
@@ -1161,7 +1161,7 @@ SELECT * FROM test WHERE e >= "\xaa";
     }
 */
 
--- test: blob <
+-- test: bytea <
 SELECT * FROM test WHERE e < "\xac";
 /* result:
     {
@@ -1182,7 +1182,7 @@ SELECT * FROM test WHERE e < "\xac";
     }
 */
 
--- test: blob <=
+-- test: bytea <=
 SELECT * FROM test WHERE e <= "\xac";
 /* result:
     {
@@ -1211,7 +1211,7 @@ SELECT * FROM test WHERE e <= "\xac";
     }
 */
 
--- test: blob IN
+-- test: bytea IN
 SELECT * FROM test WHERE e IN ("\xaa", "\xac");
 /* result:
     {
@@ -1232,7 +1232,7 @@ SELECT * FROM test WHERE e IN ("\xaa", "\xac");
     }
 */
 
--- test: blob NOT IN
+-- test: bytea NOT IN
 SELECT * FROM test WHERE e NOT IN ("\xaa", "\xac");
 /* result:
     {

@@ -119,7 +119,7 @@ func marshalText(dst *bytes.Buffer, v types.Value) error {
 	case types.TypeText:
 		dst.WriteString(strconv.Quote(types.AsString(v)))
 		return nil
-	case types.TypeBlob:
+	case types.TypeBytea:
 		src := types.AsByteSlice(v)
 		dst.WriteString("\"\\x")
 		_, _ = hex.NewEncoder(dst).Write(src)

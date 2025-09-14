@@ -28,7 +28,7 @@ func (TextTypeDef) Decode(src []byte) (Value, int) {
 }
 
 func (TextTypeDef) IsComparableWith(other Type) bool {
-	return other == TypeNull || other == TypeText || other == TypeBoolean || other == TypeInteger || other == TypeBigint || other == TypeDouble || other == TypeTimestamp || other == TypeBlob
+	return other == TypeNull || other == TypeText || other == TypeBoolean || other == TypeInteger || other == TypeBigint || other == TypeDouble || other == TypeTimestamp || other == TypeBytea
 }
 
 func (t TextTypeDef) IsIndexComparableWith(other Type) bool {
@@ -124,14 +124,14 @@ func (v TextValue) CastAs(target Type) (Value, error) {
 			return nil, fmt.Errorf(`cannot cast %q as timestamp: %w`, v.V(), err)
 		}
 		return NewTimestampValue(t), nil
-	case TypeBlob:
+	case TypeBytea:
 		s := string(v)
 		b, err := base64.StdEncoding.DecodeString(s)
 		if err != nil {
 			return nil, err
 		}
 
-		return NewBlobValue(b), nil
+		return NewByteaValue(b), nil
 	}
 
 	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)

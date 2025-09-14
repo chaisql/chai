@@ -164,12 +164,12 @@ func TestTreeIterateOnRange(t *testing.T) {
 		}
 	}
 
-	// keys: [blob, blob] * 100
+	// keys: [bytea, bytea] * 100
 	for i := int32(0); i < 10; i++ {
 		for j := 0; j < 10; j++ {
 			keys = append(keys, tree.NewKey(
-				types.NewBlobValue([]byte(fmt.Sprintf("bar%d", i))),
-				types.NewBlobValue([]byte(fmt.Sprintf("baz%d", j))),
+				types.NewByteaValue([]byte(fmt.Sprintf("bar%d", i))),
+				types.NewByteaValue([]byte(fmt.Sprintf("baz%d", j))),
 			))
 		}
 	}
@@ -280,19 +280,19 @@ func TestTreeIterateOnRange(t *testing.T) {
 			{"<= bar3 desc", nil, tree.NewKey(types.NewTextValue("bar3")), false, 160, 200, tree.SortOrder(0).SetDesc(0)},
 			{"< bar3 desc", nil, tree.NewKey(types.NewTextValue("bar3")), true, 170, 200, tree.SortOrder(0).SetDesc(0)},
 
-			// blob
-			{"= bar3", tree.NewKey(types.NewBlobValue([]byte("bar3"))), tree.NewKey(types.NewBlobValue([]byte("bar3"))), false, 1330, 1340, 0},
-			{">= bar3", tree.NewKey(types.NewBlobValue([]byte("bar3"))), nil, false, 1330, 1400, 0},
-			{"> bar3", tree.NewKey(types.NewBlobValue([]byte("bar3"))), nil, true, 1340, 1400, 0},
-			{"<= bar3", nil, tree.NewKey(types.NewBlobValue([]byte("bar3"))), false, 1300, 1340, 0},
-			{"< bar3", nil, tree.NewKey(types.NewBlobValue([]byte("bar3"))), true, 1300, 1330, 0},
+			// bytea
+			{"= bar3", tree.NewKey(types.NewByteaValue([]byte("bar3"))), tree.NewKey(types.NewByteaValue([]byte("bar3"))), false, 1330, 1340, 0},
+			{">= bar3", tree.NewKey(types.NewByteaValue([]byte("bar3"))), nil, false, 1330, 1400, 0},
+			{"> bar3", tree.NewKey(types.NewByteaValue([]byte("bar3"))), nil, true, 1340, 1400, 0},
+			{"<= bar3", nil, tree.NewKey(types.NewByteaValue([]byte("bar3"))), false, 1300, 1340, 0},
+			{"< bar3", nil, tree.NewKey(types.NewByteaValue([]byte("bar3"))), true, 1300, 1330, 0},
 
-			// blob desc
-			{"= bar3 desc", tree.NewKey(types.NewBlobValue([]byte("bar3"))), tree.NewKey(types.NewBlobValue([]byte("bar3"))), false, 60, 70, tree.SortOrder(0).SetDesc(0)},
-			{">= bar3 desc", tree.NewKey(types.NewBlobValue([]byte("bar3"))), nil, false, 0, 70, tree.SortOrder(0).SetDesc(0)},
-			{"> bar3 desc", tree.NewKey(types.NewBlobValue([]byte("bar3"))), nil, true, 0, 60, tree.SortOrder(0).SetDesc(0)},
-			{"<= bar3 desc", nil, tree.NewKey(types.NewBlobValue([]byte("bar3"))), false, 60, 100, tree.SortOrder(0).SetDesc(0)},
-			{"< bar3 desc", nil, tree.NewKey(types.NewBlobValue([]byte("bar3"))), true, 70, 100, tree.SortOrder(0).SetDesc(0)},
+			// bytea desc
+			{"= bar3 desc", tree.NewKey(types.NewByteaValue([]byte("bar3"))), tree.NewKey(types.NewByteaValue([]byte("bar3"))), false, 60, 70, tree.SortOrder(0).SetDesc(0)},
+			{">= bar3 desc", tree.NewKey(types.NewByteaValue([]byte("bar3"))), nil, false, 0, 70, tree.SortOrder(0).SetDesc(0)},
+			{"> bar3 desc", tree.NewKey(types.NewByteaValue([]byte("bar3"))), nil, true, 0, 60, tree.SortOrder(0).SetDesc(0)},
+			{"<= bar3 desc", nil, tree.NewKey(types.NewByteaValue([]byte("bar3"))), false, 60, 100, tree.SortOrder(0).SetDesc(0)},
+			{"< bar3 desc", nil, tree.NewKey(types.NewByteaValue([]byte("bar3"))), true, 70, 100, tree.SortOrder(0).SetDesc(0)},
 		}
 
 		for _, test := range tests {

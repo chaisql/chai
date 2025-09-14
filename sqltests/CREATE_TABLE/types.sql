@@ -38,13 +38,13 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 }
 */
 
--- test: BLOB
-CREATE TABLE test (pk INT PRIMARY KEY, a BLOB);
+-- test: BYTEA
+CREATE TABLE test (pk INT PRIMARY KEY, a BYTEA);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a BLOB, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a BYTEA, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 

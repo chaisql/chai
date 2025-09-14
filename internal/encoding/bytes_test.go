@@ -34,24 +34,24 @@ func TestEncodeDecodeText(t *testing.T) {
 	}
 }
 
-func TestEncodeDecodeBlob(t *testing.T) {
-	a100 := append([]byte{encoding.BlobValue}, makeUvarint(100)...)
+func TestEncodeDecodeBytea(t *testing.T) {
+	a100 := append([]byte{encoding.ByteaValue}, makeUvarint(100)...)
 	a100 = append(a100, bytes.Repeat([]byte{'a'}, 100)...)
 	tests := []struct {
 		input []byte
 		want  []byte
 	}{
-		{[]byte{}, []byte{encoding.BlobValue, makeUvarint(0)[0]}},
-		{[]byte{'a'}, []byte{encoding.BlobValue, makeUvarint(1)[0], 'a'}},
+		{[]byte{}, []byte{encoding.ByteaValue, makeUvarint(0)[0]}},
+		{[]byte{'a'}, []byte{encoding.ByteaValue, makeUvarint(1)[0], 'a'}},
 		{bytes.Repeat([]byte{'a'}, 100), a100},
 	}
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v", test.input), func(t *testing.T) {
-			got := encoding.EncodeBlob(nil, test.input)
+			got := encoding.EncodeBytea(nil, test.input)
 			require.Equal(t, test.want, got)
 
-			x, n := encoding.DecodeBlob(got)
+			x, n := encoding.DecodeBytea(got)
 			require.Equal(t, test.input, x)
 			require.Equal(t, len(test.input)+len(makeUvarint(len(test.input)))+1, n)
 		})

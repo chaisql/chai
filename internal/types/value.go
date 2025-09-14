@@ -83,7 +83,7 @@ func AsString(v Value) string {
 }
 
 func AsByteSlice(v Value) []byte {
-	bv, ok := v.(BlobValue)
+	bv, ok := v.(ByteaValue)
 	if !ok {
 		return v.V().([]byte)
 	}
@@ -131,7 +131,7 @@ func (v *ValueScanner) Scan(src any) error {
 	case bool:
 		v.V = NewBooleanValue(t)
 	case []byte:
-		v.V = NewBlobValue(t)
+		v.V = NewByteaValue(t)
 	case string:
 		v.V = NewTextValue(t)
 	case time.Time:

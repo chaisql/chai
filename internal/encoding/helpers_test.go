@@ -82,7 +82,7 @@ func TestCompare(t *testing.T) {
 		{`("a")`, `("aa")`, -1},
 		{`("aaaa")`, `("aab")`, -1},
 
-		// blob
+		// bytea
 		{`("\xaa")`, `("\xaa")`, 0},
 		{`("\xab")`, `("\xaa")`, 1},
 		{`("\xaa")`, `("\xab")`, -1},
@@ -238,11 +238,11 @@ func TestAbbreviatedKey(t *testing.T) {
 		{`(1, "abcdefghijkl` + strings.Repeat("m", 100) + `")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
 		{`(1, "abcdefghijkl` + strings.Repeat("m", 10000) + `")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
 
-		// blob
-		{`(1, "\xab")`, 1<<48 | uint64(encoding.BlobValue)<<40 | uint64(0xab)<<32},
-		{`(1, "\xabcdefabcdef")`, 1<<48 | uint64(encoding.BlobValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
-		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 100) + `")`, 1<<48 | uint64(encoding.BlobValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
-		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 1000) + `")`, 1<<48 | uint64(encoding.BlobValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		// bytea
+		{`(1, "\xab")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32},
+		{`(1, "\xabcdefabcdef")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 100) + `")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 1000) + `")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
 	}
 
 	for _, test := range tests {

@@ -9,62 +9,62 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-var _ TypeDefinition = BlobTypeDef{}
+var _ TypeDefinition = ByteaTypeDef{}
 
-type BlobTypeDef struct{}
+type ByteaTypeDef struct{}
 
-func (BlobTypeDef) New(v any) Value {
-	return NewBlobValue(v.([]byte))
+func (ByteaTypeDef) New(v any) Value {
+	return NewByteaValue(v.([]byte))
 }
 
-func (BlobTypeDef) Type() Type {
-	return TypeBlob
+func (ByteaTypeDef) Type() Type {
+	return TypeBytea
 }
 
-func (BlobTypeDef) Decode(src []byte) (Value, int) {
-	x, n := encoding.DecodeBlob(src)
-	return NewBlobValue(x), n
+func (ByteaTypeDef) Decode(src []byte) (Value, int) {
+	x, n := encoding.DecodeBytea(src)
+	return NewByteaValue(x), n
 }
 
-func (BlobTypeDef) IsComparableWith(other Type) bool {
-	return other == TypeBlob
+func (ByteaTypeDef) IsComparableWith(other Type) bool {
+	return other == TypeBytea
 }
 
-func (BlobTypeDef) IsIndexComparableWith(other Type) bool {
-	return other == TypeBlob
+func (ByteaTypeDef) IsIndexComparableWith(other Type) bool {
+	return other == TypeBytea
 }
 
-var _ Value = NewBlobValue(nil)
+var _ Value = NewByteaValue(nil)
 
-type BlobValue []byte
+type ByteaValue []byte
 
-// NewBlobValue returns a SQL BLOB value.
-func NewBlobValue(x []byte) BlobValue {
-	return BlobValue(x)
+// NewByteaValue returns a SQL BYTEA value.
+func NewByteaValue(x []byte) ByteaValue {
+	return ByteaValue(x)
 }
 
-func (v BlobValue) V() any {
+func (v ByteaValue) V() any {
 	return []byte(v)
 }
 
-func (v BlobValue) Type() Type {
-	return TypeBlob
+func (v ByteaValue) Type() Type {
+	return TypeBytea
 }
 
-func (v BlobValue) TypeDef() TypeDefinition {
-	return BlobTypeDef{}
+func (v ByteaValue) TypeDef() TypeDefinition {
+	return ByteaTypeDef{}
 }
 
-func (v BlobValue) IsZero() (bool, error) {
+func (v ByteaValue) IsZero() (bool, error) {
 	return v == nil, nil
 }
 
-func (v BlobValue) String() string {
+func (v ByteaValue) String() string {
 	t, _ := v.MarshalText()
 	return string(t)
 }
 
-func (v BlobValue) MarshalText() ([]byte, error) {
+func (v ByteaValue) MarshalText() ([]byte, error) {
 	var dst bytes.Buffer
 	dst.WriteString("\"\\x")
 	_, _ = hex.NewEncoder(&dst).Write(v)
@@ -72,7 +72,7 @@ func (v BlobValue) MarshalText() ([]byte, error) {
 	return dst.Bytes(), nil
 }
 
-func (v BlobValue) MarshalJSON() ([]byte, error) {
+func (v ByteaValue) MarshalJSON() ([]byte, error) {
 	dst := make([]byte, base64.StdEncoding.EncodedLen(len(v))+2)
 	dst[0] = '"'
 	dst[len(dst)-1] = '"'
@@ -80,17 +80,17 @@ func (v BlobValue) MarshalJSON() ([]byte, error) {
 	return dst, nil
 }
 
-func (v BlobValue) Encode(dst []byte) ([]byte, error) {
-	return encoding.EncodeBlob(dst, v), nil
+func (v ByteaValue) Encode(dst []byte) ([]byte, error) {
+	return encoding.EncodeBytea(dst, v), nil
 }
 
-func (v BlobValue) EncodeAsKey(dst []byte) ([]byte, error) {
-	return encoding.EncodeBlob(dst, v), nil
+func (v ByteaValue) EncodeAsKey(dst []byte) ([]byte, error) {
+	return encoding.EncodeBytea(dst, v), nil
 }
 
-func (v BlobValue) CastAs(target Type) (Value, error) {
+func (v ByteaValue) CastAs(target Type) (Value, error) {
 	switch target {
-	case TypeBlob:
+	case TypeBytea:
 		return v, nil
 	case TypeText:
 		return NewTextValue(base64.StdEncoding.EncodeToString([]byte(v))), nil
@@ -99,52 +99,52 @@ func (v BlobValue) CastAs(target Type) (Value, error) {
 	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
 }
 
-func (v BlobValue) EQ(other Value) (bool, error) {
-	if other.Type() != TypeBlob {
+func (v ByteaValue) EQ(other Value) (bool, error) {
+	if other.Type() != TypeBytea {
 		return false, nil
 	}
 
 	return bytes.Equal([]byte(v), AsByteSlice(other)), nil
 }
 
-func (v BlobValue) GT(other Value) (bool, error) {
+func (v ByteaValue) GT(other Value) (bool, error) {
 	t := other.Type()
-	if t != TypeBlob {
+	if t != TypeBytea {
 		return false, nil
 	}
 
 	return bytes.Compare([]byte(v), AsByteSlice(other)) > 0, nil
 }
 
-func (v BlobValue) GTE(other Value) (bool, error) {
+func (v ByteaValue) GTE(other Value) (bool, error) {
 	t := other.Type()
-	if t != TypeBlob {
+	if t != TypeBytea {
 		return false, nil
 	}
 
 	return bytes.Compare([]byte(v), AsByteSlice(other)) >= 0, nil
 }
 
-func (v BlobValue) LT(other Value) (bool, error) {
+func (v ByteaValue) LT(other Value) (bool, error) {
 	t := other.Type()
-	if t != TypeBlob {
+	if t != TypeBytea {
 		return false, nil
 	}
 
 	return bytes.Compare([]byte(v), AsByteSlice(other)) < 0, nil
 }
 
-func (v BlobValue) LTE(other Value) (bool, error) {
+func (v ByteaValue) LTE(other Value) (bool, error) {
 	t := other.Type()
-	if t != TypeBlob {
+	if t != TypeBytea {
 		return false, nil
 	}
 
 	return bytes.Compare([]byte(v), AsByteSlice(other)) <= 0, nil
 }
 
-func (v BlobValue) Between(a, b Value) (bool, error) {
-	if a.Type() != TypeBlob || b.Type() != TypeBlob {
+func (v ByteaValue) Between(a, b Value) (bool, error) {
+	if a.Type() != TypeBytea || b.Type() != TypeBytea {
 		return false, nil
 	}
 

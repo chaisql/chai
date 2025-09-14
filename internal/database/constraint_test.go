@@ -57,9 +57,9 @@ func TestColumnConstraintsAdd(t *testing.T) {
 			false,
 		},
 		{
-			"Default value conversion, typed constraint, nextval with blob",
+			"Default value conversion, typed constraint, nextval with bytea",
 			[]*database.ColumnConstraint{{Column: "a", Type: types.TypeInteger}},
-			database.ColumnConstraint{Column: "b", Type: types.TypeBlob, DefaultValue: expr.Constraint(&functions.NextVal{Expr: testutil.TextValue("seq")})},
+			database.ColumnConstraint{Column: "b", Type: types.TypeBytea, DefaultValue: expr.Constraint(&functions.NextVal{Expr: testutil.TextValue("seq")})},
 			nil,
 			true,
 		},

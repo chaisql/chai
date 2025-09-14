@@ -57,7 +57,7 @@ func TestValueMarshalJSON(t *testing.T) {
 		expected string
 	}{
 		{"null", types.NewNullValue(), "null"},
-		{"blob", types.NewBlobValue([]byte("bar")), `"YmFy"`},
+		{"bytea", types.NewByteaValue([]byte("bar")), `"YmFy"`},
 		{"string", types.NewTextValue("bar"), `"bar"`},
 		{"bool", types.NewBooleanValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},

@@ -221,7 +221,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		return expr.PositionalParam(pp), nil
 	case scanner.STRING:
 		if strings.HasPrefix(lit, `\x`) {
-			blob, err := hex.DecodeString(lit[2:])
+			bytea, err := hex.DecodeString(lit[2:])
 			if err != nil {
 				if bt, ok := err.(hex.InvalidByteError); ok {
 					return nil, fmt.Errorf("invalid hexadecimal digit: %c", bt)
@@ -229,7 +229,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 
 				return nil, err
 			}
-			return expr.LiteralValue{Value: types.NewBlobValue(blob)}, nil
+			return expr.LiteralValue{Value: types.NewByteaValue(bytea)}, nil
 		}
 		return expr.LiteralValue{Value: types.NewTextValue(lit)}, nil
 	case scanner.NUMBER:
@@ -361,8 +361,8 @@ func (p *Parser) parseIdentList() ([]string, error) {
 func (p *Parser) parseType() (types.Type, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 	switch tok {
-	case scanner.TYPEBLOB, scanner.TYPEBYTES:
-		return types.TypeBlob, nil
+	case scanner.TYPEBYTEA, scanner.TYPEBYTES:
+		return types.TypeBytea, nil
 	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
 		return types.TypeBoolean, nil
 	case scanner.TYPEREAL:

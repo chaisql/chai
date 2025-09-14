@@ -85,13 +85,13 @@ false
 > typeof("hello")
 'text'
 
--- test: literals/blobs
+-- test: literals/byteas
 
 > '\xFF'
 '\xFF'
 
 > typeof('\xFF')
-'blob'
+'bytea'
 
 ! '\xhello'
 'invalid hexadecimal digit: h'

@@ -11,8 +11,8 @@ true
 > CAST (1 AS TEXT)
 '1'
 
-! CAST (1 AS BLOB)
-'cannot cast integer as blob'
+! CAST (1 AS BYTEA)
+'cannot cast integer as bytea'
 
 -- test: source(DOUBLE)
 > CAST (1.1 AS DOUBLE)
@@ -27,8 +27,8 @@ true
 > CAST (1.1 AS TEXT)
 '1.1'
 
-! CAST (1.1 AS BLOB)
-'cannot cast double as blob'
+! CAST (1.1 AS BYTEA)
+'cannot cast double as bytea'
 
 -- test: source(BOOL)
 > CAST (true AS BOOL)
@@ -46,8 +46,8 @@ true
 > CAST (true AS TEXT)
 'true'
 
-! CAST (true AS BLOB)
-'cannot cast boolean as blob'
+! CAST (true AS BYTEA)
+'cannot cast boolean as bytea'
 
 -- test: source(TEXT)
 > CAST ('a' AS TEXT)
@@ -77,18 +77,18 @@ false
 
 ! CAST ('falSe' AS BOOL)
 
-> CAST ('YXNkaW5l' AS BLOB)
+> CAST ('YXNkaW5l' AS BYTEA)
 '\x617364696e65'
 
--- test: source(BLOB)
-> CAST ('\xAF' AS BLOB)
+-- test: source(BYTEA)
+> CAST ('\xAF' AS BYTEA)
 '\xAF'
 
 ! CAST ('\xAF' AS INT)
-'cannot cast blob as integer'
+'cannot cast bytea as integer'
 
 ! CAST ('\xAF' AS DOUBLE)
-'cannot cast blob as double'
+'cannot cast bytea as double'
 
 > CAST ('\x617364696e65' AS TEXT)
 'YXNkaW5l'

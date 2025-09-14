@@ -57,8 +57,8 @@ func toText(t testing.TB, x string) types.Value {
 	return types.NewTextValue(x)
 }
 
-func toBlob(t testing.TB, x string) types.Value {
-	return types.NewBlobValue([]byte(x))
+func tobytea(t testing.TB, x string) types.Value {
+	return types.NewByteaValue([]byte(x))
 }
 
 var now = time.Now().Format(time.RFC3339Nano)
@@ -180,23 +180,23 @@ func TestCompare(t *testing.T) {
 		{"<=", "a", "b", true, toText},
 		{"<=", "b", "b", true, toText},
 
-		// blob
-		{"=", "b", "a", false, toBlob},
-		{"=", "b", "b", true, toBlob},
-		{"!=", "b", "a", true, toBlob},
-		{"!=", "b", "b", false, toBlob},
-		{">", "b", "a", true, toBlob},
-		{">", "a", "b", false, toBlob},
-		{">", "b", "b", false, toBlob},
-		{">=", "b", "a", true, toBlob},
-		{">=", "a", "b", false, toBlob},
-		{">=", "b", "b", true, toBlob},
-		{"<", "b", "a", false, toBlob},
-		{"<", "a", "b", true, toBlob},
-		{"<", "b", "b", false, toBlob},
-		{"<=", "b", "a", false, toBlob},
-		{"<=", "a", "b", true, toBlob},
-		{"<=", "b", "b", true, toBlob},
+		// bytea
+		{"=", "b", "a", false, tobytea},
+		{"=", "b", "b", true, tobytea},
+		{"!=", "b", "a", true, tobytea},
+		{"!=", "b", "b", false, tobytea},
+		{">", "b", "a", true, tobytea},
+		{">", "a", "b", false, tobytea},
+		{">", "b", "b", false, tobytea},
+		{">=", "b", "a", true, tobytea},
+		{">=", "a", "b", false, tobytea},
+		{">=", "b", "b", true, tobytea},
+		{"<", "b", "a", false, tobytea},
+		{"<", "a", "b", true, tobytea},
+		{"<", "b", "b", false, tobytea},
+		{"<=", "b", "a", false, tobytea},
+		{"<=", "a", "b", true, tobytea},
+		{"<=", "b", "b", true, tobytea},
 	}
 
 	for _, test := range tests {

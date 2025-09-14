@@ -57,7 +57,7 @@ func Skip(b []byte) int {
 		return 5
 	case Int64Value, Uint64Value, Float64Value, DESC_Int64Value, DESC_Uint64Value, DESC_Float64Value:
 		return 9
-	case TextValue, BlobValue, DESC_TextValue, DESC_BlobValue:
+	case TextValue, ByteaValue, DESC_TextValue, DESC_ByteaValue:
 		l, n := binary.Uvarint(b[1:])
 		return n + int(l) + 1
 	case ArrayValue, DESC_ArrayValue:
@@ -193,7 +193,7 @@ func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
 		return bytes.Compare(a[1:3], b[1:3]), 3
 	case Int8Value, Uint8Value:
 		return bytes.Compare(a[1:2], b[1:2]), 2
-	case TextValue, BlobValue:
+	case TextValue, ByteaValue:
 		l, n := binary.Uvarint(a[1:])
 		n++
 		enda := n + int(l)
@@ -356,7 +356,7 @@ func abbreviatedValue(key []byte) uint64 {
 		}
 		x := DecodeUint64(key[1:])
 		return uint64(x) >> 24
-	case TextValue, BlobValue:
+	case TextValue, ByteaValue:
 		var abbv uint64
 		l, n := binary.Uvarint(key[1:])
 		n++

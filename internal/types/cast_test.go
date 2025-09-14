@@ -21,7 +21,7 @@ func TestCastAs(t *testing.T) {
 	doubleV := types.NewDoubleValue(10.5)
 	tsV := types.NewTimestampValue(now)
 	textV := types.NewTextValue("foo")
-	blobV := types.NewBlobValue([]byte("asdine"))
+	byteaV := types.NewByteaValue([]byte("asdine"))
 
 	check := func(t *testing.T, targetType types.Type, tests []test) {
 		t.Helper()
@@ -50,7 +50,7 @@ func TestCastAs(t *testing.T) {
 			{textV, nil, true},
 			{types.NewTextValue("true"), boolV, false},
 			{types.NewTextValue("false"), types.NewBooleanValue(false), false},
-			{blobV, nil, true},
+			{byteaV, nil, true},
 		})
 	})
 
@@ -63,7 +63,7 @@ func TestCastAs(t *testing.T) {
 			{textV, nil, true},
 			{types.NewTextValue("10"), integerV, false},
 			{types.NewTextValue("10.5"), integerV, false},
-			{blobV, nil, true},
+			{byteaV, nil, true},
 			{types.NewDoubleValue(math.MaxInt64 + 1), nil, true},
 		})
 	})
@@ -76,7 +76,7 @@ func TestCastAs(t *testing.T) {
 			{textV, nil, true},
 			{types.NewTextValue("10"), types.NewDoubleValue(10), false},
 			{types.NewTextValue("10.5"), doubleV, false},
-			{blobV, nil, true},
+			{byteaV, nil, true},
 		})
 	})
 
@@ -86,7 +86,7 @@ func TestCastAs(t *testing.T) {
 			{integerV, nil, true},
 			{doubleV, nil, true},
 			{types.NewTextValue(now.Format(time.RFC3339Nano)), tsV, false},
-			{blobV, nil, true},
+			{byteaV, nil, true},
 		})
 	})
 
@@ -96,18 +96,18 @@ func TestCastAs(t *testing.T) {
 			{integerV, types.NewTextValue("10"), false},
 			{doubleV, types.NewTextValue("10.5"), false},
 			{textV, textV, false},
-			{blobV, types.NewTextValue(`YXNkaW5l`), false},
+			{byteaV, types.NewTextValue(`YXNkaW5l`), false},
 		})
 	})
 
-	t.Run("blob", func(t *testing.T) {
-		check(t, types.TypeBlob, []test{
+	t.Run("bytea", func(t *testing.T) {
+		check(t, types.TypeBytea, []test{
 			{boolV, nil, true},
 			{integerV, nil, true},
 			{doubleV, nil, true},
-			{types.NewTextValue("YXNkaW5l"), types.NewBlobValue([]byte{0x61, 0x73, 0x64, 0x69, 0x6e, 0x65}), false},
+			{types.NewTextValue("YXNkaW5l"), types.NewByteaValue([]byte{0x61, 0x73, 0x64, 0x69, 0x6e, 0x65}), false},
 			{types.NewTextValue("not base64"), nil, true},
-			{blobV, blobV, false},
+			{byteaV, byteaV, false},
 		})
 	})
 }

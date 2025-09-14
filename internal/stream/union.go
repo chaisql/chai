@@ -158,7 +158,7 @@ func (it *UnionIterator) iterateOnStream(s *Stream) error {
 		}
 
 		key := tree.NewKey(row.Flatten(r)...)
-		buf, err = types.EncodeValuesAsKey(buf, types.NewBlobValue(encKey), types.NewTextValue(tableName))
+		buf, err = types.EncodeValuesAsKey(buf, types.NewByteaValue(encKey), types.NewTextValue(tableName))
 		if err != nil {
 			return err
 		}

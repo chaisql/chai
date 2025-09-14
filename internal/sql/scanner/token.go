@@ -145,7 +145,7 @@ const (
 
 	// Types
 	TYPEBIGINT
-	TYPEBLOB
+	TYPEBYTEA
 	TYPEBOOL
 	TYPEBOOLEAN
 	TYPEBYTES
@@ -287,7 +287,7 @@ var tokens = [...]string{
 	WRITE:       "WRITE",
 
 	TYPEBIGINT:    "BIGINT",
-	TYPEBLOB:      "BLOB",
+	TYPEBYTEA:     "BYTEA",
 	TYPEBOOL:      "BOOL",
 	TYPEBOOLEAN:   "BOOLEAN",
 	TYPEBYTES:     "BYTES",
