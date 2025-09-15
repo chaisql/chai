@@ -77,11 +77,14 @@ func (v TextValue) CastAs(target Type) (Value, error) {
 	case TypeText:
 		return v, nil
 	case TypeBoolean:
-		b, err := strconv.ParseBool(string(v))
-		if err != nil {
-			return nil, errors.Errorf(`cannot cast %q as bool: %w`, v.V(), err)
+		switch strings.ToLower(string(v)) {
+		case "1", "t", "true", "y", "yes", "on":
+			return NewBooleanValue(true), nil
+		case "0", "f", "false", "n", "no", "off":
+			return NewBooleanValue(false), nil
 		}
-		return NewBooleanValue(b), nil
+
+		return nil, fmt.Errorf("cannot cast %q as boolean", v.V())
 	case TypeInteger:
 		i, err := strconv.ParseInt(string(v), 10, 32)
 		if err != nil {

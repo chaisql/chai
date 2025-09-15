@@ -75,7 +75,41 @@ true
 > CAST ('false' AS BOOL)
 false
 
-! CAST ('falSe' AS BOOL)
+> CAST ('falSe' AS BOOL)
+false
+
+> CAST ('0' AS BOOL)
+false
+
+> CAST ('1' AS BOOL)
+true
+
+> CAST ('t' AS BOOL)
+true
+
+> CAST ('f' AS BOOL)
+false
+
+> CAST ('TrUe' AS BOOL)
+true
+
+> CAST ('yes' AS BOOL)
+true
+
+> CAST ('y' AS BOOL)
+true
+
+> CAST ('no' AS BOOL)
+false
+
+> CAST ('n' AS BOOL)
+false
+
+> CAST ('on' AS BOOL)
+true
+
+> CAST ('off' AS BOOL)
+false
 
 > CAST ('YXNkaW5l' AS BYTEA)
 '\x617364696e65'
