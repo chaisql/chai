@@ -58,9 +58,9 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 		return EOF, pos, ""
 	case '`':
 		s.r.unread()
-		return s.scanIdent(true)
 	case '"':
-		return s.scanString()
+		s.r.unread()
+		return s.scanIdent(true)
 	case '\'':
 		return s.scanString()
 	case '.':
@@ -231,7 +231,7 @@ func (s *scanner) scanIdent(doLookup bool) (tok Token, pos Pos, lit string) {
 	for {
 		if ch, _ := s.r.read(); ch == eof {
 			break
-		} else if ch == '`' {
+		} else if ch == '"' {
 			tok0, pos0, lit0 := s.scanString()
 			if tok0 == BADSTRING || tok0 == BADESCAPE {
 				return tok0, pos0, lit0
@@ -598,23 +598,18 @@ func scanString(r io.RuneReader) (string, error) {
 			// If the next character is an escape then write the escaped char.
 			// If it's not a valid escape then return an error.
 			ch1, _, _ := r.ReadRune()
-			if ch1 == 'n' {
+			switch ch1 {
+			case 'n':
 				_, _ = buf.WriteRune('\n')
-			} else if ch1 == 'r' {
+			case 'r':
 				_, _ = buf.WriteRune('\r')
-			} else if ch1 == 't' {
+			case 't':
 				_, _ = buf.WriteRune('\t')
-			} else if ch1 == '\\' {
+			case '\\':
 				_, _ = buf.WriteRune('\\')
-			} else if ch1 == '"' {
+			case '"':
 				_, _ = buf.WriteRune('"')
-			} else if ch1 == '`' {
-				_, _ = buf.WriteRune('`')
-			} else if ch1 == '\'' {
-				_, _ = buf.WriteRune('\'')
-			} else if ch1 == 'x' && i == 0 {
-				_, _ = buf.WriteString(`\x`)
-			} else {
+			default:
 				return string(ch0) + string(ch1), errBadEscape
 			}
 		} else {
