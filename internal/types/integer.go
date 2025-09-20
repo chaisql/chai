@@ -96,56 +96,92 @@ func (v IntegerValue) CastAs(target Type) (Value, error) {
 func (v IntegerValue) EQ(other Value) (bool, error) {
 	t := other.Type()
 	switch t {
+	case TypeNull:
+		return false, nil
 	case TypeInteger:
 		return int32(v) == AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) == AsInt64(other), nil
 	case TypeDouble:
 		return float64(int32(v)) == AsFloat64(other), nil
+	case TypeText:
+		// special case: try to parse the text as an integer
+		cv, err := other.CastAs(TypeInteger)
+		if err != nil {
+			return false, err
+		}
+		return AsInt32(v) == AsInt32(cv), nil
 	default:
-		return false, nil
+		return false, errors.Errorf("cannot compare integer with %s", other.Type())
 	}
 }
 
 func (v IntegerValue) GT(other Value) (bool, error) {
 	t := other.Type()
 	switch t {
+	case TypeNull:
+		return false, nil
 	case TypeInteger:
 		return int32(v) > AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) > AsInt64(other), nil
 	case TypeDouble:
 		return float64(int32(v)) > AsFloat64(other), nil
+	case TypeText:
+		// special case: try to parse the text as an integer
+		cv, err := other.CastAs(TypeInteger)
+		if err != nil {
+			return false, err
+		}
+		return AsInt32(v) > AsInt32(cv), nil
 	default:
-		return false, nil
+		return false, errors.Errorf("cannot compare integer with %s", other.Type())
 	}
 }
 
 func (v IntegerValue) GTE(other Value) (bool, error) {
 	t := other.Type()
 	switch t {
+	case TypeNull:
+		return false, nil
 	case TypeInteger:
 		return int32(v) >= AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) >= AsInt64(other), nil
 	case TypeDouble:
 		return float64(int32(v)) >= AsFloat64(other), nil
+	case TypeText:
+		// special case: try to parse the text as an integer
+		cv, err := other.CastAs(TypeInteger)
+		if err != nil {
+			return false, err
+		}
+		return AsInt32(v) >= AsInt32(cv), nil
 	default:
-		return false, nil
+		return false, errors.Errorf("cannot compare integer with %s", other.Type())
 	}
 }
 
 func (v IntegerValue) LT(other Value) (bool, error) {
 	t := other.Type()
 	switch t {
+	case TypeNull:
+		return false, nil
 	case TypeInteger:
 		return int32(v) < AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) < AsInt64(other), nil
 	case TypeDouble:
 		return float64(int32(v)) <= AsFloat64(other), nil
+	case TypeText:
+		// special case: try to parse the text as an integer
+		cv, err := other.CastAs(TypeInteger)
+		if err != nil {
+			return false, err
+		}
+		return AsInt32(v) < AsInt32(cv), nil
 	default:
-		return false, nil
+		return false, errors.Errorf("cannot compare integer with %s", other.Type())
 	}
 }
 
@@ -158,8 +194,15 @@ func (v IntegerValue) LTE(other Value) (bool, error) {
 		return int64(v) <= AsInt64(other), nil
 	case TypeDouble:
 		return float64(int32(v)) <= AsFloat64(other), nil
+	case TypeText:
+		// special case: try to parse the text as an integer
+		cv, err := other.CastAs(TypeInteger)
+		if err != nil {
+			return false, err
+		}
+		return AsInt32(v) <= AsInt32(cv), nil
 	default:
-		return false, nil
+		return false, errors.Errorf("cannot compare integer with %s", other.Type())
 	}
 }
 

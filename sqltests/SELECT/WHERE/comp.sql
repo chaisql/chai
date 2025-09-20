@@ -8,17 +8,17 @@
 CREATE TABLE test(
     id int primary key,
     a int,
-    b double,
+    b double precision,
     c boolean,
     d text,
     e bytea
 );
 
 INSERT INTO test VALUES
-    (1, 10, 1.0, false, "a", "\xaa"),
-    (2, 20, 2.0, true, "b", "\xab"),
-    (3, 30, 3.0, false, "c", "\xac"),
-    (4, 40, 4.0, true, "d", "\xad");
+    (1, 10, 1.0, false, 'a', '\xaa'),
+    (2, 20, 2.0, true, 'b', '\xab'),
+    (3, 30, 3.0, false, 'c', '\xac'),
+    (4, 40, 4.0, true, 'd', '\xad');
 
 -- suite: no index
 
@@ -834,24 +834,7 @@ SELECT * FROM test WHERE c IN (true, false) ORDER BY id;
 
 -- test: bool NOT IN
 SELECT * FROM test WHERE c NOT IN (true, 3);
-/* result:
-    {
-        id: 1,
-        a: 10,
-        b: 1.0,
-        c: false,
-        d: "a",
-        e: "\xaa"
-    }
-    {
-        id: 3,
-        a: 30,
-        b: 3.0,
-        c: false,
-        d: "c",
-        e: "\xac"
-    }
-*/
+-- error:
 
 -- test: text =
 SELECT * FROM test WHERE d = "a";
