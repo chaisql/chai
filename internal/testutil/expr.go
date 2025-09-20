@@ -40,7 +40,7 @@ func BigintValue(v int64) expr.LiteralValue {
 
 // DoubleValue creates a literal value of type Double.
 func DoubleValue(v float64) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewDoubleValue(v)}
+	return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}
 }
 
 // TextValue creates a literal value of type Text.

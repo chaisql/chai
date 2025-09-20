@@ -13,8 +13,8 @@ var floor = &ScalarDefinition{
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
 		switch args[0].Type() {
-		case types.TypeDouble:
-			return types.NewDoubleValue(math.Floor(types.AsFloat64(args[0]))), nil
+		case types.TypeDoublePrecision:
+			return types.NewDoublePrevisionValue(math.Floor(types.AsFloat64(args[0]))), nil
 		case types.TypeInteger, types.TypeBigint:
 			return args[0], nil
 		default:
@@ -30,18 +30,18 @@ var abs = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil {
 			return nil, err
 		}
 		res := math.Abs(types.AsFloat64(v))
 		if args[0].Type() == types.TypeInteger {
-			return types.NewDoubleValue(res).CastAs(types.TypeInteger)
+			return types.NewDoublePrevisionValue(res).CastAs(types.TypeInteger)
 		}
 		if args[0].Type() == types.TypeBigint {
-			return types.NewDoubleValue(res).CastAs(types.TypeBigint)
+			return types.NewDoublePrevisionValue(res).CastAs(types.TypeBigint)
 		}
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -52,7 +52,7 @@ var acos = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +61,7 @@ var acos = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Acos(vv)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -72,7 +72,7 @@ var acosh = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +81,7 @@ var acosh = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
 		}
 		res := math.Acosh(vv)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -92,7 +92,7 @@ var asin = &ScalarDefinition{
 		if args[0].Type() == types.TypeNull {
 			return types.NewNullValue(), nil
 		}
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +101,7 @@ var asin = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Asin(vv)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -109,13 +109,13 @@ var asinh = &ScalarDefinition{
 	name:  "asinh",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
 		vv := types.AsFloat64(v)
 		res := math.Asinh(vv)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -123,13 +123,13 @@ var atan = &ScalarDefinition{
 	name:  "atan",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil || v.Type() == types.TypeNull {
 			return v, err
 		}
 		vv := types.AsFloat64(v)
 		res := math.Atan(vv)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -137,18 +137,18 @@ var atan2 = &ScalarDefinition{
 	name:  "atan2",
 	arity: 2,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		vA, err := args[0].CastAs(types.TypeDouble)
+		vA, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil || vA.Type() == types.TypeNull {
 			return vA, err
 		}
 		vvA := types.AsFloat64(vA)
-		vB, err := args[1].CastAs(types.TypeDouble)
+		vB, err := args[1].CastAs(types.TypeDoublePrecision)
 		if err != nil || vB.Type() == types.TypeNull {
 			return vB, err
 		}
 		vvB := types.AsFloat64(vB)
 		res := math.Atan2(vvA, vvB)
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }
 
@@ -165,14 +165,14 @@ var sqrt = &ScalarDefinition{
 	name:  "sqrt",
 	arity: 1,
 	callFn: func(args ...types.Value) (types.Value, error) {
-		if args[0].Type() != types.TypeDouble && args[0].Type() != types.TypeInteger {
+		if args[0].Type() != types.TypeDoublePrecision && args[0].Type() != types.TypeInteger {
 			return types.NewNullValue(), nil
 		}
-		v, err := args[0].CastAs(types.TypeDouble)
+		v, err := args[0].CastAs(types.TypeDoublePrecision)
 		if err != nil {
 			return nil, err
 		}
 		res := math.Sqrt(types.AsFloat64(v))
-		return types.NewDoubleValue(res), nil
+		return types.NewDoublePrevisionValue(res), nil
 	},
 }

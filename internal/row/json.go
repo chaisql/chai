@@ -27,7 +27,7 @@ func parseJSONValue(dataType jsonparser.ValueType, data []byte) (v types.Value, 
 				return nil, err
 			}
 
-			return types.NewDoubleValue(f), nil
+			return types.NewDoublePrevisionValue(f), nil
 		}
 
 		if i < math.MinInt32 || i > math.MaxInt32 {

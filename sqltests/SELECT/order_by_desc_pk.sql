@@ -1,5 +1,5 @@
 -- setup:
-CREATE TABLE test(a INT PRIMARY KEY DESC, b double);
+CREATE TABLE test(a INT PRIMARY KEY DESC, b double precision);
 INSERT INTO test (a, b) VALUES (50, 2), (100, 3), (10, 1);
 
 -- test: asc

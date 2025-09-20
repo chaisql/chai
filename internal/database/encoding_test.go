@@ -31,7 +31,7 @@ func TestEncoding(t *testing.T) {
 	err = ti.AddColumnConstraint(&database.ColumnConstraint{
 		Position:  2,
 		Column:    "c",
-		Type:      types.TypeDouble,
+		Type:      types.TypeDoublePrecision,
 		IsNotNull: true,
 	})
 	require.NoError(t, err)
@@ -39,7 +39,7 @@ func TestEncoding(t *testing.T) {
 	err = ti.AddColumnConstraint(&database.ColumnConstraint{
 		Position:     3,
 		Column:       "d",
-		Type:         types.TypeDouble,
+		Type:         types.TypeDoublePrecision,
 		DefaultValue: expr.Constraint(testutil.ParseExpr(t, `10`)),
 	})
 	require.NoError(t, err)
@@ -47,15 +47,15 @@ func TestEncoding(t *testing.T) {
 	err = ti.AddColumnConstraint(&database.ColumnConstraint{
 		Position: 4,
 		Column:   "e",
-		Type:     types.TypeDouble,
+		Type:     types.TypeDoublePrecision,
 	})
 	require.NoError(t, err)
 
 	r := row.NewColumnBuffer().
 		Add("a", types.NewBigintValue(1)).
 		Add("b", types.NewTextValue("hello")).
-		Add("c", types.NewDoubleValue(float64(3.14))).
-		Add("e", types.NewDoubleValue(float64(100)))
+		Add("c", types.NewDoublePrevisionValue(float64(3.14))).
+		Add("e", types.NewDoublePrevisionValue(float64(100)))
 
 	var buf []byte
 	buf, err = ti.EncodeRow(nil, buf, r)
@@ -67,9 +67,9 @@ func TestEncoding(t *testing.T) {
 	want := row.NewColumnBuffer().
 		Add("a", types.NewBigintValue(1)).
 		Add("b", types.NewTextValue("hello")).
-		Add("c", types.NewDoubleValue(float64(3.14))).
-		Add("d", types.NewDoubleValue(float64(10))).
-		Add("e", types.NewDoubleValue(float64(100)))
+		Add("c", types.NewDoublePrevisionValue(float64(3.14))).
+		Add("d", types.NewDoublePrevisionValue(float64(10))).
+		Add("e", types.NewDoublePrevisionValue(float64(100)))
 
 	testutil.RequireRowEqual(t, want, er)
 }

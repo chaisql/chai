@@ -102,7 +102,7 @@ func TestSaveCommand(t *testing.T) {
 		defer db.Close()
 
 		_, err = db.Exec(`
-		CREATE TABLE test (a DOUBLE PRIMARY KEY, b INT);
+		CREATE TABLE test (a DOUBLE PRECISION PRIMARY KEY, b INT);
 		CREATE INDEX idx_a_b ON test (a, b);
 	`)
 		require.NoError(t, err)

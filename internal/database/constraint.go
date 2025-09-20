@@ -94,7 +94,7 @@ func (f *ColumnConstraints) Add(newCc *ColumnConstraint) error {
 			// Integers can be converted to other integers, doubles, texts and bools.
 			// TODO: rework
 			switch newCc.Type {
-			case types.TypeInteger, types.TypeBigint, types.TypeDouble, types.TypeText:
+			case types.TypeInteger, types.TypeBigint, types.TypeDoublePrecision, types.TypeText:
 			default:
 				return fmt.Errorf("default value %q cannot be converted to type %q", newCc.DefaultValue, newCc.Type)
 			}
@@ -190,7 +190,7 @@ func (t *TableConstraints) ValidateRow(tx *Transaction, r row.Row) error {
 			ok = types.AsBool(v)
 		case types.TypeInteger, types.TypeBigint:
 			ok = types.AsInt64(v) != 0
-		case types.TypeDouble:
+		case types.TypeDoublePrecision:
 			ok = types.AsFloat64(v) != 0
 		case types.TypeNull:
 			ok = true

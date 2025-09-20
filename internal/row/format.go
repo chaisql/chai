@@ -94,7 +94,7 @@ func marshalText(dst *bytes.Buffer, v types.Value) error {
 	case types.TypeInteger, types.TypeBigint:
 		dst.WriteString(strconv.FormatInt(types.AsInt64(v), 10))
 		return nil
-	case types.TypeDouble:
+	case types.TypeDoublePrecision:
 		f := types.AsFloat64(v)
 		abs := math.Abs(f)
 		fmt := byte('f')

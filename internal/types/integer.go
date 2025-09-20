@@ -22,7 +22,7 @@ func (IntegerTypeDef) Decode(src []byte) (Value, int) {
 }
 
 func (IntegerTypeDef) IsComparableWith(other Type) bool {
-	return other == TypeInteger || other == TypeBigint || other == TypeDouble
+	return other == TypeInteger || other == TypeBigint || other == TypeDoublePrecision
 }
 
 func (IntegerTypeDef) IsIndexComparableWith(other Type) bool {
@@ -84,8 +84,8 @@ func (v IntegerValue) CastAs(target Type) (Value, error) {
 		return NewBooleanValue(int32(v) != 0), nil
 	case TypeBigint:
 		return NewBigintValue(int64(v)), nil
-	case TypeDouble:
-		return NewDoubleValue(float64(v)), nil
+	case TypeDoublePrecision:
+		return NewDoublePrevisionValue(float64(v)), nil
 	case TypeText:
 		return NewTextValue(v.String()), nil
 	}
@@ -102,7 +102,7 @@ func (v IntegerValue) EQ(other Value) (bool, error) {
 		return int32(v) == AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) == AsInt64(other), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return float64(int32(v)) == AsFloat64(other), nil
 	case TypeText:
 		// special case: try to parse the text as an integer
@@ -125,7 +125,7 @@ func (v IntegerValue) GT(other Value) (bool, error) {
 		return int32(v) > AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) > AsInt64(other), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return float64(int32(v)) > AsFloat64(other), nil
 	case TypeText:
 		// special case: try to parse the text as an integer
@@ -148,7 +148,7 @@ func (v IntegerValue) GTE(other Value) (bool, error) {
 		return int32(v) >= AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) >= AsInt64(other), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return float64(int32(v)) >= AsFloat64(other), nil
 	case TypeText:
 		// special case: try to parse the text as an integer
@@ -171,7 +171,7 @@ func (v IntegerValue) LT(other Value) (bool, error) {
 		return int32(v) < AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) < AsInt64(other), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return float64(int32(v)) <= AsFloat64(other), nil
 	case TypeText:
 		// special case: try to parse the text as an integer
@@ -192,7 +192,7 @@ func (v IntegerValue) LTE(other Value) (bool, error) {
 		return int32(v) <= AsInt32(other), nil
 	case TypeBigint:
 		return int64(v) <= AsInt64(other), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return float64(int32(v)) <= AsFloat64(other), nil
 	case TypeText:
 		// special case: try to parse the text as an integer
@@ -239,8 +239,8 @@ func (v IntegerValue) Add(other Numeric) (Value, error) {
 
 		xr := xa + xb
 		return NewBigintValue(xr), nil
-	case TypeDouble:
-		return NewDoubleValue(float64(int32(v)) + AsFloat64(other)), nil
+	case TypeDoublePrecision:
+		return NewDoublePrevisionValue(float64(int32(v)) + AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -265,8 +265,8 @@ func (v IntegerValue) Sub(other Numeric) (Value, error) {
 		}
 		xr := xa - xb
 		return NewBigintValue(xr), nil
-	case TypeDouble:
-		return NewDoubleValue(float64(int32(v)) - AsFloat64(other)), nil
+	case TypeDoublePrecision:
+		return NewDoublePrevisionValue(float64(int32(v)) - AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -292,8 +292,8 @@ func (v IntegerValue) Mul(other Numeric) (Value, error) {
 
 		xr := xa * xb
 		return NewBigintValue(xr), nil
-	case TypeDouble:
-		return NewDoubleValue(float64(int32(v)) * AsFloat64(other)), nil
+	case TypeDoublePrecision:
+		return NewDoublePrevisionValue(float64(int32(v)) * AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -317,14 +317,14 @@ func (v IntegerValue) Div(other Numeric) (Value, error) {
 		}
 
 		return NewBigintValue(xa / xb), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		xa := float64(AsInt64(v))
 		xb := AsFloat64(other)
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
-		return NewDoubleValue(xa / xb), nil
+		return NewDoublePrevisionValue(xa / xb), nil
 	}
 
 	return NewNullValue(), nil
@@ -348,7 +348,7 @@ func (v IntegerValue) Mod(other Numeric) (Value, error) {
 		}
 
 		return NewBigintValue(xa % xb), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		xa := float64(AsInt64(v))
 		xb := AsFloat64(other)
 		mod := math.Mod(xa, xb)
@@ -356,7 +356,7 @@ func (v IntegerValue) Mod(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoubleValue(mod), nil
+		return NewDoublePrevisionValue(mod), nil
 	}
 
 	return NewNullValue(), nil
@@ -368,7 +368,7 @@ func (v IntegerValue) BitwiseAnd(other Numeric) (Value, error) {
 		return NewIntegerValue(int32(v) & AsInt32(other)), nil
 	case TypeBigint:
 		return NewBigintValue(int64(v) & AsInt64(other)), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		xa := int32(v)
 		xb := int32(AsFloat64(other))
 		return NewIntegerValue(xa & xb), nil
@@ -383,7 +383,7 @@ func (v IntegerValue) BitwiseOr(other Numeric) (Value, error) {
 		return NewIntegerValue(int32(v) | AsInt32(other)), nil
 	case TypeBigint:
 		return NewBigintValue(int64(v) | AsInt64(other)), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		xa := int32(v)
 		xb := int32(AsFloat64(other))
 		return NewIntegerValue(xa | xb), nil
@@ -398,7 +398,7 @@ func (v IntegerValue) BitwiseXor(other Numeric) (Value, error) {
 		return NewIntegerValue(int32(v) ^ AsInt32(other)), nil
 	case TypeBigint:
 		return NewBigintValue(int64(v) ^ AsInt64(other)), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		xa := int32(v)
 		xb := int32(AsFloat64(other))
 		return NewIntegerValue(xa ^ xb), nil

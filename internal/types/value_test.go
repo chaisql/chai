@@ -61,10 +61,10 @@ func TestValueMarshalJSON(t *testing.T) {
 		{"string", types.NewTextValue("bar"), `"bar"`},
 		{"bool", types.NewBooleanValue(true), "true"},
 		{"int", types.NewIntegerValue(10), "10"},
-		{"double", types.NewDoubleValue(10.1), "10.1"},
+		{"double", types.NewDoublePrevisionValue(10.1), "10.1"},
 		{"time", types.NewTimestampValue(now), `"` + now.UTC().Format(time.RFC3339Nano) + `"`},
-		{"double with no decimal", types.NewDoubleValue(10), "10"},
-		{"big double", types.NewDoubleValue(1e15), "1e+15"},
+		{"double with no decimal", types.NewDoublePrevisionValue(10), "10"},
+		{"big double", types.NewDoublePrevisionValue(1e15), "1e+15"},
 	}
 
 	for _, test := range tests {

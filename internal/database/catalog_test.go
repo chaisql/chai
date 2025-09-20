@@ -449,7 +449,7 @@ func TestReadOnlyTables(t *testing.T) {
 	defer db.Close()
 
 	rows, err := db.Query(`
-		CREATE TABLE foo (a int primary key, b double unique, c text);
+		CREATE TABLE foo (a int primary key, b double precision unique, c text);
 		CREATE INDEX idx_foo_a ON foo(a, c);
 		SELECT * FROM __chai_catalog
 	`)
@@ -460,7 +460,7 @@ func TestReadOnlyTables(t *testing.T) {
 		`{"name":"__chai_catalog", "namespace":1, "owner_table_name": null, "owner_table_columns": null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_catalog (name TEXT NOT NULL, type TEXT NOT NULL, namespace BIGINT, sql TEXT, rowid_sequence_name TEXT, owner_table_name TEXT, owner_table_columns TEXT, CONSTRAINT __chai_catalog_pk PRIMARY KEY (name))", "type":"table"}`,
 		`{"name":"__chai_sequence", "namespace":2, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq BIGINT, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "type":"table"}`,
 		`{"name":"__chai_store_seq", "namespace":null, "owner_table_name": "__chai_catalog", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10", "type":"sequence"}`,
-		`{"name":"foo", "namespace":10, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name":null, "sql":"CREATE TABLE foo (a INTEGER NOT NULL, b DOUBLE, c TEXT, CONSTRAINT foo_pk PRIMARY KEY (a), CONSTRAINT foo_b_unique UNIQUE (b))", "namespace":10, "type":"table"}`,
+		`{"name":"foo", "namespace":10, "owner_table_name": null, "owner_table_columns":null, "rowid_sequence_name":null, "sql":"CREATE TABLE foo (a INTEGER NOT NULL, b DOUBLE PRECISION, c TEXT, CONSTRAINT foo_pk PRIMARY KEY (a), CONSTRAINT foo_b_unique UNIQUE (b))", "namespace":10, "type":"table"}`,
 		`{"name":"foo_b_idx", "namespace":11, "owner_table_name":"foo", "owner_table_columns": "b", "rowid_sequence_name": null, "sql":"CREATE UNIQUE INDEX foo_b_idx ON foo (b)", "type":"index"}`,
 		`{"name":"idx_foo_a", "namespace":12, "owner_table_name":"foo", "owner_table_columns":null, "rowid_sequence_name": null, "sql":"CREATE INDEX idx_foo_a ON foo (a, c)", "type":"index", "owner_table_name":"foo"}`,
 	)

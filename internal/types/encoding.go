@@ -16,7 +16,7 @@ var encodedTypeToTypeDefs = map[byte]TypeDefinition{
 	encoding.Uint16Value:  IntegerTypeDef{},
 	encoding.Uint32Value:  IntegerTypeDef{},
 	encoding.Uint64Value:  BigintTypeDef{},
-	encoding.Float64Value: DoubleTypeDef{},
+	encoding.Float64Value: DoublePrecisionTypeDef{},
 	encoding.TextValue:    TextTypeDef{},
 	encoding.ByteaValue:   ByteaTypeDef{},
 }

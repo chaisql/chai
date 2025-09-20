@@ -3,7 +3,7 @@ CREATE TABLE test(
     a TEXT PRIMARY KEY,
     b INT,
     c BOOL,
-    d DOUBLE
+    d DOUBLE PRECISION
 );
 
 INSERT INTO test (a, b, c, d) VALUES (
@@ -39,7 +39,7 @@ SELECT UPPER(c) FROM test;
 }
 */
 
--- test: DOUBLE value
+-- test: DOUBLE PRECISION value
 SELECT UPPER(d) FROM test;
 /* result:
 {

@@ -18,7 +18,7 @@ WHERE
 */
 
 -- test: multiple
-CREATE TABLE test(pk INT PRIMARY KEY, a INT UNIQUE, b DOUBLE UNIQUE);
+CREATE TABLE test(pk INT PRIMARY KEY, a INT UNIQUE, b DOUBLE PRECISION UNIQUE);
 SELECT name, sql 
 FROM __chai_catalog 
 WHERE 
@@ -28,7 +28,7 @@ WHERE
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER, b DOUBLE, CONSTRAINT test_pk PRIMARY KEY (pk), CONSTRAINT test_a_unique UNIQUE (a), CONSTRAINT test_b_unique UNIQUE (b))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a INTEGER, b DOUBLE PRECISION, CONSTRAINT test_pk PRIMARY KEY (pk), CONSTRAINT test_a_unique UNIQUE (a), CONSTRAINT test_b_unique UNIQUE (b))"
 }
 {
   "name": "test_a_idx",

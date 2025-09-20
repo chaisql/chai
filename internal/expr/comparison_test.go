@@ -175,7 +175,7 @@ func TestComparisonBetweenExpr(t *testing.T) {
 		{"1 BETWEEN 'foo' AND 2", types.NewBooleanValue(false), false},
 		{"1 BETWEEN '1' AND 2", types.NewBooleanValue(false), false},
 		{"1 BETWEEN CAST('1' AS int) AND 2", types.NewBooleanValue(true), false},
-		{"1 BETWEEN CAST('1' AS double) AND 2", types.NewBooleanValue(true), false},
+		{"1 BETWEEN CAST('1' AS double precision) AND 2", types.NewBooleanValue(true), false},
 	}
 
 	for _, test := range tests {

@@ -66,7 +66,7 @@ func TestColumnConstraintsAdd(t *testing.T) {
 		{
 			"Default value conversion, typed constraint, incompatible value",
 			[]*database.ColumnConstraint{{Column: "a", Type: types.TypeInteger}},
-			database.ColumnConstraint{Column: "b", Type: types.TypeDouble, DefaultValue: expr.Constraint(testutil.BoolValue(true))},
+			database.ColumnConstraint{Column: "b", Type: types.TypeDoublePrecision, DefaultValue: expr.Constraint(testutil.BoolValue(true))},
 			nil,
 			true,
 		},

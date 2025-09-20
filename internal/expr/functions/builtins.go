@@ -530,7 +530,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 		return nil
 	}
 
-	if v.Type() == types.TypeDouble {
+	if v.Type() == types.TypeDoublePrecision {
 		var sumF float64
 		if s.SumI != nil {
 			sumF = float64(*s.SumI)
@@ -553,7 +553,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 // Eval return the aggregated sum.
 func (s *SumAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.SumF != nil {
-		return types.NewDoubleValue(*s.SumF), nil
+		return types.NewDoublePrevisionValue(*s.SumF), nil
 	}
 	if s.SumI != nil {
 		return types.NewBigintValue(*s.SumI), nil
@@ -628,7 +628,7 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 	switch v.Type() {
 	case types.TypeInteger, types.TypeBigint:
 		s.Avg += float64(types.AsInt64(v))
-	case types.TypeDouble:
+	case types.TypeDoublePrecision:
 		s.Avg += types.AsFloat64(v)
 	default:
 		return nil
@@ -641,10 +641,10 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 // Eval returns the aggregated average as a double.
 func (s *AvgAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.Counter == 0 {
-		return types.NewDoubleValue(0), nil
+		return types.NewDoublePrevisionValue(0), nil
 	}
 
-	return types.NewDoubleValue(s.Avg / float64(s.Counter)), nil
+	return types.NewDoublePrevisionValue(s.Avg / float64(s.Counter)), nil
 }
 
 func (s *AvgAggregator) String() string {

@@ -35,7 +35,7 @@ SELECT 1 AS A;
 */
 
 -- test: aliases with cast
-SELECT CAST(1 AS DOUBLE) AS A;
+SELECT CAST(1 AS DOUBLE PRECISION) AS A;
 /* result:
 {"A": 1.0}
 */

@@ -24,7 +24,7 @@ const (
 	TypeBoolean
 	TypeInteger
 	TypeBigint
-	TypeDouble
+	TypeDoublePrecision
 	TypeTimestamp
 	TypeText
 	TypeBytea
@@ -40,8 +40,8 @@ func (t Type) Def() TypeDefinition {
 		return IntegerTypeDef{}
 	case TypeBigint:
 		return BigintTypeDef{}
-	case TypeDouble:
-		return DoubleTypeDef{}
+	case TypeDoublePrecision:
+		return DoublePrecisionTypeDef{}
 	case TypeTimestamp:
 		return TimestampTypeDef{}
 	case TypeText:
@@ -63,8 +63,8 @@ func (t Type) String() string {
 		return "integer"
 	case TypeBigint:
 		return "bigint"
-	case TypeDouble:
-		return "double"
+	case TypeDoublePrecision:
+		return "double precision"
 	case TypeTimestamp:
 		return "timestamp"
 	case TypeBytea:
@@ -86,7 +86,7 @@ func (t Type) MinEnctype() byte {
 		return encoding.Int32Value
 	case TypeBigint:
 		return encoding.Int64Value
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return encoding.Float64Value
 	case TypeTimestamp:
 		return encoding.Int64Value
@@ -109,7 +109,7 @@ func (t Type) MinEnctypeDesc() byte {
 		return encoding.DESC_Uint32Value
 	case TypeBigint:
 		return encoding.DESC_Uint64Value
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return encoding.DESC_Float64Value
 	case TypeTimestamp:
 		return encoding.DESC_Uint64Value
@@ -132,7 +132,7 @@ func (t Type) MaxEnctype() byte {
 		return encoding.Uint32Value + 1
 	case TypeBigint:
 		return encoding.Uint64Value + 1
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return encoding.Float64Value + 1
 	case TypeTimestamp:
 		return encoding.Uint64Value + 1
@@ -153,7 +153,7 @@ func (t Type) MaxEnctypeDesc() byte {
 		return encoding.DESC_FalseValue + 1
 	case TypeInteger:
 		return encoding.DESC_Int64Value + 1
-	case TypeDouble:
+	case TypeDoublePrecision:
 		return encoding.DESC_Float64Value + 1
 	case TypeTimestamp:
 		return encoding.DESC_Int64Value + 1
@@ -168,7 +168,7 @@ func (t Type) MaxEnctypeDesc() byte {
 
 // IsNumber returns true if t is either an integer or a float.
 func (t Type) IsNumber() bool {
-	return t == TypeInteger || t == TypeBigint || t == TypeDouble
+	return t == TypeInteger || t == TypeBigint || t == TypeDoublePrecision
 }
 
 func (t Type) IsInteger() bool {

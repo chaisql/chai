@@ -237,7 +237,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		if err != nil {
 			return nil, errors.WithStack(&ParseError{Message: "unable to parse number", Pos: pos})
 		}
-		return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
+		return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}, nil
 	case scanner.ADD, scanner.SUB:
 		sign := tok
 		tok, pos, lit = p.Scan()
@@ -253,7 +253,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
-				return expr.LiteralValue{Value: types.NewDoubleValue(v)}, nil
+				return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}, nil
 			}
 			return nil, errors.WithStack(&ParseError{Message: "unable to parse integer", Pos: pos})
 		}
@@ -366,14 +366,13 @@ func (p *Parser) parseType() (types.Type, error) {
 	case scanner.TYPEBOOL, scanner.TYPEBOOLEAN:
 		return types.TypeBoolean, nil
 	case scanner.TYPEREAL:
-		return types.TypeDouble, nil
+		return types.TypeDoublePrecision, nil
 	case scanner.TYPEDOUBLE:
 		tok, _, _ := p.ScanIgnoreWhitespace()
 		if tok == scanner.PRECISION {
-			return types.TypeDouble, nil
+			return types.TypeDoublePrecision, nil
 		}
-		p.Unscan()
-		return types.TypeDouble, nil
+		return 0, newParseError(scanner.Tokstr(tok, lit), []string{"PRECISION"}, pos)
 	case scanner.TYPEINTEGER, scanner.TYPEINT, scanner.TYPEINT2, scanner.TYPETINYINT,
 		scanner.TYPEMEDIUMINT, scanner.TYPESMALLINT:
 		return types.TypeInteger, nil

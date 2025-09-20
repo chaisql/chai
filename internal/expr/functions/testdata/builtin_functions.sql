@@ -11,10 +11,10 @@
 'integer'
 
 > typeof(2.0)
-'double'
+'double precision'
 
 > typeof(2.0)
-'double'
+'double precision'
 
 > typeof(true)
 'boolean'

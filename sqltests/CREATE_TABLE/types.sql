@@ -19,12 +19,12 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: DOUBLE
-CREATE TABLE test (pk INT PRIMARY KEY, a DOUBLE);
+CREATE TABLE test (pk INT PRIMARY KEY, a DOUBLE PRECISION);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 

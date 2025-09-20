@@ -9,59 +9,59 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: compatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 10);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: expr
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 1 + 4 / 4);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 1 + 4 / 4);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: incompatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 'hello');
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 'hello');
 -- error:
 
 -- test: function
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT pk());
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT pk());
 -- error:
 
 -- test: compatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 10);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: expr
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 1 + 4 / 4);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 1 + 4 / 4);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: incompatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 'hello');
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 'hello');
 -- error:
 
 -- test: function
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT pk());
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT pk());
 -- error:
 -- test: same type
 CREATE TABLE test(pk INT PRIMARY KEY, a INT DEFAULT 10);
@@ -74,31 +74,31 @@ SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 */
 
 -- test: compatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 10);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 10);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 10, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: expr
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 1 + 4 / 4);
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 1 + 4 / 4);
 SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
 /* result:
 {
   "name": "test",
-  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
+  "sql": "CREATE TABLE test (pk INTEGER NOT NULL, a DOUBLE PRECISION DEFAULT 1 + 4 / 4, CONSTRAINT test_pk PRIMARY KEY (pk))"
 }
 */
 
 -- test: incompatible type
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT 'hello');
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT 'hello');
 -- error:
 
 -- test: function
-CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE DEFAULT pk());
+CREATE TABLE test(pk INT PRIMARY KEY, a DOUBLE PRECISION DEFAULT pk());
 -- error:
 
 -- test: incompatible expr

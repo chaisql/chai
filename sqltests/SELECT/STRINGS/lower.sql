@@ -4,7 +4,7 @@ CREATE TABLE test(
     a TEXT,
     b INT,
     c BOOL,
-    d DOUBLE
+    d DOUBLE PRECISION
 );
 
 INSERT INTO test (pk, a, b, c, d) VALUES (
@@ -41,7 +41,7 @@ SELECT LOWER(c) FROM test;
 }
 */
 
--- test: DOUBLE value
+-- test: DOUBLE PRECISION value
 SELECT LOWER(d) FROM test;
 /* result:
 {

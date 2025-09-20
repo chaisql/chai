@@ -20,7 +20,7 @@ func (TextTypeDef) Decode(src []byte) (Value, int) {
 }
 
 func (TextTypeDef) IsComparableWith(other Type) bool {
-	return other == TypeNull || other == TypeText || other == TypeBoolean || other == TypeInteger || other == TypeBigint || other == TypeDouble || other == TypeTimestamp || other == TypeBytea
+	return other == TypeNull || other == TypeText || other == TypeBoolean || other == TypeInteger || other == TypeBigint || other == TypeDoublePrecision || other == TypeTimestamp || other == TypeBytea
 }
 
 func (t TextTypeDef) IsIndexComparableWith(other Type) bool {
@@ -107,12 +107,12 @@ func (v TextValue) CastAs(target Type) (Value, error) {
 			i = int64(f)
 		}
 		return NewBigintValue(i), nil
-	case TypeDouble:
+	case TypeDoublePrecision:
 		f, err := strconv.ParseFloat(string(v), 64)
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as double: %w`, v.V(), err)
 		}
-		return NewDoubleValue(f), nil
+		return NewDoublePrevisionValue(f), nil
 	case TypeTimestamp:
 		t, err := ParseTimestamp(string(v))
 		if err != nil {

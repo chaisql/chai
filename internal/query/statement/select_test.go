@@ -258,7 +258,7 @@ func TestDistinct(t *testing.T) {
 		{`integer`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
 			return i, i % notUniqueCount
 		}},
-		{`double`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
+		{`double precision`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {
 			return float64(i), float64(i % notUniqueCount)
 		}},
 		{`text`, func(i, notUniqueCount int) (unique interface{}, notunique interface{}) {

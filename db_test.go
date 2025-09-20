@@ -64,7 +64,7 @@ func TestOpen(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = db.Exec(`
-		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b DOUBLE PRIMARY KEY);
+		CREATE TABLE tableA (a INTEGER UNIQUE NOT NULL, b DOUBLE PRECISION PRIMARY KEY);
 		CREATE TABLE tableB (a TEXT NOT NULL DEFAULT 'hello', PRIMARY KEY (a));
 		CREATE TABLE tableC (a INTEGER PRIMARY KEY, b INTEGER);
 		CREATE INDEX tableC_a_b_idx ON tableC(a, b);
@@ -95,7 +95,7 @@ func TestOpen(t *testing.T) {
 		`{"name":"__chai_sequence", "namespace":2, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE __chai_sequence (name TEXT NOT NULL, seq BIGINT, CONSTRAINT __chai_sequence_pk PRIMARY KEY (name))", "type":"table"}`,
 		`{"name":"__chai_store_seq", "namespace":null, "owner_table_columns":null, "owner_table_name":"__chai_catalog", "rowid_sequence_name":null, "sql":"CREATE SEQUENCE __chai_store_seq MAXVALUE 9223372036837998591 START WITH 10", "type":"sequence"}`,
 		`{"name":"seqD", "namespace":null, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE SEQUENCE seqD INCREMENT BY 10 MINVALUE 100 START WITH 500 CYCLE", "type":"sequence"}`,
-		`{"name":"tableA", "namespace":10, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b DOUBLE NOT NULL, CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b))", "type":"table"}`,
+		`{"name":"tableA", "namespace":10, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableA (a INTEGER NOT NULL, b DOUBLE PRECISION NOT NULL, CONSTRAINT tableA_a_unique UNIQUE (a), CONSTRAINT tableA_pk PRIMARY KEY (b))", "type":"table"}`,
 		`{"name":"tableA_a_idx", "namespace":11, "owner_table_columns":"a", "owner_table_name":"tableA", "rowid_sequence_name":null, "sql":"CREATE UNIQUE INDEX tableA_a_idx ON tableA (a)", "type":"index"}`,
 		`{"name":"tableB", "namespace":12, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableB (a TEXT NOT NULL DEFAULT \"hello\", CONSTRAINT tableB_pk PRIMARY KEY (a))", "type":"table"}`,
 		`{"name":"tableC", "namespace":13, "owner_table_columns":null, "owner_table_name":null, "rowid_sequence_name":null, "sql":"CREATE TABLE tableC (a INTEGER NOT NULL, b INTEGER, CONSTRAINT tableC_pk PRIMARY KEY (a))",  "type":"table"}`,

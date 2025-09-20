@@ -15,7 +15,7 @@ INSERT INTO testpk (bar, foo) VALUES (1, 2);
 
 -- test: insert with types constraints
 CREATE TABLE test_tc(
-    b bool, db double,
+    b bool, db double precision,
     i bigint, bb bytea, byt bytes,
     t text primary key
 );

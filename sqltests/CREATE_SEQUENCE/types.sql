@@ -9,7 +9,7 @@ SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "s
 }
 */
 
--- test: AS DOUBLE is invalid in Postgres: keep as error
+-- test: AS DOUBLE PRECISION is invalid in Postgres: keep as error
 CREATE SEQUENCE seq AS DOUBLE;
 -- error:
 

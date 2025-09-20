@@ -397,7 +397,7 @@ func (rs *Rows) Next(dest []driver.Value) error {
 			dest[i] = types.AsInt32(v)
 		case types.TypeBigint:
 			dest[i] = types.AsInt64(v)
-		case types.TypeDouble:
+		case types.TypeDoublePrecision:
 			dest[i] = types.AsFloat64(v)
 		case types.TypeTimestamp:
 			dest[i] = types.AsTime(v)

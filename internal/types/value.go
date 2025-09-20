@@ -56,7 +56,7 @@ func AsInt64(v Value) int64 {
 }
 
 func AsFloat64(v Value) float64 {
-	dv, ok := v.(DoubleValue)
+	dv, ok := v.(DoublePrecisionValue)
 	if !ok {
 		return v.V().(float64)
 	}
@@ -127,7 +127,7 @@ func (v *ValueScanner) Scan(src any) error {
 	case int64:
 		v.V = NewBigintValue(t)
 	case float64:
-		v.V = NewDoubleValue(t)
+		v.V = NewDoublePrevisionValue(t)
 	case bool:
 		v.V = NewBooleanValue(t)
 	case []byte:
