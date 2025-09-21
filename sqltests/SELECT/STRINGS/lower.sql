@@ -9,7 +9,7 @@ CREATE TABLE test(
 
 INSERT INTO test (pk, a, b, c, d) VALUES (
     1,
-    "FOO",
+    'FOO',
     42,
     true,
     42.42
@@ -19,7 +19,7 @@ INSERT INTO test (pk, a, b, c, d) VALUES (
 SELECT LOWER(a) FROM test;
 /* result:
 {
-    "LOWER(a)": "foo" 
+    "LOWER(a)": 'foo' 
 }
 */
 
@@ -53,7 +53,7 @@ SELECT LOWER(d) FROM test;
 SELECT LOWER(CAST(b as TEXT)) FROM test;
 /* result:
 {
-    "LOWER(CAST(b AS text))": "42" 
+    "LOWER(CAST(b AS text))": '42' 
 }
 */
 
@@ -61,7 +61,7 @@ SELECT LOWER(CAST(b as TEXT)) FROM test;
 SELECT LOWER(CAST(c as TEXT)) FROM test;
 /* result:
 {
-    "LOWER(CAST(c AS text))": "true" 
+    "LOWER(CAST(c AS text))": 'true' 
 }
 */
 
@@ -69,6 +69,6 @@ SELECT LOWER(CAST(c as TEXT)) FROM test;
 SELECT LOWER(CAST(d as TEXT)) FROM test;
 /* result:
 {
-    "LOWER(CAST(d AS text))": "42.42" 
+    "LOWER(CAST(d AS text))": '42.42' 
 }
 */

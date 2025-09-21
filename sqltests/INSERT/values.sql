@@ -4,9 +4,9 @@ INSERT INTO test (a, b, c) VALUES ('a', 'b', 'c');
 SELECT * FROM test;
 /* result:
 {
-  "a": "a",
-  "b": "b",
-  "c": "c"
+  "a": 'a',
+  "b": 'b',
+  "c": 'c'
 }
 */
 
@@ -16,8 +16,8 @@ INSERT INTO test (b, a) VALUES ('b', 'a');
 SELECT * FROM test;
 /* result:
 {
-  "a": "a",
-  "b": "b",
+  "a": 'a',
+  "b": 'b',
   "c": null
 }
 */
@@ -29,13 +29,13 @@ INSERT INTO test (b, a, c, d) VALUES ('b', 'a', 'c', 'd');
 
 -- test: VALUES, no columns, all values
 CREATE TABLE test (a TEXT PRIMARY KEY, b TEXT, c TEXT);
-INSERT INTO test VALUES ("a", 'b', 'c');
+INSERT INTO test VALUES ('a', 'b', 'c');
 SELECT * FROM test;
 /* result:
 {
-  "a": "a",
-  "b": "b",
-  "c": "c"
+  "a": 'a',
+  "b": 'b',
+  "c": 'c'
 }
 */
 
@@ -45,8 +45,8 @@ INSERT INTO test VALUES ('a', 'b');
 SELECT * FROM test;
 /* result:
 {
-  "a": "a",
-  "b": "b",
+  "a": 'a',
+  "b": 'b',
   "c": null
 }
 */
@@ -58,17 +58,17 @@ INSERT INTO test (a) VALUES (a);
 
 -- test: VALUES, ident string
 CREATE TABLE test (a TEXT PRIMARY KEY, b TEXT, c TEXT);
-INSERT INTO test (a) VALUES (`a`);
+INSERT INTO test (a) VALUES ("a");
 -- error: no table specified
 
 -- test: VALUES, columns ident string
-CREATE TABLE test (a TEXT PRIMARY KEY, `foo bar` TEXT);
-INSERT INTO test (a, `foo bar`) VALUES ('a', 'foo bar');
+CREATE TABLE test (a TEXT PRIMARY KEY, "foo bar" TEXT);
+INSERT INTO test (a, "foo bar") VALUES ('a', 'foo bar');
 SELECT * FROM test;
 /* result:
 {
-  "a": "a",
-  "foo bar": "foo bar"
+  "a": 'a',
+  "foo bar": 'foo bar'
 }
 */
 

@@ -11,7 +11,7 @@ INSERT INTO test(pk, a, b, c) VALUES
 SELECT DISTINCT 'a' FROM test;
 /* result:
 {
-    `"a"`: "a",
+    "'a'": 'a',
 }
 */
 
@@ -21,31 +21,31 @@ SELECT DISTINCT * FROM test;
 {
     pk: 1,
     a: 1,
-    b: "foo",
+    b: 'foo',
     c: true
 }
 {
     pk: 2,
     a: 1,
-    b: "bar",
+    b: 'bar',
     c: false
 }
 {
     pk: 3,
     a: 1,
-    b: "bar",
+    b: 'bar',
     c: null
 }
 {
     pk: 4,
     a: 2,
-    b: "baz",
+    b: 'baz',
     c: null
 }
 {
     pk: 5,
     a: 2,
-    b: "baz",
+    b: 'baz',
     c: null
 }
 */
@@ -77,14 +77,14 @@ SELECT DISTINCT a, b FROM test;
 /* result:
 {
     a: 1,
-    b: "bar"
+    b: 'bar'
 }
 {
     a: 1,
-    b: "foo"
+    b: 'foo'
 }
 {
     a: 2,
-    b: "baz"
+    b: 'baz'
 }
 */

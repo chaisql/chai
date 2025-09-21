@@ -45,8 +45,8 @@ SELECT * FROM test WHERE id = 1;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
 */
 
@@ -58,24 +58,24 @@ SELECT * FROM test WHERE id != 1;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -87,24 +87,24 @@ SELECT * FROM test WHERE id > 1;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+    d: 'd',
+    e: '\xad'
     }
 */
 
@@ -116,32 +116,32 @@ SELECT * FROM test WHERE id >= 1;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -153,16 +153,16 @@ SELECT * FROM test WHERE id < 3;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
 */
 
@@ -174,24 +174,24 @@ SELECT * FROM test WHERE id <= 3;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -203,16 +203,16 @@ SELECT * FROM test WHERE id IN (1, 3);
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -224,16 +224,16 @@ SELECT * FROM test WHERE id NOT IN (1, 3);
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -245,8 +245,8 @@ SELECT * FROM test WHERE a = 10;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
 */
 
@@ -258,24 +258,24 @@ SELECT * FROM test WHERE a != 10;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -287,24 +287,24 @@ SELECT * FROM test WHERE a > 10;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -316,32 +316,32 @@ SELECT * FROM test WHERE a >= 10;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -353,16 +353,16 @@ SELECT * FROM test WHERE a < 30;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
 */
 
@@ -374,24 +374,24 @@ SELECT * FROM test WHERE a <= 30;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -403,16 +403,16 @@ SELECT * FROM test WHERE a IN (10, 30);
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -424,16 +424,16 @@ SELECT * FROM test WHERE a NOT IN (10, 30);
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -445,8 +445,8 @@ SELECT * FROM test WHERE b = 1.0;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
 */
 
@@ -458,24 +458,24 @@ SELECT * FROM test WHERE b != 1.0;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -487,24 +487,24 @@ SELECT * FROM test WHERE b > 1.0;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -516,32 +516,32 @@ SELECT * FROM test WHERE b >= 1.0;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -553,16 +553,16 @@ SELECT * FROM test WHERE b < 3.0;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
 */
 
@@ -574,24 +574,24 @@ SELECT * FROM test WHERE b <= 3.0;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -603,16 +603,16 @@ SELECT * FROM test WHERE b IN (1.0, 3.0);
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -624,16 +624,16 @@ SELECT * FROM test WHERE b NOT IN (1.0, 3.0);
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -645,16 +645,16 @@ SELECT * FROM test WHERE c = true;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -666,16 +666,16 @@ SELECT * FROM test WHERE c != true;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -687,16 +687,16 @@ SELECT * FROM test WHERE c > false;
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -708,32 +708,32 @@ SELECT * FROM test WHERE c >= false ORDER BY id;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -745,16 +745,16 @@ SELECT * FROM test WHERE c < true ORDER BY id;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
@@ -766,32 +766,32 @@ SELECT * FROM test WHERE c <= true ORDER BY id;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -803,32 +803,32 @@ SELECT * FROM test WHERE c IN (true, false) ORDER BY id;
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
@@ -837,402 +837,402 @@ SELECT * FROM test WHERE c NOT IN (true, 3);
 -- error:
 
 -- test: text =
-SELECT * FROM test WHERE d = "a";
+SELECT * FROM test WHERE d = 'a';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
 */
 
 -- test: text !=
-SELECT * FROM test WHERE d != "a";
+SELECT * FROM test WHERE d != 'a';
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: text >
-SELECT * FROM test WHERE d > "a";
+SELECT * FROM test WHERE d > 'a';
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: text >=
-SELECT * FROM test WHERE d >= "a";
+SELECT * FROM test WHERE d >= 'a';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: text <
-SELECT * FROM test WHERE d < "c";
+SELECT * FROM test WHERE d < 'c';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
 */
 
 -- test: text <=
-SELECT * FROM test WHERE d <= "c";
+SELECT * FROM test WHERE d <= 'c';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
 -- test: text IN
-SELECT * FROM test WHERE d IN ("a", "c");
+SELECT * FROM test WHERE d IN ('a', 'c');
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
 -- test: text NOT IN
-SELECT * FROM test WHERE d NOT IN ("a", "c");
+SELECT * FROM test WHERE d NOT IN ('a', 'c');
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: bytea =
-SELECT * FROM test WHERE e = "\xaa";
+SELECT * FROM test WHERE e = '\xaa';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
 */
 
 -- test: bytea !=
-SELECT * FROM test WHERE e != "\xaa";
+SELECT * FROM test WHERE e != '\xaa';
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: bytea >
-SELECT * FROM test WHERE e > "\xaa";
+SELECT * FROM test WHERE e > '\xaa';
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: bytea >=
-SELECT * FROM test WHERE e >= "\xaa";
+SELECT * FROM test WHERE e >= '\xaa';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 
 -- test: bytea <
-SELECT * FROM test WHERE e < "\xac";
+SELECT * FROM test WHERE e < '\xac';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
 */
 
 -- test: bytea <=
-SELECT * FROM test WHERE e <= "\xac";
+SELECT * FROM test WHERE e <= '\xac';
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
 -- test: bytea IN
-SELECT * FROM test WHERE e IN ("\xaa", "\xac");
+SELECT * FROM test WHERE e IN ('\xaa', '\xac');
 /* result:
     {
         id: 1,
         a: 10,
         b: 1.0,
         c: false,
-        d: "a",
-        e: "\xaa"
+        d: 'a',
+        e: '\xaa'
     }
     {
         id: 3,
         a: 30,
         b: 3.0,
         c: false,
-        d: "c",
-        e: "\xac"
+        d: 'c',
+        e: '\xac'
     }
 */
 
 -- test: bytea NOT IN
-SELECT * FROM test WHERE e NOT IN ("\xaa", "\xac");
+SELECT * FROM test WHERE e NOT IN ('\xaa', '\xac');
 /* result:
     {
         id: 2,
         a: 20,
         b: 2.0,
         c: true,
-        d: "b",
-        e: "\xab"
+        d: 'b',
+        e: '\xab'
     }
     {
         id: 4,
         a: 40,
         b: 4.0,
         c: true,
-        d: "d",
-        e: "\xad"
+        d: 'd',
+        e: '\xad'
     }
 */
 

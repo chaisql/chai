@@ -32,7 +32,7 @@ func TestParserExpr(t *testing.T) {
 		{"-float64", "-10.0", testutil.DoubleValue(-10), false},
 
 		// strings
-		{"double quoted string", `"10.0"`, testutil.TextValue("10.0"), false},
+		{"double quoted string", `'10.0'`, testutil.TextValue("10.0"), false},
 		{"single quoted string", "'-10.0'", testutil.TextValue("-10.0"), false},
 
 		// byteas

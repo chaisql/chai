@@ -20,8 +20,8 @@ func TestValueMarshalText(t *testing.T) {
 		value    any
 		expected string
 	}{
-		{"bytes", []byte("bar"), `"\x626172"`},
-		{"string", "bar", `"bar"`},
+		{"bytes", []byte("bar"), `'\x626172'`},
+		{"string", "bar", `'bar'`},
 		{"bool", true, "true"},
 		{"int", int32(10), "10"},
 		{"float64", 10.0, "10.0"},

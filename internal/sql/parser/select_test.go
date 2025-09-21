@@ -163,7 +163,7 @@ func TestParserSelect(t *testing.T) {
 			true, false},
 		{"With nextval", "SELECT nextval('foo') FROM test",
 			stream.New(table.Scan("test")).
-				Pipe(rows.Project(parseNamedExpr(t, "nextval(\"foo\")"))),
+				Pipe(rows.Project(parseNamedExpr(t, "nextval('foo')"))),
 			false, false},
 		{"WithUnionAll", "SELECT * FROM test1 UNION ALL SELECT * FROM test2",
 			stream.New(stream.Concat(
@@ -381,7 +381,7 @@ func TestParserSelect(t *testing.T) {
 					stream.New(table.Scan("c")).
 						Pipe(rows.Project(expr.Wildcard{})),
 				)),
-				stream.New(table.Scan("d")).Pipe(rows.Project(parseNamedExpr(t, "nextval(\"foo\")"))),
+				stream.New(table.Scan("d")).Pipe(rows.Project(parseNamedExpr(t, "nextval('foo')"))),
 			)),
 			false, false,
 		},

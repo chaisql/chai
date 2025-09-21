@@ -4,63 +4,62 @@ CREATE TABLE test(
     a TEXT
 );
 
-INSERT INTO test (pk, a) VALUES (1, " hello "), (2, "!hello!"),  (3, "     !hello!  ");
+INSERT INTO test (pk, a) VALUES (1, ' hello '), (2, '!hello!'),  (3, '     !hello!  ');
 
 -- test: TRIM TEXT default
 SELECT TRIM(a) FROM test;
 /* result:
 {
-    "TRIM(a)": "hello"
+    "TRIM(a)": 'hello'
 }
 {
-    "TRIM(a)": "!hello!"
+    "TRIM(a)": '!hello!'
 }
 {
-    "TRIM(a)": "!hello!"
+    "TRIM(a)": '!hello!'
 }
 */
-
 
 -- test: TRIM TEXT with param
-SELECT TRIM(a, "!") FROM test;
+SELECT TRIM(a, '!') FROM test;
 /* result:
 {
-    "TRIM(a, \"!\")": " hello "
+    "TRIM(a, '!')": ' hello '
 }
 {
-    "TRIM(a, \"!\")": "hello"
+    "TRIM(a, '!')": 'hello'
 }
 {
-    "TRIM(a, \"!\")": "     !hello!  "
+    "TRIM(a, '!')": '     !hello!  '
 }
 */
 
 -- test: TRIM TEXT with multiple char params
-SELECT TRIM(a, " !") FROM test;
+SELECT TRIM(a, ' !') FROM test;
 /* result:
 {
-    "TRIM(a, \" !\")": "hello"
+    "TRIM(a, ' !')": 'hello'
 }
 {
-    "TRIM(a, \" !\")": "hello"
+    "TRIM(a, ' !')": 'hello'
 }
 {
-    "TRIM(a, \" !\")": "hello"
+    "TRIM(a, ' !')": 'hello'
 }
 */
 
 
 -- test: TRIM TEXT with multiple char params
-SELECT TRIM(a, "hel !") FROM test;
+SELECT TRIM(a, 'hel !') FROM test;
 /* result:
 {
-    "TRIM(a, \"hel !\")": "o"
+    "TRIM(a, 'hel !')": 'o'
 }
 {
-    "TRIM(a, \"hel !\")": "o"
+    "TRIM(a, 'hel !')": 'o'
 }
 {
-    "TRIM(a, \"hel !\")": "o"
+    "TRIM(a, 'hel !')": 'o'
 }
 */
 
@@ -90,9 +89,9 @@ SELECT TRIM(42.42);
 */
 
 -- test: TRIM STRING wrong param
-SELECT TRIM(" hello ", 42);
+SELECT TRIM(' hello ', 42);
 /* result:
 {
-    "TRIM(\" hello \", 42)": NULL
+    "TRIM(' hello ', 42)": NULL
 }
 */

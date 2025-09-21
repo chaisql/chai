@@ -21,7 +21,7 @@ func TestUpdateStmt(t *testing.T) {
 		{"Read-only table", `UPDATE __chai_catalog SET a = 1`, true, "", nil},
 
 		{"SET / No cond", `UPDATE test SET a = 'boo'`, false, `[{"a":"boo","b":"bar1","c":"baz1","d":null,"e":null},{"a":"boo","b":"bar2","c":null,"d":null,"e":null},{"a":"boo","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
-		{"SET / No cond / with ident string", "UPDATE test SET `a` = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1","d":null,"e":null},{"a":"boo","b":"bar2","c":null,"d":null,"e":null},{"a":"boo","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
+		{"SET / No cond / with ident string", "UPDATE test SET \"a\" = 'boo'", false, `[{"a":"boo","b":"bar1","c":"baz1","d":null,"e":null},{"a":"boo","b":"bar2","c":null,"d":null,"e":null},{"a":"boo","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
 		{"SET / No cond / with multiple idents and constraint", `UPDATE test SET a = c`, true, ``, nil},
 		{"SET / No cond / with multiple idents", `UPDATE test SET b = c`, false, `[{"a":"foo1","b":"baz1","c":"baz1","d":null,"e":null},{"a":"foo2","b":null,"c":null,"d":null,"e":null},{"a":"foo3","b":null,"c":null,"d":"bar3","e":"baz3"}]`, nil},
 		{"SET / No cond / with missing column", "UPDATE test SET f = 'boo'", true, "", nil},

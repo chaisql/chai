@@ -5,36 +5,36 @@ on the result of the evaluation of the expression.
 
 -- test: boolean check constraint
 CREATE TABLE test (a text PRIMARY KEY CHECK(true));
-INSERT INTO test (a) VALUES ("hello");
+INSERT INTO test (a) VALUES ('hello');
 SELECT * FROM test;
 /* result:
 {
-    a: "hello"
+    a: 'hello'
 }
 */
 
 -- test: non-boolean check constraint, numeric result
 CREATE TABLE test (a text PRIMARY KEY CHECK(1 + 1));
-INSERT INTO test (a) VALUES ("hello");
+INSERT INTO test (a) VALUES ('hello');
 SELECT * FROM test;
 /* result:
 {
-    a: "hello"
+    a: 'hello'
 }
 */
 
 -- test: non-boolean check constraint
-CREATE TABLE test (a text PRIMARY KEY CHECK("hello"));
-INSERT INTO test (a) VALUES ("hello");
+CREATE TABLE test (a text PRIMARY KEY CHECK('hello'));
+INSERT INTO test (a) VALUES ('hello');
 -- error: row violates check constraint "test_check"
 
 -- test: non-boolean check constraint, NULL
 CREATE TABLE test (a text PRIMARY KEY CHECK(NULL));
-INSERT INTO test (a) VALUES ("hello");
+INSERT INTO test (a) VALUES ('hello');
 SELECT * FROM test;
 /* result:
 {
-    a: "hello"
+    a: 'hello'
 }
 */
 
@@ -65,7 +65,7 @@ INSERT INTO test (a) VALUES (40);
 
 -- test: text
 CREATE TABLE test (a INT PRIMARY KEY CHECK(a > 10));
-INSERT INTO test (a) VALUES ("hello");
+INSERT INTO test (a) VALUES ('hello');
 -- error: cannot cast "hello" as integer: strconv.ParseInt: parsing "hello": invalid syntax
 
 -- test: null

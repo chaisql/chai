@@ -12,7 +12,7 @@ CREATE SEQUENCE seq1;
 SELECT nextval('seq1');
 /* result:
 {
-  "nextval(\"seq1\")": 1
+  "nextval('seq1')": 1
 }
 */
 

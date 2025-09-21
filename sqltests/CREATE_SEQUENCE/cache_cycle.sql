@@ -1,11 +1,11 @@
 -- test: CACHE 10
 CREATE SEQUENCE seq CACHE 10;
-SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "seq";
+SELECT name, type, sql FROM __chai_catalog WHERE type = 'sequence' AND name = 'seq';
 /* result:
 {
-  "name": "seq",
-  "type": "sequence",
-  "sql": "CREATE SEQUENCE seq CACHE 10"
+  "name": 'seq',
+  "type": 'sequence',
+  "sql": 'CREATE SEQUENCE seq CACHE 10'
 }
 */
 
@@ -23,22 +23,22 @@ CREATE SEQUENCE seq CACHE 0;
 
 -- test: CACHE 1 should be default and not printed
 CREATE SEQUENCE seq CACHE 1;
-SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "seq";
+SELECT name, type, sql FROM __chai_catalog WHERE type = 'sequence' AND name = 'seq';
 /* result:
 {
-  "name": "seq",
-  "type": "sequence",
-  "sql": "CREATE SEQUENCE seq"
+  "name": 'seq',
+  "type": 'sequence',
+  "sql": 'CREATE SEQUENCE seq'
 }
 */
 
 -- test: CYCLE
 CREATE SEQUENCE seq CYCLE;
-SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "seq";
+SELECT name, type, sql FROM __chai_catalog WHERE type = 'sequence' AND name = 'seq';
 /* result:
 {
-  "name": "seq",
-  "type": "sequence",
-  "sql": "CREATE SEQUENCE seq CYCLE"
+  "name": 'seq',
+  "type": 'sequence',
+  "sql": 'CREATE SEQUENCE seq CYCLE'
 }
 */

@@ -3,11 +3,11 @@ CREATE TABLE test(a int primary key);
 
 -- test: rename
 ALTER TABLE test RENAME TO test2;
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND (name = "test2" OR name = "test");
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND (name = 'test2' OR name = 'test');
 /* result:
 {
-  "name": "test2",
-  "sql": "CREATE TABLE test2 (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
+  "name": 'test2',
+  "sql": 'CREATE TABLE test2 (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))'
 }
 */
 

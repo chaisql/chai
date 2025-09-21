@@ -1,30 +1,30 @@
 -- test: basic
 CREATE TABLE test(a INTEGER PRIMARY KEY);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))'
 }
 */
 
 -- test: with ASC order
 CREATE TABLE test(a INT PRIMARY KEY ASC);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))'
 }
 */
 
 -- test: with DESC order
 CREATE TABLE test(a INT PRIMARY KEY DESC);
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC))'
 }
 */
 
@@ -38,31 +38,31 @@ CREATE TABLE test(a INT PRIMARY KEY, b INT PRIMARY KEY);
 
 -- test: table constraint: one column
 CREATE TABLE test(a INT, PRIMARY KEY(a));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a))'
 }
 */
 
 -- test: table constraint: multiple columns
 CREATE TABLE test(a INT, b INT, PRIMARY KEY(a, b));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a, b))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a, b))'
 }
 */
 
 -- test: table constraint: multiple columns: with order
 CREATE TABLE test(a INT, b INT, c INT, PRIMARY KEY(a DESC, b, c ASC));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, c INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC, b, c))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, c INTEGER NOT NULL, CONSTRAINT test_pk PRIMARY KEY (a DESC, b, c))'
 }
 */
 
@@ -84,10 +84,10 @@ CREATE TABLE test(a INT PRIMARY KEY, b INT, PRIMARY KEY(b));
 
 -- test: named table constraint preserved for PRIMARY KEY
 CREATE TABLE test(a INTEGER, b INTEGER, CONSTRAINT my_pk PRIMARY KEY (a DESC, b));
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, CONSTRAINT my_pk PRIMARY KEY (a DESC, b))"
+  "name": 'test',
+  "sql": 'CREATE TABLE test (a INTEGER NOT NULL, b INTEGER NOT NULL, CONSTRAINT my_pk PRIMARY KEY (a DESC, b))'
 }
 */

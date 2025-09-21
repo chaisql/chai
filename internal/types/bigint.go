@@ -87,7 +87,7 @@ func (v BigintValue) CastAs(target Type) (Value, error) {
 		return NewTextValue(v.String()), nil
 	}
 
-	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
+	return nil, errors.Errorf("cannot cast %q as %q", v.Type(), target)
 }
 
 func (v BigintValue) EQ(other Value) (bool, error) {

@@ -4,66 +4,64 @@ CREATE TABLE test(
     a TEXT
 );
 
-INSERT INTO test (pk, a) VALUES (1, " hello "), (2, "!hello!"),  (3, "     !hello!  ");
+INSERT INTO test (pk, a) VALUES (1, ' hello '), (2, '!hello!'),  (3, '     !hello!  ');
 
 -- test: RTRIM TEXT default
 SELECT RTRIM(a) FROM test;
 /* result:
 {
-    "RTRIM(a)": " hello"
+    "RTRIM(a)": ' hello'
 }
 {
-    "RTRIM(a)": "!hello!"
+    "RTRIM(a)": '!hello!'
 }
 {
-    "RTRIM(a)": "     !hello!"
+    "RTRIM(a)": '     !hello!'
 }
 */
 
 
 -- test: RTRIM TEXT with param
-SELECT RTRIM(a, "!") FROM test;
+SELECT RTRIM(a, '!') FROM test;
 /* result:
 {
-    "RTRIM(a, \"!\")": " hello "
+    "RTRIM(a, '!')": ' hello '
 }
 {
-    "RTRIM(a, \"!\")": "!hello"
+    "RTRIM(a, '!')": '!hello'
 }
 {
-    "RTRIM(a, \"!\")": "     !hello!  "
+    "RTRIM(a, '!')": '     !hello!  '
 }
 */
 
 -- test: RTRIM TEXT with multiple char params
-SELECT RTRIM(a, " !") FROM test;
+SELECT RTRIM(a, ' !') FROM test;
 /* result:
 {
-    "RTRIM(a, \" !\")": " hello"
+    "RTRIM(a, ' !')": ' hello'
 }
 {
-    "RTRIM(a, \" !\")": "!hello"
+    "RTRIM(a, ' !')": '!hello'
 }
 {
-    "RTRIM(a, \" !\")": "     !hello"
+    "RTRIM(a, ' !')": '     !hello'
 }
 */
-
 
 -- test: RTRIM TEXT with multiple char params
-SELECT RTRIM(a, "hel !") FROM test;
+SELECT RTRIM(a, 'hel !') FROM test;
 /* result:
 {
-    "RTRIM(a, \"hel !\")": " hello"
+    "RTRIM(a, 'hel !')": ' hello'
 }
 {
-    "RTRIM(a, \"hel !\")": "!hello"
+    "RTRIM(a, 'hel !')": '!hello'
 }
 {
-    "RTRIM(a, \"hel !\")": "     !hello"
+    "RTRIM(a, 'hel !')": '     !hello'
 }
 */
-
 
 -- test: RTRIM BOOL
 SELECT RTRIM(true);
@@ -90,9 +88,9 @@ SELECT RTRIM(42.42);
 */
 
 -- test: RTRIM STRING wrong param
-SELECT RTRIM(" hello ", 42);
+SELECT RTRIM(' hello ', 42);
 /* result:
 {
-    "RTRIM(\" hello \", 42)": NULL
+    "RTRIM(' hello ', 42)": NULL
 }
 */

@@ -30,7 +30,7 @@ func TestExecSQL(t *testing.T) {
 	`), &got)
 	require.NoError(t, err)
 
-	require.Equal(t, "a|b\n1|\"a\"\n2|\"b\"\n3|\"c\"\n\nb|a\n\"a\"|1\n\"b\"|2\n\"c\"|3\n", got.String())
+	require.Equal(t, "a|b\n1|'a'\n2|'b'\n3|'c'\n\nb|a\n'a'|1\n'b'|2\n'c'|3\n", got.String())
 
 	var res struct {
 		A int

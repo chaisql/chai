@@ -32,12 +32,12 @@ CREATE SEQUENCE seq CYCLE CYCLE;
 
 -- test: INCREMENT shorthand negative
 CREATE SEQUENCE seq INCREMENT -1;
-SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "seq";
+SELECT name, type, sql FROM __chai_catalog WHERE type = 'sequence' AND name = 'seq';
 /* result:
 {
-  "name": "seq",
-  "type": "sequence",
-  "sql": "CREATE SEQUENCE seq INCREMENT BY -1"
+  "name": 'seq',
+  "type": 'sequence',
+  "sql": 'CREATE SEQUENCE seq INCREMENT BY -1'
 }
 */
 
@@ -47,12 +47,12 @@ CREATE SEQUENCE seq CACHE 0;
 
 -- test: CACHE 1 should be default and not printed
 CREATE SEQUENCE seq CACHE 1;
-SELECT name, type, sql FROM __chai_catalog WHERE type = "sequence" AND name = "seq";
+SELECT name, type, sql FROM __chai_catalog WHERE type = 'sequence' AND name = 'seq';
 /* result:
 {
-  "name": "seq",
-  "type": "sequence",
-  "sql": "CREATE SEQUENCE seq"
+  "name": 'seq',
+  "type": 'sequence',
+  "sql": 'CREATE SEQUENCE seq'
 }
 */
 

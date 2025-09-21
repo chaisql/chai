@@ -79,10 +79,10 @@ false
 > typeof('hello')
 'text'
 
-> "hello"
+> 'hello'
 'hello'
 
-> typeof("hello")
+> typeof('hello')
 'text'
 
 -- test: literals/byteas

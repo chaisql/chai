@@ -14,7 +14,7 @@ VALUES
 EXPLAIN SELECT * FROM test WHERE a = 10 AND b = 5;
 /* result:
 {
-    "plan": 'table.Scan("test", [{\"min\": (10, 5), \"exact\": true}])'
+    "plan": 'table.Scan("test", [{"min": (10, 5), "exact": true}])'
 }
 */
 
@@ -22,7 +22,7 @@ EXPLAIN SELECT * FROM test WHERE a = 10 AND b = 5;
 EXPLAIN SELECT * FROM test WHERE a > 10 AND b = 5;
 /* result:
 {
-    "plan": 'table.Scan(\"test\", [{"min": (10), "exclusive": true}]) | rows.Filter(b = 5)'
+    "plan": 'table.Scan("test", [{"min": (10), "exclusive": true}]) | rows.Filter(b = 5)'
 }
 */
 

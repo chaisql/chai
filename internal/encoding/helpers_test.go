@@ -76,24 +76,24 @@ func TestCompare(t *testing.T) {
 		{`(1e50)`, `(1.0)`, 1},
 
 		// text
-		{`("a")`, `("a")`, 0},
-		{`("b")`, `("a")`, 1},
-		{`("a")`, `("b")`, -1},
-		{`("a")`, `("aa")`, -1},
-		{`("aaaa")`, `("aab")`, -1},
+		{`('a')`, `('a')`, 0},
+		{`('b')`, `('a')`, 1},
+		{`('a')`, `('b')`, -1},
+		{`('a')`, `('aa')`, -1},
+		{`('aaaa')`, `('aab')`, -1},
 
 		// bytea
-		{`("\xaa")`, `("\xaa")`, 0},
-		{`("\xab")`, `("\xaa")`, 1},
-		{`("\xaa")`, `("\xab")`, -1},
-		{`("\xaa")`, `("\xaaaa")`, -1},
+		{`('\xaa')`, `('\xaa')`, 0},
+		{`('\xab')`, `('\xaa')`, 1},
+		{`('\xaa')`, `('\xab')`, -1},
+		{`('\xaa')`, `('\xaaaa')`, -1},
 
 		// different types
 		{`(null)`, `(true)`, -4},
 		{`(true)`, `(1)`, -43},
 		{`(1)`, `(1.0)`, -41},
-		{`(1.0)`, `("a")`, -8},
-		{`("a")`, `("\x00")`, -5},
+		{`(1.0)`, `('a')`, -8},
+		{`('a')`, `('\x00')`, -5},
 
 		// consecutive values
 		{`(1, 2, 3)`, `(1, 2, 3)`, 0},
@@ -146,8 +146,8 @@ func TestCompareOrder(t *testing.T) {
 		{`(1)`, `(2)`, 1, []bool{true}},
 		{`(60)`, `(30)`, 2, []bool{false}},
 		{`(60)`, `(30)`, -2, []bool{true}},
-		{`(30, "hello")`, `(30, "bye")`, 1, []bool{true, false}},
-		{`(30, "hello")`, `(30, "bye")`, -1, []bool{true, true}},
+		{`(30, 'hello')`, `(30, 'bye')`, 1, []bool{true, false}},
+		{`(30, 'hello')`, `(30, 'bye')`, -1, []bool{true, true}},
 	}
 
 	for _, test := range tests {
@@ -233,16 +233,16 @@ func TestAbbreviatedKey(t *testing.T) {
 		{`(1, -1e50)`, 1<<48 | uint64(encoding.Float64Value)<<40 | uint64(math.Float64bits(-1e50)^(1<<64-1))>>24},
 
 		// text
-		{`(1, "abc")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16},
-		{`(1, "abcdefghijkl")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
-		{`(1, "abcdefghijkl` + strings.Repeat("m", 100) + `")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
-		{`(1, "abcdefghijkl` + strings.Repeat("m", 10000) + `")`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
+		{`(1, 'abc')`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16},
+		{`(1, 'abcdefghijkl')`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
+		{`(1, 'abcdefghijkl` + strings.Repeat("m", 100) + `')`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
+		{`(1, 'abcdefghijkl` + strings.Repeat("m", 10000) + `')`, 1<<48 | uint64(encoding.TextValue)<<40 | uint64('a')<<32 | uint64('b')<<24 | uint64('c')<<16 | uint64('d')<<8 | uint64('e')},
 
 		// bytea
-		{`(1, "\xab")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32},
-		{`(1, "\xabcdefabcdef")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
-		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 100) + `")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
-		{`(1, "\xabcdefabcdef` + strings.Repeat("c", 1000) + `")`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		{`(1, '\xab')`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32},
+		{`(1, '\xabcdefabcdef')`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		{`(1, '\xabcdefabcdef` + strings.Repeat("c", 100) + `')`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
+		{`(1, '\xabcdefabcdef` + strings.Repeat("c", 1000) + `')`, 1<<48 | uint64(encoding.ByteaValue)<<40 | uint64(0xab)<<32 | uint64(0xcd)<<24 | uint64(0xef)<<16 | uint64(0xab)<<8 | uint64(0xcd)},
 	}
 
 	for _, test := range tests {

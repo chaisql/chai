@@ -18,7 +18,7 @@ func TestString(t *testing.T) {
 		"true",
 		"500",
 		`foo`,
-		`"hello"`,
+		`'hello'`,
 		"CAST(10 AS integer)",
 	}
 

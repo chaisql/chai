@@ -19,16 +19,16 @@ CREATE TABLE test_tc(
     i bigint, bb bytea, byt bytes,
     t text primary key
 );
-INSERT INTO test_tc (i, db, b, bb, byt, t) VALUES (10000000000, 21.21, true, "YmxvYlZhbHVlCg==", "Ynl0ZXNWYWx1ZQ==", "text");
+INSERT INTO test_tc (i, db, b, bb, byt, t) VALUES (10000000000, 21.21, true, 'YmxvYlZhbHVlCg==', 'Ynl0ZXNWYWx1ZQ==', 'text');
 SELECT * FROM test_tc;
 /* result:
 {
   "b": true,
   "db": 21.21,
   "i": 10000000000,
-  "bb": CAST("YmxvYlZhbHVlCg==" AS BYTEA),
-  "byt": CAST("Ynl0ZXNWYWx1ZQ==" AS BYTES),
-  "t": "text"
+  "bb": CAST('YmxvYlZhbHVlCg==' AS BYTEA),
+  "byt": CAST('Ynl0ZXNWYWx1ZQ==' AS BYTES),
+  "t": 'text'
 }
 */
 
@@ -157,7 +157,7 @@ INSERT INTO test VALUES (1);
 CREATE TABLE test (a int PRIMARY KEY);
 EXPLAIN INSERT INTO test (a) VALUES (1);
 /* result:
-{plan: "rows.Emit((1)) | table.Validate(\"test\") | table.GenerateKey(\"test\") | table.Insert(\"test\") | discard()"}
+{plan: 'rows.Emit((1)) | table.Validate("test") | table.GenerateKey("test") | table.Insert("test") | discard()'}
 */
 
 -- test: with columns
@@ -167,6 +167,6 @@ SELECT * FROM test;
 /* result:
 {
   a: 1,
-  b: "a"
+  b: 'a'
 }
 */

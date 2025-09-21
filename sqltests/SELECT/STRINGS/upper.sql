@@ -7,7 +7,7 @@ CREATE TABLE test(
 );
 
 INSERT INTO test (a, b, c, d) VALUES (
-    "foo",
+    'foo',
     42,
     true,
     42.42,
@@ -17,7 +17,7 @@ INSERT INTO test (a, b, c, d) VALUES (
 SELECT UPPER(a) FROM test;
 /* result:
 {
-    "UPPER(a)": "FOO" 
+    "UPPER(a)": 'FOO'
 }
 */
 
@@ -51,7 +51,7 @@ SELECT UPPER(d) FROM test;
 SELECT UPPER(CAST(b as TEXT)) FROM test;
 /* result:
 {
-    "UPPER(CAST(b AS text))": "42" 
+    "UPPER(CAST(b AS text))": '42' 
 }
 */
 
@@ -59,7 +59,7 @@ SELECT UPPER(CAST(b as TEXT)) FROM test;
 SELECT UPPER(CAST(c as TEXT)) FROM test;
 /* result:
 {
-    "UPPER(CAST(c AS text))": "TRUE" 
+    "UPPER(CAST(c AS text))": 'TRUE' 
 }
 */
 
@@ -67,7 +67,7 @@ SELECT UPPER(CAST(c as TEXT)) FROM test;
 SELECT UPPER(CAST(d as TEXT)) FROM test;
 /* result:
 {
-    "UPPER(CAST(d AS text))": "42.42" 
+    "UPPER(CAST(d AS text))": '42.42'
 }
 */
 

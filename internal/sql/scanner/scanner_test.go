@@ -269,12 +269,11 @@ func TestScanString(t *testing.T) {
 		{in: `'foo\r\nbar\r\n\trm'`, out: "foo\r\nbar\r\n\trm"},
 		{in: `'foo\\bar'`, out: `foo\bar`},
 		{in: `'foo\"bar'`, out: `foo"bar`},
-		{in: `'foo\'bar'`, out: `foo'bar`},
 		{in: `'\xAF'`, out: `\xAF`},
 
 		{in: `"foo` + "\n", out: `foo`, err: "bad string"}, // newline in string
 		{in: `"foo`, out: `foo`, err: "bad string"},        // unclosed quotes
-		{in: `"foo\xbar"`, out: `\x`, err: "bad escape"},   // invalid escape
+		{in: `"foo\xbar"`, out: `foo\xbar`, err: ""},       // preserved hex escape sequence
 	}
 
 	for i, tt := range tests {

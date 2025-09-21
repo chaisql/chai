@@ -58,9 +58,10 @@ func (v ByteaValue) String() string {
 
 func (v ByteaValue) MarshalText() ([]byte, error) {
 	var dst bytes.Buffer
-	dst.WriteString("\"\\x")
+	// Use single quotes for SQL bytea hex literal: '\x...'
+	dst.WriteString("'\\x")
 	_, _ = hex.NewEncoder(&dst).Write(v)
-	dst.WriteByte('"')
+	dst.WriteByte('\'')
 	return dst.Bytes(), nil
 }
 
@@ -88,7 +89,7 @@ func (v ByteaValue) CastAs(target Type) (Value, error) {
 		return NewTextValue(base64.StdEncoding.EncodeToString([]byte(v))), nil
 	}
 
-	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
+	return nil, errors.Errorf("cannot cast %q as %q", v.Type(), target)
 }
 
 func (v ByteaValue) EQ(other Value) (bool, error) {

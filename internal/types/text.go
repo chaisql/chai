@@ -53,7 +53,12 @@ func (v TextValue) IsZero() (bool, error) {
 }
 
 func (v TextValue) String() string {
-	return strconv.Quote(string(v))
+	// Use single quotes for SQL string literal representation.
+	// strconv.Quote always uses double quotes, so build the quoted
+	// representation manually, escaping single quotes inside the text.
+	s := string(v)
+	s = strings.ReplaceAll(s, "'", "\\'")
+	return "'" + s + "'"
 }
 
 func (v TextValue) MarshalText() ([]byte, error) {
@@ -61,7 +66,9 @@ func (v TextValue) MarshalText() ([]byte, error) {
 }
 
 func (v TextValue) MarshalJSON() ([]byte, error) {
-	return v.MarshalText()
+	// JSON must use double quotes. Use strconv.Quote to produce a valid
+	// JSON string regardless of the SQL text literal representation.
+	return []byte(strconv.Quote(string(v))), nil
 }
 
 func (v TextValue) Encode(dst []byte) ([]byte, error) {
@@ -129,7 +136,7 @@ func (v TextValue) CastAs(target Type) (Value, error) {
 		return NewByteaValue(b), nil
 	}
 
-	return nil, errors.Errorf("cannot cast %s as %s", v.Type(), target)
+	return nil, errors.Errorf("cannot cast %q as %q", v.Type(), target)
 }
 
 func (v TextValue) EQ(other Value) (bool, error) {

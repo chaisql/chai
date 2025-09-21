@@ -4,7 +4,7 @@ CREATE TABLE bar(a DOUBLE PRECISION PRIMARY KEY, b DOUBLE PRECISION);
 CREATE TABLE baz(x TEXT PRIMARY KEY, y TEXT);
 INSERT INTO foo (a,b) VALUES (1.0, 1.0), (2.0, 2.0);
 INSERT INTO bar (a,b) VALUES (2.0, 2.0), (3.0, 3.0);
-INSERT INTO baz (x,y) VALUES ("a", "a"), ("b", "b");
+INSERT INTO baz (x,y) VALUES ('a', 'a'), ('b', 'b');
 
 -- test: basic union all
 SELECT * FROM foo
@@ -24,17 +24,17 @@ SELECT * FROM baz;
 /* result:
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
-{"a": "a", "b": "a"}
-{"a": "b", "b": "b"}
+{"a": 'a', "b": 'a'}
+{"a": 'b', "b": 'b'}
 */
 
 -- test: union all with conditions
 SELECT * FROM foo WHERE a > 1
 UNION ALL
-SELECT * FROM baz WHERE x != "b";
+SELECT * FROM baz WHERE x != 'b';
 /* result:
 {"a": 2.0, "b": 2.0}
-{"a": "a", "b": "a"}
+{"a": 'a', "b": 'a'}
 */
 
 -- test: self union all
@@ -57,8 +57,8 @@ SELECT * FROM baz;
 {"a": 2.0, "b": 2.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"a": "a", "b": "a"}
-{"a": "b", "b": "b"}
+{"a": 'a', "b": 'a'}
+{"a": 'b', "b": 'b'}
 */
 
 -- test: basic union
@@ -78,17 +78,17 @@ SELECT * FROM baz;
 /* result:
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
-{"a": "a", "b": "a"}
-{"a": "b", "b": "b"}
+{"a": 'a', "b": 'a'}
+{"a": 'b', "b": 'b'}
 */
 
 -- test: union with conditions
 SELECT * FROM foo WHERE a > 1
 UNION
-SELECT * FROM baz WHERE x != "b";
+SELECT * FROM baz WHERE x != 'b';
 /* result:
 {"a": 2.0, "b": 2.0}
-{"a": "a", "b": "a"}
+{"a": 'a', "b": 'a'}
 */
 
 -- test: self union
@@ -120,8 +120,8 @@ SELECT * FROM baz;
 {"a": 2.0, "b": 2.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"a": "a", "b": "a"}
-{"a": "b", "b": "b"}
+{"a": 'a', "b": 'a'}
+{"a": 'b', "b": 'b'}
 */
 
 -- test: combined unions
@@ -134,5 +134,5 @@ SELECT * FROM baz;
 {"a": 1.0, "b": 1.0}
 {"a": 2.0, "b": 2.0}
 {"a": 3.0, "b": 3.0}
-{"a": "a", "b": "a"}
-{"a": "b", "b": "b"}
+{"a": 'a', "b": 'a'}
+{"a": 'b', "b": 'b'}

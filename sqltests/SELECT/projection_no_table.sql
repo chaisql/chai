@@ -16,16 +16,10 @@ SELECT     1  + 1 *      2 /                    4;
 {"1 + 1 * 2 / 4": 1}
 */
 
--- test: escaping, double quotes
+-- test: double quotes
 SELECT '"A"';
 /* result:
-{`"\\"A\\""`: "\"A\""}
-*/
-
--- test: escaping, single quotes
-SELECT "'A'";
-/* result:
-{`"'A'"`: "'A'"}
+{"'\"A\"'": '"A"'}
 */
 
 -- test: aliases

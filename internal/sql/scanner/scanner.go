@@ -56,9 +56,7 @@ func (s *scanner) Scan() (tok Token, pos Pos, lit string) {
 	switch ch0 {
 	case eof:
 		return EOF, pos, ""
-	case '`':
-		s.r.unread()
-	case '"':
+	case '`', '"':
 		s.r.unread()
 		return s.scanIdent(true)
 	case '\'':
@@ -609,6 +607,15 @@ func scanString(r io.RuneReader) (string, error) {
 				_, _ = buf.WriteRune('\\')
 			case '"':
 				_, _ = buf.WriteRune('"')
+			case '\'':
+				_, _ = buf.WriteRune('\'')
+			case 'x', 'X':
+				// preserve hex escape sequences (e.g. \xAF) as raw text so the
+				// parser can interpret them as bytea hex. Write the backslash and
+				// the x/X character into the output and continue reading the
+				// subsequent hex digits normally.
+				_, _ = buf.WriteRune('\\')
+				_, _ = buf.WriteRune(ch1)
 			default:
 				return string(ch0) + string(ch1), errBadEscape
 			}

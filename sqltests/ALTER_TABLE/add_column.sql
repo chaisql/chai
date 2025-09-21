@@ -4,11 +4,11 @@ CREATE TABLE test(a int primary key);
 -- test: column constraints are updated
 INSERT INTO test VALUES (1), (2);
 ALTER TABLE test ADD COLUMN b int DEFAULT 0;
-SELECT name, sql FROM __chai_catalog WHERE type = "table" AND name = "test";
+SELECT name, sql FROM __chai_catalog WHERE type = 'table' AND name = 'test';
 /* result:
 {
-  "name": "test",
-  "sql": "CREATE TABLE test (a INTEGER NOT NULL, b INTEGER DEFAULT 0, CONSTRAINT test_pk PRIMARY KEY (a))"
+  name: 'test',
+  sql: 'CREATE TABLE test (a INTEGER NOT NULL, b INTEGER DEFAULT 0, CONSTRAINT test_pk PRIMARY KEY (a))'
 }
 */
 
@@ -18,12 +18,12 @@ ALTER TABLE test ADD COLUMN b int DEFAULT 0;
 SELECT * FROM test;
 /* result:
 {
-  "a": 1,
-  "b": 0
+  a: 1,
+  b: 0
 }
 {
-  "a": 2,
-  "b": 0
+  a: 2,
+  b: 0
 }
 */
 
@@ -38,12 +38,12 @@ ALTER TABLE test ADD COLUMN b int NOT NULL DEFAULT 10;
 SELECT * FROM test;
 /* result:
 {
-  "a": 1,
-  "b": 10,
+  a: 1,
+  b: 10,
 }
 {
-  "a": 2,
-  "b": 10
+  a: 2,
+  b: 10
 }
 */
 
@@ -53,12 +53,12 @@ ALTER TABLE test ADD COLUMN b int UNIQUE;
 SELECT * FROM test;
 /* result:
 {
-  "a": 1,
-  "b": null
+  a: 1,
+  b: null
 }
 {
-  "a": 2,
-  "b": null
+  a: 2,
+  b: null
 }
 */
 

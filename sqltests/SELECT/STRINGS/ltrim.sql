@@ -4,63 +4,63 @@ CREATE TABLE test(
     a TEXT 
 );
 
-INSERT INTO test (pk, a) VALUES (1, " hello "), (2, "!hello!"),  (3, "     !hello!  ");
+INSERT INTO test (pk, a) VALUES (1, ' hello '), (2, '!hello!'),  (3, '     !hello!  ');
 
 -- test: LTRIM TEXT default
 SELECT LTRIM(a) FROM test;
 /* result:
 {
-    "LTRIM(a)": "hello "
+    "LTRIM(a)": 'hello '
 }
 {
-    "LTRIM(a)": "!hello!"
+    "LTRIM(a)": '!hello!'
 }
 {
-    "LTRIM(a)": "!hello!  "
+    "LTRIM(a)": '!hello!  '
 }
 */
 
 
 -- test: LTRIM TEXT with param
-SELECT LTRIM(a, "!") FROM test;
+SELECT LTRIM(a, '!') FROM test;
 /* result:
 {
-    "LTRIM(a, \"!\")": " hello "
+    "LTRIM(a, '!')": ' hello '
 }
 {
-    "LTRIM(a, \"!\")": "hello!"
+    "LTRIM(a, '!')": 'hello!'
 }
 {
-    "LTRIM(a, \"!\")": "     !hello!  "
+    "LTRIM(a, '!')": '     !hello!  '
 }
 */
 
 -- test: LTRIM TEXT with multiple char params
-SELECT LTRIM(a, " !") FROM test;
+SELECT LTRIM(a, ' !') FROM test;
 /* result:
 {
-    "LTRIM(a, \" !\")": "hello "
+    "LTRIM(a, ' !')": 'hello '
 }
 {
-    "LTRIM(a, \" !\")": "hello!"
+    "LTRIM(a, ' !')": 'hello!'
 }
 {
-    "LTRIM(a, \" !\")": "hello!  "
+    "LTRIM(a, ' !')": 'hello!  '
 }
 */
 
 
 -- test: LTRIM TEXT with multiple char params
-SELECT LTRIM(a, "hel !") FROM test;
+SELECT LTRIM(a, 'hel !') FROM test;
 /* result:
 {
-    "LTRIM(a, \"hel !\")": "o "
+    "LTRIM(a, 'hel !')": 'o '
 }
 {
-    "LTRIM(a, \"hel !\")": "o!"
+    "LTRIM(a, 'hel !')": 'o!'
 }
 {
-    "LTRIM(a, \"hel !\")": "o!  "
+    "LTRIM(a, 'hel !')": 'o!  '
 }
 */
 
@@ -90,9 +90,9 @@ SELECT LTRIM(42.42);
 */
 
 -- test: LTRIM STRING wrong param
-SELECT LTRIM(" hello ", 42);
+SELECT LTRIM(' hello ', 42);
 /* result:
 {
-    "LTRIM(\" hello \", 42)": NULL
+    "LTRIM(' hello ', 42)": NULL
 }
 */

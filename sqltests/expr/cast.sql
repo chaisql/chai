@@ -12,7 +12,7 @@ true
 '1'
 
 ! CAST (1 AS BYTEA)
-'cannot cast integer as bytea'
+'cannot cast "integer" as "bytea"'
 
 -- test: source(DOUBLE PRECISION)
 > CAST (1.1 AS DOUBLE PRECISION)
@@ -22,13 +22,13 @@ true
 1
 
 ! CAST (1.1 AS BOOL)
-'cannot cast double precision as bool'
+'cannot cast "double precision" as "boolean"'
 
 > CAST (1.1 AS TEXT)
 '1.1'
 
 ! CAST (1.1 AS BYTEA)
-'cannot cast double precision as bytea'
+'cannot cast "double precision" as "bytea"'
 
 -- test: source(BOOL)
 > CAST (true AS BOOL)
@@ -41,13 +41,13 @@ true
 0
 
 ! CAST (true AS DOUBLE PRECISION)
-'cannot cast boolean as double'
+'cannot cast "boolean" as "double precision"'
 
 > CAST (true AS TEXT)
 'true'
 
 ! CAST (true AS BYTEA)
-'cannot cast boolean as bytea'
+'cannot cast "boolean" as "bytea"'
 
 -- test: source(TEXT)
 > CAST ('a' AS TEXT)
@@ -119,10 +119,10 @@ false
 '\xAF'
 
 ! CAST ('\xAF' AS INT)
-'cannot cast bytea as integer'
+'cannot cast "bytea" as "integer"'
 
 ! CAST ('\xAF' AS DOUBLE PRECISION)
-'cannot cast bytea as double'
+'cannot cast "bytea" as "double precision"'
 
 > CAST ('\x617364696e65' AS TEXT)
 'YXNkaW5l'
