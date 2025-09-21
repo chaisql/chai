@@ -3,6 +3,7 @@ package dbutil
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -96,7 +97,22 @@ func dumpTable(ctx context.Context, tx *sql.Tx, w io.Writer, query, tableName st
 				continue
 			}
 
-			fmt.Fprintf(&sb, "%v", v)
+			switch v := v.(type) {
+			case []byte:
+				// Display as hex literal.
+				sb.WriteString("'\\x")
+				_, _ = hex.NewEncoder(&sb).Write(v)
+				sb.WriteByte('\'')
+				continue
+			case string:
+				// Display as single quoted string literal.
+				sb.WriteByte('\'')
+				sb.WriteString(strings.ReplaceAll(v, "'", "\\'"))
+				sb.WriteByte('\'')
+				continue
+			default:
+				fmt.Fprintf(&sb, "%v", v)
+			}
 		}
 
 		if _, err := fmt.Fprintf(w, "INSERT INTO %s VALUES (%s);\n", tableName, sb.String()); err != nil {
