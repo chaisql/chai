@@ -94,9 +94,9 @@ func Bench(ctx context.Context, db *sql.DB, query string, opt BenchOptions) erro
 
 		err := enc(map[string]interface{}{
 			"totalQueries":     i + opt.SampleSize,
-			"averageDuration":  avg,
+			"averageDuration":  avg.String(),
 			"queriesPerSecond": qps,
-			"totalDuration":    totalDuration,
+			"totalDuration":    totalDuration.String(),
 		})
 		if err != nil {
 			return err

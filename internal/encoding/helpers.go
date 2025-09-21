@@ -265,19 +265,6 @@ func compareNonEmptyValues(t byte, a, b []byte) (cmp int, n int) {
 	panic(fmt.Sprintf("unsupported value type: %d", a[0]))
 }
 
-func Successor(dst, a []byte) []byte {
-	if len(a) == 0 {
-		return a
-	}
-
-	namespace, _ := DecodeInt(a)
-	if namespace == math.MaxInt64 {
-		return a
-	}
-	namespace++
-	return EncodeInt(dst, namespace)
-}
-
 // AbbreviatedKey returns a shortened version that is used for
 // comparing keys during indexed batch comparisons.
 // The key is not guaranteed to be unique, but it respects the

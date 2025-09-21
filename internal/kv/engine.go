@@ -114,11 +114,13 @@ var DefaultComparer = &pebble.Comparer{
 		}
 		return encoding.Compare(a[an:], b[bn:])
 	},
-	Equal:                encoding.Equal,
-	AbbreviatedKey:       encoding.AbbreviatedKey,
-	FormatKey:            pebble.DefaultComparer.FormatKey,
-	Separator:            encoding.Separator,
-	Successor:            encoding.Successor,
+	Equal:          encoding.Equal,
+	AbbreviatedKey: encoding.AbbreviatedKey,
+	FormatKey:      pebble.DefaultComparer.FormatKey,
+	Separator:      encoding.Separator,
+	Successor: func(dst, a []byte) []byte {
+		return a
+	},
 	Split:                encoding.Split,
 	ComparePointSuffixes: encoding.Compare,
 	CompareRangeSuffixes: encoding.Compare,

@@ -40,7 +40,7 @@ $ chai bench -p mydb/ "SELECT 1"
 
 To prepare the database before running a query, use the -i/--init option
 
-$ chai bench -p "CREATE TABLE foo; INSERT INTO foo(a) VALUES (1), (2), (3)" "SELECT * FROM foo"
+$ chai bench -i "CREATE TABLE foo(a INT PRIMARY KEY); INSERT INTO foo(a) VALUES (1), (2), (3)" "SELECT * FROM foo"
 
 By default, each query is run in a separate transaction. To run everything, including the setup,
 in the same transaction, use -t`,
