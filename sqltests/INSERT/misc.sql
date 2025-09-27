@@ -170,3 +170,8 @@ SELECT * FROM test;
   b: 'a'
 }
 */
+-- test: empty values
+CREATE SEQUENCE seq AS integer;
+CREATE TABLE test(a int PRIMARY KEY DEFAULT nextval('seq'), b text);
+INSERT INTO test VALUES ();
+-- error:

@@ -418,19 +418,26 @@ func (p *Parser) parseExprListUntil(rightToken scanner.Token) (expr.LiteralExprL
 	var expr expr.Expr
 	var err error
 
+	// Parse first required expression.
+	if expr, err = p.ParseExpr(); err != nil {
+		p.Unscan()
+		return nil, err
+	}
+	exprList = append(exprList, expr)
+
 	// Parse expressions.
 	for {
+		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
+			p.Unscan()
+			break
+		}
+
 		if expr, err = p.ParseExpr(); err != nil {
 			p.Unscan()
 			break
 		}
 
 		exprList = append(exprList, expr)
-
-		if tok, _, _ := p.ScanIgnoreWhitespace(); tok != scanner.COMMA {
-			p.Unscan()
-			break
-		}
 	}
 
 	// Parse required ) or ] token.
