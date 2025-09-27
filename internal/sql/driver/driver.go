@@ -168,14 +168,6 @@ func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 		Conn: c.conn,
 	}
 
-	tx, err := c.conn.BeginTx(&database.TxOptions{
-		ReadOnly: true,
-	})
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	stmt := statements[0]
 
 	if b, ok := stmt.(statement.Bindable); ok {

@@ -19,7 +19,6 @@ type BatchSession struct {
 	closed          bool
 	rollbackSegment *RollbackSegment
 	maxBatchSize    int
-	keys            map[string]struct{}
 }
 
 func (s *PebbleEngine) NewBatchSession() engine.Session {
@@ -27,7 +26,7 @@ func (s *PebbleEngine) NewBatchSession() engine.Session {
 	// at this point-in-time.
 	s.LockSharedSnapshot()
 
-	b := s.db.NewBatch()
+	b := s.db.NewIndexedBatch()
 
 	return &BatchSession{
 		Store:           s,
@@ -35,7 +34,6 @@ func (s *PebbleEngine) NewBatchSession() engine.Session {
 		Batch:           b,
 		rollbackSegment: s.rollbackSegment,
 		maxBatchSize:    s.opts.MaxBatchSize,
-		keys:            make(map[string]struct{}),
 	}
 }
 
@@ -72,25 +70,12 @@ func (s *BatchSession) Close() error {
 
 // Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 func (s *BatchSession) Get(k []byte) ([]byte, error) {
-	if _, ok := s.keys[string(k)]; ok {
-		err := s.applyBatch()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return get(s.DB, k)
+	return get(s.Batch, k)
 }
 
 // Exists returns whether a key exists and is visible by the current session.
 func (s *BatchSession) Exists(k []byte) (bool, error) {
-	if _, ok := s.keys[string(k)]; ok {
-		return true, nil
-	}
-
-	s.applyBatch()
-
-	return exists(s.DB, k)
+	return exists(s.Batch, k)
 }
 
 func (s *BatchSession) applyBatch() error {
@@ -112,7 +97,6 @@ func (s *BatchSession) applyBatch() error {
 
 	// reset batch
 	s.Batch.Reset()
-	clear(s.keys)
 
 	return nil
 }
@@ -123,9 +107,7 @@ func (s *BatchSession) ensureBatchSize() error {
 	}
 
 	// The batch is too large. Insert the rollback segments and commit the batch.
-	s.applyBatch()
-
-	return nil
+	return s.applyBatch()
 }
 
 // Insert inserts a key-value pair. If it already exists, it returns ErrKeyAlreadyExists.
@@ -138,15 +120,13 @@ func (s *BatchSession) Insert(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
-	ok, err := s.Exists(k)
+	ok, err := exists(s.Batch, k)
 	if err != nil {
 		return err
 	}
 	if ok {
 		return engine.ErrKeyAlreadyExists
 	}
-
-	s.keys[string(k)] = struct{}{}
 
 	err = s.Batch.Set(k, v, nil)
 	if err != nil {
@@ -166,8 +146,6 @@ func (s *BatchSession) Put(k, v []byte) error {
 		return errors.New("cannot store empty value")
 	}
 
-	s.keys[string(k)] = struct{}{}
-
 	err := s.Batch.Set(k, v, nil)
 	if err != nil {
 		return err
@@ -183,39 +161,21 @@ func (s *BatchSession) Delete(k []byte) error {
 		return err
 	}
 
-	delete(s.keys, string(k))
-
 	return s.ensureBatchSize()
 }
 
 // DeleteRange deletes all keys in the given range.
 // This implementation deletes all keys one by one to simplify the rollback.
 func (s *BatchSession) DeleteRange(start []byte, end []byte) error {
-	it, err := s.Iterator(&engine.IterOptions{
-		LowerBound: start,
-		UpperBound: end,
-	})
+	err := s.Batch.DeleteRange(start, end, nil)
 	if err != nil {
 		return err
 	}
-	defer it.Close()
 
-	for it.First(); it.Valid(); it.Next() {
-		err := s.Delete(it.Key())
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return s.ensureBatchSize()
 }
 
 func (s *BatchSession) Iterator(opts *engine.IterOptions) (engine.Iterator, error) {
-	err := s.applyBatch()
-	if err != nil {
-		return nil, err
-	}
-
 	var popts *pebble.IterOptions
 	if opts != nil {
 		popts = &pebble.IterOptions{
@@ -224,7 +184,7 @@ func (s *BatchSession) Iterator(opts *engine.IterOptions) (engine.Iterator, erro
 		}
 	}
 
-	it, err := s.DB.NewIter(popts)
+	it, err := s.Batch.NewIter(popts)
 	if err != nil {
 		return nil, err
 	}

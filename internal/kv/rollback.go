@@ -73,6 +73,7 @@ func (s *RollbackSegment) Apply(b *pebble.Batch) error {
 
 		err = b.Set(s.buf, v, nil)
 		if err != nil {
+			_ = closer.Close()
 			return err
 		}
 
@@ -116,6 +117,9 @@ func (s *RollbackSegment) Rollback() error {
 		// get the key
 		uk, _ := encoding.DecodeBytea(k)
 		v, err := it.ValueAndErr()
+		if err != nil {
+			return err
+		}
 
 		if bytes.Equal(v, tombStone) {
 			err = b.Delete(uk, nil)
@@ -135,7 +139,13 @@ func (s *RollbackSegment) Rollback() error {
 	// we don't need to sync here.
 	// in case of a crash, the rollback segment will be rolled back
 	// during the next recovery phase.
-	return b.Commit(pebble.NoSync)
+	err = b.Commit(pebble.NoSync)
+	if err != nil {
+		return err
+	}
+
+	s.reset()
+	return nil
 }
 
 func (s *RollbackSegment) Reset() error {
@@ -159,4 +169,5 @@ func (s *RollbackSegment) Clear(b *pebble.Batch) error {
 func (s *RollbackSegment) reset() {
 	s.buf = s.buf[:len(s.nsStart)]
 	s.segmentCommitted = false
+	clear(s.seen)
 }
