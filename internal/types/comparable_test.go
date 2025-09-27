@@ -32,7 +32,7 @@ func jsonToDouble(t testing.TB, x string) types.Value {
 	err := json.Unmarshal([]byte(x), &f)
 	require.NoError(t, err)
 
-	return types.NewDoublePrevisionValue(f)
+	return types.NewDoublePrecisionValue(f)
 }
 
 func textToTimestamp(t testing.TB, x string) types.Value {

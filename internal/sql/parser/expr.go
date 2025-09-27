@@ -183,6 +183,22 @@ func (p *Parser) parseOperator(minPrecedence int, allowed ...scanner.Token) (fun
 
 // parseUnaryExpr parses an non-binary expression.
 func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
+	e, err := p.parseUnaryExprRec(allowed...)
+	if err != nil {
+		return nil, err
+	}
+
+	// parse any postfix casts on compatible expressions
+	switch e.(type) {
+	case expr.Wildcard:
+		return e, nil
+	default:
+		return p.parsePostfixCast(e)
+	}
+}
+
+// parseUnaryExprRec parses a non-binary expression recursively.
+func (p *Parser) parseUnaryExprRec(allowed ...scanner.Token) (expr.Expr, error) {
 	tok, pos, lit := p.ScanIgnoreWhitespace()
 
 	if !tokenIsAllowed(tok, allowed...) {
@@ -237,7 +253,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		if err != nil {
 			return nil, errors.WithStack(&ParseError{Message: "unable to parse number", Pos: pos})
 		}
-		return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}, nil
+		return expr.LiteralValue{Value: types.NewDoublePrecisionValue(v)}, nil
 	case scanner.ADD, scanner.SUB:
 		sign := tok
 		tok, pos, lit = p.Scan()
@@ -253,7 +269,7 @@ func (p *Parser) parseUnaryExpr(allowed ...scanner.Token) (expr.Expr, error) {
 		if err != nil {
 			// The literal may be too large to fit into an int64, parse as Float64
 			if v, err := strconv.ParseFloat(lit, 64); err == nil {
-				return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}, nil
+				return expr.LiteralValue{Value: types.NewDoublePrecisionValue(v)}, nil
 			}
 			return nil, errors.WithStack(&ParseError{Message: "unable to parse integer", Pos: pos})
 		}
@@ -541,6 +557,23 @@ func (p *Parser) parseCastExpression() (expr.Expr, error) {
 	}
 
 	return &expr.Cast{Expr: e, CastAs: tp}, nil
+}
+
+func (p *Parser) parsePostfixCast(e expr.Expr) (expr.Expr, error) {
+	for {
+		tok, _, _ := p.ScanIgnoreWhitespace()
+		if tok != scanner.DOUBLECOLON {
+			p.Unscan()
+			break
+		}
+		if tp, err := p.parseType(); err != nil {
+			return nil, err
+		} else {
+			e = &expr.Cast{Expr: e, CastAs: tp}
+		}
+	}
+
+	return e, nil
 }
 
 // tokenIsAllowed is a helper function that determines if a token is allowed.

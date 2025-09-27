@@ -72,9 +72,9 @@ func NewValue(x any) (types.Value, error) {
 		if v == nil {
 			return types.NewNullValue(), nil
 		}
-		return types.NewDoublePrevisionValue(*v), nil
+		return types.NewDoublePrecisionValue(*v), nil
 	case float64:
-		return types.NewDoublePrevisionValue(v), nil
+		return types.NewDoublePrecisionValue(v), nil
 	case *bool:
 		if v == nil {
 			return types.NewNullValue(), nil

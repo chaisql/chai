@@ -119,7 +119,7 @@ func (v TextValue) CastAs(target Type) (Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf(`cannot cast %q as double: %w`, v.V(), err)
 		}
-		return NewDoublePrevisionValue(f), nil
+		return NewDoublePrecisionValue(f), nil
 	case TypeTimestamp:
 		t, err := ParseTimestamp(string(v))
 		if err != nil {

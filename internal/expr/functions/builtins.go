@@ -553,7 +553,7 @@ func (s *SumAggregator) Aggregate(env *environment.Environment) error {
 // Eval return the aggregated sum.
 func (s *SumAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.SumF != nil {
-		return types.NewDoublePrevisionValue(*s.SumF), nil
+		return types.NewDoublePrecisionValue(*s.SumF), nil
 	}
 	if s.SumI != nil {
 		return types.NewBigintValue(*s.SumI), nil
@@ -641,10 +641,10 @@ func (s *AvgAggregator) Aggregate(env *environment.Environment) error {
 // Eval returns the aggregated average as a double.
 func (s *AvgAggregator) Eval(_ *environment.Environment) (types.Value, error) {
 	if s.Counter == 0 {
-		return types.NewDoublePrevisionValue(0), nil
+		return types.NewDoublePrecisionValue(0), nil
 	}
 
-	return types.NewDoublePrevisionValue(s.Avg / float64(s.Counter)), nil
+	return types.NewDoublePrecisionValue(s.Avg / float64(s.Counter)), nil
 }
 
 func (s *AvgAggregator) String() string {

@@ -126,3 +126,176 @@ false
 
 > CAST ('\x617364696e65' AS TEXT)
 'YXNkaW5l'
+
+-- test: short form casts (::)
+-- Source: INT
+> 1::INTEGER
+1
+
+> 1::BOOL
+true
+
+> 1::DOUBLE PRECISION
+1.0
+
+> 1::TEXT
+'1'
+
+! 1::BYTEA
+'cannot cast "integer" as "bytea"'
+
+-- Source: DOUBLE PRECISION
+> 1.1::DOUBLE PRECISION
+1.1
+
+> 1.1::INTEGER
+1
+
+! 1.1::BOOL
+'cannot cast "double precision" as "boolean"'
+
+> 1.1::TEXT
+'1.1'
+
+! 1.1::BYTEA
+'cannot cast "double precision" as "bytea"'
+
+-- Source: BOOL
+> true::BOOL
+true
+
+> true::INTEGER
+1
+
+> false::INTEGER
+0
+
+! true::DOUBLE PRECISION
+'cannot cast "boolean" as "double precision"'
+
+> true::TEXT
+'true'
+
+! true::BYTEA
+'cannot cast "boolean" as "bytea"'
+
+-- Source: TEXT
+> 'a'::TEXT
+'a'
+
+> '100'::INTEGER
+100
+
+> '100.5'::INTEGER
+100
+
+! 'a'::INTEGER
+
+> '3.14'::DOUBLE PRECISION
+3.14
+
+> '3'::DOUBLE PRECISION
+3.0
+
+! '10.5wdwd'::DOUBLE PRECISION
+
+> 'true'::BOOL
+true
+
+> 'false'::BOOL
+false
+
+> 'falSe'::BOOL
+false
+
+> '0'::BOOL
+false
+
+> '1'::BOOL
+true
+
+> 't'::BOOL
+true
+
+> 'f'::BOOL
+false
+
+> 'TrUe'::BOOL
+true
+
+> 'yes'::BOOL
+true
+
+> 'y'::BOOL
+true
+
+> 'no'::BOOL
+false
+
+> 'n'::BOOL
+false
+
+> 'on'::BOOL
+true
+
+> 'off'::BOOL
+false
+
+> 'YXNkaW5l'::BYTEA
+'\x617364696e65'
+
+-- Source: BYTEA
+> '\xAF'::BYTEA
+'\xAF'
+
+! '\xAF'::INT
+'cannot cast "bytea" as "integer"'
+
+! '\xAF'::DOUBLE PRECISION
+'cannot cast "bytea" as "double precision"'
+
+> '\x617364696e65'::TEXT
+'YXNkaW5l'
+
+-- Additional / edge cases
+> -1::INTEGER
+-1
+
+> (1 + 2)::DOUBLE PRECISION
+3.0
+
+> (1 + 2)::DOUBLE PRECISION::TEXT
+'3'
+
+> 100::INTEGER::DOUBLE PRECISION
+100.0
+
+> (1)::DOUBLE PRECISION::TEXT
+'1'
+
+> (1.345)::DOUBLE PRECISION::TEXT
+'1.345'
+
+-- function-related tests for ::
+-- LOWER / UPPER with short-form casts
+> LOWER('HeLLo'::TEXT)
+'hello'
+
+> UPPER('HeLLo'::TEXT)
+'HELLO'
+
+-- function applied to a casted numeric expression
+> LOWER((1 + 2)::TEXT)
+'3'
+
+-- concatenation with short-form casts
+> 'a'::TEXT || 'B'::TEXT
+'aB'
+
+-- chaining cast after a function result (function returns text so cast is no-op)
+> LOWER('MiXeD'::TEXT)::TEXT
+'mixed'
+
+-- wildcard cannot be cast
+! *::TEXT
+'expected EOF, got ::'

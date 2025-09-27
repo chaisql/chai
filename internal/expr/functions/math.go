@@ -14,7 +14,7 @@ var floor = &ScalarDefinition{
 	callFn: func(args ...types.Value) (types.Value, error) {
 		switch args[0].Type() {
 		case types.TypeDoublePrecision:
-			return types.NewDoublePrevisionValue(math.Floor(types.AsFloat64(args[0]))), nil
+			return types.NewDoublePrecisionValue(math.Floor(types.AsFloat64(args[0]))), nil
 		case types.TypeInteger, types.TypeBigint:
 			return args[0], nil
 		default:
@@ -36,12 +36,12 @@ var abs = &ScalarDefinition{
 		}
 		res := math.Abs(types.AsFloat64(v))
 		if args[0].Type() == types.TypeInteger {
-			return types.NewDoublePrevisionValue(res).CastAs(types.TypeInteger)
+			return types.NewDoublePrecisionValue(res).CastAs(types.TypeInteger)
 		}
 		if args[0].Type() == types.TypeBigint {
-			return types.NewDoublePrevisionValue(res).CastAs(types.TypeBigint)
+			return types.NewDoublePrecisionValue(res).CastAs(types.TypeBigint)
 		}
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -61,7 +61,7 @@ var acos = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, acos(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Acos(vv)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -81,7 +81,7 @@ var acosh = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, acosh(arg1) expects arg1 >= 1")
 		}
 		res := math.Acosh(vv)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -101,7 +101,7 @@ var asin = &ScalarDefinition{
 			return nil, fmt.Errorf("out of range, asin(arg1) expects arg1 to be within [-1, 1]")
 		}
 		res := math.Asin(vv)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -115,7 +115,7 @@ var asinh = &ScalarDefinition{
 		}
 		vv := types.AsFloat64(v)
 		res := math.Asinh(vv)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -129,7 +129,7 @@ var atan = &ScalarDefinition{
 		}
 		vv := types.AsFloat64(v)
 		res := math.Atan(vv)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -148,7 +148,7 @@ var atan2 = &ScalarDefinition{
 		}
 		vvB := types.AsFloat64(vB)
 		res := math.Atan2(vvA, vvB)
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }
 
@@ -173,6 +173,6 @@ var sqrt = &ScalarDefinition{
 			return nil, err
 		}
 		res := math.Sqrt(types.AsFloat64(v))
-		return types.NewDoublePrevisionValue(res), nil
+		return types.NewDoublePrecisionValue(res), nil
 	},
 }

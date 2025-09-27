@@ -18,7 +18,7 @@ func TestCastAs(t *testing.T) {
 
 	boolV := types.NewBooleanValue(true)
 	integerV := types.NewIntegerValue(10)
-	doubleV := types.NewDoublePrevisionValue(10.5)
+	doubleV := types.NewDoublePrecisionValue(10.5)
 	tsV := types.NewTimestampValue(now)
 	textV := types.NewTextValue("foo")
 	byteaV := types.NewByteaValue([]byte("asdine"))
@@ -64,17 +64,17 @@ func TestCastAs(t *testing.T) {
 			{types.NewTextValue("10"), integerV, false},
 			{types.NewTextValue("10.5"), integerV, false},
 			{byteaV, nil, true},
-			{types.NewDoublePrevisionValue(math.MaxInt64 + 1), nil, true},
+			{types.NewDoublePrecisionValue(math.MaxInt64 + 1), nil, true},
 		})
 	})
 
 	t.Run("double", func(t *testing.T) {
 		check(t, types.TypeDoublePrecision, []test{
 			{boolV, nil, true},
-			{integerV, types.NewDoublePrevisionValue(10), false},
+			{integerV, types.NewDoublePrecisionValue(10), false},
 			{doubleV, doubleV, false},
 			{textV, nil, true},
-			{types.NewTextValue("10"), types.NewDoublePrevisionValue(10), false},
+			{types.NewTextValue("10"), types.NewDoublePrecisionValue(10), false},
 			{types.NewTextValue("10.5"), doubleV, false},
 			{byteaV, nil, true},
 		})

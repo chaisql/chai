@@ -79,11 +79,11 @@ func TestIndexDelete(t *testing.T) {
 	t.Run("Delete valid key succeeds", func(t *testing.T) {
 		idx := getIndex(t, 1)
 
-		require.NoError(t, idx.Set(values(types.NewDoublePrevisionValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewDoublePrecisionValue(10)), []byte("key")))
 		require.NoError(t, idx.Set(values(types.NewIntegerValue(10)), []byte("other-key")))
 		require.NoError(t, idx.Set(values(types.NewIntegerValue(11)), []byte("yet-another-key")))
 		require.NoError(t, idx.Set(values(types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		require.NoError(t, idx.Delete(values(types.NewDoublePrevisionValue(10)), []byte("key")))
+		require.NoError(t, idx.Delete(values(types.NewDoublePrecisionValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
@@ -114,11 +114,11 @@ func TestIndexDelete(t *testing.T) {
 	t.Run("Delete valid key succeeds (arity=2)", func(t *testing.T) {
 		idx := getIndex(t, 2)
 
-		require.NoError(t, idx.Set(values(types.NewDoublePrevisionValue(10), types.NewDoublePrevisionValue(10)), []byte("key")))
+		require.NoError(t, idx.Set(values(types.NewDoublePrecisionValue(10), types.NewDoublePrecisionValue(10)), []byte("key")))
 		require.NoError(t, idx.Set(values(types.NewIntegerValue(10), types.NewIntegerValue(10)), []byte("other-key")))
 		require.NoError(t, idx.Set(values(types.NewIntegerValue(11), types.NewIntegerValue(11)), []byte("yet-another-key")))
 		require.NoError(t, idx.Set(values(types.NewTextValue("hello"), types.NewTextValue("hello")), []byte("yet-another-different-key")))
-		require.NoError(t, idx.Delete(values(types.NewDoublePrevisionValue(10), types.NewDoublePrevisionValue(10)), []byte("key")))
+		require.NoError(t, idx.Delete(values(types.NewDoublePrecisionValue(10), types.NewDoublePrecisionValue(10)), []byte("key")))
 
 		pivot := values(types.NewIntegerValue(10))
 		i := 0
@@ -156,15 +156,15 @@ func TestIndexDelete(t *testing.T) {
 func TestIndexExists(t *testing.T) {
 	idx := getIndex(t, 2)
 
-	require.NoError(t, idx.Set(values(types.NewDoublePrevisionValue(10), types.NewIntegerValue(11)), []byte("key1")))
-	require.NoError(t, idx.Set(values(types.NewDoublePrevisionValue(10), types.NewIntegerValue(12)), []byte("key2")))
+	require.NoError(t, idx.Set(values(types.NewDoublePrecisionValue(10), types.NewIntegerValue(11)), []byte("key1")))
+	require.NoError(t, idx.Set(values(types.NewDoublePrecisionValue(10), types.NewIntegerValue(12)), []byte("key2")))
 
-	ok, key, err := idx.Exists(values(types.NewDoublePrevisionValue(10), types.NewIntegerValue(11)))
+	ok, key, err := idx.Exists(values(types.NewDoublePrecisionValue(10), types.NewIntegerValue(11)))
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, tree.NewEncodedKey([]byte("key1")), key)
 
-	ok, _, err = idx.Exists(values(types.NewDoublePrevisionValue(11), types.NewIntegerValue(11)))
+	ok, _, err = idx.Exists(values(types.NewDoublePrecisionValue(11), types.NewIntegerValue(11)))
 	require.NoError(t, err)
 	require.False(t, ok)
 }

@@ -14,7 +14,7 @@ type DoublePrecisionTypeDef struct{}
 
 func (DoublePrecisionTypeDef) Decode(src []byte) (Value, int) {
 	x, n := encoding.DecodeFloat(src)
-	return NewDoublePrevisionValue(x), n
+	return NewDoublePrecisionValue(x), n
 }
 
 func (DoublePrecisionTypeDef) IsComparableWith(other Type) bool {
@@ -25,12 +25,12 @@ func (DoublePrecisionTypeDef) IsIndexComparableWith(other Type) bool {
 	return other == TypeDoublePrecision
 }
 
-var _ Numeric = NewDoublePrevisionValue(0)
+var _ Numeric = NewDoublePrecisionValue(0)
 
 type DoublePrecisionValue float64
 
-// NewDoublePrevisionValue returns a SQL DOUBLE PRECISION value.
-func NewDoublePrevisionValue(x float64) DoublePrecisionValue {
+// NewDoublePrecisionValue returns a SQL DOUBLE PRECISION value.
+func NewDoublePrecisionValue(x float64) DoublePrecisionValue {
 	return DoublePrecisionValue(x)
 }
 
@@ -201,9 +201,9 @@ func (v DoublePrecisionValue) Between(a, b Value) (bool, error) {
 func (v DoublePrecisionValue) Add(other Numeric) (Value, error) {
 	switch other.Type() {
 	case TypeInteger, TypeBigint:
-		return NewDoublePrevisionValue(float64(v) + float64(AsInt64(other))), nil
+		return NewDoublePrecisionValue(float64(v) + float64(AsInt64(other))), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(v) + AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(v) + AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -212,9 +212,9 @@ func (v DoublePrecisionValue) Add(other Numeric) (Value, error) {
 func (v DoublePrecisionValue) Sub(other Numeric) (Value, error) {
 	switch other.Type() {
 	case TypeInteger, TypeBigint:
-		return NewDoublePrevisionValue(float64(v) - float64(AsInt64(other))), nil
+		return NewDoublePrecisionValue(float64(v) - float64(AsInt64(other))), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(v) - AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(v) - AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -223,9 +223,9 @@ func (v DoublePrecisionValue) Sub(other Numeric) (Value, error) {
 func (v DoublePrecisionValue) Mul(other Numeric) (Value, error) {
 	switch other.Type() {
 	case TypeInteger, TypeBigint:
-		return NewDoublePrevisionValue(float64(v) * float64(AsInt64(other))), nil
+		return NewDoublePrecisionValue(float64(v) * float64(AsInt64(other))), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(v) * AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(v) * AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -239,14 +239,14 @@ func (v DoublePrecisionValue) Div(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(float64(v) / xb), nil
+		return NewDoublePrecisionValue(float64(v) / xb), nil
 	case TypeDoublePrecision:
 		xb := AsFloat64(other)
 		if xb == 0 {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(float64(v) / xb), nil
+		return NewDoublePrecisionValue(float64(v) / xb), nil
 	}
 
 	return NewNullValue(), nil
@@ -261,7 +261,7 @@ func (v DoublePrecisionValue) Mod(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(xr), nil
+		return NewDoublePrecisionValue(xr), nil
 	case TypeDoublePrecision:
 		xb := AsFloat64(other)
 		xr := math.Mod(float64(v), xb)
@@ -269,7 +269,7 @@ func (v DoublePrecisionValue) Mod(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(xr), nil
+		return NewDoublePrecisionValue(xr), nil
 	}
 
 	return NewNullValue(), nil

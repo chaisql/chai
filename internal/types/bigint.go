@@ -82,7 +82,7 @@ func (v BigintValue) CastAs(target Type) (Value, error) {
 		}
 		return NewIntegerValue(int32(v)), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(v)), nil
+		return NewDoublePrecisionValue(float64(v)), nil
 	case TypeText:
 		return NewTextValue(v.String()), nil
 	}
@@ -174,7 +174,7 @@ func (v BigintValue) Add(other Numeric) (Value, error) {
 		xr := xa + xb
 		return NewBigintValue(xr), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(int64(v)) + AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(int64(v)) + AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -191,7 +191,7 @@ func (v BigintValue) Sub(other Numeric) (Value, error) {
 		xr := xa - xb
 		return NewBigintValue(xr), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(int64(v)) - AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(int64(v)) - AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -211,7 +211,7 @@ func (v BigintValue) Mul(other Numeric) (Value, error) {
 		xr := xa * xb
 		return NewBigintValue(xr), nil
 	case TypeDoublePrecision:
-		return NewDoublePrevisionValue(float64(int64(v)) * AsFloat64(other)), nil
+		return NewDoublePrecisionValue(float64(int64(v)) * AsFloat64(other)), nil
 	}
 
 	return NewNullValue(), nil
@@ -234,7 +234,7 @@ func (v BigintValue) Div(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(xa / xb), nil
+		return NewDoublePrecisionValue(xa / xb), nil
 	}
 
 	return NewNullValue(), nil
@@ -258,7 +258,7 @@ func (v BigintValue) Mod(other Numeric) (Value, error) {
 			return NewNullValue(), nil
 		}
 
-		return NewDoublePrevisionValue(mod), nil
+		return NewDoublePrecisionValue(mod), nil
 	}
 
 	return NewNullValue(), nil

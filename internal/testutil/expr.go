@@ -13,6 +13,7 @@ import (
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/expr/functions"
 	"github.com/chaisql/chai/internal/sql/parser"
+	"github.com/chaisql/chai/internal/sql/scanner"
 	"github.com/chaisql/chai/internal/testutil/genexprtests"
 	"github.com/chaisql/chai/internal/types"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func BigintValue(v int64) expr.LiteralValue {
 
 // DoubleValue creates a literal value of type Double.
 func DoubleValue(v float64) expr.LiteralValue {
-	return expr.LiteralValue{Value: types.NewDoublePrevisionValue(v)}
+	return expr.LiteralValue{Value: types.NewDoublePrecisionValue(v)}
 }
 
 // TextValue creates a literal value of type Text.
@@ -181,9 +182,13 @@ func ExprRunner(t *testing.T, testfile string) {
 						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ResLine, stmt.Res, err)
 
 						// parse the given expr
-						e, err = parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
+						p := parser.NewParser(strings.NewReader(stmt.Expr))
+						e, err = p.ParseExpr()
 						require.NoErrorf(t, err, "parse error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
-
+						tok, _, _ := p.ScanIgnoreWhitespace()
+						if tok != scanner.EOF {
+							t.Fatalf("expected EOF, got %s", tok)
+						}
 						// eval it to get a proper Value
 						got, err := e.Eval(env)
 						require.NoErrorf(t, err, "eval error at %s:%d\n`%s`: %v", testfile, stmt.ExprLine, stmt.Expr, err)
@@ -195,10 +200,15 @@ func ExprRunner(t *testing.T, testfile string) {
 					t.Run("NOK "+stmt.Expr, func(t *testing.T) {
 						t.Helper()
 						// parse the given expr
-						e, err := parser.NewParser(strings.NewReader(stmt.Expr)).ParseExpr()
+						p := parser.NewParser(strings.NewReader(stmt.Expr))
+						e, err := p.ParseExpr()
 						if err != nil {
 							require.Regexp(t, regexp.MustCompile(regexp.QuoteMeta(stmt.Res)), err.Error())
 						} else {
+							tok, _, _ := p.ScanIgnoreWhitespace()
+							if tok != scanner.EOF {
+								return
+							}
 							// eval it, it should return an error
 							_, err = e.Eval(env)
 							require.NotNilf(t, err, "expected expr to return an error at %s:%d\n`%s`, got nil", testfile, stmt.ExprLine, stmt.Expr)
