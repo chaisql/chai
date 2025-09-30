@@ -9,6 +9,7 @@ import (
 type Column struct {
 	Name  string
 	Table string
+	Type  types.Type
 }
 
 func (c *Column) String() string {

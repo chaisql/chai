@@ -20,12 +20,14 @@ var sequenceTableInfo = func() *TableInfo {
 				Position:  0,
 				Column:    "name",
 				Type:      types.TypeText,
+				TypeDef:   types.TypeText.Def(),
 				IsNotNull: true,
 			},
 			&ColumnConstraint{
 				Position: 1,
 				Column:   "seq",
 				Type:     types.TypeBigint,
+				TypeDef:  types.TypeBigint.Def(),
 			},
 		),
 		TableConstraints: []*TableConstraint{

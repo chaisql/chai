@@ -18,6 +18,7 @@ func TestEncoding(t *testing.T) {
 		Position: 0,
 		Column:   "a",
 		Type:     types.TypeInteger,
+		TypeDef:  types.TypeInteger.Def(),
 	})
 	require.NoError(t, err)
 
@@ -25,6 +26,7 @@ func TestEncoding(t *testing.T) {
 		Position: 1,
 		Column:   "b",
 		Type:     types.TypeText,
+		TypeDef:  types.TypeText.Def(),
 	})
 	require.NoError(t, err)
 
@@ -32,6 +34,7 @@ func TestEncoding(t *testing.T) {
 		Position:  2,
 		Column:    "c",
 		Type:      types.TypeDoublePrecision,
+		TypeDef:   types.TypeDoublePrecision.Def(),
 		IsNotNull: true,
 	})
 	require.NoError(t, err)
@@ -40,6 +43,7 @@ func TestEncoding(t *testing.T) {
 		Position:     3,
 		Column:       "d",
 		Type:         types.TypeDoublePrecision,
+		TypeDef:      types.TypeDoublePrecision.Def(),
 		DefaultValue: expr.Constraint(testutil.ParseExpr(t, `10`)),
 	})
 	require.NoError(t, err)
@@ -48,6 +52,7 @@ func TestEncoding(t *testing.T) {
 		Position: 4,
 		Column:   "e",
 		Type:     types.TypeDoublePrecision,
+		TypeDef:  types.TypeDoublePrecision.Def(),
 	})
 	require.NoError(t, err)
 

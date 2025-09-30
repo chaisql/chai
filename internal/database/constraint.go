@@ -16,6 +16,7 @@ type ColumnConstraint struct {
 	Position     int
 	Column       string
 	Type         types.Type
+	TypeDef      types.TypeDefinition
 	IsNotNull    bool
 	DefaultValue TableExpression
 }

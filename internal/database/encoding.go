@@ -85,7 +85,7 @@ func (e *EncodedRow) decodeValue(fc *ColumnConstraint, b []byte) (types.Value, i
 		return types.NewNullValue(), 1, nil
 	}
 
-	v, n := fc.Type.Def().Decode(b)
+	v, n := fc.TypeDef.Decode(b)
 
 	return v, n, nil
 }

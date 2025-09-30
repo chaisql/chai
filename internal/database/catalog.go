@@ -804,38 +804,45 @@ func newCatalogStore() *CatalogStore {
 				Position:  0,
 				Column:    "name",
 				Type:      types.TypeText,
+				TypeDef:   types.TypeText.Def(),
 				IsNotNull: true,
 			},
 			&ColumnConstraint{
 				Position:  1,
 				Column:    "type",
 				Type:      types.TypeText,
+				TypeDef:   types.TypeText.Def(),
 				IsNotNull: true,
 			},
 			&ColumnConstraint{
 				Position: 2,
 				Column:   "namespace",
 				Type:     types.TypeBigint,
+				TypeDef:  types.TypeBigint.Def(),
 			},
 			&ColumnConstraint{
 				Position: 3,
 				Column:   "sql",
 				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 			&ColumnConstraint{
 				Position: 4,
 				Column:   "rowid_sequence_name",
 				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 			&ColumnConstraint{
 				Position: 5,
 				Column:   "owner_table_name",
 				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 			&ColumnConstraint{
 				Position: 6,
 				Column:   "owner_table_columns",
-				Type:     types.TypeText, // TODO: change to array
+				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 		),
 	}

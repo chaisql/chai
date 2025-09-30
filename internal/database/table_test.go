@@ -17,30 +17,6 @@ import (
 
 var errDontCommit = errors.New("don't commit please")
 
-func update(t testing.TB, db *database.Database, fn func(tx *database.Transaction) error) {
-	t.Helper()
-
-	conn, err := db.Connect()
-	require.NoError(t, err)
-	defer conn.Close()
-
-	tx, err := conn.BeginTx(&database.TxOptions{
-		ReadOnly: false,
-	})
-	require.NoError(t, err)
-	defer tx.Rollback()
-
-	err = fn(tx)
-	if errors.Is(err, errDontCommit) {
-		tx.Rollback()
-		return
-	}
-	require.NoError(t, err)
-
-	err = tx.Commit()
-	require.NoError(t, err)
-}
-
 func newTestTable(t testing.TB) (*database.Table, func()) {
 	t.Helper()
 
@@ -57,11 +33,13 @@ func newTestTable(t testing.TB) (*database.Table, func()) {
 				Position: 0,
 				Column:   "a",
 				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 			&database.ColumnConstraint{
 				Position: 0,
 				Column:   "b",
 				Type:     types.TypeText,
+				TypeDef:  types.TypeText.Def(),
 			},
 		),
 		TableConstraints: database.TableConstraints{
@@ -78,23 +56,6 @@ func createTable(t testing.TB, tx *database.Transaction, info database.TableInfo
 	t.Helper()
 
 	stmt := statement.CreateTableStmt{Info: info}
-
-	res, err := stmt.Run(&statement.Context{
-		Conn: tx.Connection(),
-	})
-	require.NoError(t, err)
-	res.Close()
-
-	tb, err := tx.Catalog.GetTable(tx, stmt.Info.TableName)
-	require.NoError(t, err)
-
-	return tb
-}
-
-func createTableIfNotExists(t testing.TB, tx *database.Transaction, info database.TableInfo) *database.Table {
-	t.Helper()
-
-	stmt := statement.CreateTableStmt{Info: info, IfNotExists: true}
 
 	res, err := stmt.Run(&statement.Context{
 		Conn: tx.Connection(),

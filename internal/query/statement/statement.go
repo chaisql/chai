@@ -188,6 +188,7 @@ func BindExpr(ctx *Context, tableName string, e expr.Expr) (err error) {
 				return false
 			}
 			t.Table = tableName
+			t.Type = cc.Type
 		}
 
 		return true

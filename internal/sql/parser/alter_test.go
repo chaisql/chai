@@ -49,8 +49,9 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 		{"With type", "ALTER TABLE foo ADD COLUMN bar integer", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			ColumnConstraint: &database.ColumnConstraint{
-				Column: "bar",
-				Type:   types.TypeInteger,
+				Column:  "bar",
+				Type:    types.TypeInteger,
+				TypeDef: types.TypeInteger.Def(),
 			},
 		}, false},
 		{"With not null", "ALTER TABLE foo ADD COLUMN bar TEXT NOT NULL", &statement.AlterTableAddColumnStmt{
@@ -58,14 +59,16 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 			ColumnConstraint: &database.ColumnConstraint{
 				Column:    "bar",
 				Type:      types.TypeText,
+				TypeDef:   types.TypeText.Def(),
 				IsNotNull: true,
 			},
 		}, false},
 		{"With primary key", "ALTER TABLE foo ADD COLUMN bar TEXT PRIMARY KEY", &statement.AlterTableAddColumnStmt{
 			TableName: "foo",
 			ColumnConstraint: &database.ColumnConstraint{
-				Column: "bar",
-				Type:   types.TypeText,
+				Column:  "bar",
+				Type:    types.TypeText,
+				TypeDef: types.TypeText.Def(),
 			},
 			TableConstraints: database.TableConstraints{
 				&database.TableConstraint{
@@ -79,6 +82,7 @@ func TestParserAlterTableAddColumn(t *testing.T) {
 			ColumnConstraint: &database.ColumnConstraint{
 				Column:       "bar",
 				Type:         types.TypeInteger,
+				TypeDef:      types.TypeInteger.Def(),
 				IsNotNull:    true,
 				DefaultValue: expr.Constraint(expr.LiteralValue{Value: types.NewIntegerValue(0)}),
 			},

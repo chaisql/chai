@@ -150,6 +150,7 @@ func (p *Parser) parseColumnDefinition() (*database.ColumnConstraint, []*databas
 	if err != nil {
 		return nil, nil, err
 	}
+	cc.TypeDef = cc.Type.Def()
 
 	var tcs []*database.TableConstraint
 
