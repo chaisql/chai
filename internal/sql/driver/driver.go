@@ -170,18 +170,9 @@ func (c *Conn) PrepareContext(ctx context.Context, q string) (driver.Stmt, error
 
 	stmt := statements[0]
 
-	if b, ok := stmt.(statement.Bindable); ok {
-		err = b.Bind(&sctx)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if p, ok := stmt.(statement.Preparer); ok {
-		stmt, err = p.Prepare(&sctx)
-		if err != nil {
-			return nil, err
-		}
+	stmt, err = query.Prepare(&sctx, stmt)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Stmt{
@@ -252,7 +243,8 @@ func (s *Stmt) ExecContext(ctx context.Context, args []driver.NamedValue) (drive
 		return nil, err
 	}
 
-	res, err := s.stmt.Run(&statement.Context{
+	res, err := query.New(s.stmt).Run(&query.Context{
+		Ctx:    ctx,
 		DB:     s.conn.db,
 		Conn:   s.conn.conn,
 		Params: NamedValueToParams(args),
@@ -277,7 +269,7 @@ func (s *Stmt) QueryContext(ctx context.Context, args []driver.NamedValue) (driv
 		return nil, err
 	}
 
-	res, err := s.stmt.Run(&statement.Context{
+	res, err := query.New(s.stmt).Run(&query.Context{
 		DB:     s.conn.db,
 		Conn:   s.conn.conn,
 		Params: NamedValueToParams(args),

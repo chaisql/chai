@@ -3,7 +3,6 @@ package planner_test
 import (
 	"testing"
 
-	"github.com/chaisql/chai/internal/environment"
 	"github.com/chaisql/chai/internal/expr"
 	"github.com/chaisql/chai/internal/planner"
 	"github.com/chaisql/chai/internal/sql/parser"
@@ -343,7 +342,7 @@ func TestSelectIndex_Simple(t *testing.T) {
 
 			sctx := planner.NewStreamContext(test.root, tx.Catalog)
 			sctx.Catalog = tx.Catalog
-			st, err := planner.Optimize(test.root, tx.Catalog, nil)
+			st, err := planner.Optimize(test.root, tx.Catalog)
 			// err := planner.SelectIndex(sctx)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), st.String())
@@ -404,8 +403,8 @@ func TestSelectIndex_Composite(t *testing.T) {
 			stream.New(table.Scan("foo")).
 				Pipe(rows.Filter(parser.MustParseExpr("a > $1"))).
 				Pipe(rows.Filter(parser.MustParseExpr("d > $2"))),
-			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `(1)`), Exclusive: true})).
-				Pipe(rows.Filter(parser.MustParseExpr("d > 2"))),
+			stream.New(index.Scan("idx_foo_a", stream.Range{Min: testutil.ExprList(t, `($1)`), Exclusive: true})).
+				Pipe(rows.Filter(parser.MustParseExpr("d > $2"))),
 		},
 		{
 			"FROM foo WHERE a = 1 AND b = 2 AND c = 3",
@@ -591,10 +590,7 @@ func TestSelectIndex_Composite(t *testing.T) {
 
 			sctx := planner.NewStreamContext(test.root, tx.Catalog)
 			sctx.Catalog = tx.Catalog
-			st, err := planner.Optimize(test.root, tx.Catalog, []environment.Param{
-				{Value: 1},
-				{Value: 2},
-			})
+			st, err := planner.Optimize(test.root, tx.Catalog)
 			require.NoError(t, err)
 			require.Equal(t, test.expected.String(), st.String())
 		})
@@ -620,19 +616,16 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c = 1 + 2"))),
 					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 1 + $2"))),
 				)),
-				tx.Catalog, []environment.Param{
-					{Name: "1", Value: 2},
-					{Name: "2", Value: 3},
-				})
+				tx.Catalog)
 			require.NoError(t, err)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
 					stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("a = 3"))),
-					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("b = 3"))),
+					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("b = 1 + $1"))),
 				)),
 				stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("c = 3"))),
-				stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 4"))),
+				stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("d = 1 + $2"))),
 			))
 
 			require.Equal(t, want.String(), got.String())
@@ -655,7 +648,7 @@ func TestOptimize(t *testing.T) {
 					stream.New(table.Scan("foo")).Pipe(rows.Filter(parser.MustParseExpr("12"))),
 					stream.New(table.Scan("bar")).Pipe(rows.Filter(parser.MustParseExpr("13"))),
 				)),
-				tx.Catalog, nil)
+				tx.Catalog)
 
 			want := stream.New(stream.Union(
 				stream.New(stream.Concat(
@@ -690,7 +683,7 @@ func TestOptimize(t *testing.T) {
 					Pipe(rows.Filter(parser.MustParseExpr("a = 1"))).
 					Pipe(rows.Filter(parser.MustParseExpr("d = 2"))),
 			)),
-			tx.Catalog, nil)
+			tx.Catalog)
 
 		want := stream.New(stream.Concat(
 			stream.New(index.Scan("idx_foo_a_d", stream.Range{Min: testutil.ExprList(t, `(1, 2)`), Exact: true})),

@@ -54,15 +54,6 @@ func MakeRowExprs(t testing.TB, s ...string) []expr.Row {
 	return rows
 }
 
-// MakeValue turns v into a types.Value.
-func MakeValue(t testing.TB, v any) types.Value {
-	t.Helper()
-
-	vv, err := row.NewValue(v)
-	require.NoError(t, err)
-	return vv
-}
-
 type Rows []row.Row
 
 func (r Rows) RequireEqual(t testing.TB, others Rows) {
@@ -213,17 +204,6 @@ func RequireValueEqual(t testing.TB, want, got types.Value, msg string, args ...
 	ok, err := got.EQ(want)
 	require.NoError(t, err)
 	require.True(t, ok, "%s; want: %s, got: %s", fmt.Sprintf(msg, args...), want, got)
-}
-
-func CloneRow(t testing.TB, r row.Row) *row.ColumnBuffer {
-	t.Helper()
-
-	var newFb row.ColumnBuffer
-
-	err := newFb.Copy(r)
-	require.NoError(t, err)
-
-	return &newFb
 }
 
 func SQLRowToColumnBuffer(t testing.TB, rows *sql.Rows) *row.ColumnBuffer {

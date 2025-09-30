@@ -52,7 +52,7 @@ func (stmt *ExplainStmt) Run(ctx *Context) (*Result, error) {
 	}
 
 	// Optimize the stream.
-	s, err = planner.Optimize(s, ctx.Conn.GetTx().Catalog, ctx.Params)
+	s, err = planner.Optimize(s, ctx.Conn.GetTx().Catalog)
 	if err != nil {
 		return nil, err
 	}

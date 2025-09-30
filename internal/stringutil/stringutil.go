@@ -63,13 +63,3 @@ func NormalizeIdentifier(s string, with rune) string {
 
 	return sb.String()
 }
-
-func Contains(slice []string, s string) bool {
-	for _, ss := range slice {
-		if ss == s {
-			return true
-		}
-	}
-
-	return false
-}

@@ -247,6 +247,47 @@ func TestDriver(t *testing.T) {
 	})
 }
 
+func TestPreparedStatement(t *testing.T) {
+	db, err := sql.Open("chai", ":memory:")
+	require.NoError(t, err)
+	defer db.Close()
+
+	_, err = db.Exec(`
+		CREATE TABLE bar(a INT PRIMARY KEY);
+	`)
+	require.NoError(t, err)
+
+	stmt, err := db.Prepare("INSERT INTO bar (a) VALUES ($1)")
+	require.NoError(t, err)
+	defer stmt.Close()
+
+	for i := 0; i < 12; i++ {
+		_, err = stmt.Exec(i)
+		require.NoError(t, err)
+	}
+
+	err = stmt.Close()
+	require.NoError(t, err)
+
+	stmt, err = db.Prepare("SELECT * FROM bar")
+	require.NoError(t, err)
+
+	rows, err := stmt.Query()
+	require.NoError(t, err)
+	defer rows.Close()
+
+	var count int
+	var a int
+	for rows.Next() {
+		err = rows.Scan(&a)
+		require.NoError(t, err)
+		require.Equal(t, count, a)
+		count++
+	}
+	require.NoError(t, rows.Err())
+	require.Equal(t, 12, count)
+}
+
 func TestDriverWithTimeValues(t *testing.T) {
 	db, err := sql.Open("chai", ":memory:")
 	require.NoError(t, err)

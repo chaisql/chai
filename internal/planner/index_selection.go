@@ -684,8 +684,15 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 		return false, "", nil, nil
 	}
 
-	// column OP literal
+	// column OP literal | param
 	if leftIsCol {
+		param, ok := rh.(expr.PositionalParam)
+		if ok {
+			// if the right hand side is a positional param, we cannot
+			// determine its type at this point, so we assume it's compatible
+			return true, lc.Name, param, nil
+		}
+
 		ok, v, err := exprIsCompatibleLiteral(rh, cc.Type)
 		if !ok || err != nil {
 			return false, "", nil, err
@@ -696,6 +703,13 @@ func (i *indexSelector) operatorCanUseIndex(op expr.Operator) (bool, string, exp
 
 	// literal OP column
 	if rightIsCol {
+		param, ok := lh.(expr.PositionalParam)
+		if ok {
+			// if the right hand side is a positional param, we cannot
+			// determine its type at this point, so we assume it's compatible
+			return true, rc.Name, param, nil
+		}
+
 		ok, v, err := exprIsCompatibleLiteral(lh, cc.Type)
 		if !ok || err != nil {
 			return false, "", nil, err

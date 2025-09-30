@@ -77,28 +77,14 @@ func (q *Query) Run(c *Context) (*statement.Result, error) {
 			}
 		}
 
-		// bind
-		if b, ok := stmt.(statement.Bindable); ok {
-			err = b.Bind(&sctx)
-			if err != nil {
-				if tx != nil {
-					_ = tx.Rollback()
-				}
-
-				return nil, err
-			}
-		}
-
 		// prepare
-		if prep, ok := stmt.(statement.Preparer); ok {
-			stmt, err = prep.Prepare(&sctx)
-			if err != nil {
-				if tx != nil {
-					_ = tx.Rollback()
-				}
-
-				return nil, err
+		stmt, err = Prepare(&sctx, stmt)
+		if err != nil {
+			if tx != nil {
+				_ = tx.Rollback()
 			}
+
+			return nil, err
 		}
 
 		// run
@@ -153,4 +139,52 @@ func (q *Query) Run(c *Context) (*statement.Result, error) {
 	}
 
 	return res, nil
+}
+
+// Prepare a statement by binding and preparing it.
+// If there is no ongoing transaction, a read-only transaction
+// is created for the duration of the preparation.
+func Prepare(ctx *statement.Context, stmt statement.Statement) (statement.Statement, error) {
+	var err error
+
+	if _, ok := stmt.(statement.Preparer); !ok {
+		return stmt, nil
+	}
+
+	if _, ok := stmt.(PreparedStatement); ok {
+		return stmt, nil
+	}
+
+	if ctx.Conn.GetTx() == nil {
+		var tx *database.Transaction
+		tx, err = ctx.Conn.BeginTx(&database.TxOptions{
+			ReadOnly: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = tx.Rollback() }()
+	}
+
+	// bind
+	if b, ok := stmt.(statement.Bindable); ok {
+		err = b.Bind(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// prepare
+	if prep, ok := stmt.(statement.Preparer); ok {
+		stmt, err = prep.Prepare(ctx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return PreparedStatement{stmt}, nil
+}
+
+type PreparedStatement struct {
+	statement.Statement
 }

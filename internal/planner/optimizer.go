@@ -26,11 +26,11 @@ var optimizerRules = []func(sctx *StreamContext) error{
 // and returns an optimized tree.
 // Depending on the rule, the tree may be modified in place or
 // replaced by a new one.
-func Optimize(s *stream.Stream, catalog *database.Catalog, params []environment.Param) (*stream.Stream, error) {
+func Optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
 	if firstNode, ok := s.First().(*stream.ConcatOperator); ok {
 		// If the first operation is a concat, optimize all streams individually.
 		for i, st := range firstNode.Streams {
-			ss, err := Optimize(st, catalog, params)
+			ss, err := Optimize(st, catalog)
 			if err != nil {
 				return nil, err
 			}
@@ -43,7 +43,7 @@ func Optimize(s *stream.Stream, catalog *database.Catalog, params []environment.
 	if firstNode, ok := s.First().(*stream.UnionOperator); ok {
 		// If the first operation is a union, optimize all streams individually.
 		for i, st := range firstNode.Streams {
-			ss, err := Optimize(st, catalog, params)
+			ss, err := Optimize(st, catalog)
 			if err != nil {
 				return nil, err
 			}
@@ -53,13 +53,12 @@ func Optimize(s *stream.Stream, catalog *database.Catalog, params []environment.
 		return s, nil
 	}
 
-	return optimize(s, catalog, params)
+	return optimize(s, catalog)
 }
 
 type StreamContext struct {
 	Catalog       *database.Catalog
 	TableInfo     *database.TableInfo
-	Params        []environment.Param
 	Stream        *stream.Stream
 	Filters       []*rows.FilterOperator
 	Projections   []*rows.ProjectOperator
@@ -142,9 +141,8 @@ func (sctx *StreamContext) removeProjectionNode(index int) {
 	sctx.Projections = append(sctx.Projections[:index], sctx.Projections[index+1:]...)
 }
 
-func optimize(s *stream.Stream, catalog *database.Catalog, params []environment.Param) (*stream.Stream, error) {
+func optimize(s *stream.Stream, catalog *database.Catalog) (*stream.Stream, error) {
 	sctx := NewStreamContext(s, catalog)
-	sctx.Params = params
 
 	for _, rule := range optimizerRules {
 		err := rule(sctx)
@@ -281,12 +279,6 @@ func precalculateExpr(sctx *StreamContext, e expr.Expr) (expr.Expr, error) {
 			}
 			t[i] = newExpr
 		}
-	case expr.PositionalParam:
-		v, err := t.Eval(environment.New(nil, nil, sctx.Params, nil))
-		if err != nil {
-			return nil, err
-		}
-		return expr.LiteralValue{Value: v}, nil
 	case expr.Operator:
 		// since expr.Operator is an interface,
 		// this optimization must only be applied to

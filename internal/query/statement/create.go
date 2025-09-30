@@ -87,7 +87,7 @@ func (stmt *CreateIndexStmt) Run(ctx *Context) (*Result, error) {
 		Pipe(index.Insert(stmt.Info.IndexName)).
 		Pipe(stream.Discard())
 
-	st, err := planner.Optimize(s, ctx.Conn.GetTx().Catalog, ctx.Params)
+	st, err := planner.Optimize(s, ctx.Conn.GetTx().Catalog)
 	if err != nil {
 		return nil, err
 	}
