@@ -38,17 +38,27 @@ type Integral interface {
 }
 
 func isMulOverflow[T int32 | int64](left, right, min, max T) bool {
-	if right > 0 {
-		if left > max/right {
-			return true
-		}
-	} else {
-		if left < min/right {
-			return true
-		}
+	// zero multiplication cannot overflow
+	if left == 0 || right == 0 {
+		return false
 	}
 
-	return false
+	if left > 0 {
+		if right > 0 {
+			// both positive: overflow if left > max / right
+			return left > max/right
+		}
+		// left > 0, right < 0: product negative. overflow if left > min / right
+		return left > min/right
+	}
+
+	// left < 0
+	if right > 0 {
+		// left < 0, right > 0: product negative. overflow if left < min / right
+		return left < min/right
+	}
+	// both negative: product positive. overflow if left < max / right
+	return left < max/right
 }
 
 func isAddOverflow[T int32 | int64](left, right, min, max T) bool {
