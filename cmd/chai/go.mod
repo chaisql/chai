@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/agnivade/levenshtein v1.2.1
-	github.com/chaisql/chai v0.18.0
+	github.com/chaisql/chai v0.19.0
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
 	github.com/charmbracelet/lipgloss v1.1.0
@@ -66,3 +66,5 @@ require (
 	google.golang.org/protobuf v1.36.7 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/chaisql/chai v0.19.0 => ../../

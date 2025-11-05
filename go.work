@@ -6,4 +6,4 @@ use (
 	./sqltests
 )
 
-replace github.com/chaisql/chai v0.18.0 => ./
+replace github.com/chaisql/chai v0.19.0 => ./

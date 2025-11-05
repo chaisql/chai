@@ -3,7 +3,7 @@ module github.com/chaisql/chai/sqltests
 go 1.25
 
 require (
-	github.com/chaisql/chai v0.18.0
+	github.com/chaisql/chai v0.19.0
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -45,4 +45,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/chaisql/chai v0.18.0 => ..
+replace github.com/chaisql/chai v0.19.0 => ..
