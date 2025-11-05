@@ -71,7 +71,7 @@ func main() {
     // Create schema
     _, err = db.Exec(`
         CREATE TABLE users (
-            id          SERIAL PRIMARY KEY,
+            id          INTEGER PRIMARY KEY,
             name        TEXT NOT NULL UNIQUE,
             email       TEXT NOT NULL,
             age         INT  NOT NULL,
@@ -84,11 +84,11 @@ func main() {
 
     // Insert some data
     _, err = db.Exec(`
-        INSERT INTO users (name, email, age)
+        INSERT INTO users (id, name, email, age)
         VALUES
-            ('Alice', 'alice@example.com', 30),
-            ('Bob',   'bob@example.com',   25),
-            ('Carol', 'carol@example.com', 40);
+            (1, 'Alice', 'alice@example.com', 30),
+            (2, 'Bob',   'bob@example.com',   25),
+            (3, 'Carol', 'carol@example.com', 40);
     `)
     if err != nil {
         log.Fatal(err)
