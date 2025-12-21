@@ -104,6 +104,9 @@ func Open(path string, opts *Options) (*Database, error) {
 	db.catalog = NewCatalog()
 	tx.Catalog = db.catalog
 
+	if opts == nil {
+		opts = &Options{}
+	}
 	if opts.CatalogLoader != nil {
 		err = opts.CatalogLoader(tx)
 		if err != nil {
