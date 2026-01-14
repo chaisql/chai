@@ -42,6 +42,13 @@ const (
 	MaxTransientNamespace    tree.Namespace = math.MaxInt64
 )
 
+type (
+	FuncID     uint32
+	OpID       uint32
+	RelationID uint32
+	SequenceID uint32
+)
+
 // Catalog manages all database objects such as tables, indexes and sequences.
 // It stores all these objects in memory for fast access. Any modification
 // is persisted into the __chai_catalog table.
@@ -947,4 +954,36 @@ func sequenceInfoToRow(seq *SequenceInfo) row.Row {
 	}
 
 	return buf
+}
+
+// var functions = map[FuncID]Function{
+// 	1:
+// }
+
+// Volatility indicates foldability and evaluation guarantees.
+type Volatility uint8
+
+const (
+	VolImmutable Volatility = iota
+	VolStable
+	VolVolatile
+)
+
+type Function struct {
+	OID        FuncID
+	Name       string
+	ArgTypes   []types.Type
+	ArgNames   []string
+	Variadic   bool
+	ReturnType types.Type
+	Volatility Volatility
+}
+
+type Operator struct {
+	OID        OpID
+	Name       string
+	LeftType   types.Type
+	RightType  types.Type
+	ReturnType types.Type
+	Procedure  FuncID
 }

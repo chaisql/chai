@@ -22,19 +22,25 @@ type Engine interface {
 }
 
 type Session interface {
+	SessionReader
+
 	Commit() error
 	Close() error
 	// Insert inserts a key-value pair. If it already exists, it returns ErrKeyAlreadyExists.
 	Insert(k, v []byte) error
 	// Put stores a key-value pair. If it already exists, it overrides it.
 	Put(k, v []byte) error
+	// Delete a record by key. If not found, returns ErrKeyNotFound.
+	Delete(k []byte) error
+	DeleteRange(start []byte, end []byte) error
+}
+
+type SessionReader interface {
 	// Get returns a value associated with the given key. If not found, returns ErrKeyNotFound.
 	Get(k []byte) ([]byte, error)
 	// Exists returns whether a key exists and is visible by the current session.
 	Exists(k []byte) (bool, error)
-	// Delete a record by key. If not found, returns ErrKeyNotFound.
-	Delete(k []byte) error
-	DeleteRange(start []byte, end []byte) error
+	// Iterator creates an iterator with the given options.
 	Iterator(opts *IterOptions) (Iterator, error)
 }
 

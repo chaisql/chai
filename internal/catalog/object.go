@@ -7,7 +7,7 @@ type (
 	RelationID   uint32
 	IndexID      uint32
 	ConstraintID uint32
-	FuncID       uint32
+	FunctionID   uint32
 	OpID         uint32
 )
 
@@ -143,7 +143,7 @@ const (
 
 // Function represents a function in the catalog.
 type Function struct {
-	OID           FuncID
+	OID           FunctionID
 	SchemaOID     SchemaID
 	Name          string
 	ArgTypeOIDs   []TypeID
@@ -162,7 +162,7 @@ type Operator struct {
 	LeftTypeOID   TypeID
 	RightTypeOID  TypeID
 	ReturnTypeOID TypeID
-	FunctionOID   FuncID
+	FunctionOID   FunctionID
 	CommutatorOID OpID
 	NegatorOID    OpID
 }
@@ -171,7 +171,6 @@ type CastContext uint8
 
 const (
 	CastContextImplicit CastContext = iota + 1
-
 	CastContextAssignment
 	CastContextExplicit
 )
@@ -180,6 +179,6 @@ const (
 type Cast struct {
 	SourceTypeOID TypeID
 	TargetTypeOID TypeID
-	FunctionOID   FuncID
+	FunctionOID   FunctionID
 	Context       CastContext
 }
