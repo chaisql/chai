@@ -17,26 +17,16 @@ func (qn QualifiedName) IsQualified() bool {
 type SearchPath []Ident
 
 type Catalog struct {
-	Schemas           map[SchemaID]Schema
-	SchemasByName     map[string]SchemaID
-	Types             map[TypeID]Type
-	TypesByName       map[QualifiedNameKey]TypeID
-	Collations        map[CollationID]Collation
-	CollationsByName  map[QualifiedNameKey]CollationID
-	Relations         map[RelationID]Relation
-	RelationsByName   map[QualifiedNameKey]RelationID
-	Attributes        map[RelationID]map[uint16]Attribute
-	AttributesByName  map[RelationID]map[string]uint16
-	Indexes           map[RelationID]map[IndexID]Index
-	IndexesByName     map[RelationID]map[string]IndexID
-	Constraints       map[RelationID]map[ConstraintID]Constraint
-	ConstraintsByName map[RelationID]map[string]ConstraintID
-	Sequences         map[RelationID]Sequence
-	Functions         map[FunctionID]Function
-	FunctionsByName   map[QualifiedNameKey][]FunctionID
-	Operators         map[OpID]Operator
-	OperatorsBySig    map[OperatorSigKey]OpID
-	Casts             map[CastKey]Cast
+	store *catalogStore
+}
+
+func New() *Catalog {
+	c := Catalog{
+		store: newCatalogStore(),
+	}
+
+	c.init()
+	return &c
 }
 
 type QualifiedNameKey struct {
@@ -75,56 +65,56 @@ type CastKey struct {
 
 // ResolveSchema finds a schema by name.
 func (c *Catalog) ResolveSchema(schema Ident) (Schema, bool, error) {
-	oid, ok := c.SchemasByName[schema.Normalized()]
+	oid, ok := c.store.SchemasByName[schema.Normalized()]
 	if !ok {
 		return Schema{}, false, nil
 	}
-	sch, ok := c.Schemas[oid]
+	sch, ok := c.store.Schemas[oid]
 	return sch, ok, nil
 }
 
 // GetSchema finds a schema by OID.
 func (c *Catalog) GetSchema(schema SchemaID) (Schema, bool) {
-	sch, ok := c.Schemas[schema]
+	sch, ok := c.store.Schemas[schema]
 	return sch, ok
 }
 
 // ResolveType resolves a type by (possibly qualified) name and search_path.
 func (c *Catalog) ResolveType(sp SearchPath, name QualifiedName) (Type, bool, error) {
-	return resolveObject(c, c.TypesByName, c.Types, sp, name)
+	return resolveObject(c, c.store.TypesByName, c.store.Types, sp, name)
 }
 
 // GetType finds a type by OID.
 func (c *Catalog) GetType(typ TypeID) (Type, bool) {
-	t, ok := c.Types[typ]
+	t, ok := c.store.Types[typ]
 	return t, ok
 }
 
 // ResolveCollation resolves a collation by name and search_path.
 func (c *Catalog) ResolveCollation(sp SearchPath, name QualifiedName) (Collation, bool, error) {
-	return resolveObject(c, c.CollationsByName, c.Collations, sp, name)
+	return resolveObject(c, c.store.CollationsByName, c.store.Collations, sp, name)
 }
 
 // GetCollation finds a collation by OID.
 func (c *Catalog) GetCollation(col CollationID) (Collation, bool) {
-	cl, ok := c.Collations[col]
+	cl, ok := c.store.Collations[col]
 	return cl, ok
 }
 
 // ResolveRelation resolves a relation (table/view/mview/sequence) by name and search_path.
 func (c *Catalog) ResolveRelation(sp SearchPath, name QualifiedName) (Relation, bool, error) {
-	return resolveObject(c, c.RelationsByName, c.Relations, sp, name)
+	return resolveObject(c, c.store.RelationsByName, c.store.Relations, sp, name)
 }
 
 // GetRelation finds a relation by OID.
 func (c *Catalog) GetRelation(rel RelationID) (Relation, bool) {
-	r, ok := c.Relations[rel]
+	r, ok := c.store.Relations[rel]
 	return r, ok
 }
 
 // ListAttributes returns user-visible columns (optionally including dropped).
 func (c *Catalog) ListAttributes(rel RelationID, includeDropped bool) (map[uint16]Attribute, error) {
-	attrs, ok := c.Attributes[rel]
+	attrs, ok := c.store.Attributes[rel]
 	if !ok {
 		return nil, NewRelationNotFoundError(rel)
 	}
@@ -155,7 +145,7 @@ func (c *Catalog) ListAttributes(rel RelationID, includeDropped bool) (map[uint1
 
 // LookupAttribute finds a column by name in a relation.
 func (c *Catalog) LookupAttribute(rel RelationID, col Ident) (Attribute, bool, error) {
-	attrsByName, ok := c.AttributesByName[rel]
+	attrsByName, ok := c.store.AttributesByName[rel]
 	if !ok {
 		return Attribute{}, false, NewRelationNotFoundError(rel)
 	}
@@ -163,7 +153,7 @@ func (c *Catalog) LookupAttribute(rel RelationID, col Ident) (Attribute, bool, e
 	if !ok {
 		return Attribute{}, false, nil
 	}
-	attrs, ok := c.Attributes[rel]
+	attrs, ok := c.store.Attributes[rel]
 	if !ok {
 		return Attribute{}, false, NewColumnNotFoundError(rel, col.String())
 	}
@@ -172,7 +162,7 @@ func (c *Catalog) LookupAttribute(rel RelationID, col Ident) (Attribute, bool, e
 
 // ListIndexes returns all indexes defined on a relation.
 func (c *Catalog) ListIndexes(rel RelationID) (map[IndexID]Index, error) {
-	indexes, ok := c.Indexes[rel]
+	indexes, ok := c.store.Indexes[rel]
 	if !ok {
 		return nil, NewRelationNotFoundError(rel)
 	}
@@ -182,7 +172,7 @@ func (c *Catalog) ListIndexes(rel RelationID) (map[IndexID]Index, error) {
 
 // LookupIndex finds an index by name in a relation.
 func (c *Catalog) LookupIndex(rel RelationID, name Ident) (Index, bool, error) {
-	indexesByName, ok := c.IndexesByName[rel]
+	indexesByName, ok := c.store.IndexesByName[rel]
 	if !ok {
 		return Index{}, false, NewRelationNotFoundError(rel)
 	}
@@ -192,7 +182,7 @@ func (c *Catalog) LookupIndex(rel RelationID, name Ident) (Index, bool, error) {
 		return Index{}, false, nil
 	}
 
-	indexes, ok := c.Indexes[rel]
+	indexes, ok := c.store.Indexes[rel]
 	if !ok {
 		return Index{}, false, NewIndexNotFoundError(rel, name.String())
 	}
@@ -203,7 +193,7 @@ func (c *Catalog) LookupIndex(rel RelationID, name Ident) (Index, bool, error) {
 
 // ListConstraints returns all constraints defined on a relation.
 func (c *Catalog) ListConstraints(rel RelationID) (map[ConstraintID]Constraint, error) {
-	constraints, ok := c.Constraints[rel]
+	constraints, ok := c.store.Constraints[rel]
 	if !ok {
 		return nil, NewRelationNotFoundError(rel)
 	}
@@ -213,7 +203,7 @@ func (c *Catalog) ListConstraints(rel RelationID) (map[ConstraintID]Constraint, 
 
 // LookupConstraint finds a constraint by name in a relation.
 func (c *Catalog) LookupConstraint(rel RelationID, name Ident) (Constraint, bool, error) {
-	constraintsByName, ok := c.ConstraintsByName[rel]
+	constraintsByName, ok := c.store.ConstraintsByName[rel]
 	if !ok {
 		return Constraint{}, false, NewRelationNotFoundError(rel)
 	}
@@ -223,7 +213,7 @@ func (c *Catalog) LookupConstraint(rel RelationID, name Ident) (Constraint, bool
 		return Constraint{}, false, nil
 	}
 
-	constraints, ok := c.Constraints[rel]
+	constraints, ok := c.store.Constraints[rel]
 	if !ok {
 		return Constraint{}, false, NewConstraintNotFoundError(rel, name.String())
 	}
@@ -234,7 +224,7 @@ func (c *Catalog) LookupConstraint(rel RelationID, name Ident) (Constraint, bool
 
 // GetSequence finds a sequence metadata by relation OID.
 func (c *Catalog) GetSequence(rel RelationID) (Sequence, bool) {
-	seq, ok := c.Sequences[rel]
+	seq, ok := c.store.Sequences[rel]
 	return seq, ok
 }
 
@@ -253,13 +243,13 @@ func (c *Catalog) ResolveFunction(sp SearchPath, name QualifiedName, argTypes []
 			return Function{}, false, NewSchemaNotFoundError(name.Schema.Normalized())
 		}
 
-		funcIDs, ok := c.FunctionsByName[QualifiedNameKey{SchemaOID: sch.OID, Name: name.Name.Normalized()}]
+		funcIDs, ok := c.store.FunctionsByName[QualifiedNameKey{SchemaOID: sch.OID, Name: name.Name.Normalized()}]
 		if !ok {
 			return Function{}, false, nil
 		}
 
 		for _, fid := range funcIDs {
-			fn := c.Functions[fid]
+			fn := c.store.Functions[fid]
 			if slices.Equal(fn.ArgTypeOIDs, argTypes) {
 				return fn, true, nil
 			}
@@ -278,13 +268,13 @@ func (c *Catalog) ResolveFunction(sp SearchPath, name QualifiedName, argTypes []
 			continue
 		}
 
-		funcIDs, ok := c.FunctionsByName[QualifiedNameKey{SchemaOID: sch.OID, Name: name.Name.Normalized()}]
+		funcIDs, ok := c.store.FunctionsByName[QualifiedNameKey{SchemaOID: sch.OID, Name: name.Name.Normalized()}]
 		if !ok {
 			continue
 		}
 
 		for _, fid := range funcIDs {
-			fn := c.Functions[fid]
+			fn := c.store.Functions[fid]
 			if slices.Equal(fn.ArgTypeOIDs, argTypes) {
 				return fn, true, nil
 			}
@@ -296,7 +286,7 @@ func (c *Catalog) ResolveFunction(sp SearchPath, name QualifiedName, argTypes []
 
 // GetFunction finds a function by OID.
 func (c *Catalog) GetFunction(funcID FunctionID) (Function, bool) {
-	fn, ok := c.Functions[funcID]
+	fn, ok := c.store.Functions[funcID]
 	return fn, ok
 }
 
@@ -316,12 +306,12 @@ func (c *Catalog) ResolveOperator(sp SearchPath, name QualifiedName, left TypeID
 			return Operator{}, false, NewSchemaNotFoundError(name.Schema.Normalized())
 		}
 
-		opID, ok := c.OperatorsBySig[OperatorSigKey{SchemaOID: sch.OID, Name: name.Name.Normalized(), Left: left, Right: right}]
+		opID, ok := c.store.OperatorsBySig[OperatorSigKey{SchemaOID: sch.OID, Name: name.Name.Normalized(), Left: left, Right: right}]
 		if !ok {
 			return Operator{}, false, nil
 		}
 
-		op, ok := c.Operators[opID]
+		op, ok := c.store.Operators[opID]
 		return op, ok, nil
 	}
 
@@ -335,12 +325,12 @@ func (c *Catalog) ResolveOperator(sp SearchPath, name QualifiedName, left TypeID
 			continue
 		}
 
-		opID, ok := c.OperatorsBySig[OperatorSigKey{SchemaOID: sch.OID, Name: name.Name.Normalized(), Left: left, Right: right}]
+		opID, ok := c.store.OperatorsBySig[OperatorSigKey{SchemaOID: sch.OID, Name: name.Name.Normalized(), Left: left, Right: right}]
 		if !ok {
 			continue
 		}
 
-		op, ok := c.Operators[opID]
+		op, ok := c.store.Operators[opID]
 		return op, ok, nil
 	}
 
@@ -349,13 +339,13 @@ func (c *Catalog) ResolveOperator(sp SearchPath, name QualifiedName, left TypeID
 
 // GetOperator finds an operator by OID.
 func (c *Catalog) GetOperator(opID OpID) (Operator, bool) {
-	op, ok := c.Operators[opID]
+	op, ok := c.store.Operators[opID]
 	return op, ok
 }
 
 // ResolveCast resolves a cast by source and target type OIDs.
 func (c *Catalog) ResolveCast(source TypeID, target TypeID) (Cast, bool) {
-	cast, ok := c.Casts[CastKey{Source: source, Target: target}]
+	cast, ok := c.store.Casts[CastKey{Source: source, Target: target}]
 	return cast, ok
 }
 

@@ -14,19 +14,29 @@ type (
 // Schema represents a database schema in the catalog.
 type Schema struct {
 	OID  SchemaID
-	Name string
+	Name Ident
 }
 
 // Type categories roughly follow Postgres for overload heuristics.
 type TypeCategory uint8
 
 const (
-	TypeCatNumeric TypeCategory = iota
-	TypeCatString
-	TypeCatDatetime
-	TypeCatBool
-	TypeCatBinary
-	TypeCatUser
+	TypeCatArray          TypeCategory = 'A'
+	TypeCatBool           TypeCategory = 'B'
+	TypeCatComposite      TypeCategory = 'C'
+	TypeCatDatetime       TypeCategory = 'D'
+	TypeCatEnum           TypeCategory = 'E'
+	TypeCatGeometric      TypeCategory = 'G'
+	TypeCatNetworkAddress TypeCategory = 'I'
+	TypeCatNumeric        TypeCategory = 'N'
+	TypeCatPseudo         TypeCategory = 'P'
+	TypeCatRange          TypeCategory = 'R'
+	TypeCatString         TypeCategory = 'S'
+	TypeCatTimespan       TypeCategory = 'T'
+	TypeCatUserDefined    TypeCategory = 'U'
+	TypeCatBitString      TypeCategory = 'V'
+	TypeCatUnknown        TypeCategory = 'X'
+	TypeCatInternal       TypeCategory = 'Z'
 )
 
 // Type represents a data type in the catalog.
