@@ -1,8 +1,12 @@
 package catalog
 
-import "fmt"
+import (
+	"fmt"
+	"sync/atomic"
+)
 
 type catalogStore struct {
+	idGenerator       atomic.Uint32
 	oidSet            map[uint32]struct{}
 	Schemas           map[SchemaID]Schema
 	SchemasByName     map[string]SchemaID

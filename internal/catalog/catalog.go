@@ -1,6 +1,9 @@
 package catalog
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 // QualifiedName represents schema-qualified (or unqualified) names.
 // If Schema is empty, resolution uses SearchPath.
@@ -38,6 +41,15 @@ type Ident struct {
 	Raw    string
 	Folded string
 	Quoted bool
+}
+
+func NormalizeIdent(name string, quoted bool) Ident {
+	if quoted {
+		return Ident{Raw: name, Folded: name, Quoted: true}
+	}
+
+	folded := strings.ToLower(name)
+	return Ident{Raw: name, Folded: folded, Quoted: false}
 }
 
 func (i Ident) Normalized() string {
@@ -112,35 +124,27 @@ func (c *Catalog) GetRelation(rel RelationID) (Relation, bool) {
 	return r, ok
 }
 
-// ListAttributes returns user-visible columns (optionally including dropped).
-func (c *Catalog) ListAttributes(rel RelationID, includeDropped bool) (map[uint16]Attribute, error) {
+// ListAttributes returns user-visible columns (optionally including dropped)
+// in attnum order for a relation.
+func (c *Catalog) ListAttributes(rel RelationID, includeDropped bool) ([]Attribute, error) {
 	attrs, ok := c.store.Attributes[rel]
 	if !ok {
 		return nil, NewRelationNotFoundError(rel)
 	}
-	if includeDropped {
-		return attrs, nil
-	}
 
-	var hasDropped bool
-	for _, attr := range attrs {
-		if attr.Dropped {
-			hasDropped = true
+	result := make([]Attribute, 0, len(attrs))
+	for attNum := uint16(1); ; attNum++ {
+		attr, ok := attrs[attNum]
+		if !ok {
 			break
 		}
-	}
-	if !hasDropped {
-		return attrs, nil
-	}
-
-	res := make(map[uint16]Attribute)
-	for _, attr := range attrs {
-		if !attr.Dropped {
-			res[attr.AttNum] = attr
+		if !includeDropped && attr.Dropped {
+			continue
 		}
+		result = append(result, attr)
 	}
 
-	return res, nil
+	return result, nil
 }
 
 // LookupAttribute finds a column by name in a relation.

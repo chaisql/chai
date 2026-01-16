@@ -5,6 +5,7 @@ const (
 	PublicSchemaOID     = SchemaID(2)
 	DefaultCollationOID = CollationID(3)
 	BaseTypeOID         = TypeID(100)
+	PublicOIDBase       = uint32(16 * 1024) // 16384
 )
 
 const (
@@ -21,6 +22,9 @@ func (c *Catalog) init() {
 	c.createStringTypes()
 	c.createUserDefinedTypes()
 	c.createDateTimeTypes()
+
+	// set initial OID value
+	c.store.idGenerator.Store(PublicOIDBase)
 }
 
 func (c *Catalog) createDefaultSchemas() {
